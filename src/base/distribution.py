@@ -48,7 +48,7 @@ class Extension(object):
         self.library_dirs = library_dirs
         self.libraries = libraries
         if config:
-            self.configfile = config
+            self.configfile = os.path.abspath(config)
         else:
             self.configfile = None
 
@@ -159,7 +159,7 @@ def setup(**kwargs):
             f = open('src/version.py')
             for line in f.readlines():
                 if line.startswith('VERSION'):
-                    if line[10:-1] == kwargs['version']:
+                    if line[11:-2] == kwargs['version']:
                         write_version = False
                     break
             f.close()

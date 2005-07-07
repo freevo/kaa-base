@@ -29,6 +29,7 @@
 # python imports
 import os
 import math
+import tempfile
 import distutils.core
 
 
@@ -91,6 +92,28 @@ class Extension(object):
         except Exception, e:
             print 'WARNING: "%s-config" failed: %s' % (name, e)
             return False
+
+
+    def check_cc(self, includes, code, args=''):
+        """
+        Check the given code with the linker. The optional parameter args
+        can contain additional command line options like -l.
+        """
+        fd, outfile = tempfile.mkstemp()
+        os.close(fd)
+        f = os.popen("cc -x c - -o %s %s &>/dev/null" % (outfile, args), "w")
+        if not f:
+            return False
+        
+        for i in includes:
+            f.write('#include %s\n' % i)
+        f.write('void main() { ' + code + '};')
+        result = f.close()
+        
+        if os.path.exists(outfile):
+            os.unlink(outfile)
+
+        return result == None
 
 
     def convert(self):

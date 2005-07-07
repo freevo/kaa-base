@@ -50,6 +50,8 @@ class Extension(object):
         self.libraries = libraries
         if config:
             self.configfile = os.path.abspath(config)
+            # create config file
+            open(config, 'w').close()
         else:
             self.configfile = None
 

@@ -60,4 +60,4 @@ class Version(object):
         """
         if not isinstance(obj, Version):
             obj = Version(obj)
-        return float(self).__cmp__(float(obj))
+        return cmp(float(self), float(obj))

@@ -201,7 +201,7 @@ def setup(**kwargs):
         for pos, val in enumerate(kwargs['version'].split('.')):
             iversion += int(val) * (float(1) / math.pow(100, pos))
         f.write('# version as integer to compare\n')
-        f.write('INT_VERSION = %s\n' % iversion)
+        f.write('FLOAT_VERSION = %s\n' % iversion)
         f.close()
 
     # add some missing keywords

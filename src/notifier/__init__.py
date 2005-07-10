@@ -45,8 +45,9 @@ except ImportError:
     use_pynotifier = False
     
 # kaa.notifier imports
-from signals import *
-from signals import register as signal
+from posixsignals import *
+from posixsignals import register as signal
+from signals import Signal
 from popen import Process
 from popen import killall as kill_processes
 from thread import Thread, call_from_main
@@ -113,8 +114,19 @@ def loop():
     Notifier main loop function. It will loop until an exception
     is raised or sys.exit is called.
     """
+
+    # Sets a default root level logger if none exists.
+    logger = logging.getLogger()
+    if len(logger.handlers) == 0:
+        formatter = logging.Formatter('%(levelname)s %(module)s'+ \
+                                      '(%(lineno)s): %(message)s')
+        handler = logging.StreamHandler()
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
     global running
     running = True
+
     while 1:
         try:
             notifier.loop()
@@ -184,3 +196,4 @@ for var in dir(notifier):
         var.startswith('remove')) and not var in globals():
         _notifier_vars.append(var)
         exec('%s = notifier.%s' % (var, var))
+

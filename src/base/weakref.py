@@ -34,7 +34,7 @@
 
 from _weakref import ref
 
-class weakref:
+class weakref(object):
     """
     This class represents a weak reference based on the python
     module weakref. The difference between weakref.ref and this class
@@ -45,34 +45,45 @@ class weakref:
     """
     def __init__(self, object):
         if object:
-            self.__dict__['ref'] = ref(object)
+            if type(object) == weakref:
+                self._ref = object._ref
+            else:
+                self._ref = ref(object)
         else:
-            self.__dict__['ref'] = None
+            self._ref = None
             
-    def __getattr__(self, attr):
-        return getattr(self.__dict__['ref'](), attr)
+    def __getattribute__(self, attr):
+        if attr == "__class__" and self:
+            return self._ref().__class__
+        if attr == "_ref":
+            return object.__getattribute__(self, attr)
+        return getattr(self._ref(), attr)
 
     def __setattr__(self, attr, value):
-        return setattr(self.__dict__['ref'](), attr, value)
+        if attr == "_ref":
+            object.__setattr__(self, attr, value)
+        
+        return setattr(self._ref(), attr, value)
+
+    def __delattr__(self, attr):
+        return delattr(self._ref(), attr)
+
+    def __call__(self, *args, **kwargs):
+        return self._ref()(*args, **kwargs)
 
     def __nonzero__(self):
-        if self.__dict__['ref'] and self.__dict__['ref']():
+        if self._ref and self._ref():
             return 1
         else:
             return 0
 
     def __cmp__(self, other):
-        if isinstance(other, weakref):
-            other = other.__dict__['ref']()
-        return cmp(self.__dict__['ref'](), other)
+        if type(other) == weakref:
+            other = other._ref()
+        return cmp(self._ref(), other)
 
     def __str__(self):
-        if self.__dict__['ref']:
-            return str(self.__dict__['ref']())
+        if self._ref:
+            return "<weakref proxy; %s>" % str(self._ref())
         else:
             return 'weak reference to None'
-
-    def delattr(self, attr):
-        if hasattr(self.__dict__['ref'](), attr):
-            ref = self.__dict__['ref']()
-            exec('del ref.%s' % attr)

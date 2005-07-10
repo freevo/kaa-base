@@ -82,8 +82,11 @@ def utf8(text):
     """
     Returns a UTF-8 string, converting from latin-1 if necessary.  This does a
     pretty good job Doing the Right Thing, converting only when it's really
-    latin-1.
+    latin-1.  Of course it's not foolproof, but it works in practice.
     """
+    if type(text) == types.UnicodeType:
+        return text.encode("utf-8")
+
     try:
         text.decode("utf-8")
     except:
@@ -93,7 +96,6 @@ def utf8(text):
             pass
 
     return text
-            
 
 
 ############################################################################

@@ -32,6 +32,7 @@
 # python imports
 import sys
 import logging
+import traceback
 
 try:
     # try to import pyNotifier and wrap everything in it
@@ -137,6 +138,8 @@ def loop():
                 log.info('Call Signal Handler')
             else:
                 running = False
+                # FIXME: do something better.
+                traceback.print_exc()
                 raise e
     running = False
     shutdown()

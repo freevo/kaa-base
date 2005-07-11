@@ -71,6 +71,15 @@ class weakref(object):
     def __call__(self, *args, **kwargs):
         return self._ref()(*args, **kwargs)
 
+    def __getitem__(self, key):
+        return self._ref()[key]
+
+    def __delitem__(self, key):
+        del self._ref()[key]
+
+    def __setitem__(self, key, value):
+        self._ref()[key] = value
+
     def __nonzero__(self):
         if self._ref and self._ref():
             return 1

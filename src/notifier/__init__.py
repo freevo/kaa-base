@@ -32,20 +32,11 @@
 # python imports
 import sys
 import logging
-import traceback
 
-try:
-    # try to import pyNotifier and wrap everything in it
-    import notifier
-    # init pyNotifier with the generic notifier
-    notifier.init(notifier.GENERIC)
-    use_pynotifier = True
-except ImportError:
-    # use a copy of nf_generic since pyNotifier isn't installed
-    import nf_generic as notifier
-    use_pynotifier = False
-    
 # kaa.notifier imports
+import wrapper
+from wrapper import Timer, OneShotTimer, Socket, Dispatcher, Shutdown
+from wrapper import IO_READ, IO_WRITE, IO_EXCEPT
 from posixsignals import *
 from posixsignals import register as signal
 from signals import Signal, WeakRefMethod
@@ -61,41 +52,24 @@ log = logging.getLogger('notifier')
 running = False
 
 
-def init(type):
+def select_notifier(type):
     """
-    Init the notifier module. This only needs to be called when pyNotifier
+    Select a notifier module. This only needs to be called when pyNotifier
     is used and not the notifier should be something else than the generic
-    one.
+    one. The variables for the different notifier are not available in this
+    wrapper.
     """
-    if not use_pynotifier:
-        raise AttributeError('pyNotifier not installed')
-    if type == notifier.GENERIC:
-        raise AttributeError('generic notifier already running')
-    notifier.init(type)
-    for var in globals():
-        if var in _notifier_vars:
-            globals()[var] = getattr(notifier, var)
+    wrapper.select_notifier(type)
+
+    global IO_READ
+    global IO_WRITE
+    global IO_EXCEPT
+
+    IO_READ   = notifier.IO_READ
+    IO_WRITE  = notifier.IO_WRITE
+    IO_EXCEPT = notifier.IO_EXCEPT
 
 
-_shutdown_cb = []
-
-def addShutdown(function):
-    """
-    Add a function to be called on shutdown.
-    """
-    if not function in _shutdown_cb:
-        _shutdown_cb.append(function)
-    return function
-
-
-def removeShutdown(self, function):
-    """
-    Remove a function from the list that will be called on shutdown.
-    """
-    while function in _shutdown_cb:
-        _shutdown_cb.remove(function)
-
-        
 def shutdown():
     """
     Shutdown notifier and kill all background processes.
@@ -105,11 +79,11 @@ def shutdown():
         log.info('Stop notifier loop')
         sys.exit(0)
     kill_processes()
-    while _shutdown_cb:
+    while wrapper.shutdown_callbacks:
         # call all shutdown functions
-        _shutdown_cb.pop()()
-        
-    
+        wrapper.shutdown_callbacks.pop()()
+
+
 def loop():
     """
     Notifier main loop function. It will loop until an exception
@@ -142,7 +116,7 @@ def loop():
                 raise e
     running = False
     shutdown()
-    
+
 
 def step(*args, **kwargs):
     """
@@ -159,43 +133,30 @@ def step(*args, **kwargs):
             raise e
 
 
-def addTimer(interval, function, *args, **kwargs):
-    """
-    The first argument specifies an interval in milliseconds, the
-    second argument a function. Optional parameters specify parameters
-    to the called function. This is function is called after interval
-    seconds. If it returns true it's called again after interval
-    seconds, otherwise it is removed from the scheduler.
-    This function returns an unique identifer which can be used to remove this
-    timer.
-    """
-    if args or kwargs:
-        # create callback object to be passed to the notifier
-        function = Callback(function, *args, **kwargs)
-    return notifier.addTimer(interval, function)
+# **** functions while freevo is ported to kaa.notifier ****
+# WARNING: the following functions will be deleted in the future
 
+def addShutdown(function):
+    Shutdown(function).register()
+
+def addTimer(interval, function, *args, **kwargs):
+    t = Timer(function, *args, **kwargs)
+    t.start(interval)
+    return t.id
 
 def timer(interval, function, *args, **kwargs):
-    """
-    The first argument specifies an interval in milliseconds, the
-    second argument a function. Optional parameters specify parameters
-    to the called function. This is function is called after interval
-    seconds. If it returns true it's called again after interval
-    seconds, otherwise it is removed from the scheduler.
-    This function returns a callback object with a remove function to remove
-    the timer from the notifier.
-    """
-    t = CallbackObject(function, *args, **kwargs)
-    t.register('Timer', interval)
+    t = Timer(function, *args, **kwargs)
+    t.remove = t.stop
+    t.start(interval)
     return t
 
+try:
+    import notifier
+except ImportError:
+    import nf_generic as notifier
 
-# Import all notifier variables that are needed by the user of this
-# module. Mark them in _notifier_vars to be overwritten later in init.
-_notifier_vars = []
-for var in dir(notifier):
-    if (var == var.upper() or var.startswith('add') or \
-        var.startswith('remove')) and not var in globals():
-        _notifier_vars.append(var)
-        exec('%s = notifier.%s' % (var, var))
-
+addSocket = notifier.addSocket
+addDispatcher = notifier.addDispatcher
+removeTimer = notifier.removeTimer
+removeSocket = notifier.removeSocket
+removeDispatcher = notifier.removeDispatcher

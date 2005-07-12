@@ -48,7 +48,7 @@ except ImportError:
 # kaa.notifier imports
 from posixsignals import *
 from posixsignals import register as signal
-from signals import Signal
+from signals import Signal, WeakRefMethod
 from popen import Process
 from popen import killall as kill_processes
 from thread import Thread, call_from_main
@@ -124,6 +124,7 @@ def loop():
         handler = logging.StreamHandler()
         handler.setFormatter(formatter)
         logger.addHandler(handler)
+        logger.setLevel(logging.WARNING)
 
     global running
     running = True
@@ -138,8 +139,6 @@ def loop():
                 log.info('Call Signal Handler')
             else:
                 running = False
-                # FIXME: do something better.
-                traceback.print_exc()
                 raise e
     running = False
     shutdown()

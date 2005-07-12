@@ -49,6 +49,7 @@ class WeakRefMethod:
 
     def __call__(self, *args):
         if self.instance() == None:
+            print "Method died, returning False"
             return False
         meth = self.get()
         if not meth:

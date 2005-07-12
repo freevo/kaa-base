@@ -130,16 +130,16 @@ def step( sleep = True, external = True ):
     _copy = __timers.copy()
     for i in _copy:
         interval, timestamp, callback = _copy[ i ]
-	if interval + timestamp <= millisecs():
-	    retval = None
-	    try:
-		if not callback():
-		    trash_can.append( i )
-		else:
-		    __timers[ i ] = ( interval, millisecs(), callback )
+        if interval + timestamp <= millisecs():
+            retval = None
+            try:
+                if not callback():
+                    trash_can.append( i )
+                else:
+                    __timers[ i ] = ( interval, millisecs(), callback )
             except ( KeyboardInterrupt, SystemExit ), e:
                 raise e
-	    except:
+            except:
                 log.exception( 'removed timer %d' % i )
                 trash_can.append( i )
 
@@ -169,7 +169,7 @@ def step( sleep = True, external = True ):
                           __sockets[ IO_EXCEPT ].keys(), timeout / 1000.0 )
     except ( ValueError, select_error ):
         log.exception( 'error in select' )
-	sys.exit( 1 )
+        sys.exit( 1 )
 
     for sl in ( ( r, IO_READ ), ( w, IO_WRITE ), ( e, IO_EXCEPT ) ):
         sockets, condition = sl
@@ -186,14 +186,20 @@ def step( sleep = True, external = True ):
                         raise e
                     except:
                         log.exception( 'error in socket callback' )
-			sys.exit( 1 )
+                        sys.exit( 1 )
 
     # handle external dispatchers
     if external:
         for disp in copy( __dispatchers ):
-            disp()
+            try:
+                disp()
+            except ( KeyboardInterrupt, SystemExit ), e:
+                raise e
+            except:
+                log.exception( 'error in dispatcher' )
+                sys.exit( 1 )
 
 def loop():
     """Executes the "main loop" forever by calling step in an endless loop"""
     while 1:
-	step()
+        step()

@@ -33,6 +33,7 @@
 # -----------------------------------------------------------------------------
 
 from _weakref import ref
+import types
 
 class weakref(object):
     """
@@ -96,3 +97,4 @@ class weakref(object):
             return "<weakref proxy; %s>" % str(self._ref())
         else:
             return 'weak reference to None'
+

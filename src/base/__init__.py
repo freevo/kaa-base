@@ -1,1 +1,1 @@
-from kaa.base.weakref import *
+from kaa.base.weakref import weakref

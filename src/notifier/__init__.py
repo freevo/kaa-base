@@ -36,12 +36,12 @@ import logging
 # kaa.notifier imports
 from posixsignals import *
 from posixsignals import register as signal
-from signals import Signal, WeakRefMethod
 from popen import Process
 from popen import killall as kill_processes
 from thread import Thread, call_from_main
 from callback import Callback, WeakCallback, Timer, WeakTimer, OneShotTimer, \
-                     WeakOneShotTimer, SocketDispatcher, WeakSocketDispatcher
+                     WeakOneShotTimer, SocketDispatcher, WeakSocketDispatcher,\
+                     Signal
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -50,7 +50,7 @@ log = logging.getLogger('notifier')
 running = False
 
 
-def _idle_signal_changed(signal, flag, pos):
+def _idle_signal_changed(signal, flag):
     if flag == Signal.SIGNAL_CONNECTED and signal.count() == 1:
         notifier.addDispatcher(signal.emit)
     elif flag == Signal.SIGNAL_DISCONNECTED and signal.count() == 0:

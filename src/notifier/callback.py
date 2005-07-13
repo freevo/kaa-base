@@ -32,7 +32,8 @@
 __all__ = [ 'Callback', 'WeakCallback', 'Timer', 'WeakTimer', 'OneShotTimer',
             'WeakOneShotTimer', 'SocketDispatcher', 'WeakSocketDispatcher' ]
 
-import weakref
+import _weakref
+import types
 
 try:
     # try to import pyNotifier
@@ -68,6 +69,55 @@ def select_notifier(type):
     IO_WRITE  = notifier.IO_WRITE
     IO_EXCEPT = notifier.IO_EXCEPT
 
+
+def weakref_data(data):
+    if type(data) in (str, int, long, types.NoneType):
+        # Naive optimization for common immutable cases.
+        return data
+    elif type(data) == types.MethodType:
+        return WeakCallback(data)
+    elif type(data) in (list, tuple):
+        d = []
+        for item in data:
+            d.append(weakref_data(item))
+        if type(data) == tuple:
+            d = tuple(d)
+        return d
+    elif type(data) == dict:
+        d = {}
+        for key, val in data.items():
+            d[weakref_data(key)] = weakref_data(val)
+        return d
+    elif type(data) != types.FunctionType:
+        try:
+            return _weakref.ref(data)
+        except TypeError:
+            pass
+
+    return data
+
+def unweakref_data(data):
+    if type(data) in (str, int, long, types.NoneType):
+        # Naive optimization for common immutable cases.
+        return data
+    elif type(data) == _weakref.ReferenceType:
+        return data()
+    elif type(data) == WeakCallback:
+        return data._get_callback()
+    elif type(data) in (list, tuple):
+        d = []
+        for item in data:
+            d.append(unweakref_data(item))
+        if type(data) == tuple:
+            d = tuple(d)
+        return d
+    elif type(data) == dict:
+        d = {}
+        for key, val in data.items():
+            d[unweakref_data(key)] = unweakref_data(val)
+        return d
+    else:
+        return data
 
 
 class Callback(object):
@@ -207,15 +257,17 @@ class WeakCallback(Callback):
 
     def __init__(self, callback, *args, **kwargs):
         super(WeakCallback, self).__init__(callback, *args, **kwargs)
-        if hasattr(callback, "im_self"):
+        if type(callback) == types.MethodType:
             # For methods
-            self._instance = weakref.ref(callback.im_self, self._weakref_destroyed)
+            self._instance = _weakref.ref(callback.im_self, self._weakref_destroyed)
             self._callback = callback.im_func.func_name
         else:
             # No need to weakref functions.  (If we do, we can't use closures.)
             self._instance = None
 
-        # TODO: make weak refs of args/kwargs too.
+        self._args = weakref_data(args)
+        self._kwargs = weakref_data(kwargs)
+        self._weakref_destroyed_user_cb = None
 
 
     def _get_callback(self):
@@ -226,14 +278,34 @@ class WeakCallback(Callback):
             return self._callback
 
 
+    def __call__(self, *args, **kwargs):
+        save_args, save_kwargs = self._args, self._kwargs
+    
+        # Remove weakrefs from user data before invoking the callback.
+        self._args = unweakref_data(self._args)
+        self._kwargs = unweakref_data(self._kwargs)
+
+        super(WeakCallback, self).__call__(*args, **kwargs)
+
+        self._args, self._kwargs = save_args, save_kwargs
+    
+        return False
+
+
+    def set_weakref_destroyed_cb(self, callback):
+        self._weakref_destroyed_user_cb = callback
+
+
     def _weakref_destroyed(self, object):
-        pass
+        if self._weakref_destroyed_user_cb:
+            return self._weakref_destroyed_user_cb(self, object)
 
 
 
 class WeakNotifierCallback(WeakCallback, NotifierCallback):
 
     def _weakref_destroyed(self, object):
+        super(WeakNotifierCallback, self)._weakref_destroyed(object)
         self.unregister()
 
 
@@ -247,4 +319,122 @@ class WeakSocketDispatcher(WeakNotifierCallback, SocketDispatcher):
     pass
 
 
+class Signal(object):
 
+    # Parameters for changed callback
+    SIGNAL_CONNECTED = 1
+    SIGNAL_DISCONNECTED = 2
+
+    def __init__(self, changed_cb = None):
+        self._callbacks = []
+        self._changed_cb = changed_cb
+        self._items = {}
+
+    def __getitem__(self, key):
+        return self._items[key]
+
+    def __setitem__(self, key, val):
+        self._items[key] = val
+
+    def __contains__(self, key):
+        return key in self._items
+
+ 
+    def _connect(self, callback, args = (), kwargs = {}, once = False, 
+                 weak = False, pos = -1):
+
+        if len(self._callbacks) > 40:
+            # It's a common problem (for me :)) that callbacks get added
+            # inside another callback.  This is a simple sanity check.
+            print "Signal callbacks exceeds 40.  Something's wrong!"
+            print callback, args, self._callbacks[0][0].get_method()
+            raise Exception
+
+        if weak:
+            callback = WeakCallback(callback)
+            callback.set_weakref_destroyed_cb(self._weakref_destroyed)
+            args, kwargs = weakref_data(args), weakref_data(kwargs)
+        if pos == -1:
+            pos = len(self._callbacks)
+
+        self._callbacks.insert(pos, (callback, args, kwargs, once, weak))
+        if self._changed_cb:
+            self._changed_cb(self, Signal.SIGNAL_CONNECTED)
+        return True
+
+
+    def connect(self, callback, *args, **kwargs):
+        return self._connect(callback, args, kwargs)
+
+    def connect_weak(self, callback, *args, **kwargs):
+        return self._connect(callback, args, kwargs, weak = True)
+
+    def connect_once(self, callback, *args, **kwargs):
+        return self._connect(callback, args, kwargs, once = True)
+
+    def connect_weak_once(self, callback, *args, **kwargs):
+        return self._connect(callback, args, kwargs, once = True, weak = True)
+
+    def connect_first(self, callback, *args, **kwargs):
+        return self._connect(callback, args, kwargs, pos = 0)
+
+    def connect_weak_first(self, callback, *args, **kwargs):
+        return self._connect(callback, args, kwargs, weak = True, pos = 0)
+
+    def _disconnect(self, callback, args, kwargs):
+        new_callbacks = []
+        for pos, cb_all in zip(range(len(self._callbacks)), self._callbacks[:]):
+            cb_callback, cb_args, cb_kwargs, cb_once, cb_weak = cb_all
+            if cb_weak and args != None:
+                cb_callback = cb_callback._get_callback()
+                cb_args, cb_kwargs = unweakref_data((cb_args, cb_kwargs))
+
+            if (cb_callback == callback and args == None) or \
+               (cb_callback, cb_args, cb_kwargs) == (callback, args, kwargs):
+                # This matches what we want to disconnect.
+                continue
+
+            new_callbacks.append(cb_all)
+
+        if len(new_callbacks) != self._callbacks:
+            self._callbacks = new_callbacks
+            if self._changed_cb:
+                self._changed_cb(self, Signal.SIGNAL_DISCONNECTED)
+
+            return True
+
+        return False
+
+
+    def disconnect(self, callback, *args, **kwargs):
+        return self._disconnect(callback, False, args, kwargs)
+
+
+    def disconnect_all(self):
+        count = self.count()
+        self._callbacks = []
+        if self._changed_cb and count > 0:
+            self._changed_cb(self, Signal.SIGNAL_DISCONNECTED)
+
+    def emit(self, *args, **kwargs):
+        retval = False
+        for cb_callback, cb_args, cb_kwargs, cb_once, cb_weak in self._callbacks[:]:
+            if cb_weak:
+                cb_callback = cb_callback._get_callback()
+                cb_args, cb_kwargs = unweakref_data((cb_args, cb_kwargs))
+            else:
+                cb_kwargs = cb_kwargs.copy()
+
+            cb_kwargs.update(kwargs)
+            if cb_callback(*args, **kwargs):
+                retval = True
+            if cb_once:
+                self.disconnect(cb_callback, cb_args, cb_kwargs)
+
+
+    def _weakref_destroyed(self, callback, weakref):
+        self._disconnect(callback, None, None)
+
+
+    def count(self):
+        return len(self._callbacks)

@@ -113,7 +113,7 @@ def removeDispatcher( method ):
     """Removes an external dispatcher function from the list"""
     global __dispatchers
     if method in __dispatchers:
-        __dispatcher.remove( method )
+        __dispatchers.remove( method )
 
 def step( sleep = True, external = True ):
     # IDEA: Add parameter to specify max timeamount to spend in mainloop

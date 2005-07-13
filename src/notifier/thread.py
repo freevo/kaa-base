@@ -56,12 +56,8 @@ import copy
 import threading
 import logging
 
-try:
-    # try to import pyNotifier
-    import notifier
-except ImportError:
-    # use a copy of nf_generic
-    import nf_generic as notifier
+# notifier imports
+from callback import Timer
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -141,7 +137,7 @@ class Watcher(object):
     """
     def __init__(self):
         self.__threads = []
-        self.__timer = None
+        self.__timer = Timer(self.check)
 
 
     def append(self, thread):
@@ -149,8 +145,8 @@ class Watcher(object):
         Append a thread to the watcher.
         """
         self.__threads.append(thread)
-        if not self.__timer:
-            self.__timer = notifier.addTimer( 10, self.check )
+        if not self.__timer.active():
+            self.__timer.start(10)
 
 
     def check(self):
@@ -195,7 +191,6 @@ class Watcher(object):
 
         if not self.__threads:
             # remove watcher from notifier
-            self.__timer = None
             return False
         return True
 

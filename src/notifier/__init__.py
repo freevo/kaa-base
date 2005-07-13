@@ -34,22 +34,34 @@ import sys
 import logging
 
 # kaa.notifier imports
-import wrapper
-from wrapper import Timer, OneShotTimer, Socket, Dispatcher, Shutdown
-from wrapper import IO_READ, IO_WRITE, IO_EXCEPT
 from posixsignals import *
 from posixsignals import register as signal
 from signals import Signal, WeakRefMethod
 from popen import Process
 from popen import killall as kill_processes
 from thread import Thread, call_from_main
-from callback import Callback, Function, CallbackObject
+from callback import Callback, WeakCallback, Timer, WeakTimer, OneShotTimer, \
+                     SocketDispatcher, WeakSocketDispatcher
 
 # get logging object
 log = logging.getLogger('notifier')
 
 # variable to check if the notifier is running
 running = False
+
+
+def _idle_signal_changed(signal, flag, pos):
+    if flag == Signal.SIGNAL_CONNECTED and signal.count() == 1:
+        notifier.addDispatcher(signal.emit)
+    elif flag == Signal.SIGNAL_DISCONNETED and signal.count() == 0:
+        notifier.removeDispatcher(signal.emit)
+
+
+signals = {
+    "shutdown": Signal(),
+    "idle": Signal(changed_cb = _idle_signal_changed)
+}
+
 
 
 def select_notifier(type):
@@ -70,6 +82,7 @@ def select_notifier(type):
     IO_EXCEPT = notifier.IO_EXCEPT
 
 
+
 def shutdown():
     """
     Shutdown notifier and kill all background processes.
@@ -77,11 +90,10 @@ def shutdown():
     if running:
         # notifier loop still running, send system exit
         log.info('Stop notifier loop')
-        sys.exit(0)
+        raise SystemExit
+
     kill_processes()
-    while wrapper.shutdown_callbacks:
-        # call all shutdown functions
-        wrapper.shutdown_callbacks.pop()()
+    signals["shutdown"].emit()
 
 
 def loop():
@@ -133,30 +145,9 @@ def step(*args, **kwargs):
             raise e
 
 
-# **** functions while freevo is ported to kaa.notifier ****
-# WARNING: the following functions will be deleted in the future
-
-def addShutdown(function):
-    Shutdown(function).register()
-
-def addTimer(interval, function, *args, **kwargs):
-    t = Timer(function, *args, **kwargs)
-    t.start(interval)
-    return t.id
-
-def timer(interval, function, *args, **kwargs):
-    t = Timer(function, *args, **kwargs)
-    t.remove = t.stop
-    t.start(interval)
-    return t
-
 try:
     import notifier
 except ImportError:
     import nf_generic as notifier
 
-addSocket = notifier.addSocket
-addDispatcher = notifier.addDispatcher
-removeTimer = notifier.removeTimer
-removeSocket = notifier.removeSocket
-removeDispatcher = notifier.removeDispatcher
+

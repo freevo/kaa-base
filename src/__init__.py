@@ -1,1 +1,1 @@
-from kaa.notifier import loop as main
+from kaa.notifier import signals, loop as main

@@ -36,7 +36,7 @@
 
 import weakref, types
 
-class WeakRefMethod:
+class WeakRefMethod(object):
     def __init__(self, method, destroy_callback = None):
         # FIXME: need to handle weakref finalize callback
         self.instance = weakref.ref(method.im_self, destroy_callback)
@@ -57,14 +57,16 @@ class WeakRefMethod:
         return self.get()(*args)
 
 
-class Signal:
-    def __init__(self):
+class Signal(object):
+
+    # Parameters for changed callback
+    SIGNAL_CONNECTED = 1
+    SIGNAL_DISCONNECTED = 2
+
+    def __init__(self, changed_cb = None):
         self.callbacks = []
         self._items = {}
-
-    def __del__(self):
-        pass
-#        print "Signal deleting", self.callbacks
+        self._changed_cb = changed_cb
 
     def __getitem__(self, name):
         return self._items[name]
@@ -80,6 +82,8 @@ class Signal:
             if pos == -1:
                 pos = len(self.callbacks)
             self.callbacks.insert(pos,  (self._ref(callback), self._ref(data), once) )
+            if self._changed_cb:
+                self._changed_cb(self, Signal.SIGNAL_CONNECTED, pos)
         return self
 
     def connect_first(self, callback, data = None, once = False):
@@ -90,10 +94,13 @@ class Signal:
         found = False
         for (cb_callback, cb_data, cb_once) in self.callbacks:
             if self._unref(cb_callback) == callback and self._unref(cb_data) == data:
-                self.callbacks.remove( (cb_callback, cb_data, cb_once) )
+                pos = self.callbacks.index((cb_callback, cb_data, cb_once))
+                self.callbacks.pop(pos)
+                if self._changed_cb:
+                    self._changed_cb(self, Signal.SIGNAL_DISCONNECTED, pos)
                 found = True
-        if not found:
-            print "*** DISCONNECT FAILED", callback, data, once
+        
+        return found
 
     def disconnect_all(self):
         self.callbacks = []
@@ -145,8 +152,6 @@ class Signal:
         if callable(data) and hasattr(data, "im_self"):
             # Make weakref for methods
             return WeakRefMethod(data, self._weakref_destroyed)
-        elif type(data) == types.InstanceType:
-            return weakref.ref(data)
         elif type(data) in (types.ListType, types.TupleType):
             refed_data = []
             for item in data:
@@ -154,6 +159,11 @@ class Signal:
             if type(data) == types.TupleType:
                 refed_data = tuple(refed_data)
             return refed_data
+        elif not callable(data):
+            try:
+                return weakref.ref(data)
+            except TypeError:
+                pass
 
         return data
 

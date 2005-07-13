@@ -53,7 +53,7 @@ running = False
 def _idle_signal_changed(signal, flag, pos):
     if flag == Signal.SIGNAL_CONNECTED and signal.count() == 1:
         notifier.addDispatcher(signal.emit)
-    elif flag == Signal.SIGNAL_DISCONNETED and signal.count() == 0:
+    elif flag == Signal.SIGNAL_DISCONNECTED and signal.count() == 0:
         notifier.removeDispatcher(signal.emit)
 
 

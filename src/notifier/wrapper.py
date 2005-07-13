@@ -29,6 +29,8 @@
 #
 # -----------------------------------------------------------------------------
 
+import weakref
+
 try:
     # try to import pyNotifier
     import notifier
@@ -85,7 +87,10 @@ class Timer(object):
         return self.id != None
 
     def expire(self):
-        return self.function(*self.args, **self.kwargs)
+        if self.function(*self.args, **self.kwargs):
+            return True
+        self.id == None
+        return False
 
 
 class OneShotTimer(Timer):
@@ -93,6 +98,30 @@ class OneShotTimer(Timer):
         notifier.removeTimer(self.id)
         self.id = None
         self.function(*self.args, **self.kwargs)
+        return False
+
+
+class WeakTimer(Timer);
+    def __init__(self, function, *args, **kwargs):
+        Timer.__init__(self, function, *args, **kwargs)
+        self.function = weakref.ref(function)
+
+    def expire(self):
+        if not self.function():
+            self.stop()
+            return False
+        if self.function()(*self.args, **self.kwargs):
+            return True
+        self.id == None
+        return False
+
+
+class WeakOneShotTimer(WeakTimer):
+    def expire(self):
+        notifier.removeTimer(self.id)
+        self.id = None
+        if self.function():
+            self.function()(*self.args, **self.kwargs)
         return False
 
 

@@ -143,11 +143,3 @@ def step(*args, **kwargs):
             log.info('Call Signal Handler')
         else:
             raise e
-
-
-try:
-    import notifier
-except ImportError:
-    import nf_generic as notifier
-
-

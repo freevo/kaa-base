@@ -34,8 +34,8 @@ import sys
 import logging
 
 # kaa.notifier imports
-from posixsignals import *
-from posixsignals import register as signal
+from signals import *
+from signals import register as signal
 from popen import Process
 from popen import killall as kill_processes
 from thread import Thread, call_from_main

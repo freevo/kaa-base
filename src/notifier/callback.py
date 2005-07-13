@@ -30,7 +30,7 @@
 # -----------------------------------------------------------------------------
 
 __all__ = [ 'Callback', 'WeakCallback', 'Timer', 'WeakTimer', 'OneShotTimer',
-            'SocketDispatcher', 'WeakSocketDispatcher' ]
+            'WeakOneShotTimer', 'SocketDispatcher', 'WeakSocketDispatcher' ]
 
 import weakref
 
@@ -212,9 +212,8 @@ class WeakCallback(Callback):
             self._instance = weakref.ref(callback.im_self, self._weakref_destroyed)
             self._callback = callback.im_func.func_name
         else:
-            # For functions
+            # No need to weakref functions.  (If we do, we can't use closures.)
             self._instance = None
-            self._callback = weakref.ref(callback, self._weakref_destroyed)
 
         # TODO: make weak refs of args/kwargs too.
 
@@ -224,7 +223,7 @@ class WeakCallback(Callback):
             if self._instance():
                 return getattr(self._instance(), self._callback)
         else:
-            return self._callback()
+            return self._callback
 
 
     def _weakref_destroyed(self, object):
@@ -241,6 +240,8 @@ class WeakNotifierCallback(WeakCallback, NotifierCallback):
 class WeakTimer(WeakNotifierCallback, Timer):
     pass
 
+class WeakOneShotTimer(WeakNotifierCallback, OneShotTimer):
+    pass
 
 class WeakSocketDispatcher(WeakNotifierCallback, SocketDispatcher):
     pass

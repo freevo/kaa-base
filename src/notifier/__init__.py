@@ -41,7 +41,7 @@ from popen import Process
 from popen import killall as kill_processes
 from thread import Thread, call_from_main
 from callback import Callback, WeakCallback, Timer, WeakTimer, OneShotTimer, \
-                     SocketDispatcher, WeakSocketDispatcher
+                     WeakOneShotTimer, SocketDispatcher, WeakSocketDispatcher
 
 # get logging object
 log = logging.getLogger('notifier')

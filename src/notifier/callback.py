@@ -70,26 +70,32 @@ def select_notifier(type):
     IO_EXCEPT = notifier.IO_EXCEPT
 
 
-def weakref_data(data):
+def weakref_data(data, destroy_cb = None):
     if type(data) in (str, int, long, types.NoneType):
         # Naive optimization for common immutable cases.
         return data
     elif type(data) == types.MethodType:
-        return WeakCallback(data)
+        cb = WeakCallback(data)
+        if destroy_cb:
+            cb.set_weakref_destroy_cb(destroy_cb)
+        return cb
     elif type(data) in (list, tuple):
         d = []
         for item in data:
-            d.append(weakref_data(item))
+            d.append(weakref_data(item, destroy_cb))
         if type(data) == tuple:
             d = tuple(d)
         return d
     elif type(data) == dict:
         d = {}
         for key, val in data.items():
-            d[weakref_data(key)] = weakref_data(val)
+            d[weakref_data(key)] = weakref_data(val, destroy_cb)
         return d
     elif type(data) != types.FunctionType:
+        print "DESTROY CB", data, destroy_cb
         try:
+            if destroy_cb:
+                return _weakref.ref(data, destroy_cb)
             return _weakref.ref(data)
         except TypeError:
             pass
@@ -265,8 +271,8 @@ class WeakCallback(Callback):
             # No need to weakref functions.  (If we do, we can't use closures.)
             self._instance = None
 
-        self._args = weakref_data(args)
-        self._kwargs = weakref_data(kwargs)
+        self._args = weakref_data(args, self._weakref_destroyed)
+        self._kwargs = weakref_data(kwargs, self._weakref_destroyed)
         self._weakref_destroyed_user_cb = None
 
 
@@ -297,7 +303,7 @@ class WeakCallback(Callback):
 
 
     def _weakref_destroyed(self, object):
-        if self._weakref_destroyed_user_cb:
+        if self and self._weakref_destroyed_user_cb:
             return self._weakref_destroyed_user_cb(self, object)
 
 
@@ -305,8 +311,9 @@ class WeakCallback(Callback):
 class WeakNotifierCallback(WeakCallback, NotifierCallback):
 
     def _weakref_destroyed(self, object):
-        super(WeakNotifierCallback, self)._weakref_destroyed(object)
-        self.unregister()
+        if WeakNotifierCallback and self:
+            super(WeakNotifierCallback, self)._weakref_destroyed(object)
+            self.unregister()
 
 
 class WeakTimer(WeakNotifierCallback, Timer):
@@ -353,7 +360,12 @@ class Signal(object):
         if weak:
             callback = WeakCallback(callback)
             callback.set_weakref_destroyed_cb(self._weakref_destroyed)
-            args, kwargs = weakref_data(args), weakref_data(kwargs)
+
+            # We create a callback for weakref destruction for user data
+            # as well.
+            data_cb = Callback(self._weakref_destroyed, callback)
+            data_cb.set_user_args_first()
+            args, kwargs = weakref_data(args, data_cb), weakref_data(kwargs, data_cb)
         if pos == -1:
             pos = len(self._callbacks)
 
@@ -433,7 +445,8 @@ class Signal(object):
 
 
     def _weakref_destroyed(self, callback, weakref):
-        self._disconnect(callback, None, None)
+        if Signal and self:
+            self._disconnect(callback, None, None)
 
 
     def count(self):

@@ -30,7 +30,8 @@
 # -----------------------------------------------------------------------------
 
 __all__ = [ 'Callback', 'WeakCallback', 'Timer', 'WeakTimer', 'OneShotTimer',
-            'WeakOneShotTimer', 'SocketDispatcher', 'WeakSocketDispatcher' ]
+            'WeakOneShotTimer', 'SocketDispatcher', 'WeakSocketDispatcher',
+            'IO_READ', 'IO_WRITE', 'IO_EXCEPT', 'notifier' ]
 
 import _weakref
 import types
@@ -38,8 +39,9 @@ import types
 try:
     # try to import pyNotifier
     import notifier
-    # init pyNotifier with the generic notifier
-    notifier.init(notifier.GENERIC)
+    if not notifier.loop:
+        # init pyNotifier with the generic notifier
+        notifier.init(notifier.GENERIC)
     use_pynotifier = True
 
 except ImportError:
@@ -50,24 +52,6 @@ except ImportError:
 IO_READ   = notifier.IO_READ
 IO_WRITE  = notifier.IO_WRITE
 IO_EXCEPT = notifier.IO_EXCEPT
-
-def select_notifier(type):
-    """
-    Select a new notifier.
-    """
-    if not use_pynotifier:
-        raise AttributeError('pyNotifier not installed')
-    if type == notifier.GENERIC:
-        raise AttributeError('generic notifier already running')
-    notifier.init(type)
-
-    global IO_READ
-    global IO_WRITE
-    global IO_EXCEPT
-
-    IO_READ   = notifier.IO_READ
-    IO_WRITE  = notifier.IO_WRITE
-    IO_EXCEPT = notifier.IO_EXCEPT
 
 
 def weakref_data(data, destroy_cb = None):
@@ -242,14 +226,10 @@ class SocketDispatcher(NotifierCallback):
         self.set_ignore_caller_args()
 
 
-    def register(self, fd, condition = None):
+    def register(self, fd, condition = IO_READ):
         if self.active():
             return
-
-        if condition == None:
-            self._id = notifier.addSocket(fd, self)
-        else:
-            self._id = notifier.addSocket(fd, self, condition)
+        self._id = notifier.addSocket(fd, self, condition)
 
 
     def unregister(self):

@@ -41,7 +41,7 @@ from popen import killall as kill_processes
 from thread import Thread, call_from_main
 from callback import Callback, WeakCallback, Timer, WeakTimer, OneShotTimer, \
                      WeakOneShotTimer, SocketDispatcher, WeakSocketDispatcher,\
-                     Signal
+                     Signal, IO_READ, IO_WRITE, IO_EXCEPT, notifier
 from kaa.base import utils
 
 # get logging object
@@ -79,26 +79,6 @@ signals = {
 }
 
 
-
-def select_notifier(type):
-    """
-    Select a notifier module. This only needs to be called when pyNotifier
-    is used and not the notifier should be something else than the generic
-    one. The variables for the different notifier are not available in this
-    wrapper.
-    """
-    wrapper.select_notifier(type)
-
-    global IO_READ
-    global IO_WRITE
-    global IO_EXCEPT
-
-    IO_READ   = notifier.IO_READ
-    IO_WRITE  = notifier.IO_WRITE
-    IO_EXCEPT = notifier.IO_EXCEPT
-
-
-
 def shutdown():
     """
     Shutdown notifier and kill all background processes.
@@ -117,7 +97,6 @@ def loop():
     Notifier main loop function. It will loop until an exception
     is raised or sys.exit is called.
     """
-
     # Sets a default root level logger if none exists.
     logger = logging.getLogger()
     if len(logger.handlers) == 0:

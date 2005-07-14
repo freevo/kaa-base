@@ -77,7 +77,8 @@ def weakref_data(data, destroy_cb = None):
     elif type(data) == types.MethodType:
         cb = WeakCallback(data)
         if destroy_cb:
-            cb.set_weakref_destroy_cb(destroy_cb)
+            cb.set_weakref_destroyed_cb(destroy_cb)
+            cb.set_ignore_caller_args()
         return cb
     elif type(data) in (list, tuple):
         d = []
@@ -92,7 +93,6 @@ def weakref_data(data, destroy_cb = None):
             d[weakref_data(key)] = weakref_data(val, destroy_cb)
         return d
     elif type(data) != types.FunctionType:
-        print "DESTROY CB", data, destroy_cb
         try:
             if destroy_cb:
                 return _weakref.ref(data, destroy_cb)
@@ -304,7 +304,7 @@ class WeakCallback(Callback):
 
     def _weakref_destroyed(self, object):
         if self and self._weakref_destroyed_user_cb:
-            return self._weakref_destroyed_user_cb(self, object)
+            return self._weakref_destroyed_user_cb(object)
 
 
 
@@ -359,13 +359,18 @@ class Signal(object):
 
         if weak:
             callback = WeakCallback(callback)
-            callback.set_weakref_destroyed_cb(self._weakref_destroyed)
 
-            # We create a callback for weakref destruction for user data
-            # as well.
-            data_cb = Callback(self._weakref_destroyed, callback)
-            data_cb.set_user_args_first()
-            args, kwargs = weakref_data(args, data_cb), weakref_data(kwargs, data_cb)
+            # We create a callback for weakref destruction for both the
+            # signal callback as well as signal data.  The destroy callback
+            # has the signal callback passed as the first parameter (because
+            # set_user_args_first() is called), and WeakCallback will pass
+            # the weakref object itself as the second parameter.
+            destroy_cb = Callback(self._weakref_destroyed, callback)
+            destroy_cb.set_user_args_first()
+            callback.set_weakref_destroyed_cb(destroy_cb)
+
+            args = weakref_data(args, destroy_cb)
+            kwargs = weakref_data(kwargs, destroy_cb)
         if pos == -1:
             pos = len(self._callbacks)
 

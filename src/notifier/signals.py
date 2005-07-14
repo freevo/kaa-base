@@ -30,13 +30,7 @@
 # -----------------------------------------------------------------------------
 
 from signal import *
-
-try:
-    # try to import pyNotifier
-    import notifier
-except ImportError:
-    # use a copy of nf_generic
-    import nf_generic as notifier
+from callback import OneShotTimer
 
 _signal_dict = {}
 _signal_list = []
@@ -66,6 +60,8 @@ def _signal_handler():
     return False
 
 
+_signal_timer = OneShotTimer(_signal_handler)
+
 def _signal_catch(sig, frame):
     """
     Catch signals to be called from the main loop.
@@ -75,5 +71,6 @@ def _signal_catch(sig, frame):
         _signal_list.append(sig)
     # FIXME: let's hope this works because the handler
     # is called asynchron
-    notifier.addTimer(0, _signal_handler)
+    if not _signal_timer.active():
+        _signal_timer.start(0)
     return True

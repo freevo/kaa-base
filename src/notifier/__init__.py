@@ -42,12 +42,17 @@ from thread import Thread, call_from_main
 from callback import Callback, WeakCallback, Timer, WeakTimer, OneShotTimer, \
                      WeakOneShotTimer, SocketDispatcher, WeakSocketDispatcher,\
                      Signal
+from kaa.base import utils
 
 # get logging object
 log = logging.getLogger('notifier')
 
 # variable to check if the notifier is running
 running = False
+
+def _handle_stdin_keypress(fd):
+    signals["keypress"].emit( utils.getch() )
+    return True
 
 
 def _idle_signal_changed(signal, flag):
@@ -57,9 +62,20 @@ def _idle_signal_changed(signal, flag):
         notifier.removeDispatcher(signal.emit)
 
 
+def _keypress_signal_changed(signal, flag):
+    if flag == Signal.SIGNAL_CONNECTED and signal.count() == 1:
+        utils.getch_enable()
+        notifier.addSocket(sys.stdin, _handle_stdin_keypress)
+    elif flag == Signal.SIGNAL_DISCONNECTED and signal.count() == 0:
+        utils.getch_disable()
+        notifier.removeSocket(sys.stdin)
+
+
 signals = {
     "shutdown": Signal(),
-    "idle": Signal(changed_cb = _idle_signal_changed)
+    "idle": Signal(changed_cb = _idle_signal_changed),
+    # Temporary until I find a bette rplace.
+    "keypress": Signal(changed_cb = _keypress_signal_changed)
 }
 
 

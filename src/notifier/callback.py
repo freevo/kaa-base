@@ -407,7 +407,7 @@ class Signal(object):
 
 
     def disconnect(self, callback, *args, **kwargs):
-        return self._disconnect(callback, False, args, kwargs)
+        return self._disconnect(callback, args, kwargs)
 
 
     def disconnect_all(self):

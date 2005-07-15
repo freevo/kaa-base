@@ -42,6 +42,7 @@ from thread import Thread, call_from_main
 from callback import Callback, WeakCallback, Timer, WeakTimer, OneShotTimer, \
                      WeakOneShotTimer, SocketDispatcher, WeakSocketDispatcher,\
                      Signal, IO_READ, IO_WRITE, IO_EXCEPT, notifier
+from event import Event, EventHandler, WeakEventHandler
 from kaa.base import utils
 
 # get logging object

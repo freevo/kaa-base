@@ -54,10 +54,10 @@ class Event(object):
         """
         if isinstance(name, Event):
             self.name = name.name
-            self.args = name.args
+            self.arg  = name.args
         else:
             self.name = name
-            self.args = None
+            self.arg  = None
         if args:
             self._set_args(args)
 
@@ -67,11 +67,11 @@ class Event(object):
         Set arguments of the event.
         """
         if not args:
-            self.args = None
+            self.arg = None
         elif len(args) == 1:
-            self.args = args[0]
+            self.arg = args[0]
         else:
-            self.args = args
+            self.arg = args
 
 
     def post(self, *args):

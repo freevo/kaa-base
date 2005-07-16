@@ -74,24 +74,28 @@ class Extension(object):
         Check dependencies add add the flags to include_dirs, library_dirs and
         libraries. The basic logic is taken from pygame.
         """
-        command = name + '-config --version --cflags --libs 2>/dev/null'
         try:
-            config = os.popen(command).readlines()
-            if len(config) == 0:
+            #for parameter in ('version', 'cflags', 'libs'):
+            command = name + '-config --version 2>/dev/null'
+            version = os.popen(command).read().strip()
+            if len(version) == 0:
                 raise ValueError, 'command not found'
-            flags  = (' '.join(config[1:]) + ' ').split()
-            ver = config[0].strip()
-            if minver and ver < minver:
+            if minver and version < minver:
                 err= 'requires %s version %s (%s found)' % \
-                     (name, minver, ver)
+                     (name, minver, version)
                 raise ValueError, err
-            for f in flags:
-                if f[:2] == '-I':
-                    self.include_dirs.append(f[2:])
-                if f[:2] == '-L':
-                    self.library_dirs.append(f[2:])
-                if f[:2] == '-l':
-                    self.libraries.append(f[2:])
+
+            command = name + '-config --cflags 2>/dev/null'
+            for inc in os.popen(command).read().strip().split(' '):
+                if inc[2:] and not inc[2:] in self.include_dirs:
+                    self.include_dirs.append(inc[2:])
+                
+            command = name + '-config --libs 2>/dev/null'
+            for flag in os.popen(command).read().strip().split(' '):
+                if flag[:2] == '-L' and not flag[2:] in self.library_dirs:
+                    self.library_dirs.append(flag[2:])
+                if flag[:2] == '-l' and not flag[2:] in self.libraries:
+                    self.libraries.append(flag[2:])
             return True
         except Exception, e:
             print 'WARNING: "%s-config" failed: %s' % (name, e)

@@ -62,7 +62,7 @@ class Event(object):
             self._set_args(args)
 
             
-    def _set_args(args):
+    def _set_args(self, args):
         """
         Set arguments of the event.
         """

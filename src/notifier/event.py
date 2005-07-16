@@ -54,7 +54,7 @@ class Event(object):
         """
         if isinstance(name, Event):
             self.name = name.name
-            self.arg  = name.args
+            self.arg  = name.arg
         else:
             self.name = name
             self.arg  = None

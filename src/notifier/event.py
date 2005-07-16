@@ -182,7 +182,7 @@ class EventManager(object):
         self.queue = self.queue[1:]
         
         try:
-            for handler in self.handler:
+            for handler in copy.copy(self.handler):
                 handler(event)
         except:
             log.exception('event callback')

@@ -193,8 +193,15 @@ class NotifierCallback(Callback):
 
 class Timer(NotifierCallback):
 
+    def __init__(self, callback, *args, **kwargs):
+        super(Timer, self).__init__(callback, *args, **kwargs)
+        self.restart_when_active = True
+
+
     def start(self, interval):
         if self.active():
+            if not self.restart_when_active:
+                return
             self.unregister()
         self._id = notifier.addTimer(interval, self)
 

@@ -274,6 +274,10 @@ class WeakCallback(Callback):
     def __call__(self, *args, **kwargs):
         save_args, save_kwargs = self._args, self._kwargs
     
+        if not unweakref_data:
+            # Shutdown
+            return False
+    
         # Remove weakrefs from user data before invoking the callback.
         self._args = unweakref_data(self._args)
         self._kwargs = unweakref_data(self._kwargs)

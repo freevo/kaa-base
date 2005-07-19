@@ -278,11 +278,11 @@ class WeakCallback(Callback):
         self._args = unweakref_data(self._args)
         self._kwargs = unweakref_data(self._kwargs)
 
-        super(WeakCallback, self).__call__(*args, **kwargs)
+        result = super(WeakCallback, self).__call__(*args, **kwargs)
 
         self._args, self._kwargs = save_args, save_kwargs
     
-        return False
+        return result
 
 
     def set_weakref_destroyed_cb(self, callback):

@@ -75,7 +75,7 @@ def _keypress_signal_changed(signal, flag):
 signals = {
     "shutdown": Signal(),
     "idle": Signal(changed_cb = _idle_signal_changed),
-    # Temporary until I find a bette rplace.
+    # Temporary until I find a better place.
     "keypress": Signal(changed_cb = _keypress_signal_changed)
 }
 

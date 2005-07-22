@@ -62,8 +62,7 @@ class weakref(object):
 
     def __setattr__(self, attr, value):
         if attr == "_ref":
-            object.__setattr__(self, attr, value)
-        
+            return object.__setattr__(self, attr, value)
         return setattr(self._ref(), attr, value)
 
     def __delattr__(self, attr):

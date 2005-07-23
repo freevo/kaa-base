@@ -52,7 +52,8 @@ log = logging.getLogger('notifier')
 running = False
 
 def _handle_stdin_keypress(fd):
-    signals["keypress"].emit( utils.getch() )
+    ch = utils.getch()
+    signals["stdin_key_press_event"].emit(ch)
     return True
 
 
@@ -76,7 +77,7 @@ signals = {
     "shutdown": Signal(),
     "idle": Signal(changed_cb = _idle_signal_changed),
     # Temporary until I find a better place.
-    "keypress": Signal(changed_cb = _keypress_signal_changed)
+    "stdin_key_press_event": Signal(changed_cb = _keypress_signal_changed),
 }
 
 

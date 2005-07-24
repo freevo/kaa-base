@@ -236,7 +236,8 @@ class SocketDispatcher(NotifierCallback):
     def register(self, fd, condition = IO_READ):
         if self.active():
             return
-        self._id = notifier.addSocket(fd, self, condition)
+        notifier.addSocket(fd, self, condition)
+        self._id = fd
 
 
     def unregister(self):

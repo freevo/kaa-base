@@ -32,6 +32,7 @@
 # python imports
 import sys
 import logging
+import os
 
 # kaa.notifier imports
 from signals import *
@@ -41,6 +42,7 @@ from popen import killall as kill_processes
 from thread import Thread, call_from_main
 from callback import Callback, WeakCallback, Timer, WeakTimer, OneShotTimer, \
                      WeakOneShotTimer, SocketDispatcher, WeakSocketDispatcher,\
+                     MainThreadCallback,\
                      Signal, IO_READ, IO_WRITE, IO_EXCEPT, notifier
 from event import Event, EventHandler, WeakEventHandler
 from kaa.base import utils

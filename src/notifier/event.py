@@ -37,6 +37,7 @@ import logging
 
 # kaa.notifier imports
 from callback import NotifierCallback, WeakNotifierCallback, OneShotTimer
+from thread import MainThreadCallback, is_mainthread
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -78,11 +79,14 @@ class Event(object):
         """
         Post event into the queue.
         """
+        event = self
         if args:
             event = copy.copy(self)
             event._set_args(args)
+        if not is_mainthread():
+            return MainThreadCallback(manager.post, event)()
+        else:
             return manager.post(event)
-        return manager.post(self)
 
         
     def __str__(self):
@@ -107,7 +111,7 @@ class EventHandler(NotifierCallback):
     """
     Event handling callback.
     """
-    def register(self, *events):
+    def register(self, events=[]):
         """
         Register to a list of events. If no event is given, all events
         will be used.

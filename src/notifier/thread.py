@@ -45,7 +45,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'MainThreadCallback', 'Thread' ]
+__all__ = [ 'MainThreadCallback', 'Thread', 'is_mainthread' ]
 
 # python imports
 import os
@@ -131,6 +131,13 @@ class Thread(threading.Thread):
                 self.except_cb(e)
         # remove ourself from main
         MainThreadCallback(self.join)
+
+
+def is_mainthread():
+    """
+    Return True if the caller is in the main thread right now.
+    """
+    return threading.currentThread() == _thread_notifier_mainthread
 
 
 

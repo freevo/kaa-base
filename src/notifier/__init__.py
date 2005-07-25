@@ -39,7 +39,7 @@ from signals import *
 from signals import register as signal
 from popen import Process
 from popen import killall as kill_processes
-from thread import MainThreadCallback, Thread
+from thread import MainThreadCallback, Thread, is_mainthread
 from callback import Callback, WeakCallback, Timer, WeakTimer, OneShotTimer, \
                      WeakOneShotTimer, SocketDispatcher, WeakSocketDispatcher,\
                      Signal, IO_READ, IO_WRITE, IO_EXCEPT, notifier

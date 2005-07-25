@@ -138,6 +138,9 @@ class Process(object):
         if self.stopping:
             return
 
+        if not is_mainthread():
+            return MainThreadCallback(self,stop, cmd)()
+        
         self.stopping = True
 
         if self.is_alive() and not self.__kill_timer:

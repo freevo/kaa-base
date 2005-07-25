@@ -53,7 +53,7 @@ import threading
 import logging
 
 # notifier imports
-from callback import Callback, SocketDispatcher
+from callback import Callback, notifier
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -148,7 +148,7 @@ _thread_notifier_lock = threading.Lock()
 _thread_notifier_mainthread = threading.currentThread()
 
 
-def _thread_notifier_run_queue():
+def _thread_notifier_run_queue(fd):
     global _thread_notifier_queue
     _thread_notifier_lock.acquire()
     os.read(_thread_notifier_pipe[0], 1)
@@ -160,5 +160,4 @@ def _thread_notifier_run_queue():
         callback.lock.release()
     _thread_notifier_lock.release()
 
-thread_monitor = SocketDispatcher(_thread_notifier_run_queue)
-thread_monitor.register(_thread_notifier_pipe[0])
+notifier.addSocket(_thread_notifier_pipe[0], _thread_notifier_run_queue)

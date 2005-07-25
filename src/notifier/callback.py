@@ -29,9 +29,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Callback', 'WeakCallback', 'Timer', 'WeakTimer', 'OneShotTimer',
-            'WeakOneShotTimer', 'SocketDispatcher', 'WeakSocketDispatcher',
-            'IO_READ', 'IO_WRITE', 'IO_EXCEPT', 'notifier' ]
+__all__ = [ 'Callback', 'notifier', 'Signal' ]
 
 import _weakref
 import types
@@ -48,10 +46,6 @@ except ImportError:
     # use a copy of nf_generic
     import nf_generic as notifier
     use_pynotifier = False
-
-IO_READ   = notifier.IO_READ
-IO_WRITE  = notifier.IO_WRITE
-IO_EXCEPT = notifier.IO_EXCEPT
 
 
 def weakref_data(data, destroy_cb = None):
@@ -194,62 +188,6 @@ class NotifierCallback(Callback):
         return True
 
 
-class Timer(NotifierCallback):
-
-    def __init__(self, callback, *args, **kwargs):
-        super(Timer, self).__init__(callback, *args, **kwargs)
-        self.restart_when_active = True
-
-
-    def start(self, interval):
-        if self.active():
-            if not self.restart_when_active:
-                return
-            self.unregister()
-        self._id = notifier.addTimer(interval, self)
-
-
-    def stop(self):
-        self.unregister()
-
-
-    def unregister(self):
-        if self.active():
-            notifier.removeTimer(self._id)
-            self._id = None
-
-
-
-class OneShotTimer(Timer):
-
-    def __call__(self, *args, **kwargs):
-        self.unregister()
-        super(OneShotTimer, self).__call__(*args, **kwargs)
-        return False
-
-
-
-class SocketDispatcher(NotifierCallback):
-
-    def __init__(self, callback, *args, **kwargs):
-        super(SocketDispatcher, self).__init__(callback, *args, **kwargs)
-        self.set_ignore_caller_args()
-
-
-    def register(self, fd, condition = IO_READ):
-        if self.active():
-            return
-        notifier.addSocket(fd, self, condition)
-        self._id = fd
-
-
-    def unregister(self):
-        if self.active():
-            notifier.removeSocket(self._id)
-            self._id = None
-
-
-
 class WeakCallback(Callback):
 
     def __init__(self, callback, *args, **kwargs):
@@ -309,18 +247,6 @@ class WeakNotifierCallback(WeakCallback, NotifierCallback):
         if WeakNotifierCallback and self:
             super(WeakNotifierCallback, self)._weakref_destroyed(object)
             self.unregister()
-
-
-class WeakTimer(WeakNotifierCallback, Timer):
-    pass
-
-class WeakOneShotTimer(WeakNotifierCallback, OneShotTimer):
-    pass
-
-class WeakSocketDispatcher(WeakNotifierCallback, SocketDispatcher):
-    pass
-
-
 
 
 

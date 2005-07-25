@@ -36,8 +36,9 @@ import copy
 import logging
 
 # kaa.notifier imports
-from callback import NotifierCallback, WeakNotifierCallback, OneShotTimer
+from callback import NotifierCallback, WeakNotifierCallback
 from thread import MainThreadCallback, is_mainthread
+from timer import OneShotTimer
 
 # get logging object
 log = logging.getLogger('notifier')

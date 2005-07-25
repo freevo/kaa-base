@@ -54,12 +54,9 @@ import glob
 import re
 import logging
 
-try:
-    # try to import pyNotifier
-    import notifier
-except ImportError:
-    # use a copy of nf_generic
-    import nf_generic as notifier
+# notifier imports
+from callback import notifier
+from thread import MainThreadCallback, is_mainthread
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -108,7 +105,10 @@ class Process(object):
                                   self.stderr_cb, debugname )
 
         # add child to watcher
-        _watcher.append( self, self.__child_died )
+        if not is_mainthread():
+            MainThreadCallback(_watcher.append, self, self.__child_died )
+        else:
+            _watcher.append( self, self.__child_died )
 
 
     def write( self, line ):

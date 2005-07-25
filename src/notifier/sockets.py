@@ -1,6 +1,6 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# signals.py - Signal handling for the notifier
+# sockets.py - Socket (fd) classes for the notifier
 # -----------------------------------------------------------------------------
 # $Id$
 #
@@ -29,48 +29,43 @@
 #
 # -----------------------------------------------------------------------------
 
-from signal import *
-from timer import OneShotTimer
+__all__ = [ 'WeakCallback', 'WeakSocketDispatcher',
+            'IO_READ', 'IO_WRITE', 'IO_EXCEPT' ]
 
-_signal_dict = {}
-_signal_list = []
+from callback import NotifierCallback, WeakNotifierCallback, notifier
+from thread import MainThreadCallback, is_mainthread
 
-def register(sig, function):
-    """
-    Register a signal handler.
-    """
-    _signal_dict[sig] = function
-    signal(sig, _signal_catch)
+IO_READ   = notifier.IO_READ
+IO_WRITE  = notifier.IO_WRITE
+IO_EXCEPT = notifier.IO_EXCEPT
 
 
-def has_signal():
-    """
-    Return True if there are signals in the queue.
-    """
-    return _signal_list
+class SocketDispatcher(NotifierCallback):
+
+    def __init__(self, callback, *args, **kwargs):
+        super(SocketDispatcher, self).__init__(callback, *args, **kwargs)
+        self.set_ignore_caller_args()
 
 
-def _signal_handler():
-    """
-    Call all registered signal handler.
-    """
-    while _signal_list:
-        sig = _signal_list.pop(0)
-        _signal_dict[sig](sig)
-    return False
+    def register(self, fd, condition = IO_READ):
+        if self.active():
+            return
+        if not is_mainthread():
+            return MainThreadCallback(self.register, fd, condition)()
+        notifier.addSocket(fd, self, condition)
+        self._id = fd
 
 
-_signal_timer = OneShotTimer(_signal_handler)
+    def unregister(self):
+        if not self.active():
+            pass
+        if not is_mainthread():
+            return MainThreadCallback(self.unregister)()
+        notifier.removeSocket(self._id)
+        self._id = None
 
-def _signal_catch(sig, frame):
-    """
-    Catch signals to be called from the main loop.
-    """
-    if not sig in _signal_list:
-        # add catched signal to the list
-        _signal_list.append(sig)
-    # FIXME: let's hope this works because the handler
-    # is called asynchron
-    if not _signal_timer.active():
-        _signal_timer.start(0)
-    return True
+
+
+class WeakSocketDispatcher(WeakNotifierCallback, SocketDispatcher):
+    pass
+

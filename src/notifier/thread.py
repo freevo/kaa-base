@@ -20,10 +20,6 @@
 # In most cases this module is not needed, please add a good reason why you
 # wrap a function in a thread.
 #
-# If a thread needs to call a function from the main loop the helper function
-# call_from_main can be used. It will schedule the function call in the main
-# loop. It is not possible to get the return value of that call.
-#
 # -----------------------------------------------------------------------------
 # kaa-notifier - Notifier Wrapper
 # Copyright (C) 2005 Dirk Meyer, et al.
@@ -49,24 +45,48 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Thread', 'call_from_main' ]
+__all__ = [ 'MainThreadCallback', 'Thread' ]
 
 # python imports
-import copy
+import os
 import threading
 import logging
 
 # notifier imports
-from callback import Timer
+from callback import Callback, SocketDispatcher
 
 # get logging object
 log = logging.getLogger('notifier')
 
-# internal list of callbacks that needs to be called from the main loop
-_callbacks = []
 
-# lock for adding / removing callbacks from _callbacks
-_lock = threading.Lock()
+class MainThreadCallback(Callback):
+    def __init__(self, callback, *args, **kwargs):
+        super(MainThreadCallback, self).__init__(callback, *args, **kwargs)
+        self.lock = threading.Lock()
+        self._sync_return = None
+        self.set_async()
+
+    def set_async(self, async = True):
+        self._async = async
+
+    def __call__(self, *args, **kwargs):
+        if threading.currentThread() != _thread_notifier_mainthread:
+            self.lock.acquire(False)
+
+            _thread_notifier_lock.acquire()
+            _thread_notifier_queue.append((self, args, kwargs))
+            if len(_thread_notifier_queue) == 1:
+                os.write(_thread_notifier_pipe[1], "1")
+            _thread_notifier_lock.release()
+
+            if not self._async:
+                self.lock.acquire()
+
+            return self._sync_return
+        else:
+            self._sync_return = super(MainThreadCallback, self).__call__(*args, **kwargs)
+            return self._sync_return
+
 
 class Thread(threading.Thread):
     """
@@ -74,23 +94,22 @@ class Thread(threading.Thread):
     """
     def __init__(self, function, *args, **kargs):
         threading.Thread.__init__(self)
-        self.callbacks = [ None, None ]
         self.function  = function
         self.args      = args
         self.kargs     = kargs
-        self.result    = None
-        self.finished  = False
-        self.exception = None
-
+        self.result_cb = None
+        self.except_cb = None
+        
 
     def start(self, callback=None, exception_callback = None):
         """
         Start the thread.
         """
-        # append object to list of threads in watcher
-        _watcher.append(self)
-        # register callback
-        self.callbacks = [ callback, exception_callback ]
+        # remember callback
+        if callback:
+            self.result_cb = MainThreadCallback(callback)
+        if exception_callback:
+            self.except_cb = MainThreadCallback(exception_callback)
         # start the thread
         threading.Thread.start(self)
 
@@ -101,99 +120,38 @@ class Thread(threading.Thread):
         """
         try:
             # run thread function
-            self.result = self.function(*self.args, **self.kargs)
+            result = self.function(*self.args, **self.kargs)
+            if self.result_cb:
+                # call callback from main loop
+                self.result_cb(result)
         except Exception, e:
             log.exception('Thread crashed:')
-            self.exception = e
-        # set finished flag
-        self.finished = True
-
-
-    def callback(self):
-        """
-        Run the callback.
-        """
-        if self.exception and self.callbacks[1]:
-            self.callbacks[1](self.exception)
-        elif not self.exception and self.callbacks[0]:
-            self.callbacks[0](self.result)
+            if self.except_cb:
+                # call callback from main loop
+                self.except_cb(e)
+        # remove ourself from main
+        MainThreadCallback(self.join)
 
 
 
-def call_from_main(function, *args, **kwargs):
-    """
-    Call a function from the main loop. The function isn't called when this
-    function is called, it is called when the watcher in the main loop is
-    called by the notifier.
-    """
-    _lock.acquire()
-    _callbacks.append((function, args, kwargs))
-    _lock.release()
+# For MainThread* callbacks
+_thread_notifier_pipe = os.pipe()
+_thread_notifier_queue = []
+_thread_notifier_lock = threading.Lock()
+_thread_notifier_mainthread = threading.currentThread()
 
 
-class Watcher(object):
-    """
-    Watcher for running threads.
-    """
-    def __init__(self):
-        self.__threads = []
-        self.__timer = Timer(self.check)
+def _thread_notifier_run_queue():
+    global _thread_notifier_queue
+    _thread_notifier_lock.acquire()
+    os.read(_thread_notifier_pipe[0], 1)
+    while _thread_notifier_queue:
+        callback, args, kwargs = _thread_notifier_queue[0]
+        _thread_notifier_queue = _thread_notifier_queue[1:]
+        callback(*args, **kwargs)
+        callback.lock.acquire(False)
+        callback.lock.release()
+    _thread_notifier_lock.release()
 
-
-    def append(self, thread):
-        """
-        Append a thread to the watcher.
-        """
-        self.__threads.append(thread)
-        if not self.__timer.active():
-            self.__timer.start(10)
-
-
-    def check(self):
-        """
-        Check for finished threads and callbacks that needs to be called from
-        the main loop.
-        """
-        finished = []
-        # check if callbacks needs to be called from the main loop
-        if _callbacks:
-            # acquire lock
-            _lock.acquire()
-            # copy callback list
-            cb = copy.copy(_callbacks)
-            while _callbacks:
-                # delete callbacks
-                _callbacks.pop()
-            # release lock
-            _lock.release()
-
-            # call callback functions
-            for function, args, kwargs in cb:
-                function(*args, **kwargs)
-
-        for thread in self.__threads:
-            # check all threads
-            if thread.finished:
-                finished.append(thread)
-
-        if not finished:
-            # no finished thread, return
-            return True
-
-        # check all finished threads
-        for thread in finished:
-            # remove thread from list
-            self.__threads.remove(thread)
-            # call callback
-            thread.callback()
-            # join thread
-            thread.join()
-
-        if not self.__threads:
-            # remove watcher from notifier
-            return False
-        return True
-
-
-# the global watcher object
-_watcher = Watcher()
+thread_monitor = SocketDispatcher(_thread_notifier_run_queue)
+thread_monitor.register(_thread_notifier_pipe[0])

@@ -31,14 +31,10 @@
 
 __all__ = [ 'Callback', 'WeakCallback', 'Timer', 'WeakTimer', 'OneShotTimer',
             'WeakOneShotTimer', 'SocketDispatcher', 'WeakSocketDispatcher',
-            'MainThreadCallback', 
             'IO_READ', 'IO_WRITE', 'IO_EXCEPT', 'notifier' ]
 
 import _weakref
 import types
-import os
-import threading
-import kaa.notifier
 
 try:
     # try to import pyNotifier
@@ -113,23 +109,6 @@ def unweakref_data(data):
     else:
         return data
 
-# For MainThread* callbacks
-_thread_notifier_pipe = os.pipe()
-_thread_notifier_queue = []
-_thread_notifier_lock = threading.Lock()
-_thread_notifier_mainthread = threading.currentThread()
-
-
-def _thread_notifier_run_queue():
-    _thread_notifier_lock.acquire()
-    os.read(_thread_notifier_pipe[0], 1)
-    while _thread_notifier_queue:
-        callback, args, kwargs = _thread_notifier_queue.pop()
-        callback(*args, **kwargs)
-        callback.lock.acquire(False)
-        callback.lock.release()
-    _thread_notifier_lock.release()
-
 
 
 class Callback(object):
@@ -183,38 +162,6 @@ class Callback(object):
             return
 
         return cb(*cb_args, **cb_kwargs)
-
-
-
-
-class MainThreadCallback(Callback):
-    def __init__(self, callback, *args, **kwargs):
-        super(MainThreadCallback, self).__init__(callback, *args, **kwargs)
-        self.lock = threading.Lock()
-        self._sync_return = None
-        self.set_async()
-
-    def set_async(self, async = True):
-        self._async = async
-
-    def __call__(self, *args, **kwargs):
-        if threading.currentThread() != _thread_notifier_mainthread:
-            self.lock.acquire(False)
-
-            _thread_notifier_lock.acquire()
-            _thread_notifier_queue.append((self, args, kwargs))
-            if len(_thread_notifier_queue) == 1:
-                os.write(_thread_notifier_pipe[1], "1")
-            _thread_notifier_lock.release()
-
-            if not self._async:
-                self.lock.acquire()
-
-            return self._sync_return
-        else:
-            self._sync_return = super(MainThreadCallback, self).__call__(*args, **kwargs)
-            return self._sync_return
-
 
 
 class NotifierCallback(Callback):
@@ -507,8 +454,3 @@ class Signal(object):
 
     def count(self):
         return len(self._callbacks)
-
-
-
-thread_monitor = SocketDispatcher(_thread_notifier_run_queue)
-thread_monitor.register(_thread_notifier_pipe[0])

@@ -39,10 +39,9 @@ from signals import *
 from signals import register as signal
 from popen import Process
 from popen import killall as kill_processes
-from thread import Thread, call_from_main
+from thread import MainThreadCallback, Thread
 from callback import Callback, WeakCallback, Timer, WeakTimer, OneShotTimer, \
                      WeakOneShotTimer, SocketDispatcher, WeakSocketDispatcher,\
-                     MainThreadCallback,\
                      Signal, IO_READ, IO_WRITE, IO_EXCEPT, notifier
 from event import Event, EventHandler, WeakEventHandler
 from kaa.base import utils

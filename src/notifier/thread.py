@@ -159,5 +159,6 @@ def _thread_notifier_run_queue(fd):
         callback.lock.acquire(False)
         callback.lock.release()
     _thread_notifier_lock.release()
+    return True
 
 notifier.addSocket(_thread_notifier_pipe[0], _thread_notifier_run_queue)

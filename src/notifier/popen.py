@@ -139,7 +139,7 @@ class Process(object):
             return
 
         if not is_mainthread():
-            return MainThreadCallback(self,stop, cmd)()
+            return MainThreadCallback(self.stop, cmd)()
         
         self.stopping = True
 

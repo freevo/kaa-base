@@ -80,9 +80,17 @@ class MainThreadCallback(Callback):
             _thread_notifier_lock.release()
 
             if not self._async:
+                # Synchronous execution: wait for main call us and collect
+                # the return value.
                 self.lock.acquire()
+                return self._sync_return
 
-            return self._sync_return
+            # Asynchronous: explicitly return None here.  We could return
+            # self._sync_return and there's a chance it'd be valid even
+            # in the async case, but that's non-deterministic and dangerous
+            # to rely on.
+            return None
+
         else:
             self._sync_return = super(MainThreadCallback, self).__call__(*args, **kwargs)
             return self._sync_return

@@ -74,7 +74,7 @@ class MainThreadCallback(Callback):
             self.lock.acquire(False)
 
             _thread_notifier_lock.acquire()
-            _thread_notifier_queue.append((self, args, kwargs))
+            _thread_notifier_queue.insert(0, (self, args, kwargs))
             if len(_thread_notifier_queue) == 1:
                 os.write(_thread_notifier_pipe[1], "1")
             _thread_notifier_lock.release()
@@ -161,8 +161,7 @@ def _thread_notifier_run_queue(fd):
     _thread_notifier_lock.acquire()
     os.read(_thread_notifier_pipe[0], 1)
     while _thread_notifier_queue:
-        callback, args, kwargs = _thread_notifier_queue[0]
-        _thread_notifier_queue = _thread_notifier_queue[1:]
+        callback, args, kwargs = _thread_notifier_queue.pop()
         callback(*args, **kwargs)
         callback.lock.acquire(False)
         callback.lock.release()

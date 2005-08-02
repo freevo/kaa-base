@@ -62,7 +62,7 @@ class SocketDispatcher(NotifierCallback):
         if not is_mainthread():
             return MainThreadCallback(self.unregister)()
         notifier.removeSocket(self._id)
-        self._id = None
+        super(SocketDispatcher, self).unregister()
 
 
 

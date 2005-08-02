@@ -430,7 +430,12 @@ class Watcher(object):
 
         # now wait until all childs are dead
         while self.__processes:
-            notifier.step()
+            try:
+                notifier.step()
+            except ( KeyboardInterrupt, SystemExit ), e:
+                pass
+            except:
+                log.exception( 'Unhandled exception during killall' )
 
 
 # global watcher instance

@@ -33,6 +33,7 @@ __all__ = [ 'Callback', 'notifier', 'Signal' ]
 
 import _weakref
 import types
+import sys
 
 try:
     # try to import pyNotifier
@@ -164,6 +165,11 @@ class NotifierCallback(Callback):
         super(NotifierCallback, self).__init__(callback, *args, **kwargs)
         self._id = None
 
+        self.signals = {
+            "exception": Signal(),
+            "unregistered": Signal()
+        }
+
            
     def active(self):
         return self._id != None
@@ -171,6 +177,7 @@ class NotifierCallback(Callback):
 
     def unregister(self):
         # Unregister callback with notifier.  Must be implemented by subclasses.
+        self.signals["unregistered"].emit()
         self._id = None
 
 
@@ -180,7 +187,22 @@ class NotifierCallback(Callback):
                 self.unregister()
             return False
 
-        ret = super(NotifierCallback, self).__call__(*args, **kwargs)
+        # If there are exception handlers for this notifier callback, we
+        # catch the exception and pass it to the handler, giving it the
+        # opportunity to abort the unregistering.  If no handlers are
+        # attached and an exception is raised, it will be propagated up to
+        # our caller.
+        if self.signals["exception"].count() > 0:
+            try:
+                ret = super(NotifierCallback, self).__call__(*args, **kwargs)
+            except:
+                # If any of the exception handlers return True, then the 
+                # object is not unregistered from the Notifier.  Otherwise
+                # ret = False and it will unregister.
+                ret = self.signals["exception"].emit(sys.exc_info()[1])
+        else:
+            ret = super(NotifierCallback, self).__call__(*args, **kwargs)
+
         # If Notifier callbacks return False, they get unregistered.
         if ret == False:
             self.unregister()
@@ -249,7 +271,6 @@ class WeakNotifierCallback(WeakCallback, NotifierCallback):
             self.unregister()
 
 
-
 class Signal(object):
 
     # Parameters for changed callback
@@ -273,6 +294,8 @@ class Signal(object):
  
     def _connect(self, callback, args = (), kwargs = {}, once = False, 
                  weak = False, pos = -1):
+
+        assert(callable(callback))
 
         if len(self._callbacks) > 40:
             # It's a common problem (for me :)) that callbacks get added
@@ -358,6 +381,9 @@ class Signal(object):
             self._changed_cb(self, Signal.SIGNAL_DISCONNECTED)
 
     def emit(self, *args, **kwargs):
+        if len(self._callbacks) == 0:
+            return False
+
         retval = False
         for cb_callback, cb_args, cb_kwargs, cb_once, cb_weak in self._callbacks[:]:
             if cb_weak:
@@ -371,6 +397,8 @@ class Signal(object):
                 retval = True
             if cb_once:
                 self.disconnect(cb_callback, cb_args, cb_kwargs)
+
+        return retval
 
 
     def _weakref_destroyed(self, callback, weakref):

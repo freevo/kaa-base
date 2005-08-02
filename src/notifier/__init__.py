@@ -91,6 +91,10 @@ def shutdown():
     """
     global shutting_down
 
+    # Ensure shutdown() is called from main thread.
+    if not is_mainthread():
+        return MainThreadCallback(shutdown)()
+
     if running:
         # notifier loop still running, send system exit
         log.info('Stop notifier loop')
@@ -129,6 +133,7 @@ def loop():
     global running
     running = True
 
+    e = None
     while 1:
         try:
             notifier.loop()
@@ -137,11 +142,12 @@ def loop():
         except Exception, e:
             if has_signal():
                 log.info('Call Signal Handler')
-            else:
-                running = False
-                raise e
+            break
+
     running = False
     shutdown()
+    if e:
+        raise e
 
 
 def step(*args, **kwargs):

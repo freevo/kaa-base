@@ -54,7 +54,7 @@ import threading
 import logging
 
 # notifier imports
-from callback import Callback, notifier
+from callback import Callback, notifier, Signal
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -106,22 +106,28 @@ class Thread(threading.Thread):
         self.function  = function
         self.args      = args
         self.kargs     = kargs
-        self.result_cb = None
-        self.except_cb = None
+
+        self.signals = {
+            "completed": Signal(),
+            "exception": Signal()
+        }
         
 
     def start(self, callback=None, exception_callback = None):
         """
         Start the thread.
         """
-        # remember callback
+        # XXX: callback arguments should probably be deprecated
         if callback:
-            self.result_cb = MainThreadCallback(callback)
+            self.signals["completed"].connect(callback)
         if exception_callback:
-            self.except_cb = MainThreadCallback(exception_callback)
+            self.signals["exception"].connect(callback)
         # start the thread
         threading.Thread.start(self)
 
+    def _emit_and_join(self, signal, arg):
+        self.signals[signal].emit(arg)
+        self.join()
 
     def run(self):
         """
@@ -130,16 +136,10 @@ class Thread(threading.Thread):
         try:
             # run thread function
             result = self.function(*self.args, **self.kargs)
-            if self.result_cb:
-                # call callback from main loop
-                self.result_cb(result)
+            MainThreadCallback(self._emit_and_join, "completed", result)()
         except:
             log.exception('Thread raised exception:')
-            if self.except_cb:
-                # call callback from main loop
-                self.except_cb(sys.exc_info()[1])
-        # remove ourself from main
-        MainThreadCallback(self.join)
+            MainThreadCallback(self._emit_and_join, "exception", sys.exc_info()[1])()
 
 
 def is_mainthread():

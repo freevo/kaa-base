@@ -52,6 +52,8 @@ log = logging.getLogger('notifier')
 
 # variable to check if the notifier is running
 running = False
+# Set if currently in shutdown() (to prevent reentrancy)
+shutting_down = False
 
 def _handle_stdin_keypress(fd):
     ch = utils.getch()
@@ -87,6 +89,12 @@ def shutdown():
     """
     Shutdown notifier and kill all background processes.
     """
+    global shutting_down
+
+    if shutting_down:
+        return
+    shutting_down = True
+
     if running:
         # notifier loop still running, send system exit
         log.info('Stop notifier loop')

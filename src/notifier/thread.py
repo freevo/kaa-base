@@ -48,6 +48,7 @@
 __all__ = [ 'MainThreadCallback', 'Thread', 'is_mainthread' ]
 
 # python imports
+import sys
 import os
 import threading
 import logging
@@ -132,11 +133,11 @@ class Thread(threading.Thread):
             if self.result_cb:
                 # call callback from main loop
                 self.result_cb(result)
-        except Exception, e:
-            log.exception('Thread crashed:')
+        except:
+            log.exception('Thread raised exception:')
             if self.except_cb:
                 # call callback from main loop
-                self.except_cb(e)
+                self.except_cb(sys.exc_info()[1])
         # remove ourself from main
         MainThreadCallback(self.join)
 

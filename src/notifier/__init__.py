@@ -104,6 +104,11 @@ def shutdown():
     # Kill processes _after_ shutdown emits to give callbacks a chance to
     # close them properly.
     kill_processes()
+    # Collect any zombies
+    try:
+        os.waitpid(-1, os.WNOHANG)
+    except:
+        pass
 
 
 def loop():

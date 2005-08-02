@@ -396,7 +396,7 @@ class Signal(object):
             if cb_callback(*(args + cb_args), **cb_kwargs):
                 retval = True
             if cb_once:
-                self.disconnect(cb_callback, cb_args, cb_kwargs)
+                self.disconnect(cb_callback, *cb_args, **cb_kwargs)
 
         return retval
 

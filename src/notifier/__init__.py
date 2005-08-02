@@ -92,8 +92,10 @@ def shutdown():
         log.info('Stop notifier loop')
         raise SystemExit
 
-    kill_processes()
     signals["shutdown"].emit()
+    # Kill processes _after_ shutdown emits to give callbacks a chance to
+    # close them properly.
+    kill_processes()
 
 
 def loop():

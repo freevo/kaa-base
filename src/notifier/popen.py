@@ -55,7 +55,7 @@ import re
 import logging
 
 # notifier imports
-from callback import notifier
+from callback import notifier, Signal, Callback
 from thread import MainThreadCallback, is_mainthread
 
 # get logging object
@@ -75,6 +75,15 @@ class Process(object):
         If callback is set, the given function will be called after the child
         is dead.
         """
+
+        # Setup signal handlers for the process; allows the class to be
+        # useful without subclassing.
+        self.signals = {
+            "stderr": Signal(),
+            "stdout": Signal(),
+            "died": Signal()
+        }
+
         if isinstance(app, str):
             # app is a string to execute. It will be executed by 'sh -c '
             # inside the popen code
@@ -99,16 +108,32 @@ class Process(object):
 
         # IO_Handler for stdout
         self.stdout = IO_Handler( 'stdout', self.child.fromchild,
-                                  self.stdout_cb, debugname )
+                                  self._handle_stdout, debugname )
         # IO_Handler for stderr
         self.stderr = IO_Handler( 'stderr', self.child.childerr,
-                                  self.stderr_cb, debugname )
+                                  self._handle_stderr, debugname )
 
         # add child to watcher
         if not is_mainthread():
             MainThreadCallback(_watcher.append, self, self.__child_died )
         else:
             _watcher.append( self, self.__child_died )
+
+    def readlines(self):
+        """
+        Read lines from process immediately, rather than going through
+        notifier.
+        """
+        if not self.child or not self.is_alive():
+            return []
+
+        # Remove nonblock flag temporarily.
+        fcntl.fcntl( self.child.fromchild.fileno(), fcntl.F_SETFL, os.O_RDWR )
+        lines = self.child.fromchild.readlines()
+        lines = map(lambda line: line.strip(), lines)
+        fcntl.fcntl( self.child.fromchild.fileno(), fcntl.F_SETFL, os.O_NONBLOCK )
+
+        return lines
 
 
     def write( self, line ):
@@ -147,10 +172,10 @@ class Process(object):
             if cmd:
                 log.info('sending exit command to app')
                 self.write(cmd)
-                cb = notifier.Callback( self.__kill, 15 )
+                cb = Callback( self.__kill, 15 )
                 self.__kill_timer = notifier.addTimer( 3000, cb )
             else:
-                cb = notifier.Callback( self.__kill, 15 )
+                cb = Callback( self.__kill, 15 )
                 self.__kill_timer = notifier.addTimer( 0, cb )
 
 
@@ -168,9 +193,9 @@ class Process(object):
             pass
 
         if signal == 15:
-            cb = notifier.Callback( self.__kill, 9 )
+            cb = Callback( self.__kill, 9 )
         else:
-            cb = notifier.Callback( self.__killall, 15 )
+            cb = Callback( self.__killall, 15 )
 
         self.__kill_timer = notifier.addTimer( 3000, cb )
         return False
@@ -212,7 +237,7 @@ class Process(object):
 
         log.info('kill -%d %s' % ( signal, self.binary ))
         if signal == 15:
-            cb = notifier.Callback( self.__killall, 9 )
+            cb = Callback( self.__killall, 9 )
             self.__kill_timer = notifier.addTimer( 2000, cb )
         else:
             log.critical('PANIC %s' % self.binary)
@@ -230,10 +255,18 @@ class Process(object):
         self.stderr.close()
         if self.__kill_timer:
             notifier.removeTimer( self.__kill_timer )
+        self.signals["died"].emit()
         if self.callback:
             # call external callback on stop
             self.callback()
 
+    def _handle_stdout(self, line):
+        self.signals["stdout"].emit(line)
+        self.stdout_cb(line)
+
+    def _handle_stderr(self, line):
+        self.signals["stderr"].emit(line)
+        self.stderr_cb(line)
 
     def stdout_cb( self, line ):
         """

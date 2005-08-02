@@ -119,22 +119,6 @@ class Process(object):
         else:
             _watcher.append( self, self.__child_died )
 
-    def readlines(self):
-        """
-        Read lines from process immediately, rather than going through
-        notifier.
-        """
-        if not self.child or not self.is_alive():
-            return []
-
-        # Remove nonblock flag temporarily.
-        fcntl.fcntl( self.child.fromchild.fileno(), fcntl.F_SETFL, os.O_RDWR )
-        lines = self.child.fromchild.readlines()
-        lines = map(lambda line: line.strip(), lines)
-        fcntl.fcntl( self.child.fromchild.fileno(), fcntl.F_SETFL, os.O_NONBLOCK )
-
-        return lines
-
 
     def write( self, line ):
         """

@@ -91,14 +91,14 @@ def shutdown():
     """
     global shutting_down
 
-    if shutting_down:
-        return
-    shutting_down = True
-
     if running:
         # notifier loop still running, send system exit
         log.info('Stop notifier loop')
         raise SystemExit
+
+    if shutting_down:
+        return
+    shutting_down = True
 
     signals["shutdown"].emit()
     # Kill processes _after_ shutdown emits to give callbacks a chance to

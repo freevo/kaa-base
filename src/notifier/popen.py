@@ -66,14 +66,11 @@ class Process(object):
     """
     Base class for started child processes
     """
-    def __init__( self, app, debugname = None, callback = None ):
+    def __init__( self, app, debugname = None ):
         """
         Init the child process 'app'. This can either be a string or a list
         of arguments (similar to popen2). If debugname is given, the stdout
-        and stderr will also be written. To get the stdout and stderr, you
-        need to inherit from this class and override stdout_cb and stderr_cb.
-        If callback is set, the given function will be called after the child
-        is dead.
+        and stderr will also be written.
         """
 
         # Setup signal handlers for the process; allows the class to be
@@ -101,17 +98,17 @@ class Process(object):
         self.__kill_timer = None
         self.stopping = False
         self.__dead = False
-        self.callback = callback
+
         self.child = popen2.Popen3( start_str, True, 100 )
 
         log.info('running %s (pid=%s)' % ( self.binary, self.child.pid ) )
 
         # IO_Handler for stdout
         self.stdout = IO_Handler( 'stdout', self.child.fromchild,
-                                  self._handle_stdout, debugname )
+                                  self.signals["stdout"].emit, debugname )
         # IO_Handler for stderr
         self.stderr = IO_Handler( 'stderr', self.child.childerr,
-                                  self._handle_stderr, debugname )
+                                  self.signals["stderr"].emit, debugname )
 
         # add child to watcher
         if not is_mainthread():
@@ -240,32 +237,7 @@ class Process(object):
         if self.__kill_timer:
             notifier.removeTimer( self.__kill_timer )
         self.signals["died"].emit()
-        if self.callback:
-            # call external callback on stop
-            self.callback()
 
-    def _handle_stdout(self, line):
-        self.signals["stdout"].emit(line)
-        self.stdout_cb(line)
-
-    def _handle_stderr(self, line):
-        self.signals["stderr"].emit(line)
-        self.stderr_cb(line)
-
-    def stdout_cb( self, line ):
-        """
-        Override this method to receive stdout from the child app
-        The function receives complete lines
-        """
-        pass
-
-
-    def stderr_cb( self, line ):
-        """
-        Override this method to receive stderr from the child app
-        The function receives complete lines
-        """
-        pass
 
 
 class IO_Handler(object):

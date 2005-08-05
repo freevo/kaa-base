@@ -112,22 +112,13 @@ class Thread(threading.Thread):
             "exception": Signal()
         }
         
-
-    def start(self, callback=None, exception_callback = None):
-        """
-        Start the thread.
-        """
-        # XXX: callback arguments should probably be deprecated
-        if callback:
-            self.signals["completed"].connect(callback)
-        if exception_callback:
-            self.signals["exception"].connect(callback)
-        # start the thread
-        threading.Thread.start(self)
-
     def _emit_and_join(self, signal, arg):
+        """
+        Run callback signals and join dead thread.
+        """
         self.signals[signal].emit(arg)
         self.join()
+
 
     def run(self):
         """

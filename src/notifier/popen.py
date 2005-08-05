@@ -66,9 +66,9 @@ class Process(object):
     """
     Base class for started child processes
     """
-    def __init__( self, app, debugname = None ):
+    def __init__( self, cmd, debugname = None ):
         """
-        Init the child process 'app'. This can either be a string or a list
+        Init the child process 'cmd'. This can either be a string or a list
         of arguments (similar to popen2). If debugname is given, the stdout
         and stderr will also be written.
         """
@@ -81,34 +81,75 @@ class Process(object):
             "completed": Signal()
         }
 
-        if isinstance(app, str):
-            # app is a string to execute. It will be executed by 'sh -c '
-            # inside the popen code
-            self.binary = app.lstrip()
-
-            start_str = app
-        else:
-            # app is a list
-            while '' in app:
-                app.remove( '' )
-
-            self.binary = str( ' ' ).join( app )
-            start_str = app
-
-        self.__kill_timer = None
+        self._cmd = self._normalize_cmd(cmd)
+        self._debugname = debugname
+        self.__dead = True
         self.stopping = False
-        self.__dead = False
+        self.__kill_timer = None
 
-        self.child = popen2.Popen3( start_str, True, 100 )
+    def _normalize_cmd(self, cmd):
+        """
+        Converts a command string into a list while honoring quoting, or
+        removes empty strings if the cmd is a list.
+        """
+        if cmd == None:
+            return []
+        elif type(cmd) == list:
+            # Remove empty strings from argument list.
+            while '' in cmd:
+                cmd.remove('')
+            return cmd
+
+        assert(type(cmd) == str)
+
+        # This might be how you'd do it in C. :)
+        cmdlist = []
+        curarg = ""
+        waiting = None
+        last = None
+        for c in cmd:
+            if (c == ' ' and not waiting) or c == waiting:
+                if curarg:
+                    cmdlist.append(curarg)
+                    curarg = ""
+                waiting = None
+            elif c in ("'", '"') and not waiting and last != '\\':
+                waiting = c
+            else:
+                curarg += c
+            last = c
+    
+        if curarg:
+            cmdlist.append(curarg)
+    
+        return cmdlist
+
+
+    def start(self, args = None):
+        """
+        Starts the process.  If args is not None, it can be either a list or
+        string, as with the constructor, and is appended to the command line
+        specified in the constructor.
+        """
+        if not self.__dead:
+            raise SystemError, "Process is already running."
+        if self.stopping:
+            raise SystemError, "Process isn't done stopping yet."
+
+        cmd = self._cmd + self._normalize_cmd(args)
+        self.__kill_timer = None
+        self.binary = cmd[0]
+
+        self.child = popen2.Popen3( cmd, True, 100 )
 
         log.info('running %s (pid=%s)' % ( self.binary, self.child.pid ) )
 
         # IO_Handler for stdout
         self.stdout = IO_Handler( 'stdout', self.child.fromchild,
-                                  self.signals["stdout"].emit, debugname )
+                                  self.signals["stdout"].emit, self._debugname )
         # IO_Handler for stderr
         self.stderr = IO_Handler( 'stderr', self.child.childerr,
-                                  self.signals["stderr"].emit, debugname )
+                                  self.signals["stderr"].emit, self._debugname )
 
         # add child to watcher
         if not is_mainthread():
@@ -166,6 +207,7 @@ class Process(object):
         """
         if not self.is_alive():
             self.__dead = True
+            self.stopping = False
             return False
         # child needs some assistance with dying ...
         try:
@@ -188,6 +230,7 @@ class Process(object):
         """
         if not self.is_alive():
             self.__dead = True
+            self.stopping = False
             return False
         # child needs some assistance with dying ...
         try:
@@ -226,17 +269,18 @@ class Process(object):
         return False
 
 
-    def __child_died( self ):
+    def __child_died( self, status ):
         """
         Callback from watcher when the child died.
         """
         self.__dead = True
+        self.stopping = False
         # close IO handler and kill timer
         self.stdout.close()
         self.stderr.close()
         if self.__kill_timer:
             notifier.removeTimer( self.__kill_timer )
-        self.signals["completed"].emit()
+        self.signals["completed"].emit(status >> 8)
 
 
 
@@ -365,8 +409,12 @@ class Watcher(object):
         for p in remove_proc:
             if p in self.__processes:
                 # call stopped callback
-	    	self.__processes[ p ]()
-                del self.__processes[ p ]
+                callback = self.__processes[p]
+                # Delete the callback from the processes list before calling
+                # it, since it's possible the callback could call append 
+                # again.
+                del self.__processes[p]
+                callback(status)
 
         # check if this function needs to be called again
         if not self.__processes:

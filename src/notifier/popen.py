@@ -78,7 +78,7 @@ class Process(object):
         self.signals = {
             "stderr": Signal(),
             "stdout": Signal(),
-            "died": Signal()
+            "completed": Signal()
         }
 
         if isinstance(app, str):
@@ -236,7 +236,7 @@ class Process(object):
         self.stderr.close()
         if self.__kill_timer:
             notifier.removeTimer( self.__kill_timer )
-        self.signals["died"].emit()
+        self.signals["completed"].emit()
 
 
 

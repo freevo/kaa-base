@@ -42,10 +42,6 @@ class Timer(NotifierCallback):
 
 
     def start(self, interval):
-        # if interval < 30:
-        #    # Assume interval is specified in seconds
-        #    interval *= 1000
-
         if not is_mainthread():
             return MainThreadCallback(self.start, interval)()
 
@@ -54,7 +50,7 @@ class Timer(NotifierCallback):
                 return
             self.unregister()
 
-        self._id = notifier.addTimer(interval, self)
+        self._id = notifier.addTimer(int(interval * 1000), self)
 
 
     def stop(self):

@@ -78,7 +78,7 @@ class Process(object):
         self.signals = {
             "stderr": Signal(),
             "stdout": Signal(),
-            "completed": Signal()
+            "completed": Signal(),
             "exitcode": Signal()
         }
 

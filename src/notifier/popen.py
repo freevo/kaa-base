@@ -138,6 +138,7 @@ class Process(object):
 
         cmd = self._cmd + self._normalize_cmd(args)
         self.__kill_timer = None
+        self.__dead = False
         self.binary = cmd[0]
 
         self.child = popen2.Popen3( cmd, True, 100 )
@@ -184,7 +185,6 @@ class Process(object):
         """
         if self.stopping:
             return
-
         if not is_mainthread():
             return MainThreadCallback(self.stop, cmd)()
         

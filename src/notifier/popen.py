@@ -79,7 +79,6 @@ class Process(object):
             "stderr": Signal(),
             "stdout": Signal(),
             "completed": Signal(),
-            "exitcode": Signal()
         }
 
         self._cmd = self._normalize_cmd(cmd)
@@ -281,8 +280,7 @@ class Process(object):
         self.stderr.close()
         if self.__kill_timer:
             notifier.removeTimer( self.__kill_timer )
-        self.signals["completed"].emit()
-        self.signals["exitcode"].emit(status >> 8)
+        self.signals["completed"].emit(status >> 8)
 
 
 

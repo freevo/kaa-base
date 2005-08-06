@@ -178,7 +178,7 @@ class EventManager(object):
         Handle the next event.
         """
         if self.locked:
-            self.timer.start(10)
+            self.timer.start(0.01)
             return
         if not self.queue:
             return

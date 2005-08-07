@@ -189,7 +189,9 @@ class EventManager(object):
         try:
             for handler in copy.copy(self.handler):
                 handler(event)
-        except:
+        except (KeyboardInterrupt, SystemExit), e:
+            raise e
+        except Exception, e:
             log.exception('event callback')
         self.locked = False
         if self.queue and not self.timer.active():

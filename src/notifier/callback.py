@@ -194,9 +194,6 @@ class NotifierCallback(Callback):
                 self.unregister()
             return False
 
-        # rember old id
-        id = self._id
-        
         # If there are exception handlers for this notifier callback, we
         # catch the exception and pass it to the handler, giving it the
         # opportunity to abort the unregistering.  If no handlers are
@@ -212,15 +209,9 @@ class NotifierCallback(Callback):
                 ret = self.signals["exception"].emit(sys.exc_info()[1])
         else:
             ret = super(NotifierCallback, self).__call__(*args, **kwargs)
-
         # If Notifier callbacks return False, they get unregistered.
         if ret == False:
-            if id == self._id:
-                # id not changed. This means the callback wasn't restarted
-                # some how and doesn't want to be called again.
-                # This check is needed when restarting a timer in it's own
-                # callback function.
-                self.unregister()
+            self.unregister()
             return False
         return True
 

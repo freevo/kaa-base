@@ -159,6 +159,13 @@ class Callback(object):
         return cb(*cb_args, **cb_kwargs)
 
 
+    def __str__(self):
+        """
+        Convert to string for debug.
+        """
+        return '<%s for %s>' % (str(self.__class__)[8:-2], self._callback)
+
+
 class NotifierCallback(Callback):
     
     def __init__(self, callback, *args, **kwargs):
@@ -187,6 +194,9 @@ class NotifierCallback(Callback):
                 self.unregister()
             return False
 
+        # rember old id
+        id = self._id
+        
         # If there are exception handlers for this notifier callback, we
         # catch the exception and pass it to the handler, giving it the
         # opportunity to abort the unregistering.  If no handlers are
@@ -205,7 +215,12 @@ class NotifierCallback(Callback):
 
         # If Notifier callbacks return False, they get unregistered.
         if ret == False:
-            self.unregister()
+            if id == self._id:
+                # id not changed. This means the callback wasn't restarted
+                # some how and doesn't want to be called again.
+                # This check is needed when restarting a timer in it's own
+                # callback function.
+                self.unregister()
             return False
         return True
 

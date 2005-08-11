@@ -67,7 +67,12 @@ class Timer(NotifierCallback):
 
 
 class OneShotTimer(Timer):
-
+    """
+    A Timer that onlt gets executed once. If the timer is started again
+    inside the callback, make sure 'False' is NOT returned or the timer
+    will be removed again without being called. To be on tge same side,
+    return nothing in such a callback.
+    """
     def __call__(self, *args, **kwargs):
         self.unregister()
         super(OneShotTimer, self).__call__(*args, **kwargs)

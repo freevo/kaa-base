@@ -45,6 +45,8 @@ from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer
 from sockets import SocketDispatcher, WeakSocketDispatcher, \
      IO_READ, IO_WRITE, IO_EXCEPT
 from event import Event, EventHandler, WeakEventHandler
+from jobserver import ThreadCallback
+from jobserver import killall as kill_jobserver
 from kaa.base import utils
 
 # get logging object
@@ -108,6 +110,7 @@ def shutdown():
     # Kill processes _after_ shutdown emits to give callbacks a chance to
     # close them properly.
     kill_processes()
+    kill_jobserver()
     # Collect any zombies
     try:
         os.waitpid(-1, os.WNOHANG)

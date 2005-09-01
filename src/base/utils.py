@@ -26,7 +26,7 @@
 #
 # -----------------------------------------------------------------------------
 
-import sys, tty, termios, select, fcntl, os, atexit, weakref, types
+import sys, tty, termios, select, fcntl, os, atexit, types, locale
 
 ############################################################################
 
@@ -109,24 +109,32 @@ def getch_disable():
     
 ############################################################################
 
-def utf8(text):
+def utf8(s):
     """
-    Returns a UTF-8 string, converting from latin-1 if necessary.  This does a
-    pretty good job Doing the Right Thing, converting only when it's really
-    latin-1.  Of course it's not foolproof, but it works in practice.
+    Returns a UTF-8 string, converting from other character sets if
+    necessary.
     """
-    if type(text) == types.UnicodeType:
-        return text.encode("utf-8")
+    return str_to_unicode(s).encode("utf-8")
 
-    try:
-        text.decode("utf-8")
-    except:
+def str_to_unicode(s):
+    """
+    Attempts to convert a string of unknown character set to a unicode
+    string.  First it tries to decode the string based on the locale's
+    preferred encoding, and if that fails, fall back to UTF-8 and then
+    latin-1.  If all fails, it will force encoding to the preferred
+    charset, replacing unknown characters.
+    """
+    if type(s) == unicode:
+        # Already unicode
+        return s
+
+    for c in (locale.getpreferredencoding(), "utf-8", "latin-1"):
         try:
-            text = text.decode("latin-1").encode("utf-8")
-        except:
+            return s.decode(c)
+        except UnicodeDecodeError:
             pass
 
-    return text
+    return s.decode(local.getpreferredencoding(), "replace")
 
 
 ############################################################################

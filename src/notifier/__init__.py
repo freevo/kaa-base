@@ -33,6 +33,7 @@
 import sys
 import logging
 import os
+import traceback
 
 # kaa.notifier imports
 from signals import *
@@ -150,7 +151,7 @@ def loop():
     running = False
     shutdown()
     if e:
-        raise e
+        traceback.print_exc()
 
 
 def step(*args, **kwargs):

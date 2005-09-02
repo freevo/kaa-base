@@ -132,10 +132,16 @@ def step( sleep = True, external = True ):
         interval, timestamp, callback = _copy[ i ]
         if interval + timestamp <= millisecs():
             retval = None
+            # Update timestamp on timer before calling the callback to
+            # prevent infinite recursion in case the callback calls
+            # step().
+            __timers[ i ] = ( interval, millisecs(), callback )
             try:
                 if not callback():
                     trash_can.append( i )
                 else:
+                    # Update timer's timestamp again to reflect callback
+                    # execution time.
                     __timers[ i ] = ( interval, millisecs(), callback )
             except ( KeyboardInterrupt, SystemExit ), e:
                 raise e

@@ -55,7 +55,7 @@ class Timer(NotifierCallback):
 
     def stop(self):
         if not is_mainthread():
-            return MainThreadCallback(self.stop, interval)()
+            return MainThreadCallback(self.stop)()
         self.unregister()
 
 

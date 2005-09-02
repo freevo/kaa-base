@@ -323,7 +323,15 @@ class IO_Handler(object):
         """
         Handle data input from socket.
         """
-        data = self.fp.read( 10000 )
+        try:
+            data = self.fp.read( 10000 )
+        except IOError, (errno, msg):
+            if errno == 11:
+                # Resource temporarily unavailable; if we try to read on a
+                # non-blocking descriptor we'll get this message.
+                return True
+            data = None
+
         if not data:
             log.info('No data on %s for pid %s.' % ( self.name, os.getpid()))
             notifier.removeSocket( self.fp )

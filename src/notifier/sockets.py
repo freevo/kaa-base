@@ -59,7 +59,7 @@ class SocketDispatcher(NotifierCallback):
 
     def unregister(self):
         if not self.active():
-            pass
+            return
         if not is_mainthread():
             return MainThreadCallback(self.unregister)()
         notifier.removeSocket(self._id, self._condition)

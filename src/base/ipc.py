@@ -45,7 +45,7 @@ def _unpickle_slice(start, stop, step):
     return slice(start, stop, step)
 copy_reg.pickle(slice, _pickle_slice, _unpickle_slice)
 
-def get_proxy_type(name):
+def _get_proxy_type(name):
     clsname = "IPCProxy_" + name
     mod = sys.modules[__name__]
     if hasattr(mod, clsname):
@@ -62,7 +62,7 @@ def _pickle_proxy(o):
                              o._ipc_cache_special_attrs, o._ipc_orig_type)
 
 def _unpickle_proxy(clsname, *args):
-    cls = get_proxy_type(clsname)
+    cls = _get_proxy_type(clsname)
     for (attr, ismeth) in args[2].items():
         if not ismeth:
             continue
@@ -85,10 +85,6 @@ def _unpickle_proxy(clsname, *args):
             i._ipc_class = None
     return i
 
-
-def isproxy(obj):
-    # Not foolproof, but good enough for me.
-    return hasattr(obj, "_ipc_obj")
 
 
 class IPCDisconnectedError(Exception):
@@ -484,10 +480,11 @@ class IPCChannel:
         if objid in self._proxied_objects:
             # Increase refcount
             self._proxied_objects[objid][1] += 1
+            _debug(1, "PROXY: (EXISTING) IPCProxy object created from", type(obj), objid)
         else:
             self._proxied_objects[objid] = [obj, 1]
+            _debug(1, "PROXY: (NEW) IPCProxy object created from", type(obj), objid)
 
-        _debug(1, "PROXY: IPCProxy object created from", type(obj), objid)
         return IPCProxy(objid, obj)
 
 
@@ -554,8 +551,8 @@ class IPCClient(IPCChannel):
 class IPCProxy(object):
     
     def __new__(cls, objid = None, orig_object = None):
-        if orig_object:
-            cls = get_proxy_type(orig_object.__class__.__name__)
+        if orig_object != None:
+            cls = _get_proxy_type(orig_object.__class__.__name__)
         i = super(IPCProxy, cls).__new__(cls, objid, orig_object)
         return i
 
@@ -566,7 +563,7 @@ class IPCProxy(object):
         self._ipc_client = None
         self._ipc_cache_special_attrs = {}
 
-        if orig_object:
+        if orig_object != None:
             self._ipc_callable = callable(orig_object)
             if type(orig_object) in types.__dict__.values():
                 for (name, t) in types.__dict__.items():
@@ -633,7 +630,7 @@ class IPCProxy(object):
 
 
     def __getattribute__(self, attr):
-        #print "GET", attr
+        _debug(2, "IPCProxy.__getattribute__: %s" % attr)
         if attr == "__class__" and not self._ipc_local() and self._ipc_class:
             #print "Spoofing type", self, self._ipc_class
             return self._ipc_class
@@ -685,3 +682,14 @@ class IPCProxy(object):
     def _ipc_meth(self, name, args):
         result = self._ipc_client.request("CALLMETH", (self._ipc_obj, name, self._ipc_client._proxy_data(args), {}))
         return self._ipc_client._unproxy_data(result)
+
+
+
+def isproxy(obj):
+    # Not foolproof, but good enough for me.
+    return hasattr(obj, "_ipc_obj")
+
+def get_ipc_from_proxy(obj):
+    if not isproxy(obj):
+        return None
+    return obj._ipc_client

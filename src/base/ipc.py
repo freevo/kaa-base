@@ -20,7 +20,7 @@ import traceback, string, copy_reg
 from new import classobj
 import kaa.notifier
 
-DEBUG=2
+DEBUG=1
 DEBUG=0
 
 def _debug(level, text, *args):
@@ -226,7 +226,7 @@ class IPCChannel:
         if buflen < 4:
             return
         if len(self.read_buffer[0]) >= 4:
-            packet_len = struct.unpack("l", self.read_buffer[0][:4])[0]
+            packet_len = struct.unpack("I", self.read_buffer[0][:4])[0]
             if buflen < packet_len:
                 return
             
@@ -237,7 +237,7 @@ class IPCChannel:
             if len(strbuf) <= 4:
                 self.read_buffer.append(str(strbuf))
                 break
-            packet_len = struct.unpack("l", strbuf[:4])[0]
+            packet_len = struct.unpack("I", strbuf[:4])[0]
             if len(strbuf) < packet_len + 4:
                 _debug(1, "Short packet, need %d, have %d" % (packet_len, len(self.read_buffer)))
                 self.read_buffer.append(str(strbuf))
@@ -312,9 +312,11 @@ class IPCChannel:
                 self.reply(request, ("ok", reply), seq)
 
 
-    def _send_packet(self, packet_type, data, seq = 0, timeout = 2.0):
+    def _send_packet(self, packet_type, data, seq = 0, timeout = None):
         if not self.socket:
             raise IPCDisconnectedError("Remote end no longer connected")
+        if timeout == None:
+            timeout = self._default_timeout
         if seq == 0:
             seq = self.last_seq = self.last_seq + 1
 
@@ -326,11 +328,13 @@ class IPCChannel:
         else:
             _debug(1, "<- REPLY: seq=%d, type=%s, data=%d" % (seq, packet_type, len(data)))
         pdata = cPickle.dumps( (seq, packet_type, data), 2 )
-        self.write(struct.pack("l", len(pdata)) + pdata)
+        self.write(struct.pack("I", len(pdata)) + pdata)
         if packet_type[:3] == "REQ" and timeout > 0:
             t0 = time.time()
             while self.wait_queue[seq][1] == False and time.time() - t0 < timeout and self.socket:
                 kaa.notifier.step()
+        else:
+            self.handle_write()
         return seq
 
 
@@ -352,7 +356,7 @@ class IPCChannel:
                 data[0]._ipc_remote_tb = data[2].strip()
                 raise data[0], data[1]
         elif timeout > 0:
-            raise IPCTimeoutError
+            raise IPCTimeoutError, (type,)
 
 
     def reply(self, type, data, seq):

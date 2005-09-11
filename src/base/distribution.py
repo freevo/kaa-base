@@ -37,63 +37,19 @@ import distutils.core
 # version checking
 from version import Version
 
-PyTypeObject_Type = '''
-PyTypeObject $$CLASSNAME$$PyObject_Type = {
-    PyObject_HEAD_INIT(NULL)
-    0,                                  /*ob_size*/
-    "$$CLASSNAME$$",                     /*tp_name*/
-    sizeof($$CLASSNAME$$PyObject),            /*tp_basicsize*/
-    0,					/*tp_itemsize*/
-    (destructor)$$CLASSNAME$$PyObject__dealloc,  /* tp_dealloc */
-    0,					/*tp_print*/
-    0,					/* tp_getattr */
-    0,					/* tp_setattr*/
-    0,					/* tp_compare*/
-    0,					/* tp_repr*/
-    0,					/* tp_as_number*/
-    0,					/* tp_as_sequence*/
-    0,					/* tp_as_mapping*/
-    0,					/* tp_hash */
-    0,					/* tp_call*/
-    0,					/* tp_str*/
-    0,					/* tp_getattro*/
-    0,					/* tp_setattro*/
-    0,					/* tp_as_buffer*/
-    Py_TPFLAGS_DEFAULT,			/* tp_flags*/
-    "$$CLASSNAME$$ Object",			/* tp_doc*/
-    0,					/* tp_traverse */
-    0,					/* tp_clear */
-    0,					/* tp_richcompare */
-    0,					/* tp_weaklistoffset */
-    0,					/* tp_iter */
-    0,					/* tp_iternext */
-    $$CLASSNAME$$PyObject__methods,		/* tp_methods */
-    0,					/* tp_members */
-    0,					/* tp_getset */
-    0,					/* tp_base */
-    0,					/* tp_dict */
-    0,					/* tp_descr_get */
-    0,					/* tp_descr_set */
-    0,					/* tp_dictoffset */
-    (initproc)$$CLASSNAME$$PyObject__init,       /* tp_init */
-    0,					/* tp_alloc */
-    PyType_GenericNew,			/* tp_new */
-};
-'''
 
 class Extension(object):
     """
     Extension wrapper with additional functions to find libraries and
     support for config files.
     """
-    def __init__(self, output, files, kaa_files = [], include_dirs=[],
+    def __init__(self, output, files, include_dirs=[],
                  library_dirs=[], libraries=[], config=None):
         """
         Init the Extention object.
         """
         self.output = output
         self.files = files
-        self.kaa_files = kaa_files
         self.include_dirs = include_dirs
         self.library_dirs = library_dirs
         self.libraries = libraries
@@ -171,76 +127,11 @@ class Extension(object):
         return result == None
 
 
-    def _write_c_file_info(self, output, functions):
-        for name, func in functions.items():
-            output.write('\n\nstatic PyMethodDef %sPyObject__methods[] = {\n' % name)
-            for f in func:
-                output.write('    {"%s", %sPyObject__%s, METH_VARARGS },\n' % \
-                             (f, name, f))
-            output.write('    { NULL }\n};\n\n\n')
-            output.write(PyTypeObject_Type.replace('$$CLASSNAME$$', name))
-        
-
-    def _convert_c_file(self, input, output):
-        print 'generate %s' % output
-        output = open(output, 'w')
-        input = open(input)
-        functions = {}
-
-        correct_self = None
-        info_written = False
-        for line in input.readlines():
-            m = re.match('PyObject *\*([A-Za-z_]*)PyObject__([A-Za-z_]*) *\(', line)
-            if m:
-                type, name = m.groups()
-                if not functions.has_key(type):
-                    functions[type] = []
-                functions[type].append(name)
-                correct_self = type
-            if line.startswith('}'):
-                correct_self = None
-            if correct_self:
-                line = line.replace('self->', '((%sPyObject *)self)->' % correct_self)
-
-            m = re.match('int ([A-Za-z_]*)PyObject__init *\(', line)
-            if m:
-                type, = m.groups()
-                if not functions.has_key(type):
-                    functions[type] = []
-
-            m = re.match('void ([A-Za-z_]*)PyObject__dealloc *\(', line)
-            if m:
-                type, = m.groups()
-                if not functions.has_key(type):
-                    functions[type] = []
-
-            if line.startswith('extern'):
-                info_written = True
-                self._write_c_file_info(output, functions)
-                
-            output.write(line)
-
-        if not info_written:
-            self._write_c_file_info(output, functions)
-        output.close()
-        input.close()
-        
-
     def convert(self):
         """
         Convert Extension into a distutils.core.Extension.
         """
-        files = self.files[:]
-        for f in self.kaa_files:
-            new = os.path.dirname(f) + '/.__kaa__.' + os.path.basename(f)
-            files.append(new)
-    
-            mtime = os.stat(f)[stat.ST_MTIME]
-            if os.path.isfile(new) and mtime <= os.stat(new)[stat.ST_MTIME]:
-                continue
-            self._convert_c_file(f, new)
-
-        return distutils.core.Extension(self.output, files,
+        return distutils.core.Extension(self.output, self.files,
                                         library_dirs=self.library_dirs,
                                         include_dirs=self.include_dirs,
                                         libraries=self.libraries)

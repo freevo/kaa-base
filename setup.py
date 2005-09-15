@@ -33,5 +33,5 @@ distutils.core.setup(
     name        = 'kaa-base',
     version     = '0.1',
     package_dir = { 'kaa': 'src', 'kaa.base': 'src/base',
-                    'kaa.notifier': 'src/notifier' },
-    packages    = [ 'kaa', 'kaa.base', 'kaa.notifier' ] )
+                    'kaa.notifier': 'src/notifier', 'kaa.input': 'src/input' },
+    packages    = [ 'kaa', 'kaa.base', 'kaa.notifier', 'kaa.input' ] )

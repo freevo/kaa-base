@@ -26,12 +26,20 @@
 #
 # -----------------------------------------------------------------------------
 
-import distutils.core
+from distutils.core import setup, Extension
+
+extensions = []
+try:
+    import shm
+except ImportError:
+    print "No system shm module available; installing."
+    extensions.append( Extension('shmmodule', ['src/extensions/shmmodule.c']) )
 
 # call setup
-distutils.core.setup(
+setup(
     name        = 'kaa-base',
     version     = '0.1',
     package_dir = { 'kaa': 'src', 'kaa.base': 'src/base',
                     'kaa.notifier': 'src/notifier', 'kaa.input': 'src/input' },
-    packages    = [ 'kaa', 'kaa.base', 'kaa.notifier', 'kaa.input' ] )
+    packages    = [ 'kaa', 'kaa.base', 'kaa.notifier', 'kaa.input' ],
+    ext_modules = extensions)

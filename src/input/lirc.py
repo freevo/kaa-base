@@ -6,7 +6,7 @@ _last_code = None
 _key_delay_times = None
 _last_key_time = 0
 
-def input_check_lirc():
+def _handle_lirc_input():
     import pylirc
 
     global _key_delay_times, _last_code, _repeat_count, _last_key_time
@@ -19,7 +19,7 @@ def input_check_lirc():
             # Too long since the last key, so reset
             _last_key_time = 0
             _repeat_count = 0
-        return False
+        return
     elif codes == []:
         if not _key_delay_times:
             return True
@@ -53,10 +53,10 @@ def init(appname = None, cfg = None):
     has_lirc = False
     try:
         import pylirc
-        ver = pylirc.init(appname, cfgfile)
-        if ver:
+        fd = pylirc.init(appname, cfgfile)
+        if fd:
             pylirc.blocking(0)
-            kaa.signals["idle"].connect(input_check_lirc)
+            kaa.notifier.SocketDispatcher(_handle_lirc_input).register(fd)
             kaa.signals["shutdown"].connect(pylirc.exit)
             kaa.signals["lirc"] = kaa.notifier.Signal()
             has_lirc = True

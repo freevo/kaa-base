@@ -15,10 +15,14 @@
 #       foo = ipc.get_object("foo")
 #       print foo.bar()
 
+import logging
 import socket, os, select, time, types, struct, cPickle, thread, sys
 import traceback, string, copy_reg
 from new import classobj
 import kaa.notifier
+import kaa
+
+log = logging.getLogger('ipc')
 
 DEBUG=1
 DEBUG=0
@@ -97,9 +101,29 @@ class IPCServer:
 
     def __init__(self, address):
         if type(address) in types.StringTypes:
+            if address.find('/') == -1:
+                # create socket in kaa temp dir
+                address = '%s/%s' % (kaa.TEMP, address)
+                
             if os.path.exists(address):
+                # maybe a server is already running at this address, test it
+                try:
+                    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                    s.connect(address)
+                except socket.error, e:
+                    if e[0] == 111:
+                        # not running, everything is fine
+                        log.info('remove socket from dead server')
+                    else:
+                        # some error we do not expect
+                        raise e
+                else:
+                    # server already running
+                    raise IOError('server already running')
                 os.unlink(address)
             self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            self.address = address
+            
         elif type(address) == tuple:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -148,13 +172,15 @@ class IPCServer:
         for client in self.clients.values():
             client.socket.close()
         self.socket.close()
-
-
+        if type(self.address) in types.StringTypes and os.path.exists(self.address):
+            os.unlink(self.address)
+        
         
 class IPCChannel:
     def __init__(self, server_or_address, sock = None):
         if not sock:
             if type(server_or_address) in types.StringTypes:
+                server_or_address = '%s/%s' % (kaa.TEMP, server_or_address)
                 self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             if type(server_or_address) == tuple:
                 self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

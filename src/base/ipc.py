@@ -25,7 +25,7 @@ import kaa
 log = logging.getLogger('ipc')
 
 DEBUG=1
-DEBUG=0
+#DEBUG=0
 
 def _debug(level, text, *args):
     if DEBUG  >= level:
@@ -123,6 +123,8 @@ class IPCServer:
                 os.unlink(address)
             self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.address = address
+            # Remove socket file on shutdown.
+            kaa.signals["shutdown"].connect(lambda file: os.unlink(file), address)
             
         elif type(address) == tuple:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -201,7 +203,7 @@ class IPCChannel:
         self.write_buffer = ""
 
         self.last_seq = 0
-        self.wait_queue = {}
+        self._wait_queue = {}
         self._proxied_objects = {}
         self._default_timeout = 2.0
 
@@ -225,6 +227,8 @@ class IPCChannel:
             self.socket.close()
             self.socket = None
 
+        self._wait_queue = {}
+        self._proxied_objects
         self.signals["closed"].emit()
 
 
@@ -294,7 +298,7 @@ class IPCChannel:
             if not self.write_buffer:
                 self._wmon.unregister()
         except socket.error:
-            self.socket = None
+            self.handle_close()
 
 
     def handle_packet(self, packet):
@@ -303,19 +307,19 @@ class IPCChannel:
         (seq, packet_type, data) = cPickle.loads(packet)
         if packet_type[:3] == "REP":
             _debug(1, "-> REPLY: seq=%d, type=%s, data=%d" % (seq, packet_type, len(packet)))
-            if seq not in self.wait_queue:
+            if seq not in self._wait_queue:
                 _debug(1,  "WARNING: received reply for unknown sequence (%d)" % seq)
                 return
 
-            if self.wait_queue[seq][1] == False:
+            if self._wait_queue[seq][1] == False:
                 # If the second element of the wait queue is False, it means
                 # this is a synchronous call.
-                self.wait_queue[seq][1] = True
-                self.wait_queue[seq][2] = (seq, packet_type, data)
+                self._wait_queue[seq][1] = True
+                self._wait_queue[seq][2] = (seq, packet_type, data)
             else:
                 # Async call.  Just delete the wait queue entry for now.
                 # TODO: notify a callback
-                del self.wait_queue[seq]
+                del self._wait_queue[seq]
 
         elif packet_type[:3] == "REQ":
             _debug(1, "-> REQUEST: seq=%d, type=%s, data=%d" % (seq, packet_type, len(packet)))
@@ -340,7 +344,8 @@ class IPCChannel:
 
     def _send_packet(self, packet_type, data, seq = 0, timeout = None):
         if not self.socket:
-            raise IPCDisconnectedError("Remote end no longer connected")
+            return
+
         if timeout == None:
             timeout = self._default_timeout
         if seq == 0:
@@ -348,16 +353,16 @@ class IPCChannel:
 
         if packet_type[:3] == "REQ":
             _debug(1, "<- REQUEST: seq=%d, type=%s, data=%d" % (seq, packet_type, len(data)))
-            self.wait_queue[seq] = [data, False, None]
+            self._wait_queue[seq] = [data, False, None, time.time()]
             if timeout == 0:
-                self.wait_queue[seq][1] = None
+                self._wait_queue[seq][1] = None
         else:
             _debug(1, "<- REPLY: seq=%d, type=%s, data=%d" % (seq, packet_type, len(data)))
         pdata = cPickle.dumps( (seq, packet_type, data), 2 )
         self.write(struct.pack("I", len(pdata)) + pdata)
         if packet_type[:3] == "REQ" and timeout > 0:
             t0 = time.time()
-            while self.wait_queue[seq][1] == False and time.time() - t0 < timeout and self.socket:
+            while self._wait_queue[seq][1] == False and time.time() - t0 < timeout and self.socket:
                 kaa.notifier.step()
         else:
             self.handle_write()
@@ -371,10 +376,12 @@ class IPCChannel:
         seq = self._send_packet("REQ_" + type, data, timeout = timeout)
         if not self.socket:
             raise IPCDisconnectedError
-        # FIXME: if request doesn't block, wait_queue entry doesn't get removed
-        if timeout > 0 and self.wait_queue[seq][1]:
-            seq, type, (resultcode, data) = self.wait_queue[seq][2]
-            del self.wait_queue[seq]
+        # FIXME: if timeout == 0 and no reply received, wait_queue entry 
+        # doesn't get removed until the socket is disconnected.  There should
+        # be some expiry on wait queue entries.
+        if timeout > 0 and self._wait_queue[seq][1]:
+            seq, type, (resultcode, data) = self._wait_queue[seq][2]
+            del self._wait_queue[seq]
             #return seq, type, data
             if resultcode == "ok":
                 return data
@@ -382,6 +389,7 @@ class IPCChannel:
                 data[0]._ipc_remote_tb = data[2].strip()
                 raise data[0], data[1]
         elif timeout > 0:
+            del self._wait_queue[seq]
             raise IPCTimeoutError, (type,)
 
 
@@ -464,25 +472,27 @@ class IPCChannel:
     def handle_request_decref(self, objid):
         if objid not in self._proxied_objects:
             return
-        _debug(1, "-> Refcount-- on object", objid)
+        _debug(1, "-> Refcount-- on local object", objid)
         self._decref_proxied_object(objid)
+        raise "NOREPLY"
 
 
     def handle_request_incref(self, objid):
         if objid not in self._proxied_objects:
             return
-        _debug(1, "-> Refcount++ on object", objid)
+        _debug(1, "-> Refcount++ on local object", objid)
         self._incref_proxied_object(objid)
+        raise "NOREPLY"
 
 
     def _decref_proxied_object(self, objid):
         if objid in self._proxied_objects:
             self._proxied_objects[objid][1] -= 1
             if self._proxied_objects[objid][1] == 0:
-                _debug(1, "-> Refcount=0; EXPIRING object", objid, type(self._proxied_objects[objid][0]))
+                _debug(1, "-> Refcount=0; EXPIRING local proxied object", objid, type(self._proxied_objects[objid][0]))
                 del self._proxied_objects[objid]
         else:
-            _debug(1, "<- Refcount-- on object", objid)
+            _debug(1, "<- Refcount-- on remote object", objid)
             self.request("DECREF", objid, timeout = 0)
 
 
@@ -618,12 +628,7 @@ class IPCProxy(object):
         if not self._ipc_client or not _debug:
             return
 
-        if self._ipc_obj in self._ipc_client._proxied_objects:
-            # Local proxy
-            self._ipc_client._decref_proxied_object(self._ipc_obj)
-        elif self._ipc_client.socket:
-            self._ipc_client.request("DECREF", self._ipc_obj, timeout = 0)
-        
+        self._ipc_client._decref_proxied_object(self._ipc_obj)
 
     def _ipc_get_str(self):
         if self._ipc_client:

@@ -24,8 +24,8 @@ import kaa
 
 log = logging.getLogger('ipc')
 
-DEBUG=1
-#DEBUG=0
+#DEBUG=1
+DEBUG=0
 
 def _debug(level, text, *args):
     if DEBUG  >= level:
@@ -124,7 +124,7 @@ class IPCServer:
             self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.address = address
             # Remove socket file on shutdown.
-            kaa.signals["shutdown"].connect(lambda file: os.unlink(file), address)
+            kaa.signals["shutdown"].connect_weak(self.close)
             
         elif type(address) == tuple:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -155,8 +155,9 @@ class IPCServer:
 
 
     def close_connection(self, client):
-        client.socket.close()
-        del self.clients[client.socket]
+        if client.socket:
+            client.socket.close()
+            del self.clients[client.socket]
         client.socket = None
         self.signals["client_closed"].emit(client)
 
@@ -172,10 +173,16 @@ class IPCServer:
 
     def close(self):
         for client in self.clients.values():
-            client.socket.close()
-        self.socket.close()
+            self.close_connection(client)
+
+        if self.socket:
+            self.socket.close()
+
         if type(self.address) in types.StringTypes and os.path.exists(self.address):
             os.unlink(self.address)
+
+        self.socket = None
+        kaa.signals["shutdown"].disconnect(self.close)
         
         
 class IPCChannel:
@@ -360,9 +367,11 @@ class IPCChannel:
             _debug(1, "<- REPLY: seq=%d, type=%s, data=%d" % (seq, packet_type, len(data)))
         pdata = cPickle.dumps( (seq, packet_type, data), 2 )
         self.write(struct.pack("I", len(pdata)) + pdata)
+        if not self.socket:
+            return
         if packet_type[:3] == "REQ" and timeout > 0:
             t0 = time.time()
-            while self._wait_queue[seq][1] == False and time.time() - t0 < timeout and self.socket:
+            while self.socket and self._wait_queue[seq][1] == False and time.time() - t0 < timeout:
                 kaa.notifier.step()
         else:
             self.handle_write()
@@ -628,7 +637,12 @@ class IPCProxy(object):
         if not self._ipc_client or not _debug:
             return
 
-        self._ipc_client._decref_proxied_object(self._ipc_obj)
+        # Drop our reference to the proxy -- if the proxy is remote, this
+        # could raise an IPCDisconnectedError, which we won't worry about.
+        try:
+            self._ipc_client._decref_proxied_object(self._ipc_obj)
+        except IPCDisconnectedError:
+            pass
 
     def _ipc_get_str(self):
         if self._ipc_client:

@@ -82,6 +82,7 @@ class Process(object):
         }
 
         self._cmd = self._normalize_cmd(cmd)
+        self._stop_cmd = None
         self._debugname = debugname
         self.__dead = True
         self.stopping = False
@@ -176,8 +177,20 @@ class Process(object):
         """
         return not self.__dead
 
+    def set_stop_command(self, cmd):
+        """
+        Sets the stop command for this process.  The argument 'cmd' can be
+        either a callable or a string.  The command is invoked (if cmd is
+        a callback) or the command is written to the child's stdin (if cmd
+        is a string or unicode) when the process is being terminated with
+        a call to stop().
 
-    def stop( self, cmd = '' ):
+        Shutdown handlers for the process should be set with this method.
+        """
+        assert(callable(cmd) or type(cmd) in (str, unicode) or cmd == None)
+        self._stop_cmd = cmd
+
+    def stop( self, cmd = None ):
         """
         Stop the child. If 'cmd' is given, this stop command will send to
         the app to stop itself. If this is not working, kill -15 and kill -9
@@ -189,11 +202,16 @@ class Process(object):
             return MainThreadCallback(self.stop, cmd)()
         
         self.stopping = True
+        cmd = cmd or self._stop_cmd
 
         if self.is_alive() and not self.__kill_timer:
             if cmd:
                 log.info('sending exit command to app')
-                self.write(cmd)
+                if callable(cmd):
+                    cmd()
+                else:
+                    self.write(cmd)
+
                 cb = Callback( self.__kill, 15 )
                 self.__kill_timer = notifier.addTimer( 3000, cb )
             else:

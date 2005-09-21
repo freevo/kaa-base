@@ -53,6 +53,7 @@ class Extension(object):
         self.include_dirs = include_dirs
         self.library_dirs = library_dirs
         self.libraries = libraries
+        self.extra_compile_args = ["-Wall"]
         if config:
             self.configfile = os.path.abspath(config)
             # create config file
@@ -134,7 +135,8 @@ class Extension(object):
         return distutils.core.Extension(self.output, self.files,
                                         library_dirs=self.library_dirs,
                                         include_dirs=self.include_dirs,
-                                        libraries=self.libraries)
+                                        libraries=self.libraries,
+                                        extra_compile_args=self.extra_compile_args)
 
     def __del__(self):
         """

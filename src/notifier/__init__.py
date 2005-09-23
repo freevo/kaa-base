@@ -36,8 +36,6 @@ import os
 import traceback
 
 # kaa.notifier imports
-from signals import *
-from signals import register as signal
 from popen import Process
 from popen import killall as kill_processes
 from callback import Callback, WeakCallback, Signal, notifier
@@ -138,19 +136,17 @@ def loop():
     running = True
 
     e = None
-    while 1:
-        try:
-            notifier.loop()
-        except (KeyboardInterrupt, SystemExit):
-            break
-        except Exception, e:
-            if has_signal():
-                log.info('Call Signal Handler')
-            break
+    try:
+        notifier.loop()
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    except Exception, e:
+        pass
 
     running = False
     shutdown()
     if e:
+        # print last exception
         traceback.print_exc()
 
 
@@ -162,8 +158,3 @@ def step(*args, **kwargs):
         notifier.step(*args, **kwargs)
     except (KeyboardInterrupt, SystemExit):
         pass
-    except Exception, e:
-        if has_signal():
-            log.info('Call Signal Handler')
-        else:
-            raise e

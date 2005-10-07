@@ -323,9 +323,13 @@ class IPCChannel:
                 # this is a synchronous call.
                 self._wait_queue[seq][1] = True
                 self._wait_queue[seq][2] = (seq, packet_type, data)
+            elif self._wait_queue[seq][4]:
+                # Async call, invoke result callback.
+                # TODO: be smarter about remote exceptions
+                result_cb = self._wait_queue[seq][4]
+                result = self.handle_reply(seq, packet_type, data)
+                result_cb(result)
             else:
-                # Async call.  Just delete the wait queue entry for now.
-                # TODO: notify a callback
                 del self._wait_queue[seq]
 
         elif packet_type[:3] == "REQ":
@@ -337,7 +341,7 @@ class IPCChannel:
                 reply = getattr(self, "handle_request_%s" % request)(data)
             except "NOREPLY":
                 # handle_request_XXX will raise "NOREPLY" to prevent us
-                # from replying -- for oneway fnctions.
+                # from replying -- for oneway functions.
                 pass
             except (SystemExit,):
                 raise sys.exc_info()[0], sys.exc_info()[1]
@@ -349,7 +353,7 @@ class IPCChannel:
                 self.reply(request, ("ok", reply), seq)
 
 
-    def _send_packet(self, packet_type, data, seq = 0, timeout = None):
+    def _send_packet(self, packet_type, data, seq = 0, timeout = None, reply_cb = None):
         if not self.socket:
             return
 
@@ -360,7 +364,7 @@ class IPCChannel:
 
         if packet_type[:3] == "REQ":
             _debug(1, "<- REQUEST: seq=%d, type=%s, data=%d" % (seq, packet_type, len(data)))
-            self._wait_queue[seq] = [data, False, None, time.time()]
+            self._wait_queue[seq] = [data, False, None, time.time(), reply_cb]
             if timeout == 0:
                 self._wait_queue[seq][1] = None
         else:
@@ -377,26 +381,29 @@ class IPCChannel:
             self.handle_write()
         return seq
 
+    def handle_reply(self, seq, type, (resultcode, data)):
+        del self._wait_queue[seq]
+        #return seq, type, data
+        if resultcode == "ok":
+            return data
+        elif resultcode == "error":
+            data[0]._ipc_remote_tb = data[2].strip()
+            raise data[0], data[1]
 
-    def request(self, type, data, timeout = None):
+
+    def request(self, type, data, timeout = None, reply_cb = None):
         if timeout == None:
             timeout = self._default_timeout
 
-        seq = self._send_packet("REQ_" + type, data, timeout = timeout)
+        seq = self._send_packet("REQ_" + type, data, timeout = timeout, reply_cb = reply_cb)
         if not self.socket:
             raise IPCDisconnectedError
+
         # FIXME: if timeout == 0 and no reply received, wait_queue entry 
         # doesn't get removed until the socket is disconnected.  There should
         # be some expiry on wait queue entries.
         if timeout > 0 and self._wait_queue[seq][1]:
-            seq, type, (resultcode, data) = self._wait_queue[seq][2]
-            del self._wait_queue[seq]
-            #return seq, type, data
-            if resultcode == "ok":
-                return data
-            elif resultcode == "error":
-                data[0]._ipc_remote_tb = data[2].strip()
-                raise data[0], data[1]
+            return self.handle_reply(*self._wait_queue[seq][2])
         elif timeout > 0:
             del self._wait_queue[seq]
             raise IPCTimeoutError, (type,)
@@ -455,7 +462,9 @@ class IPCChannel:
                 del kwargs["__ipc_" + arg]
 
         args = self._unproxy_data(args)
+        kwargs = self._unproxy_data(kwargs)
         obj = self._get_proxied_object(objid)
+        _debug(1, "-> () CALL %s" % obj.__name__)
         result = obj(*args, **kwargs)
 
         if _ipc_args.get("oneway"):
@@ -463,7 +472,6 @@ class IPCChannel:
             # handle_rqeuest_call() to prevent replying.
             raise "NOREPLY"
 
-        _debug(1, "-> () CALL %s" % obj.__name__)
         if _ipc_args.get("copy_result"):
             return result
         else:
@@ -718,10 +726,16 @@ class IPCProxy(object):
                 self._ipc_callable = False
         
         args = self._ipc_client._proxy_data(args)
-        if kwargs.get("__ipc_oneway"):
-            result = self._ipc_client.request("CALL", (self._ipc_obj, args, kwargs), 0)
-        else:    
-            result = self._ipc_client.request("CALL", (self._ipc_obj, args, kwargs))
+        timeout = reply_cb = None
+        if kwargs.get("__ipc_oneway") or kwargs.get("__ipc_async"):
+            timeout = 0
+        if kwargs.get("__ipc_async"):
+            reply_cb = kwargs["__ipc_async"]
+            assert(callable(reply_cb))
+            del kwargs["__ipc_async"]
+
+        result = self._ipc_client.request("CALL", (self._ipc_obj, args, kwargs), timeout, reply_cb)
+        if timeout != 0:
             result = self._ipc_client._unproxy_data(result)
 
         _debug(1, "TIME: invocation took %.04f" % (time.time()-t0))

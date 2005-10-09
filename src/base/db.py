@@ -11,7 +11,7 @@ CREATE_SCHEMA = """
         attr        TEXT UNIQUE, 
         value       TEXT
     );
-    INSERT INTO meta VALUES('keywords_filecount', 0);
+    INSERT INTO meta VALUES('keywords_objectcount', 0);
     INSERT INTO meta VALUES('version', 0.1);
 
     CREATE TABLE types (
@@ -35,7 +35,11 @@ CREATE_SCHEMA = """
         frequency       FLOAT
     );
     CREATE INDEX words_map_word_idx ON words_map (word_id, rank, object_type);
-    CREATE INDEX words_map_object_idx ON words_map (object_type, object_id);
+    CREATE INDEX words_map_object_idx ON words_map (object_id, object_type);
+    CREATE TRIGGER delete_words_map DELETE ON words_map
+    BEGIN
+        UPDATE words SET count=count-1 WHERE id=old.word_id;
+    END;
 """
 
 
@@ -63,7 +67,7 @@ RESERVED_ATTRIBUTES = ("parent", "object", "keywords", "type", "limit",
                        "attrs", "distinct")
 
 
-def _value_to_printable(value):
+def _list_to_printable(value):
     """
     Takes a list of mixed types and outputs a unicode string.  For
     example, a list [42, 'foo', None, "foo's string"], this returns the
@@ -74,21 +78,20 @@ def _value_to_printable(value):
     Single quotes are escaped as ''.  This is suitable for use in SQL 
     queries.  
     """
-    if type(value) in (int, long, float):
-        return str(value)
-    elif value == None:
-        return "NULL"
-    elif type(value) == unicode:
-        return "'%s'" % value.replace("'", "''")
-    elif type(value) == str:
-        return "'%s'" % str_to_unicode(value.replace("'", "''"))
-    elif type(value) in (list, tuple):
-        fixed_items = []
-        for item in value:
-            fixed_items.append(_value_to_printable(item))
-        return '(' + ','.join(fixed_items) + ')'
-    else:
-        raise Exception, "Unsupported type '%s' given to _value_to_printable" % type(value)
+    fixed_items = []
+    for item in value:
+        if type(item) in (int, long, float):
+           fixed_items.append(str(item))
+        elif item == None:
+            fixed_items.append("NULL")
+        elif type(item) == unicode:
+            fixed_items.append("'%s'" % item.replace("'", "''"))
+        elif type(item) == str:
+            fixed_items.append("'%s'" % str_to_unicode(item.replace("'", "''")))
+        else:
+            raise Exception, "Unsupported type '%s' given to _list_to_printable" % type(item)
+
+    return '(' + ','.join(fixed_items) + ')'
 
 
 
@@ -110,11 +113,13 @@ class QExpr(object):
     def as_sql(self, var):
         if self._operator == "range":
             a, b = self._operand
-            return "%s >= ? AND %s < ?" % (var, var), \
-                   (_value_to_printable(a), _value_to_printable(b))
+            return "%s >= ? AND %s < ?" % (var, var), (a, b)
+        elif self._operator in ("in", "not in"):
+            return "%s %s %s" % (var, self._operator.upper(),
+                   _list_to_printable(self._operand)), ()
         else:
             return "%s %s ?" % (var, self._operator.upper()), \
-                   (_value_to_printable(self._operand),)
+                   (self._operand,)
 
 
 class Database:
@@ -250,6 +255,7 @@ class Database:
         # dictionary.
         self._db_query("INSERT OR REPLACE INTO types VALUES(?, ?, ?)", 
                        (cur_type_id, type_name, buffer(cPickle.dumps(attrs, 2))))
+        self._load_object_types()
 
         if new_attrs:
             # Migrate rows from old table to new one.
@@ -265,6 +271,12 @@ class Database:
         self._db_query("ALTER TABLE %s_tmp RENAME TO %s" % \
                        (table_name, table_name))
 
+        # Create a trigger that reduces meta.keywords_objectcount when a row
+        # is deleted.
+        if self._type_has_keyword_attr(type_name):
+            self._db_query("CREATE TRIGGER delete_object_%s DELETE ON %s BEGIN " 
+                           "UPDATE meta SET value=value-1 WHERE attr='keywords_objectcount'; END" % \
+                           (type_name, table_name))
 
         # Create index for locating all objects under a given parent.
         self._db_query("CREATE INDEX %s_parent_idx on %s (parent_id, "\
@@ -278,13 +290,21 @@ class Database:
                 self._db_query("CREATE INDEX %s_%s_idx ON %s (%s)" % \
                                (table_name, name, table_name, name))
 
-        self._load_object_types()
 
 
     def _load_object_types(self):
         for id, name, attrs in self._db_query("SELECT * from types"):
             self._object_types[name] = id, cPickle.loads(str(attrs))
-    
+            
+    def _type_has_keyword_attr(self, type_name):
+        if type_name not in self._object_types:
+            return False
+        type_attrs = self._object_types[type_name][1]
+        for name, (attr_type, flags) in type_attrs.items():
+            if flags & ATTR_KEYWORDS:
+                return True
+        return False
+
 
     def _make_query_from_attrs(self, query_type, attrs, type_name):
         type_attrs = self._object_types[type_name][1]
@@ -345,11 +365,57 @@ class Database:
         """
         Deletes the specified object.
         """
-        # TODO: recursively delete all children of this object.
-        self._delete_object_keywords((object_type, object_id))
-        self._db_query("DELETE FROM objects_%s WHERE id=?" % \
-                       object_type, (object_id,))
-        
+        return self._delete_multiple_objects({object_type: (object_id,)})
+
+
+
+    def delete_by_query(self, **attrs):
+        """
+        Deletes all objects returned by the given query.  See query()
+        for argument details.  Returns number of objects deleted.
+        """
+        attrs["attrs"] = ["id"]
+        query_info, results = self.query(**attrs)
+        if len(results) == 0:
+            return 0
+
+        results_by_type = {}
+        for object_type, object_id in results:
+            if object_type not in results_by_type:
+                results_by_type[object_type] = []
+            results_by_type[object_type].append(object_id)
+
+        return self._delete_multiple_objects(results_by_type)
+
+
+    def _delete_multiple_objects(self, objects):
+        self._delete_multiple_objects_keywords(objects)
+        child_objects = {}
+        count = 0
+        for object_type, object_ids in objects.items():
+            object_type_id = self._object_types[object_type][0]
+            if len(object_ids) == 0:
+                continue
+
+            object_ids_str = _list_to_printable(object_ids)
+            self._db_query("DELETE FROM objects_%s WHERE id IN %s" % \
+                           (object_type, object_ids_str))
+            count += self._cursor.rowcount
+
+            # Record all children of this object so we can later delete them.
+            for tp_name, (tp_id, tp_attrs) in self._object_types.items():
+                children_ids = self._db_query("SELECT id FROM objects_%s WHERE parent_id IN %s AND parent_type=?" % \
+                                              (tp_name, object_ids_str), (object_type_id,))
+                if len(children_ids):
+                    child_objects[tp_name] = [x[0] for x in children_ids]
+
+        if len(child_objects):
+            # If there are any child objects of the objects we just deleted,
+            # delete those now.
+            count += self._delete_multiple_objects(child_objects)
+
+        return count
+
 
     def add_object(self, object_type, parent = None, **attrs):
         """
@@ -389,6 +455,8 @@ class Database:
             if name not in attrs:
                 attrs[name] = None
 
+        if self._type_has_keyword_attr(object_type):
+            self._db_query("UPDATE meta SET value=value+1 WHERE attr='keywords_objectcount'")
         return attrs
 
 
@@ -566,7 +634,8 @@ class Database:
                 # object types for which there were no keyword hits.
                 continue
 
-            # List of attribute dicts for this type.
+            # Select only sql columns (i.e. attrs that aren't ATTR_SIMPLE)
+            all_columns = filter(lambda x: type_attrs[x][1] != ATTR_SIMPLE, type_attrs.keys())
             if requested_columns:
                 columns = requested_columns
                 # Ensure that all the requested columns exist for this type
@@ -580,14 +649,13 @@ class Database:
                     raise ValueError, "ATTR_SIMPLE attributes cannot yet be specified in attrs kwarg %s" % \
                                       str(tuple(simple))
             else:
-                # Select only sql columns (i.e. attrs that aren't ATTR_SIMPLE)
-                columns = filter(lambda x: type_attrs[x][1] != ATTR_SIMPLE, type_attrs.keys())
+                columns = all_columns
 
             # Construct a query based on the supplied attributes for this
             # object type.  If any of the attribute names aren't valid for
             # this type, then we don't bother matching, since this an AND
             # query and there aren't be any matches.
-            if len(Set(attrs).difference(columns)) > 0:
+            if len(Set(attrs).difference(all_columns)) > 0:
                 continue
 
             q = "SELECT %s '%s'%%s,%s FROM objects_%s" % \
@@ -595,7 +663,7 @@ class Database:
 
             if kw_results != None:
                 q %= ",%d+id as computed_id" % (type_id * 10000000)
-                q +=" WHERE id IN %s" % _value_to_printable(kw_results_by_type[type_id])
+                q +=" WHERE id IN %s" % _list_to_printable(kw_results_by_type[type_id])
             else:
                 q %= ""
 
@@ -628,11 +696,19 @@ class Database:
                 q += " LIMIT %d" % result_limit
 
             rows = self._db_query(q, query_values)
-            results.extend(rows)
+            if result_limit != None:
+                results.extend(rows[:result_limit - len(results) + 1])
+            else:
+                results.extend(rows)
+
             if kw_results:
                 query_info["columns"][type_name] = ["type", "computed_id"] + columns
             else:
                 query_info["columns"][type_name] = ["type"] + columns
+
+            if result_limit != None and len(rows) == result_limit:
+                # No need to try the other types, we're done.
+                break
 
         # If keyword search was done, sort results to preserve order given in 
         # kw_results.
@@ -782,22 +858,29 @@ class Database:
         an object is being updated (and therefore its keywords must be
         re-indexed).
         """
-        # Resolve object type name to id
-        object_type = self._object_types[object_type][0]
+        self._delete_multiple_objects_keywords({object_type: (object_id,)})
 
-        self._db_query("UPDATE words SET count=count-1 WHERE id IN " \
-                       "(SELECT word_id FROM words_map WHERE object_type=? AND object_id=?)",
-                       (object_type, object_id))
-        self._db_query("DELETE FROM words_map WHERE object_type=? AND object_id=?",
-                       (object_type, object_id))
+
+    def _delete_multiple_objects_keywords(self, objects):
+        """
+        objects = dict type_name -> ids tuple
+        """
+        count = 0
+        for type_name, object_ids in objects.items():
+            # Resolve object type name to id
+            type_id = self._object_types[type_name][0]
+
+            # Remove all words associated with this object.  A trigger will
+            # decrement the count column in the words table for all word_id
+            # that get affected. 
+            self._db_query("DELETE FROM words_map WHERE object_type=? AND object_id IN %s" % \
+                           _list_to_printable(object_ids), (type_id,))
+            count += self._cursor.rowcount
 
         # FIXME: We need to do this eventually, but there's no index on count,
         # so this could potentially be slow.  It doesn't hurt to leave rows
         # with count=0, so this could be done intermittently.
         #self._db_query("DELETE FROM words WHERE count=0")
-
-        if self._cursor.rowcount > 0:
-            self._db_query("UPDATE meta SET value=value-1 WHERE attr='keywords_filecount'")
 
 
     def _add_object_keywords(self, (object_type, object_id), words):
@@ -812,7 +895,7 @@ class Database:
         # with their id and count.
         db_words_count = {}
 
-        words_list = _value_to_printable(words.keys())
+        words_list = _list_to_printable(words.keys())
         q = "SELECT id,word,count FROM words WHERE word IN %s" % words_list
         rows = self._db_query(q)
         for row in rows:
@@ -835,7 +918,6 @@ class Database:
 
         self._cursor.executemany("UPDATE words SET count=? WHERE id=?", update_list)
         self._cursor.executemany("INSERT INTO words_map VALUES(?, ?, ?, ?, ?)", map_list)
-        self._db_query("UPDATE meta SET value=value+1 WHERE attr='keywords_filecount'")
 
 
     def _query_keywords(self, words, limit = 100, object_type = None):
@@ -877,15 +959,15 @@ class Database:
         t0=time.time()
         # Fetch number of files that are keyword indexed.  (Used in score
         # calculations.)
-        row = self._db_query_row("SELECT value FROM meta WHERE attr='keywords_filecount'")
-        filecount = int(row[0])
+        row = self._db_query_row("SELECT value FROM meta WHERE attr='keywords_objectcount'")
+        objectcount = int(row[0])
 
         # Convert words string to a tuple of lower case words.
         words = tuple(str_to_unicode(words).lower().split())
         # Remove words that aren't indexed (words less than MIN_WORD_LENGTH 
         # characters, or and words in the stop list).
         words = filter(lambda x: len(x) >= MIN_WORD_LENGTH and x not in STOP_WORDS, words)
-        words_list = _value_to_printable(words)
+        words_list = _list_to_printable(words)
         nwords = len(words)
 
         if nwords == 0:
@@ -902,10 +984,10 @@ class Database:
             words[row[0]] = {
                 "word": row[1],
                 "count": row[2],
-                "idf_t": math.log(filecount / row[2] + 1) + order_weight
+                "idf_t": math.log(objectcount / row[2] + 1) + order_weight
             }
             ids.append(row[0])
-            print "WORD: %s (%d), freq=%d/%d, idf_t=%f" % (row[1], row[0], row[2], filecount, words[row[0]]["idf_t"])
+            print "WORD: %s (%d), freq=%d/%d, idf_t=%f" % (row[1], row[0], row[2], objectcount, words[row[0]]["idf_t"])
 
         # Not all the words we requested are in the database, so we return
         # 0 results.
@@ -926,7 +1008,7 @@ class Database:
 
         all_results = {}
         if limit == None:
-            limit = filecount
+            limit = objectcount
 
         sql_limit = max(limit*3, 100)
         finished = False

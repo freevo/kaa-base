@@ -32,7 +32,7 @@ extensions = []
 try:
     import shm
 except ImportError:
-    print "No system shm module available; installing."
+    print "Building kaa shm module (no system shm module already available)."
     extensions.append( Extension('shmmodule', ['src/extensions/shmmodule.c']) )
 
 # call setup

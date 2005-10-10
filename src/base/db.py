@@ -17,7 +17,8 @@ CREATE_SCHEMA = """
     CREATE TABLE types (
         id              INTEGER PRIMARY KEY AUTOINCREMENT, 
         name            TEXT UNIQUE,
-        attrs_pickle    BLOB
+        attrs_pickle    BLOB,
+        idx_pickle      BLOB
     );
 
     CREATE TABLE words (
@@ -182,79 +183,102 @@ class Database:
         self.register_object_type_attrs("dir")
 
 
-    def register_object_type_attrs(self, type_name, attr_list = ()):
+    def _register_check_indexes(self, indexes, attrs):
+        for cols in indexes:
+            if type(cols) not in (list, tuple):
+                raise ValueError, "Single column index specified ('%s') where multi-column index expected." % cols
+            for col in cols:
+                errstr = "Multi-column index (%s) contains" % ",".join(cols)
+                if col not in attrs:
+                    raise ValueError, "%s unknown attribute '%s'" % (errstr, col)
+                if not attrs[col][1]:
+                    raise ValueError, "%s ATTR_SIMPLE attribute '%s'" % (errstr, col)
+
+
+    def _register_create_multi_indexes(self, indexes, table_name):
+        for cols in indexes:
+            self._db_query("CREATE INDEX %s_%s_idx ON %s (%s)" % \
+                           (table_name, "_".join(cols), table_name, ",".join(cols)))
+
+
+    def register_object_type_attrs(self, type_name, indexes = [], **attrs):
+        table_name = "objects_%s" % type_name
         if type_name in self._object_types:
             # This type already exists.  Compare given attributes with
             # existing attributes for this type.
-            cur_type_id, cur_type_attrs = self._object_types[type_name]
+            cur_type_id, cur_type_attrs, cur_type_idx = self._object_types[type_name]
             new_attrs = {}
-            db_needs_update = False
-            for name, type, flags in attr_list:
-                if name not in cur_type_attrs:
-                    new_attrs[name] = type, flags
-                    if flags:
+            table_needs_rebuild = False
+            for attr_name, (attr_type, attr_flags) in attrs.items():
+                if attr_name not in cur_type_attrs:
+                    new_attrs[attr_name] = attr_type, attr_flags
+                    if attr_flags:
                         # New attribute isn't simple, needs to alter table.
-                        db_needs_update = True
-
-            if len(new_attrs) == 0:
-                # All these attributes are already registered; nothing to do.
-                return
-
-            if not db_needs_update:
-                # Only simple (i.e. pickled only) attributes are added, so we
-                # don't need to alter the table, just update the types table.
-                cur_type_attrs.update(new_attrs)
-                self._db_query("UPDATE types SET attrs_pickle=? WHERE id=?",
-                           (buffer(cPickle.dumps(cur_type_attrs, 2)), cur_type_id))
-                return
+                        table_needs_rebuild = True
 
             # Update the attr list to merge both existing and new attributes.
-            # We need to update the database now.
-            attr_list = []
-            for name, (type, flags) in cur_type_attrs.items() + new_attrs.items():
-                attr_list.append((name, type, flags))
+            attrs = cur_type_attrs.copy()
+            attrs.update(new_attrs)
+            new_indexes = Set(indexes).difference(cur_type_idx)
+            indexes = Set(indexes).union(cur_type_idx)
+            self._register_check_indexes(indexes, attrs)
+
+            if not table_needs_rebuild:
+                # Only simple (i.e. pickled only) attributes are being added,
+                # or only new indexes are added, so we don't need to rebuild the
+                # table.
+                if len(new_attrs):
+                    self._db_query("UPDATE types SET attrs_pickle=? WHERE id=?",
+                                   (buffer(cPickle.dumps(attrs, 2)), cur_type_id))
+
+                if len(new_indexes):
+                    self._register_create_multi_indexes(new_indexes, table_name)
+                    self._db_query("UPDATE types SET idx_pickle=? WHERE id=?",
+                                   (buffer(cPickle.dumps(indexes, 2)), cur_type_id))
+
+                return
+
+            # We need to update the database now ...
 
         else:
-            new_attrs = {}
-            cur_type_id = None
-            # Merge standard attributes with user attributes for this type.
-            attr_list = (
-                ("id", int, ATTR_SEARCHABLE),
-                ("parent_type", int, ATTR_SEARCHABLE),
-                ("parent_id", int, ATTR_SEARCHABLE),
-                ("pickle", buffer, ATTR_SEARCHABLE),
-            ) + tuple(attr_list)
-
-        table_name = "objects_%s" % type_name
+            # New type definition.
+            new_attrs = cur_type_id = None
+            # Merge standard attributes with user attributes for this new type.
+            attrs.update({
+                "id": (int, ATTR_SEARCHABLE),
+                "parent_type": (int, ATTR_SEARCHABLE),
+                "parent_id": (int, ATTR_SEARCHABLE),
+                "pickle": (buffer, ATTR_SEARCHABLE)
+            })
+            self._register_check_indexes(indexes, attrs)
 
         create_stmt = "CREATE TABLE %s_tmp ("% table_name
 
         # Iterate through type attributes and append to SQL create statement.
-        attrs = {}
-        for name, type, flags in attr_list:
-            assert(name not in RESERVED_ATTRIBUTES)
+        for attr_name, (attr_type, attr_flags) in attrs.items():
+            assert(attr_name not in RESERVED_ATTRIBUTES)
             # If flags is non-zero it means this attribute needs to be a
             # column in the table, not a pickled value.
-            if flags:
+            if attr_flags:
                 sql_types = {int: "INTEGER", float: "FLOAT", buffer: "BLOB", 
                              unicode: "TEXT", str: "BLOB"}
-                if type not in sql_types:
-                    raise ValueError, "Type '%s' not supported" % str(type)
-                create_stmt += "%s %s" % (name, sql_types[type])
-                if name == "id":
+                if attr_type not in sql_types:
+                    raise ValueError, "Type '%s' not supported" % str(attr_type)
+                create_stmt += "%s %s" % (attr_name, sql_types[attr_type])
+                if attr_name == "id":
                     # Special case, these are auto-incrementing primary keys
                     create_stmt += " PRIMARY KEY AUTOINCREMENT"
                 create_stmt += ","
 
-            attrs[name] = (type, flags)
-
         create_stmt = create_stmt.rstrip(",") + ")"
         self._db_query(create_stmt)
 
+
         # Add this type to the types table, including the attributes
         # dictionary.
-        self._db_query("INSERT OR REPLACE INTO types VALUES(?, ?, ?)", 
-                       (cur_type_id, type_name, buffer(cPickle.dumps(attrs, 2))))
+        self._db_query("INSERT OR REPLACE INTO types VALUES(?, ?, ?, ?)", 
+                       (cur_type_id, type_name, buffer(cPickle.dumps(attrs, 2)),
+                        buffer(cPickle.dumps(indexes, 2))))
         self._load_object_types()
 
         if new_attrs:
@@ -283,18 +307,19 @@ class Database:
                        "parent_type)" % (table_name, table_name))
 
         # If any of these attributes need to be indexed, create the index
-        # for that column.  TODO: need to support indexes on multiple
-        # columns.
-        for name, type, flags in attr_list:
-            if flags & ATTR_INDEXED:
+        # for that column.
+        for attr_name, (attr_type, attr_flags) in attrs.items():
+            if attr_flags & ATTR_INDEXED:
                 self._db_query("CREATE INDEX %s_%s_idx ON %s (%s)" % \
-                               (table_name, name, table_name, name))
+                               (table_name, attr_name, table_name, attr_name))
 
+        # Create multi-column indexes; indexes value has already been verified.
+        self._register_create_multi_indexes(indexes, table_name)
 
 
     def _load_object_types(self):
-        for id, name, attrs in self._db_query("SELECT * from types"):
-            self._object_types[name] = id, cPickle.loads(str(attrs))
+        for id, name, attrs, idx in self._db_query("SELECT * from types"):
+            self._object_types[name] = id, cPickle.loads(str(attrs)), cPickle.loads(str(idx))
             
     def _type_has_keyword_attr(self, type_name):
         if type_name not in self._object_types:
@@ -305,9 +330,15 @@ class Database:
                 return True
         return False
 
+    def _get_type_attrs(self, type_name):
+        return self._object_types[type_name][1]
+
+    def _get_type_id(self, type_name):
+        return self._object_types[type_name][0]
+
 
     def _make_query_from_attrs(self, query_type, attrs, type_name):
-        type_attrs = self._object_types[type_name][1]
+        type_attrs = self._get_type_attrs(type_name)
 
         columns = []
         values = []
@@ -393,7 +424,7 @@ class Database:
         child_objects = {}
         count = 0
         for object_type, object_ids in objects.items():
-            object_type_id = self._object_types[object_type][0]
+            object_type_id = self._get_type_id(object_type)
             if len(object_ids) == 0:
                 continue
 
@@ -403,7 +434,7 @@ class Database:
             count += self._cursor.rowcount
 
             # Record all children of this object so we can later delete them.
-            for tp_name, (tp_id, tp_attrs) in self._object_types.items():
+            for tp_name, (tp_id, tp_attrs, tp_idx) in self._object_types.items():
                 children_ids = self._db_query("SELECT id FROM objects_%s WHERE parent_id IN %s AND parent_type=?" % \
                                               (tp_name, object_ids_str), (object_type_id,))
                 if len(children_ids):
@@ -429,9 +460,9 @@ class Database:
         were queried by query_normalized().  The "id" key of this dict refers
         to the id number assigned to this object.
         """
-        type_attrs = self._object_types[object_type][1]
+        type_attrs = self._get_type_attrs(object_type)
         if parent:
-            attrs["parent_type"] = self._object_types[parent[0]][0]
+            attrs["parent_type"] = self._get_type_id(parent[0])
             attrs["parent_id"] = parent[1]
         #attrs["name"] = object_name
         query, values = self._make_query_from_attrs("add", attrs, object_type)
@@ -470,7 +501,7 @@ class Database:
         ATTR_SIMPLE attribute is set to None, it will be removed from the
         pickled dictionary.
         """
-        type_attrs = self._object_types[object_type][1]
+        type_attrs = self._get_type_attrs(object_type)
         needs_keyword_reindex = False
         keyword_columns = []
         for name, (attr_type, flags) in type_attrs.items():
@@ -492,7 +523,7 @@ class Database:
             row_attrs.update(attrs)
             attrs = row_attrs
         if parent:
-            attrs["parent_type"] = self._object_types[parent[0]][0]
+            attrs["parent_type"] = self._get_type_id(parent[0])
             attrs["parent_id"] = parent[1]
         attrs["id"] = object_id
         query, values = self._make_query_from_attrs("update", attrs, object_type)
@@ -601,7 +632,7 @@ class Database:
 
         if "parent" in attrs:
             parent_type, parent_id = attrs["parent"]
-            attrs["parent_type"] = self._object_types[parent_type][0]
+            attrs["parent_type"] = self._get_type_id(parent_type)
             attrs["parent_id"] = parent_id
             del attrs["parent"]
 
@@ -628,7 +659,7 @@ class Database:
 
         results = []
         query_info["columns"] = {}
-        for type_name, (type_id, type_attrs) in type_list:
+        for type_name, (type_id, type_attrs, type_idx) in type_list:
             if kw_results and type_id not in kw_results_by_type:
                 # If we've done a keyword search, don't bother querying 
                 # object types for which there were no keyword hits.
@@ -748,7 +779,7 @@ class Database:
         # For type converstion, currently just used for converting buffer 
         # values to strings.
         type_maps = {}
-        for type_name, (type_id, type_attrs) in self._object_types.items():
+        for type_name, (type_id, type_attrs, type_idx) in self._object_types.items():
             col_desc = query_info["columns"].get(type_name)
             if col_desc:
                 type_maps[type_name] = [ (x, str) for x in type_attrs 
@@ -868,7 +899,7 @@ class Database:
         count = 0
         for type_name, object_ids in objects.items():
             # Resolve object type name to id
-            type_id = self._object_types[type_name][0]
+            type_id = self._get_type_id(type_name)
 
             # Remove all words associated with this object.  A trigger will
             # decrement the count column in the words table for all word_id
@@ -889,7 +920,7 @@ class Database:
         database for the given object.
         """
         # Resolve object type name to id
-        object_type = self._object_types[object_type][0]
+        object_type = self._get_type_id(object_type)
 
         # Holds any of the given words that already exist in the database
         # with their id and count.
@@ -996,7 +1027,7 @@ class Database:
 
         if object_type:
             # Resolve object type name to id
-            object_type = self._object_types[object_type][0]
+            object_type = self._get_type_id(object_type)
 
         results, state = {}, {}
         for id in ids:

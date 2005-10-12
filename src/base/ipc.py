@@ -49,6 +49,12 @@ def _unpickle_slice(start, stop, step):
     return slice(start, stop, step)
 copy_reg.pickle(slice, _pickle_slice, _unpickle_slice)
 
+def _pickle_buffer(buffer):
+    return _unpickle_buffer, (str(buffer),)
+def _unpickle_buffer(s):
+    return buffer(s)
+copy_reg.pickle(buffer, _pickle_buffer, _unpickle_buffer)
+
 def _get_proxy_type(name):
     clsname = "IPCProxy_" + name
     mod = sys.modules[__name__]
@@ -362,14 +368,14 @@ class IPCChannel:
         if seq == 0:
             seq = self.last_seq = self.last_seq + 1
 
+        pdata = cPickle.dumps( (seq, packet_type, data), 2 )
         if packet_type[:3] == "REQ":
-            _debug(1, "<- REQUEST: seq=%d, type=%s, data=%d" % (seq, packet_type, len(data)))
+            _debug(1, "<- REQUEST: seq=%d, type=%s, data=%d" % (seq, packet_type, len(pdata)))
             self._wait_queue[seq] = [data, False, None, time.time(), reply_cb]
             if timeout == 0:
                 self._wait_queue[seq][1] = None
         else:
-            _debug(1, "<- REPLY: seq=%d, type=%s, data=%d" % (seq, packet_type, len(data)))
-        pdata = cPickle.dumps( (seq, packet_type, data), 2 )
+            _debug(1, "<- REPLY: seq=%d, type=%s, data=%d" % (seq, packet_type, len(pdata)))
         self.write(struct.pack("I", len(pdata)) + pdata)
         if not self.socket:
             return

@@ -122,16 +122,6 @@ def loop():
     Notifier main loop function. It will loop until an exception
     is raised or sys.exit is called.
     """
-    # Sets a default root level logger if none exists.
-    logger = logging.getLogger()
-    if len(logger.handlers) == 0:
-        formatter = logging.Formatter('%(levelname)s %(module)s'+ \
-                                      '(%(lineno)s): %(message)s')
-        handler = logging.StreamHandler()
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        logger.setLevel(logging.WARNING)
-
     global running
     running = True
 
@@ -154,6 +144,19 @@ def step(*args, **kwargs):
     """
     Notifier step function with signal support.
     """
+    # Set a default handler for the notifier logger if one hasn't been
+    # added yet.  We do this in step() so that clients that don't call
+    # notifier.loop() and don't set a handler can still get some useful
+    # output if errors occur.  The overhead of doing this in step() should
+    # be epsilon.
+    if len(log.handlers) == 0:
+        formatter = logging.Formatter('%(levelname)s %(module)s'+ \
+                                      '(%(lineno)s): %(message)s')
+        handler = logging.StreamHandler()
+        handler.setFormatter(formatter)
+        log.addHandler(handler)
+        log.setLevel(logging.WARNING)
+
     try:
         notifier.step(*args, **kwargs)
     except (KeyboardInterrupt, SystemExit):

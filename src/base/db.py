@@ -123,6 +123,51 @@ class QExpr(object):
                    (self._operand,)
 
 
+
+# Convenience functions for dealing with raw datasets.
+def create_column_map(query_info, colname):
+    """
+    Takes a query_info dict (the first argument returned by Database.query_raw)
+    and returns a dictionary that maps attribute names to their corresponding
+    array index in each row entry.
+
+    e.g. ('foo', 'bar') returns {"foo":0, "bar":1}
+    """
+    cols = query_info["columns"][colname]
+    return dict(zip(cols, range(len(cols))))
+
+
+def iter_raw_data((query_info, rows), columns):
+    """
+    Takes query data (the tuple returned by Database.query_raw()) and returns
+    a generator that iterates over the rows in the result set, where each
+    iteration provides a tuple of attributes corresponding to the tuple
+    of column names in the columns parameter.
+
+    e.g. for foo,bar in iter_raw_data(data, ("foo", "bar"))
+    """
+    pickled_columns = None
+
+    if len(rows) > 0:
+        cmap = create_column_map(query_info, rows[0][0])
+        pickled_columns = Set(columns).difference(cmap.keys())
+
+    if len(pickled_columns) == 0:
+        for row in rows:
+            yield [ row[cmap[col]] for col in columns ]
+    else:
+        cmap.update(dict(zip(pickled_columns, range(len(cmap), len(cmap)+len(pickled_columns)))))
+        extra_dummy = (None,)*len(pickled_columns)
+        for row in rows:
+            pickle = row[cmap["pickle"]]
+            if pickle:
+                pickled_attrs = cPickle.loads(str(pickle))
+                extra = tuple([ pickled_attrs.get(x) for x in pickled_columns ])
+            else:
+                extra = extra_dummy
+            yield [ (row + extra)[cmap[col]] for col in columns ]
+
+
 class Database:
     def __init__(self, dbfile = None):
         if not dbfile:
@@ -255,13 +300,13 @@ class Database:
         create_stmt = "CREATE TABLE %s_tmp ("% table_name
 
         # Iterate through type attributes and append to SQL create statement.
+        sql_types = {int: "INTEGER", float: "FLOAT", buffer: "BLOB", 
+                     unicode: "TEXT", str: "BLOB"}
         for attr_name, (attr_type, attr_flags) in attrs.items():
             assert(attr_name not in RESERVED_ATTRIBUTES)
             # If flags is non-zero it means this attribute needs to be a
             # column in the table, not a pickled value.
             if attr_flags:
-                sql_types = {int: "INTEGER", float: "FLOAT", buffer: "BLOB", 
-                             unicode: "TEXT", str: "BLOB"}
                 if attr_type not in sql_types:
                     raise ValueError, "Type '%s' not supported" % str(attr_type)
                 create_stmt += "%s %s" % (attr_name, sql_types[attr_type])
@@ -406,7 +451,7 @@ class Database:
         for argument details.  Returns number of objects deleted.
         """
         attrs["attrs"] = ["id"]
-        query_info, results = self.query(**attrs)
+        query_info, results = self.query_raw(**attrs)
         if len(results) == 0:
             return 0
 
@@ -457,7 +502,7 @@ class Database:
         which a None are not added.
 
         This method returns the dict that would be returned if this object
-        were queried by query_normalized().  The "id" key of this dict refers
+        were queried by query().  The "id" key of this dict refers
         to the id number assigned to this object.
         """
         type_attrs = self._get_type_attrs(object_type)
@@ -557,7 +602,7 @@ class Database:
         self._db.commit()
 
 
-    def query(self, **attrs):
+    def query_raw(self, **attrs):
         """
         Query the database for objects matching all of the given attributes
         (specified in kwargs).  There are a few special kwarg attributes:
@@ -625,6 +670,8 @@ class Database:
 
 
         if "type" in attrs:
+            if attrs["type"] not in self._object_types:
+                raise ValueError, "Unknown object type '%s'" % attrs["type"]
             type_list = [(attrs["type"], self._object_types[attrs["type"]])]
             del attrs["type"]
         else:
@@ -755,11 +802,11 @@ class Database:
         return query_info, results
 
 
-    def query_normalized(self, **attrs):
+    def query(self, **attrs):
         """
-        Performs a query as in query() and returns normalized results.
+        Performs a query as in query_raw() and returns normalized results.
         """
-        return self.normalize_query_results(self.query(**attrs))
+        return self.normalize_query_results(self.query_raw(**attrs))
 
 
     def normalize_query_results(self, (query_info, results)):
@@ -782,10 +829,10 @@ class Database:
         for type_name, (type_id, type_attrs, type_idx) in self._object_types.items():
             col_desc = query_info["columns"].get(type_name)
             if col_desc:
-                type_maps[type_name] = [ (x, str) for x in type_attrs 
-                                         if type_attrs[x][0] == str and 
-                                            x in col_desc 
-                                       ]
+                type_maps[type_name] = [ 
+                    (x, str) for x in type_attrs if type_attrs[x][0] == str 
+                                                    and x in col_desc 
+                ]
 
         for row in results:
             col_desc = query_info["columns"][row[0]]

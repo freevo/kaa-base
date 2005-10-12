@@ -124,8 +124,7 @@ def str_to_unicode(s):
     latin-1.  If all fails, it will force encoding to the preferred
     charset, replacing unknown characters.
     """
-    if type(s) == unicode:
-        # Already unicode
+    if type(s) == unicode or s == None:
         return s
 
     for c in (locale.getpreferredencoding(), "utf-8", "latin-1"):

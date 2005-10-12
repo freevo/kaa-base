@@ -117,6 +117,21 @@ def shutdown():
         pass
 
 
+def _check_has_logger_handler():
+    # Set a default handler for the notifier logger if one hasn't been added
+    # yet.  We do this in step() as well as in loop() so that clients that
+    # don't call notifier.loop() and don't set a handler can still get some
+    # useful output if errors occur.  The overhead of doing this in step()
+    # should be epsilon.
+    if len(log.handlers) == 0:
+        formatter = logging.Formatter('%(levelname)s %(module)s'+ \
+                                      '(%(lineno)s): %(message)s')
+        handler = logging.StreamHandler()
+        handler.setFormatter(formatter)
+        log.addHandler(handler)
+        log.setLevel(logging.WARNING)
+
+
 def loop():
     """
     Notifier main loop function. It will loop until an exception
@@ -125,6 +140,7 @@ def loop():
     global running
     running = True
 
+    _check_has_logger_handler()
     e = None
     try:
         notifier.loop()
@@ -144,19 +160,7 @@ def step(*args, **kwargs):
     """
     Notifier step function with signal support.
     """
-    # Set a default handler for the notifier logger if one hasn't been
-    # added yet.  We do this in step() so that clients that don't call
-    # notifier.loop() and don't set a handler can still get some useful
-    # output if errors occur.  The overhead of doing this in step() should
-    # be epsilon.
-    if len(log.handlers) == 0:
-        formatter = logging.Formatter('%(levelname)s %(module)s'+ \
-                                      '(%(lineno)s): %(message)s')
-        handler = logging.StreamHandler()
-        handler.setFormatter(formatter)
-        log.addHandler(handler)
-        log.setLevel(logging.WARNING)
-
+    _check_has_logger_handler()
     try:
         notifier.step(*args, **kwargs)
     except (KeyboardInterrupt, SystemExit):

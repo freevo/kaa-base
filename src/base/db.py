@@ -114,7 +114,7 @@ class QExpr(object):
     def as_sql(self, var):
         if self._operator == "range":
             a, b = self._operand
-            return "%s >= ? AND %s < ?" % (var, var), (a, b)
+            return "%s >= ? AND %s <= ?" % (var, var), (a, b)
         elif self._operator in ("in", "not in"):
             return "%s %s %s" % (var, self._operator.upper(),
                    _list_to_printable(self._operand)), ()
@@ -608,7 +608,9 @@ class Database:
         (specified in kwargs).  There are a few special kwarg attributes:
 
              parent: (type, id) tuple referring to the object's parent, where
-                     type is the name of the type.
+                     type is the name of the type and id is the database id
+                     of the parent, or a QExpr.   parent may also be a tuple
+                     of (type, id) tuples.
              object: (type, id) tuple referring to the object itself.
            keywords: a string of search terms for keyword search.
                type: only search items of this type (e.g. "images"); if None
@@ -634,6 +636,7 @@ class Database:
         return a list of dicts for more convenient use.
         """
         query_info = {}
+        parents = []
 
         if "object" in attrs:
             attrs["type"], attrs["id"] = attrs["object"]
@@ -678,9 +681,16 @@ class Database:
             type_list = self._object_types.items()
 
         if "parent" in attrs:
-            parent_type, parent_id = attrs["parent"]
-            attrs["parent_type"] = self._get_type_id(parent_type)
-            attrs["parent_id"] = parent_id
+            # ("type", id_or_QExpr) or (("type1", id_or_QExpr), ("type2", id_or_QExpr), ...)
+            if type(attrs["parent"][0]) != tuple:
+                # Convert first form to second form.
+                attrs["parent"] = (attrs["parent"],)
+
+            for parent_type_name, parent_id in attrs["parent"]:
+                parent_type_id = self._get_type_id(parent_type_name)
+                if type(parent_id) != QExpr:
+                    parent_id = QExpr("=", parent_id)
+                parents.append((parent_type_id, parent_id))
             del attrs["parent"]
 
         if "limit" in attrs:
@@ -736,16 +746,28 @@ class Database:
             if len(Set(attrs).difference(all_columns)) > 0:
                 continue
 
-            q = "SELECT %s '%s'%%s,%s FROM objects_%s" % \
-                (query_type, type_name, string.join(columns, ","), type_name)
+            q = []
+            q.append("SELECT %s '%s'%%s,%s FROM objects_%s" % \
+                (query_type, type_name, string.join(columns, ","), type_name))
 
             if kw_results != None:
-                q %= ",%d+id as computed_id" % (type_id * 10000000)
-                q +=" WHERE id IN %s" % _list_to_printable(kw_results_by_type[type_id])
+                q[0] %= ",%d+id as computed_id" % (type_id * 10000000)
+                q.append("WHERE")
+                q.append("id IN %s" % _list_to_printable(kw_results_by_type[type_id]))
             else:
-                q %= ""
+                q[0] %= ""
 
             query_values = []
+
+            if len(parents):
+                q.append(("WHERE", "AND")["WHERE" in q])
+                expr = []
+                for parent_type, parent_id in parents:
+                    sql, values = parent_id.as_sql("parent_id")
+                    expr.append("(parent_type=? AND %s)" % sql)
+                    query_values += (parent_type,) + values
+                q.append("(%s)" % " OR ".join(expr))
+
             for attr, value in attrs.items():
                 attr_type = type_attrs[attr][0]
                 if type(value) != QExpr:
@@ -761,18 +783,16 @@ class Database:
                     # Treat strings (non-unicode) as buffers.
                     value._operand = buffer(value._operand)
 
-                if q.find("WHERE") == -1:
-                    q += " WHERE "
-                else:
-                    q += " AND "
+                q.append(("WHERE", "AND")["WHERE" in q])
 
                 sql, values = value.as_sql(attr)
-                q += sql
+                q.append(sql)
                 query_values.extend(values)
             
             if result_limit != None:
-                q += " LIMIT %d" % result_limit
+                q.append(" LIMIT %d" % result_limit)
 
+            q = " ".join(q)
             rows = self._db_query(q, query_values)
             if result_limit != None:
                 results.extend(rows[:result_limit - len(results) + 1])

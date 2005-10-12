@@ -393,6 +393,7 @@ class IPCChannel:
         if resultcode == "ok":
             return data
         elif resultcode == "error":
+            # FIXME: assumes data[0] is an Exception object
             data[0]._ipc_remote_tb = data[2].strip()
             raise data[0], data[1]
 

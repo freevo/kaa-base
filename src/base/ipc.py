@@ -22,9 +22,10 @@ from new import classobj
 import kaa.notifier
 import kaa
 
-log = logging.getLogger('ipc')
+log = logging.getLogger('notifier')
 
 IPC_DEFAULT_TIMEOUT = 5.0
+
 DEBUG=1
 DEBUG=0
 
@@ -231,30 +232,12 @@ class IPCChannel:
         self._default_timeout = IPC_DEFAULT_TIMEOUT
         self._auth_secret = auth_secret
         self._authenticated = False
-        self.authenticate()
-
-
-    def _get_auth_challenge(self):
-        return file("/dev/urandom").read(64)
-
-    def _get_challenge_response(self, challenge):
-        m = self._auth_secret + challenge
-        return sha.sha(sha.sha(m).digest() + m).digest()
-
-    def authenticate(self):
-        if self._authenticated or self._auth_secret == None:
-            return
-
-        challenge = self._get_auth_challenge()
-        expected_response = self._get_challenge_response(challenge)
-        given_response = self.request("auth", challenge)
-        if given_response != expected_response:
-            self.handle_close()
-            if not self.server:
-                raise IPCAuthenticationError, "Authentication with remote failed."
-            return
-
-        self._authenticated = True
+        
+        if not self.server and self._auth_secret != None:
+            self._pending_challenge = self._get_auth_challenge()
+            self.request("auth", (self._pending_challenge, ""))
+        else:
+            self._pending_challenge = None
 
 
     def set_default_timeout(self, timeout):
@@ -292,35 +275,57 @@ class IPCChannel:
             self.handle_close()
             return
 
+        header_size = struct.calcsize("I20sI")
         self.read_buffer.append(data)
         # Before we start into the loop, make sure we have enough data for
         # a full packet.  For very large packets (if we just pickled a huge
         # object), this saves the string.join() which can be very expensive.
         # (This is the reason we use a list for our read buffer.)
         buflen = reduce(lambda x, y: x + len(y), self.read_buffer, 0)
-        if buflen < 4:
+        if buflen < header_size:
             return
-        if len(self.read_buffer[0]) >= 4:
-            packet_len = struct.unpack("I", self.read_buffer[0][:4])[0]
-            if buflen < packet_len:
-                return
-            
+        if buflen > 512 and self._auth_secret != None and self._authenticated == False:
+            log.warning("Too much data received from remote end before authentication; disconnecting")
+            self.handle_close()
+            return
+
+        # Ensure the first block in the read buffer is big enough for a full
+        # packet header.  If it isn't, then we must have more than 1 block in
+        # the buffer, so keep merging blocks until we have a block big enough
+        # to be a header.  If we're here, it means that buflen < header_size,
+        # so we can safely loop.
+        while len(self.read_buffer[0]) < header_size:
+            self.read_buffer[0] += self.read_buffer.pop(1)
+
+        # Make sure the the buffer holds enough data as indicated by the
+        # payload size in the header.
+        payload_len = struct.unpack("I20sI", self.read_buffer[0][:header_size])[2]
+        if buflen < payload_len + header_size:
+            return
+
+        # At this point we know we have enough data in the buffer for the
+        # packet, so we merge the array into a single buffer.
         strbuf = string.join(self.read_buffer, "")
         self.read_buffer = []
-        n = 0
         while 1:
-            if len(strbuf) <= 4:
+            if len(strbuf) <= header_size:
+                if len(strbuf) > 0:
+                    self.read_buffer.append(str(strbuf))
+                break
+            seq, packet_type, payload_len = struct.unpack("I20sI", strbuf[:header_size])
+            if len(strbuf) < payload_len + header_size:
+                # We've also received portion of another packet that we
+                # haven't fully received yet.  Put back to the buffer what
+                # we have so far, and we can exit the loop.
+                _debug(1, "Short packet, need %d, have %d" % (payload_len, len(self.read_buffer)))
                 self.read_buffer.append(str(strbuf))
                 break
-            packet_len = struct.unpack("I", strbuf[:4])[0]
-            if len(strbuf) < packet_len + 4:
-                _debug(1, "Short packet, need %d, have %d" % (packet_len, len(self.read_buffer)))
-                self.read_buffer.append(str(strbuf))
-                break
-            packet = strbuf[4:4 + packet_len]
-            strbuf = buffer(strbuf, 4 + packet_len)
-            self.handle_packet(packet)
-            n += 1
+
+            # Grab the payload for this packet, and shuffle strbuf to the
+            # next packet.
+            payload = strbuf[header_size:header_size + payload_len]
+            strbuf = buffer(strbuf, header_size + payload_len)
+            self.handle_packet(seq, packet_type.strip("\x00"), payload)
 
 
     def write(self, data):
@@ -346,20 +351,47 @@ class IPCChannel:
             self.handle_close()
 
 
-    def handle_packet(self, packet):
-        # FIXME: loads() could raise an exception if trying to unpickle an
-        # unknown object (like an exception).
-        (seq, packet_type, data) = cPickle.loads(packet)
-        if packet_type[:3] == "REP":
-            _debug(1, "-> REPLY: seq=%d, type=%s, data=%d" % (seq, packet_type, len(packet)))
-            request = packet_type[4:].lower()
-            if seq not in self._wait_queue:
-                _debug(1,  "WARNING: received reply for unknown sequence (%d)" % seq)
+    def handle_packet(self, seq, packet_type, payload):
+        # Untaint packet_type.
+        if len(packet_type) <= 4 or packet_type[:3] not in ("REP", "REQ") or \
+           not packet_type[4:].isalpha(): 
+            log.warning("Bad request from remote; disconnecting.")
+            return self.handle_close()
+
+        # packet_type is safe now.  It is <= 20 bytes (assured by struct.unpack
+        # in handle_read() and consists of only alpha chars.  seq is guaranteed
+        # to be an integer (returned by struct.unpack) but it may not be a
+        # valid sequence number.  payload is tainted and could contain 
+        # something nasty.
+
+        prefix = packet_type[:3].lower()
+        command = packet_type[4:].lower()
+
+        if (self._auth_secret != None and self._authenticated == False) or command == "auth":
+            # We're waiting for authentication.  Handle this packet using
+            # paranoid _handle_auth_packet method.
+            data = self._handle_auth_packet(seq, prefix, command, payload)
+            if not data:
+                return
+        else:
+            # Here we are either authenticated or we don't require auth.  We
+            # assume it's safe to unpickle the payload.
+            try:
+                data = cPickle.loads(payload)
+            except:
+                log.warning("Received packet failed to unpickle")
                 return
 
-            if self._auth_secret != None and self._authenticated == False and request != "auth":
-                _debug(1,  "WARNING: received non-auth reply while waiting for authentication")
+        # If we're here, we're either authenticated or we don't require
+        # authentication, or else the auth has just failed.  In the latter 
+        # case, 'data' does not contain anything from the remote.
+
+        if prefix == "rep":
+            if  seq not in self._wait_queue:
+                log.warning("Received reply for unknown sequence (%d)" % seq)
                 return
+
+            _debug(1, "-> REPLY: seq=%d, command=%s, data=%d" % (seq, command, len(payload)))
 
             if self._wait_queue[seq][1] == False:
                 # If the second element of the wait queue is False, it means
@@ -374,17 +406,13 @@ class IPCChannel:
                 result_cb(result)
             else:
                 del self._wait_queue[seq]
-
-        elif packet_type[:3] == "REQ":
-            _debug(1, "-> REQUEST: seq=%d, type=%s, data=%d" % (seq, packet_type, len(packet)))
-            request = packet_type[4:].lower()
-            if not hasattr(self, "handle_request_%s" % request):
+        else:
+            _debug(1, "-> REQUEST: seq=%d, command=%s, data=%d" % (seq, command, len(payload)))
+            if not hasattr(self, "handle_request_%s" % command):
+                print "handle_request_%s doesn't exist!" % command
                 return
             try:
-                if self._auth_secret != None and self._authenticated == False and request != "auth":
-                    print "Sending needauth"
-                    raise IPCAuthenticationError, "needauth"
-                reply = getattr(self, "handle_request_%s" % request)(data)
+                reply = getattr(self, "handle_request_%s" % command)(data)
             except "NOREPLY":
                 # handle_request_XXX will raise "NOREPLY" to prevent us
                 # from replying -- for oneway functions.
@@ -392,13 +420,144 @@ class IPCChannel:
             except (SystemExit,):
                 raise sys.exc_info()[0], sys.exc_info()[1]
             except IPCAuthenticationError, data:
-                self.reply(request, ("auth", data), seq)
+                self.reply(command, ("auth", data), seq)
             except:
                 # Marshal exception.
                 exstr = string.join(traceback.format_exception(sys.exc_type, sys.exc_value, sys.exc_traceback))
-                self.reply(request, ("error", (sys.exc_info()[0], sys.exc_info()[1], exstr)), seq)
+                self.reply(command, ("error", (sys.exc_info()[0], sys.exc_info()[1], exstr)), seq)
             else:
-                self.reply(request, ("ok", reply), seq)
+                self.reply(command, ("ok", reply), seq)
+
+
+    def _get_auth_challenge(self):
+        """
+        Generates a random challenge.  Returns 64 bytes from /dev/urandom
+        if an auth secret has been defined, or otherwise None.
+        """
+        if self._auth_secret == None:
+            return None
+
+        return file("/dev/urandom").read(64)
+
+    def _get_challenge_response(self, challenge):
+        """
+        Generate a response for the challenge based on the auth secret
+        supplied to the constructor.  This hashes twice to prevent against
+        certain attacks on the hash function.
+        """
+        if self._auth_secret == None:
+            return None
+        m = self._auth_secret + challenge
+        return sha.sha(sha.sha(m).digest() + m).digest()
+
+
+    def _handle_auth_packet(self, seq, prefix, command, payload):
+        """
+        This function handles any packet received by the remote end while
+        we are waiting for authentication.
+
+        The parameters seq, prefix and command are untainted and safe.
+        The parameter payload is potentially dangerous and this function
+        must handle any possible malformed payload gracefully.
+
+        Authentication is a 4 step process and once it has succeeded, both
+        sides should be assured that they share the same authentication
+        secret.  It uses a simple challenge-response scheme.  The client
+        initiates authentication.
+
+           1. Client gives challenge to server.
+           2. Server computes response, generates its own unique challenge and
+              sends both to the client in reply.
+           3. Client validates server's response.  If it fails, client raises
+              IPCAuthenticationError exception but does not disconnect.  If it
+              succeeds, client sends response to server's challenge.
+           4. Server validates client's response.  If it fails, it disconnects
+              immediately.  If it succeeds, it allows the client to send
+              non-auth packets.
+
+        WARNING: once authentication succeeds, there is implicit full trust.
+        There is no security after that point, and it must be assumed that
+        the client can invoke arbitrary calls on the server, and vice versa.
+
+        Also, individual packets aren't authenticated.  This scheme cannot
+        protect against hijacking attacks.
+        """
+        
+        if command != "auth":
+            # Received a non-auth command while expecting auth.
+            if prefix == "req":
+                # Send authentication-required reply.
+                self.reply(command, ("auth", 0), seq)
+            # Hang up.
+            self.handle_close()
+            return
+
+        # We have an authentication packet.
+        try:
+            # Payload could safely be longer than 64+20 bytes, but if it is,
+            # something isn't quite right.  We'll be paranoid and disconnect
+            # unless it's exactly 84 bytes.
+            assert(len(payload) == 64+20)
+            challenge, response = struct.unpack("64s20s", payload)
+        except:
+            log.warning("Malformed authentication packet from remote; disconnecting.")
+            self.handle_close()
+            return
+        
+        if prefix == "req":
+            # We've received a challenge.  If we've already sent a reply
+            # to a previous challenge, then something isn't right.  This
+            # could be a DoS so we'll disconnect immediately.
+            if self._pending_challenge:
+                self._pending_challenge = None
+                self.handle_close()
+                return
+
+            # Otherwise send the response, plus a challenge of our own.
+            response = self._get_challenge_response(challenge)
+            self._pending_challenge = self._get_auth_challenge()
+            self.reply("auth", (self._pending_challenge, response), seq)
+            return
+        else:
+            # Received a reply to an auth request.
+            if self._pending_challenge != None:
+                # We are expecting a response to our previous challenge,
+                # so this reply packet had better contain it.
+                expected_response = self._get_challenge_response(self._pending_challenge)
+                self._pending_challenge = None
+                if response != expected_response:
+                    # Remote failed our challenge.  If we're a server,
+                    # disconnect immediately.  The client should already know
+                    # the authentication failed because our first reply would
+                    # have failed.  If we're a client, simulate an auth 
+                    # failure return code so an exception gets raised.
+                    if self.server:
+                        self.handle_close()
+                        return
+                    else:
+                        return ("auth", 1)
+
+                # Challenge response was good, so we're considered 
+                # authenticated now.
+                self._authenticated = True
+
+                # If remote has issued a challenge, we'll respond.  Unless
+                # something fishy is going on, this should always succeed
+                # on the remote end, because at this point our auth secrets
+                # must match.  Obviously if the remote challenge is 64 bytes
+                # of nulls, then we won't reply.  (This will never happen
+                # under normal circumstances.)  There are no negative security
+                # implications to not responding.
+                if len(challenge.strip("\x00")) != 0:
+                    response = self._get_challenge_response(challenge)
+                    self.reply("auth", ("", response), seq)
+
+            # If we're a client, simulate a valid return code so that if the
+            # caller is blocking, it will return (or its async callback will
+            # get called).
+            if not self.server:
+                return ("ok", None)
+
 
 
     def _send_packet(self, packet_type, data, seq = 0, timeout = None, reply_cb = None):
@@ -409,8 +568,19 @@ class IPCChannel:
             timeout = self._default_timeout
         if seq == 0:
             seq = self.last_seq = self.last_seq + 1
+    
+        
+        assert(len(packet_type) <= 20)
+        # Normally command data gets pickled, but auth commands are a special
+        # case.  We don't use pickling for authentication because it's
+        # dangerous to unpickle something of dubious origin.
+        if packet_type[4:].lower() == "auth":
+            # Structure is 64 byte challenge, 20 byte (SHA) response.
+            challenge, response = [ str(x) for x in data ]
+            pdata = struct.pack("64s20s", challenge, response)
+        else:
+            pdata = cPickle.dumps(data, 2)
 
-        pdata = cPickle.dumps( (seq, packet_type, data), 2 )
         if packet_type[:3] == "REQ":
             _debug(1, "<- REQUEST: seq=%d, type=%s, data=%d" % (seq, packet_type, len(pdata)))
             self._wait_queue[seq] = [data, None, None, time.time(), reply_cb]
@@ -418,7 +588,8 @@ class IPCChannel:
                 self._wait_queue[seq][1] = False
         else:
             _debug(1, "<- REPLY: seq=%d, type=%s, data=%d" % (seq, packet_type, len(pdata)))
-        self.write(struct.pack("I", len(pdata)) + pdata)
+
+        self.write(struct.pack("I20sI", seq, packet_type, len(pdata)) + pdata)
         if not self.socket:
             return
         if packet_type[:3] == "REQ" and timeout > 0:
@@ -429,13 +600,19 @@ class IPCChannel:
             self.handle_write()
         return seq
 
+
     def handle_reply(self, seq, type, (resultcode, data)):
         del self._wait_queue[seq]
         #return seq, type, data
         if resultcode == "ok":
             return data
         elif resultcode == "auth":
-            raise IPCAuthenticationError, "Remote requires authentication."
+            if data == 0:
+                raise IPCAuthenticationError(0, "Remote requires authentication.")
+            elif data == 1:
+                raise IPCAuthenticationError(1, "Authentication failure.")
+            else:
+                raise IPCAuthenticationError(-1, "Unknown authentication error.")
         elif resultcode == "error":
             # FIXME: assumes data[0] is an Exception object
             data[0]._ipc_remote_tb = data[2].strip()
@@ -447,6 +624,7 @@ class IPCChannel:
             timeout = self._default_timeout
 
         seq = self._send_packet("REQ_" + type, data, timeout = timeout, reply_cb = reply_cb)
+        # XXX: do we really want to an raise exception here?
         if not self.socket:
             raise IPCDisconnectedError
 
@@ -464,11 +642,6 @@ class IPCChannel:
         return self._send_packet("REP_" + type, data, seq)
 
 
-    def handle_request_auth(self, challenge):
-        if self._auth_secret == None:
-            return None
-
-        return self._get_challenge_response(challenge)
 
     def handle_request_get(self, name):
         if not self.server:
@@ -784,6 +957,8 @@ class IPCProxy(object):
         
         args = self._ipc_client._proxy_data(args)
         timeout = reply_cb = None
+        if kwargs.get("__ipc_timeout"):
+            timeout = kwargs.get("__ipc_timeout")
         if kwargs.get("__ipc_oneway") or kwargs.get("__ipc_async"):
             timeout = 0
         if kwargs.get("__ipc_async"):

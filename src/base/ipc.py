@@ -7,16 +7,16 @@
 #           def bar(self):
 #               return 42, self
 #       foo = Foo()
-#       ipc = IPCServer("ipc.socket")
+#       ipc = IPCServer("ipc.socket", auth_secret = "foobar")
 #       ipc.register_object(foo, "foo")
 #
 #   On client:
-#       ipc = IPCClient("ipc.socket")
+#       ipc = IPCClient("ipc.socket", auth_secret = "foobar")
 #       foo = ipc.get_object("foo")
 #       print foo.bar()
 
 import logging
-import socket, os, select, time, types, struct, cPickle, thread, sys
+import socket, os, select, time, types, struct, cPickle, thread, sys, sha
 import traceback, string, copy_reg
 from new import classobj
 import kaa.notifier
@@ -24,7 +24,8 @@ import kaa
 
 log = logging.getLogger('ipc')
 
-#DEBUG=1
+IPC_DEFAULT_TIMEOUT = 5.0
+DEBUG=1
 DEBUG=0
 
 def _debug(level, text, *args):
@@ -103,9 +104,13 @@ class IPCDisconnectedError(Exception):
 class IPCTimeoutError(Exception):
     pass
 
+class IPCAuthenticationError(Exception):
+    pass
+
 class IPCServer:
 
-    def __init__(self, address):
+    def __init__(self, address, auth_secret = None):
+        self._auth_secret = auth_secret
         if type(address) in types.StringTypes:
             if address.find('/') == -1:
                 # create socket in kaa temp dir
@@ -155,7 +160,7 @@ class IPCServer:
         client_sock = self.socket.accept()[0]
         client_sock.setblocking(False)
         _debug(1, "New connection", client_sock)
-        client = IPCChannel(self, client_sock)
+        client = IPCChannel(self, auth_secret = self._auth_secret, sock = client_sock)
         self.clients[client_sock] = client
         self.signals["client_connected"].emit(client)
 
@@ -163,7 +168,8 @@ class IPCServer:
     def close_connection(self, client):
         if client.socket:
             client.socket.close()
-            del self.clients[client.socket]
+            if client.socket in self.clients:
+                del self.clients[client.socket]
         client.socket = None
         self.signals["client_closed"].emit(client)
 
@@ -192,7 +198,7 @@ class IPCServer:
         
         
 class IPCChannel:
-    def __init__(self, server_or_address, sock = None):
+    def __init__(self, server_or_address, auth_secret = None, sock = None):
         if not sock:
             if type(server_or_address) in types.StringTypes:
                 server_or_address = '%s/%s' % (kaa.TEMP, server_or_address)
@@ -211,6 +217,10 @@ class IPCChannel:
 
         self._wmon = kaa.notifier.SocketDispatcher(self.handle_write)
         #self._wmon.register(self.socket.fileno(), kaa.notifier.IO_WRITE)
+
+        self.signals = {
+            "closed": kaa.notifier.Signal()
+        }
         
         self.read_buffer = []
         self.write_buffer = ""
@@ -218,11 +228,33 @@ class IPCChannel:
         self.last_seq = 0
         self._wait_queue = {}
         self._proxied_objects = {}
-        self._default_timeout = 2.0
+        self._default_timeout = IPC_DEFAULT_TIMEOUT
+        self._auth_secret = auth_secret
+        self._authenticated = False
+        self.authenticate()
 
-        self.signals = {
-            "closed": kaa.notifier.Signal()
-        }
+
+    def _get_auth_challenge(self):
+        return file("/dev/urandom").read(64)
+
+    def _get_challenge_response(self, challenge):
+        m = self._auth_secret + challenge
+        return sha.sha(sha.sha(m).digest() + m).digest()
+
+    def authenticate(self):
+        if self._authenticated or self._auth_secret == None:
+            return
+
+        challenge = self._get_auth_challenge()
+        expected_response = self._get_challenge_response(challenge)
+        given_response = self.request("auth", challenge)
+        if given_response != expected_response:
+            self.handle_close()
+            if not self.server:
+                raise IPCAuthenticationError, "Authentication with remote failed."
+            return
+
+        self._authenticated = True
 
 
     def set_default_timeout(self, timeout):
@@ -320,8 +352,13 @@ class IPCChannel:
         (seq, packet_type, data) = cPickle.loads(packet)
         if packet_type[:3] == "REP":
             _debug(1, "-> REPLY: seq=%d, type=%s, data=%d" % (seq, packet_type, len(packet)))
+            request = packet_type[4:].lower()
             if seq not in self._wait_queue:
                 _debug(1,  "WARNING: received reply for unknown sequence (%d)" % seq)
+                return
+
+            if self._auth_secret != None and self._authenticated == False and request != "auth":
+                _debug(1,  "WARNING: received non-auth reply while waiting for authentication")
                 return
 
             if self._wait_queue[seq][1] == False:
@@ -344,6 +381,9 @@ class IPCChannel:
             if not hasattr(self, "handle_request_%s" % request):
                 return
             try:
+                if self._auth_secret != None and self._authenticated == False and request != "auth":
+                    print "Sending needauth"
+                    raise IPCAuthenticationError, "needauth"
                 reply = getattr(self, "handle_request_%s" % request)(data)
             except "NOREPLY":
                 # handle_request_XXX will raise "NOREPLY" to prevent us
@@ -351,6 +391,8 @@ class IPCChannel:
                 pass
             except (SystemExit,):
                 raise sys.exc_info()[0], sys.exc_info()[1]
+            except IPCAuthenticationError, data:
+                self.reply(request, ("auth", data), seq)
             except:
                 # Marshal exception.
                 exstr = string.join(traceback.format_exception(sys.exc_type, sys.exc_value, sys.exc_traceback))
@@ -363,7 +405,7 @@ class IPCChannel:
         if not self.socket:
             return
 
-        if timeout == None:
+        if timeout == reply_cb == None:
             timeout = self._default_timeout
         if seq == 0:
             seq = self.last_seq = self.last_seq + 1
@@ -371,9 +413,9 @@ class IPCChannel:
         pdata = cPickle.dumps( (seq, packet_type, data), 2 )
         if packet_type[:3] == "REQ":
             _debug(1, "<- REQUEST: seq=%d, type=%s, data=%d" % (seq, packet_type, len(pdata)))
-            self._wait_queue[seq] = [data, False, None, time.time(), reply_cb]
-            if timeout == 0:
-                self._wait_queue[seq][1] = None
+            self._wait_queue[seq] = [data, None, None, time.time(), reply_cb]
+            if timeout > 0:
+                self._wait_queue[seq][1] = False
         else:
             _debug(1, "<- REPLY: seq=%d, type=%s, data=%d" % (seq, packet_type, len(pdata)))
         self.write(struct.pack("I", len(pdata)) + pdata)
@@ -392,6 +434,8 @@ class IPCChannel:
         #return seq, type, data
         if resultcode == "ok":
             return data
+        elif resultcode == "auth":
+            raise IPCAuthenticationError, "Remote requires authentication."
         elif resultcode == "error":
             # FIXME: assumes data[0] is an Exception object
             data[0]._ipc_remote_tb = data[2].strip()
@@ -399,7 +443,7 @@ class IPCChannel:
 
 
     def request(self, type, data, timeout = None, reply_cb = None):
-        if timeout == None:
+        if timeout == reply_cb == None:
             timeout = self._default_timeout
 
         seq = self._send_packet("REQ_" + type, data, timeout = timeout, reply_cb = reply_cb)
@@ -419,6 +463,12 @@ class IPCChannel:
     def reply(self, type, data, seq):
         return self._send_packet("REP_" + type, data, seq)
 
+
+    def handle_request_auth(self, challenge):
+        if self._auth_secret == None:
+            return None
+
+        return self._get_challenge_response(challenge)
 
     def handle_request_get(self, name):
         if not self.server:
@@ -762,4 +812,4 @@ def isproxy(obj):
 def get_ipc_from_proxy(obj):
     if not isproxy(obj):
         return None
-    return obj._ipc_client
+    return obj._ipc_get_client()

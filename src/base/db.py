@@ -637,6 +637,9 @@ class Database:
         """
         query_info = {}
         parents = []
+        query_type = "ALL"
+        results = []
+        query_info["columns"] = {}
 
         if "object" in attrs:
             attrs["type"], attrs["id"] = attrs["object"]
@@ -705,7 +708,6 @@ class Database:
         else:
             requested_columns = None
 
-        query_type = "ALL"
         if "distinct" in attrs:
             if attrs["distinct"]:
                 if not requested_columns:
@@ -714,8 +716,6 @@ class Database:
             del attrs["distinct"]
 
 
-        results = []
-        query_info["columns"] = {}
         for type_name, (type_id, type_attrs, type_idx) in type_list:
             if kw_results and type_id not in kw_results_by_type:
                 # If we've done a keyword search, don't bother querying 
@@ -747,6 +747,7 @@ class Database:
                 continue
 
             q = []
+            query_values = []
             q.append("SELECT %s '%s'%%s,%s FROM objects_%s" % \
                 (query_type, type_name, string.join(columns, ","), type_name))
 
@@ -756,8 +757,6 @@ class Database:
                 q.append("id IN %s" % _list_to_printable(kw_results_by_type[type_id]))
             else:
                 q[0] %= ""
-
-            query_values = []
 
             if len(parents):
                 q.append(("WHERE", "AND")["WHERE" in q])

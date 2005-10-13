@@ -286,18 +286,16 @@ class Signal(object):
     def __init__(self, changed_cb = None):
         self._callbacks = []
         self._changed_cb = changed_cb
-        self._items = {}
 
-    def __getitem__(self, key):
-        return self._items[key]
 
-    def __setitem__(self, key, val):
-        self._items[key] = val
+    def __iter__(self):
+        for callback in self._callbacks:
+            yield callback[0]
 
-    def __contains__(self, key):
-        return key in self._items
+    def __len__(self):
+        return len(self._callbacks)
 
- 
+
     def _connect(self, callback, args = (), kwargs = {}, once = False, 
                  weak = False, pos = -1):
 
@@ -307,7 +305,7 @@ class Signal(object):
             # It's a common problem (for me :)) that callbacks get added
             # inside another callback.  This is a simple sanity check.
             print "Signal callbacks exceeds 40.  Something's wrong!"
-            print callback, args, self._callbacks[0][0].get_method()
+            print callback, args
             raise Exception
 
         if weak:

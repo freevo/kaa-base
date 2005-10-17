@@ -152,10 +152,10 @@ def iter_raw_data((query_info, rows), columns):
         cmap = create_column_map(query_info, rows[0][0])
         pickled_columns = Set(columns).difference(cmap.keys())
 
-    if len(pickled_columns) == 0:
+    if pickled_columns != None and len(pickled_columns) == 0:
         for row in rows:
             yield [ row[cmap[col]] for col in columns ]
-    else:
+    elif pickled_columns != None:
         cmap.update(dict(zip(pickled_columns, range(len(cmap), len(cmap)+len(pickled_columns)))))
         extra_dummy = (None,)*len(pickled_columns)
         for row in rows:
@@ -1076,6 +1076,9 @@ class Database:
         words = {}
         ids = []
         for row in rows:
+            if row[2] == 0:
+                return []
+
             # Give words weight according to their order
             order_weight = 1 + len(save) - list(save).index(row[1])
             words[row[0]] = {

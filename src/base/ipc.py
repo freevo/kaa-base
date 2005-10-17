@@ -35,16 +35,6 @@ def _debug(level, text, *args):
             text += " " + str(arg)
         print text
 
-def excepthook (type, value, tb):
-    if hasattr(type, "_ipc_remote_tb"):
-        print "--- An exception has occured remotely.  Here is the remote stack trace:"
-        print type._ipc_remote_tb
-        print "--- END remote stack trace.\n--- Begin local stack trace:"
-    traceback.print_tb(tb)
-    print type, value
-
-sys.excepthook = excepthook
-
 def _pickle_slice(slice):
     return _unpickle_slice, (slice.start, slice.stop, slice.step)
 def _unpickle_slice(start, stop, step):
@@ -107,6 +97,16 @@ class IPCTimeoutError(Exception):
 
 class IPCAuthenticationError(Exception):
     pass
+
+class IPCRemoteException(Exception):
+    def __init__(self, remote_exc, remote_value, remote_tb):
+        self.exc = remote_exc
+        self.val = remote_value
+        self.tb = remote_tb
+
+    def __str__(self):
+        return "A remote exception has occurred.  Here is the remote traceback:\n%s" % self.tb
+
 
 class IPCServer:
 
@@ -400,14 +400,13 @@ class IPCChannel:
                 # this is a synchronous call.
                 self._wait_queue[seq][1] = True
                 self._wait_queue[seq][2] = (seq, packet_type, data)
-            elif self._wait_queue[seq][4]:
-                # Async call, invoke result callback.
-                # TODO: be smarter about remote exceptions
+            else:
                 result_cb = self._wait_queue[seq][4]
                 result = self.handle_reply(seq, packet_type, data)
-                result_cb(result)
-            else:
-                del self._wait_queue[seq]
+                if result_cb:
+                    # Async call, invoke result callback.
+                    # TODO: be smarter about remote exceptions
+                    result_cb(result)
         else:
             _debug(1, "-> REQUEST: seq=%d, command=%s, data=%d" % (seq, command, len(payload)))
             if not hasattr(self, "handle_request_%s" % command):
@@ -426,6 +425,7 @@ class IPCChannel:
             except:
                 # Marshal exception.
                 exstr = string.join(traceback.format_exception(sys.exc_type, sys.exc_value, sys.exc_traceback))
+                log.exception("Exception occurred in IPC call")
                 self.reply(command, ("error", (sys.exc_info()[0], sys.exc_info()[1], exstr)), seq)
             else:
                 self.reply(command, ("ok", reply), seq)
@@ -464,6 +464,23 @@ class IPCChannel:
         This function handles any packet received by the remote end while
         we are waiting for authentication, as well as all 'auth' packets.
 
+        When no shared secret is specified in the IPCChannel constructor, all
+        incoming connections are considered implicitly authenticated.
+
+        Design goals of authentication:
+           * prevent unauthenticated connections from executing IPC commands
+             other than 'auth' commands.
+           * prevent unauthenticated connections from causing denial-of-
+             service at or above the IPC layer.
+           * prevent third parties from learning the shared secret by 
+             eavesdropping the channel.
+              
+        Non-goals:
+           * provide any level of security whatsoever subsequent to successful
+             authentication.
+           * detect in-transit tampering of authentication by third parties
+             (and thus preventing successful authentication).
+
         The parameters seq, prefix and command are untainted and safe.
         The parameter payload is potentially dangerous and this function
         must handle any possible malformed payload gracefully.
@@ -498,6 +515,17 @@ class IPCChannel:
         Also, individual packets aren't authenticated.  Once each side has
         sucessfully authenticated, this scheme cannot protect against 
         hijacking or denial-of-service attacks.
+
+        One goal is to restrict the code path taken packets sent by 
+        unauthenticated connections.  That path is:
+
+           handle_read() -> handle_packet() -> _handle_auth_packet()
+
+        Therefore these functions must be able to handle malformed and/or
+        potentially malicious data on the channel.  When these methods calls
+        other functions, it must do so only with untainted data.  Obviously one
+        assumption is that the underlying python calls made in these methods
+        (particularly struct.unpack) aren't susceptible to attack.
         """
         
         if command != "auth":
@@ -528,6 +556,8 @@ class IPCChannel:
             self.handle_close()
             return
         
+        # At this point, challenge, response, and salt are 20 byte strings of
+        # arbitrary binary data.  They're considered benign.
         if prefix == "req":
             # Step 2: We've received a challenge.  If we've already sent a
             # challenge (which is the case if _pending_challenge is not None),
@@ -572,7 +602,7 @@ class IPCChannel:
                 else:
                     return ("auth", 1)
 
-            # Challenge response was good, so we're considered 
+            # Challenge response was good, so the remote is considered 
             # authenticated now.
             self._authenticated = True
 
@@ -650,9 +680,7 @@ class IPCChannel:
             else:
                 raise IPCAuthenticationError(-1, "Unknown authentication error.")
         elif resultcode == "error":
-            # FIXME: assumes data[0] is an Exception object
-            data[0]._ipc_remote_tb = data[2].strip()
-            raise data[0], data[1]
+            raise IPCRemoteException(data[0], data[1], data[2].strip())
 
 
     def request(self, type, data, timeout = None, reply_cb = None):
@@ -660,9 +688,11 @@ class IPCChannel:
             timeout = self._default_timeout
 
         seq = self._send_packet("REQ_" + type, data, timeout = timeout, reply_cb = reply_cb)
-        # XXX: do we really want to an raise exception here?
         if not self.socket:
-            raise IPCDisconnectedError
+            if not self.server:
+                # Raise exception if we're a client.
+                raise IPCDisconnectedError
+            return
 
         # FIXME: if timeout == 0 and no reply received, wait_queue entry 
         # doesn't get removed until the socket is disconnected.  There should

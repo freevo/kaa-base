@@ -361,20 +361,20 @@ class Signal(object):
 
     def _disconnect(self, callback, args, kwargs):
         new_callbacks = []
-        for pos, cb_all in zip(range(len(self._callbacks)), self._callbacks[:]):
-            cb_callback, cb_args, cb_kwargs, cb_once, cb_weak = cb_all
-            if cb_weak and args != None:
+        for cb in self._callbacks[:]:
+            cb_callback, cb_args, cb_kwargs, cb_once, cb_weak = cb
+            if cb_weak:
                 cb_callback = cb_callback._get_callback()
                 cb_args, cb_kwargs = unweakref_data((cb_args, cb_kwargs))
 
-            if (cb_callback == callback and args == None) or \
+            if (cb_callback == callback and len(args) == 0) or \
                (cb_callback, cb_args, cb_kwargs) == (callback, args, kwargs):
                 # This matches what we want to disconnect.
                 continue
 
-            new_callbacks.append(cb_all)
+            new_callbacks.append(cb)
 
-        if len(new_callbacks) != self._callbacks:
+        if len(new_callbacks) != len(self._callbacks):
             self._callbacks = new_callbacks
             if self._changed_cb:
                 self._changed_cb(self, Signal.SIGNAL_DISCONNECTED)

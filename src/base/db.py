@@ -225,8 +225,6 @@ class Database:
         f.close()
         self._open_db()
 
-        self.register_object_type_attrs("dir")
-
 
     def _register_check_indexes(self, indexes, attrs):
         for cols in indexes:

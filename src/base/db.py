@@ -245,6 +245,9 @@ class Database:
 
 
     def register_object_type_attrs(self, type_name, indexes = [], **attrs):
+        if len(indexes) == len(attrs) == 0:
+            raise ValueError, "Must specify indexes or attributes for object type"
+
         table_name = "objects_%s" % type_name
         if type_name in self._object_types:
             # This type already exists.  Compare given attributes with

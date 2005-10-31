@@ -349,7 +349,12 @@ class IPCChannel:
             self.write_buffer = self.write_buffer[sent:]
             if not self.write_buffer:
                 self._wmon.unregister()
-        except socket.error:
+        except socket.error, (errno, msg):
+            if errno == 11:
+                # Resource temporarily unavailable -- we are trying to write
+                # data to a socket when none is available.
+                return
+            # If we're here, then the socket is likely disconnected.
             self.handle_close()
 
 

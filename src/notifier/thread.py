@@ -45,7 +45,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'MainThreadCallback', 'Thread', 'is_mainthread' ]
+__all__ = [ 'MainThreadCallback', 'Thread', 'is_mainthread', 'wakeup' ]
 
 # python imports
 import sys
@@ -148,6 +148,12 @@ _thread_notifier_lock = threading.Lock()
 _thread_notifier_mainthread = threading.currentThread()
 
 
+def wakeup():
+    """
+    Wake up main thread.
+    """
+    os.write(_thread_notifier_pipe[1], "1")
+    
 def _thread_notifier_run_queue(fd):
     global _thread_notifier_queue
     _thread_notifier_lock.acquire()

@@ -529,7 +529,7 @@ class Database:
         # For attributes which aren't specified in kwargs, add them to the
         # dict we're about to return, setting default value to None.
         for name, (attr_type, flags) in type_attrs.items():
-            if name not in attrs:
+            if name not in attrs and name != "pickle":
                 attrs[name] = None
 
         if self._type_has_keyword_attr(object_type):
@@ -846,24 +846,30 @@ class Database:
         # For type converstion, currently just used for converting buffer 
         # values to strings.
         type_maps = {}
+        # Maps all type attributes to None
+        attrs_defaults = {}
         for type_name, (type_id, type_attrs, type_idx) in self._object_types.items():
             col_desc = query_info["columns"].get(type_name)
             if col_desc:
+                attrs_defaults[type_name] = dict(zip(type_attrs.keys(), (None,)*len(type_attrs)))
                 type_maps[type_name] = [ 
                     (x, str) for x in type_attrs if type_attrs[x][0] == str 
                                                     and x in col_desc 
                 ]
 
         for row in results:
-            col_desc = query_info["columns"][row[0]]
+            type_name = row[0]
+            col_desc = query_info["columns"][type_name]
             result = dict(zip(col_desc, row))
-            for attr, tp in type_maps[row[0]]:
+            for attr, tp in type_maps[type_name]:
                 result[attr] = tp(result[attr])
 
-            if result.get("pickle"):
-                pickle = cPickle.loads(str(result["pickle"]))
+            if "pickle" in result:
+                result.update(attrs_defaults[type_name])
+                if result["pickle"]:
+                    pickle = cPickle.loads(str(result["pickle"]))
+                    result.update(pickle)
                 del result["pickle"]
-                result.update(pickle)
 
             # Add convenience parent key, mapping parent_type id to name.
             if result.get("parent_type"):

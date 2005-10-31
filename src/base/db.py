@@ -860,16 +860,15 @@ class Database:
         for row in results:
             type_name = row[0]
             col_desc = query_info["columns"][type_name]
-            result = dict(zip(col_desc, row))
+            result = attrs_defaults[type_name].copy()
+            result.update(dict(zip(col_desc, row)))
             for attr, tp in type_maps[type_name]:
                 result[attr] = tp(result[attr])
 
-            if "pickle" in result:
-                result.update(attrs_defaults[type_name])
-                if result["pickle"]:
-                    pickle = cPickle.loads(str(result["pickle"]))
-                    result.update(pickle)
-                del result["pickle"]
+            if result["pickle"]:
+                pickle = cPickle.loads(str(result["pickle"]))
+                result.update(pickle)
+            del result["pickle"]
 
             # Add convenience parent key, mapping parent_type id to name.
             if result.get("parent_type"):

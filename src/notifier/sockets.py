@@ -144,7 +144,10 @@ class Socket(object):
         thread.signals["exception"].connect(cb)
         thread.start()
 
-        while async == None and len(result_holder) == 0:
+        if async != None:
+            return
+
+        while len(result_holder) == 0:
             notifier.step()
 
         if isinstance(result_holder[0], Exception):

@@ -41,7 +41,7 @@ from popen import killall as kill_processes
 from callback import Callback, WeakCallback, Signal, notifier
 from thread import MainThreadCallback, Thread, is_mainthread, wakeup
 from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer
-from sockets import SocketDispatcher, WeakSocketDispatcher, \
+from sockets import SocketDispatcher, WeakSocketDispatcher, Socket, \
      IO_READ, IO_WRITE, IO_EXCEPT
 from event import Event, EventHandler, WeakEventHandler
 from jobserver import ThreadCallback

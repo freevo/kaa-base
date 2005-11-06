@@ -256,7 +256,7 @@ class IPCChannel:
             self.socket = None
 
         self._wait_queue = {}
-        self._proxied_objects
+        self._proxied_objects = {}
         self.signals["closed"].emit()
 
 

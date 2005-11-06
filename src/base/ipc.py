@@ -429,8 +429,9 @@ class IPCChannel:
                 self.reply(command, ("auth", data), seq)
             except:
                 # Marshal exception.
+                if sys.exc_info()[0] not in (StopIteration,):
+                    log.exception("Exception occurred in IPC call")
                 exstr = string.join(traceback.format_exception(sys.exc_type, sys.exc_value, sys.exc_traceback))
-                log.exception("Exception occurred in IPC call")
                 self.reply(command, ("error", (sys.exc_info()[0], sys.exc_info()[1], exstr)), seq)
             else:
                 self.reply(command, ("ok", reply), seq)
@@ -685,6 +686,8 @@ class IPCChannel:
             else:
                 raise IPCAuthenticationError(-1, "Unknown authentication error.")
         elif resultcode == "error":
+            if data[0] in (StopIteration,):
+                raise data[0](data[1])
             raise IPCRemoteException(data[0], data[1], data[2].strip())
 
 
@@ -860,12 +863,8 @@ class IPCChannel:
                 # If we're unproxying and object is local, return the local object
                 if unproxy and objid in self._proxied_objects:
                     return self._proxied_objects[objid][0]
-                else:
-                    # Object is remote and we're not unproxying, incref it.
-                    # XXX: this might be wrong.
-                    if not unproxy:
-                        self._incref_proxied_object(objid)
-                    return data
+
+                return data
             else:
                 if not unproxy:
                     return self._proxy_object(data)

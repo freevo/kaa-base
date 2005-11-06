@@ -411,7 +411,7 @@ class IPCChannel:
                 if result_cb:
                     # Async call, invoke result callback.
                     # TODO: be smarter about remote exceptions
-                    result_cb(result)
+                    result_cb(self._proxy_data(result))
         else:
             _debug(1, "-> REQUEST: seq=%d, command=%s, data=%d" % (seq, command, len(payload)))
             if not hasattr(self, "handle_request_%s" % command):
@@ -784,7 +784,7 @@ class IPCChannel:
         obj = self._get_proxied_object(objid)
         _debug(1, "-> () CALL METH: ", objid, meth)
         result = getattr(obj, meth)(*args, **kwargs)
-        return self._proxy_data( result)
+        return self._proxy_data(result)
 
         
     def handle_request_decref(self, objid):

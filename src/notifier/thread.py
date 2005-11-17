@@ -162,18 +162,18 @@ def wakeup():
     
 def _thread_notifier_run_queue(fd):
     global _thread_notifier_queue
-    _thread_notifier_lock.acquire()
     try:
         os.read(_thread_notifier_pipe[0], 10)
     except OSError:
         pass
-    
+
     while _thread_notifier_queue:
+        _thread_notifier_lock.acquire()
         callback, args, kwargs = _thread_notifier_queue.pop()
+        _thread_notifier_lock.release()
         callback(*args, **kwargs)
         callback.lock.acquire(False)
         callback.lock.release()
-    _thread_notifier_lock.release()
     return True
 
 notifier.addSocket(_thread_notifier_pipe[0], _thread_notifier_run_queue)

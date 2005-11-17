@@ -52,6 +52,7 @@ import sys
 import os
 import threading
 import logging
+import fcntl
 
 # notifier imports
 from callback import Callback, notifier, Signal
@@ -147,17 +148,21 @@ _thread_notifier_queue = []
 _thread_notifier_lock = threading.Lock()
 _thread_notifier_mainthread = threading.currentThread()
 
+fcntl.fcntl(_thread_notifier_pipe[0] , fcntl.F_SETFL, os.O_NONBLOCK )
+fcntl.fcntl(_thread_notifier_pipe[1] , fcntl.F_SETFL, os.O_NONBLOCK )
+
 
 def wakeup():
     """
     Wake up main thread.
     """
-    os.write(_thread_notifier_pipe[1], "1")
+    if len(_thread_notifier_queue) == 0:
+        os.write(_thread_notifier_pipe[1], "1")
     
 def _thread_notifier_run_queue(fd):
     global _thread_notifier_queue
     _thread_notifier_lock.acquire()
-    os.read(_thread_notifier_pipe[0], 1)
+    os.read(_thread_notifier_pipe[0], 10)
     while _thread_notifier_queue:
         callback, args, kwargs = _thread_notifier_queue.pop()
         callback(*args, **kwargs)

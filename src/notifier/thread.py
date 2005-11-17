@@ -53,6 +53,7 @@ import os
 import threading
 import logging
 import fcntl
+import socket
 
 # notifier imports
 from callback import Callback, notifier, Signal
@@ -162,7 +163,11 @@ def wakeup():
 def _thread_notifier_run_queue(fd):
     global _thread_notifier_queue
     _thread_notifier_lock.acquire()
-    os.read(_thread_notifier_pipe[0], 10)
+    try:
+        os.read(_thread_notifier_pipe[0], 10)
+    except OSError:
+        pass
+    
     while _thread_notifier_queue:
         callback, args, kwargs = _thread_notifier_queue.pop()
         callback(*args, **kwargs)

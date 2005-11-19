@@ -857,7 +857,7 @@ class IPCChannel:
                           types.FloatType, types.NoneType)
 
         if type(data) not in immutable_types:
-            if isproxy(data):
+            if is_proxy(data):
                 objid = data._ipc_obj
                 data._ipc_client = self
                 # If we're unproxying and object is local, return the local object
@@ -1050,11 +1050,20 @@ class IPCProxy(object):
 
 
 
-def isproxy(obj):
+def is_proxy(obj):
     # Not foolproof, but good enough for me.
     return hasattr(obj, "_ipc_obj")
 
 def get_ipc_from_proxy(obj):
-    if not isproxy(obj):
+    if not is_proxy(obj):
         return None
     return obj._ipc_get_client()
+
+
+def is_proxy_alive(obj):
+    client = get_ipc_from_proxy(obj)
+    if not client:
+        return False
+    # If remote has disconnected, find out now.
+    client.handle_read()
+    return client.socket != None

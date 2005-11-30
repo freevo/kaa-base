@@ -36,8 +36,10 @@ import time
 
 import socket
 
-# internal packages
-import log
+import logging
+
+# get logging object
+log = logging.getLogger('notifier')
 
 IO_READ = 1
 IO_WRITE = 2

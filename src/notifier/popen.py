@@ -213,10 +213,10 @@ class Process(object):
                     self.write(cmd)
 
                 cb = Callback( self.__kill, 15 )
-                self.__kill_timer = notifier.addTimer( 3000, cb )
+                self.__kill_timer = notifier.timer_add( 3000, cb )
             else:
                 cb = Callback( self.__kill, 15 )
-                self.__kill_timer = notifier.addTimer( 0, cb )
+                self.__kill_timer = notifier.timer_add( 0, cb )
 
 
     def __kill( self, signal ):
@@ -238,7 +238,7 @@ class Process(object):
         else:
             cb = Callback( self.__killall, 15 )
 
-        self.__kill_timer = notifier.addTimer( 3000, cb )
+        self.__kill_timer = notifier.timer_add( 3000, cb )
         return False
 
 
@@ -280,7 +280,7 @@ class Process(object):
         log.info('kill -%d %s' % ( signal, self.binary ))
         if signal == 15:
             cb = Callback( self.__killall, 9 )
-            self.__kill_timer = notifier.addTimer( 2000, cb )
+            self.__kill_timer = notifier.timer_add( 2000, cb )
         else:
             log.critical('PANIC %s' % self.binary)
 
@@ -297,7 +297,7 @@ class Process(object):
         self.stdout.close()
         self.stderr.close()
         if self.__kill_timer:
-            notifier.removeTimer( self.__kill_timer )
+            notifier.timer_remove( self.__kill_timer )
         self.signals["completed"].emit(status >> 8)
 
 
@@ -313,7 +313,7 @@ class IO_Handler(object):
         self.callback = callback
         self.logger = None
         self.saved = ''
-        notifier.addSocket( fp, self._handle_input )
+        notifier.socket_add( fp, self._handle_input )
         if logger:
             logger = '%s-%s.log' % ( logger, name )
             try:
@@ -331,7 +331,7 @@ class IO_Handler(object):
         """
         Close the IO to the child.
         """
-        notifier.removeSocket( self.fp )
+        notifier.socket_remove( self.fp )
         self.fp.close()
         if self.logger:
             self.logger.close()
@@ -352,7 +352,7 @@ class IO_Handler(object):
 
         if not data:
             log.info('No data on %s for pid %s.' % ( self.name, os.getpid()))
-            notifier.removeSocket( self.fp )
+            notifier.socket_remove( self.fp )
             self.fp.close()
             if self.logger:
                 self.logger.close()
@@ -406,7 +406,7 @@ class Watcher(object):
         self.__processes[ proc ] = cb
         if not self.__timer:
             log.info('start process watching')
-            self.__timer = notifier.addTimer(50, self.check)
+            self.__timer = notifier.timer_add(50, self.check)
 
 
     def check( self ):

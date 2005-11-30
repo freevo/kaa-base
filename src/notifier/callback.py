@@ -37,6 +37,10 @@ import sys
 
 try:
     # try to import pyNotifier
+    if sys.argv[0] == 'setup.py':
+        # we use the setup script, use the internal
+        # notifier to be sure it is the correct version
+        raise ImportError
     import notifier
     if not notifier.loop:
         # init pyNotifier with the generic notifier

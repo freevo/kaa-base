@@ -64,18 +64,18 @@ def _handle_stdin_keypress(fd):
 
 def _idle_signal_changed(signal, flag):
     if flag == Signal.SIGNAL_CONNECTED and signal.count() == 1:
-        notifier.addDispatcher(signal.emit)
+        notifier.dispatcher_add(signal.emit)
     elif flag == Signal.SIGNAL_DISCONNECTED and signal.count() == 0:
-        notifier.removeDispatcher(signal.emit)
+        notifier.dispatcher_remove(signal.emit)
 
 
 def _keypress_signal_changed(signal, flag):
     if flag == Signal.SIGNAL_CONNECTED and signal.count() == 1:
         utils.getch_enable()
-        notifier.addSocket(sys.stdin, _handle_stdin_keypress)
+        notifier.socket_add(sys.stdin, _handle_stdin_keypress)
     elif flag == Signal.SIGNAL_DISCONNECTED and signal.count() == 0:
         utils.getch_disable()
-        notifier.removeSocket(sys.stdin)
+        notifier.socket_remove(sys.stdin)
 
 
 signals = {

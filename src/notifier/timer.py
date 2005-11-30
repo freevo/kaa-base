@@ -50,7 +50,7 @@ class Timer(NotifierCallback):
                 return
             self.unregister()
 
-        self._id = notifier.addTimer(int(interval * 1000), self)
+        self._id = notifier.timer_add(int(interval * 1000), self)
 
 
     def stop(self):
@@ -61,7 +61,7 @@ class Timer(NotifierCallback):
 
     def unregister(self):
         if self.active():
-            notifier.removeTimer(self._id)
+            notifier.timer_remove(self._id)
             super(Timer, self).unregister()
 
 

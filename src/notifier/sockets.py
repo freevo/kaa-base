@@ -53,7 +53,7 @@ class SocketDispatcher(NotifierCallback):
             return
         if not is_mainthread():
             return MainThreadCallback(self.register, fd, condition)()
-        notifier.addSocket(fd, self, condition)
+        notifier.socket_add(fd, self, condition)
         self._condition = condition
         self._id = fd
 
@@ -63,7 +63,7 @@ class SocketDispatcher(NotifierCallback):
             return
         if not is_mainthread():
             return MainThreadCallback(self.unregister)()
-        notifier.removeSocket(self._id, self._condition)
+        notifier.socket_remove(self._id, self._condition)
         super(SocketDispatcher, self).unregister()
 
 

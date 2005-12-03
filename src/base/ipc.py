@@ -145,8 +145,8 @@ class IPCServer:
         self.socket.setblocking(False)
         self.socket.bind(address)
         self.socket.listen(5)
-        monitor = kaa.notifier.SocketDispatcher(self.handle_connection)
-        monitor.register(self.socket)
+        self._monitor = kaa.notifier.SocketDispatcher(self.handle_connection)
+        self._monitor.register(self.socket.fileno())
         
         self.clients = {}
         self._registered_objects = {}
@@ -166,12 +166,9 @@ class IPCServer:
         self.signals["client_connected"].emit(client)
 
 
-    def close_connection(self, client):
-        if client.socket:
-            client.socket.close()
-            if client.socket in self.clients:
-                del self.clients[client.socket]
-        client.socket = None
+    def client_closed(self, client):
+        if client.socket in self.clients:
+            del self.clients[client.socket]
         self.signals["client_closed"].emit(client)
 
 
@@ -186,7 +183,7 @@ class IPCServer:
 
     def close(self):
         for client in self.clients.values():
-            self.close_connection(client)
+            client.handle_close()
 
         if self.socket:
             self.socket.close()
@@ -195,6 +192,7 @@ class IPCServer:
             os.unlink(self.address)
 
         self.socket = None
+        self._monitor.unregister()
         kaa.signals["shutdown"].disconnect(self.close)
         
         
@@ -249,11 +247,11 @@ class IPCChannel:
         _debug(1, "Current proxied objects", self._proxied_objects)
         self._rmon.unregister()
         self._wmon.unregister()
-        if self.server:
-            self.server.close_connection(self)
-        else:
+        if self.socket:
             self.socket.close()
             self.socket = None
+        if self.server:
+            self.server.client_closed(self)
 
         self._wait_queue = {}
         self._proxied_objects = {}
@@ -269,6 +267,8 @@ class IPCChannel:
                 # data on a socket when none is available.
                 return
             # If we're here, then the socket is likely disconnected.
+            data = None
+        except:
             data = None
 
         if not data:

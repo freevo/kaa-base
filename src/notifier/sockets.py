@@ -32,7 +32,7 @@
 __all__ = [ 'WeakCallback', 'WeakSocketDispatcher', 'Socket',
             'IO_READ', 'IO_WRITE', 'IO_EXCEPT' ]
 
-import socket, StringIO
+import socket, cStringIO
 from callback import NotifierCallback, WeakNotifierCallback, Callback, Signal, notifier
 from thread import MainThreadCallback, Thread, is_mainthread
 

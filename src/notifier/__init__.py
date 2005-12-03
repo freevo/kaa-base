@@ -37,7 +37,7 @@ import traceback
 
 # kaa.notifier imports
 from popen import Process
-from popen import killall as kill_processes
+from popen import kill_all_processes, stop_all_processes
 from callback import Callback, WeakCallback, Signal, notifier
 from thread import MainThreadCallback, Thread, is_mainthread, wakeup
 from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer
@@ -105,10 +105,11 @@ def shutdown():
         return
     shutting_down = True
 
+    stop_all_processes()
     signals["shutdown"].emit()
     # Kill processes _after_ shutdown emits to give callbacks a chance to
     # close them properly.
-    kill_processes()
+    kill_all_processes()
     kill_jobserver()
     # Collect any zombies
     try:
@@ -144,6 +145,10 @@ def step(*args, **kwargs):
     """
     Notifier step function with signal support.
     """
+    if not is_mainthread():
+        wakeup()
+        return
+
     try:
         notifier.step(*args, **kwargs)
     except (KeyboardInterrupt, SystemExit):

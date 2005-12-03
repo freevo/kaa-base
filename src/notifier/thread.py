@@ -61,7 +61,6 @@ from callback import Callback, notifier, Signal
 # get logging object
 log = logging.getLogger('notifier')
 
-
 class MainThreadCallback(Callback):
     def __init__(self, callback, *args, **kwargs):
         super(MainThreadCallback, self).__init__(callback, *args, **kwargs)
@@ -163,7 +162,7 @@ def wakeup():
 def _thread_notifier_run_queue(fd):
     global _thread_notifier_queue
     try:
-        os.read(_thread_notifier_pipe[0], 10)
+        os.read(_thread_notifier_pipe[0], 1000)
     except OSError:
         pass
 

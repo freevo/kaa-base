@@ -453,13 +453,15 @@ class Watcher(object):
         return True
 
 
-    def killall( self ):
+    def stopall( self ):
         # stop all childs without waiting
-        for p in self.__processes:
+        for p in self.__processes.keys():
             p.stop()
 
+    def killall( self ):
         # now wait until all childs are dead
         while self.__processes:
+            self.check()
             try:
                 notifier.step()
             except ( KeyboardInterrupt, SystemExit ), e:
@@ -472,4 +474,5 @@ class Watcher(object):
 _watcher = Watcher()
 
 # global killall function
-killall = _watcher.killall
+stop_all_processes = _watcher.stopall
+kill_all_processes = _watcher.killall

@@ -137,22 +137,22 @@ def step( sleep = True, external = True ):
     _copy = __timers.copy()
     for i in _copy:
         interval, timestamp, callback = _copy[ i ]
-	if interval + timestamp <= __millisecs():
-	    retval = None
+        if interval + timestamp <= __millisecs():
+            retval = None
             # Update timestamp on timer before calling the callback to
             # prevent infinite recursion in case the callback calls
             # step().
             __timers[ i ] = ( interval, __millisecs(), callback )
-	    try:
-		if not callback():
-		    trash_can.append( i )
-		else:
+            try:
+                if not callback():
+                    trash_can.append( i )
+                else:
                     # Update timer's timestamp again to reflect callback
                     # execution time.
-		    __timers[ i ] = ( interval, __millisecs(), callback )
+                    __timers[ i ] = ( interval, __millisecs(), callback )
             except ( KeyboardInterrupt, SystemExit ), e:
                 raise e
-	    except:
+            except:
                 log.exception( 'removed timer %d' % i )
                 trash_can.append( i )
 
@@ -182,16 +182,16 @@ def step( sleep = True, external = True ):
                           __sockets[ IO_EXCEPT ].keys(), timeout / 1000.0 )
     except ( ValueError, select_error ):
         log.exception( 'error in select' )
-	sys.exit( 1 )
+        sys.exit( 1 )
 
     for sl in ( ( r, IO_READ ), ( w, IO_WRITE ), ( e, IO_EXCEPT ) ):
         sockets, condition = sl
-	# append all unknown sockets to check list
-	for s in sockets:
-	    if not s in __current_sockets[ condition ]:
-	        __current_sockets[ condition ].append( s )
+        # append all unknown sockets to check list
+        for s in sockets:
+            if not s in __current_sockets[ condition ]:
+                __current_sockets[ condition ].append( s )
         while len( __current_sockets[ condition ] ):
-	    sock = __current_sockets[ condition ].pop( 0 )
+            sock = __current_sockets[ condition ].pop( 0 )
             if ( isinstance( sock, socket.socket ) and \
                  sock.fileno() != -1 ) or \
                  ( isinstance( sock, socket._socketobject ) and \
@@ -206,7 +206,7 @@ def step( sleep = True, external = True ):
                         raise e
                     except:
                         log.exception( 'error in socket callback' )
-			sys.exit( 1 )
+                        sys.exit( 1 )
 
     # handle external dispatchers
     if external:
@@ -216,4 +216,4 @@ def step( sleep = True, external = True ):
 def loop():
     """Executes the "main loop" forever by calling step in an endless loop"""
     while 1:
-	step()
+        step()

@@ -135,7 +135,6 @@ class IPCServer:
                 os.unlink(address)
             self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.address = address
-            # Remove socket file on shutdown.
             kaa.signals["shutdown"].connect_weak(self.close)
             
         elif type(address) == tuple:
@@ -145,8 +144,10 @@ class IPCServer:
         self.socket.setblocking(False)
         self.socket.bind(address)
         self.socket.listen(5)
-        self._monitor = kaa.notifier.SocketDispatcher(self.handle_connection)
+        self._monitor = kaa.notifier.WeakSocketDispatcher(self.handle_connection)
         self._monitor.register(self.socket.fileno())
+        # Remove socket file and close clients on shutdown
+        kaa.signals["shutdown"].connect_weak(self.close)
         
         self.clients = {}
         self._registered_objects = {}
@@ -156,6 +157,9 @@ class IPCServer:
             "client_closed": kaa.notifier.Signal()
         }
 
+
+    def __del__(self):
+        self.close()
 
     def handle_connection(self):
         client_sock = self.socket.accept()[0]
@@ -182,6 +186,7 @@ class IPCServer:
 
 
     def close(self):
+        _debug(1, "Closing IPCServer, clients:", self.clients)
         for client in self.clients.values():
             client.handle_close()
 
@@ -196,7 +201,7 @@ class IPCServer:
         kaa.signals["shutdown"].disconnect(self.close)
         
         
-class IPCChannel:
+class IPCChannel(object):
     def __init__(self, server_or_address, auth_secret = None, sock = None):
         if not sock:
             if type(server_or_address) in types.StringTypes:
@@ -211,10 +216,10 @@ class IPCChannel:
             self.socket = sock
             self.server = server_or_address
 
-        self._rmon = kaa.notifier.SocketDispatcher(self.handle_read)
+        self._rmon = kaa.notifier.WeakSocketDispatcher(self.handle_read)
         self._rmon.register(self.socket.fileno(), kaa.notifier.IO_READ)
 
-        self._wmon = kaa.notifier.SocketDispatcher(self.handle_write)
+        self._wmon = kaa.notifier.WeakSocketDispatcher(self.handle_write)
         #self._wmon.register(self.socket.fileno(), kaa.notifier.IO_WRITE)
 
         self.signals = {
@@ -238,6 +243,9 @@ class IPCChannel:
             self._pending_challenge = None
 
 
+    def __del__(self):
+        self.handle_close()
+
     def set_default_timeout(self, timeout):
         self._default_timeout = timeout
 
@@ -256,6 +264,7 @@ class IPCChannel:
         self._wait_queue = {}
         self._proxied_objects = {}
         self.signals["closed"].emit()
+        kaa.signals["shutdown"].disconnect(self.handle_close)
 
 
     def handle_read(self):
@@ -333,6 +342,7 @@ class IPCChannel:
     def write(self, data):
         self.write_buffer += data
         if not self._wmon.active():
+            _debug(2, "Registered write monitor, write buffer length=%d" % len(self.write_buffer))
             self._wmon.register(self.socket.fileno(), kaa.notifier.IO_WRITE)
 
 
@@ -344,6 +354,7 @@ class IPCChannel:
         if not self.writable():
             return
 
+        _debug(2, "Handle write, write buffer length=%d" % len(self.write_buffer))
         try:
             sent = self.socket.send(self.write_buffer)
             self.write_buffer = self.write_buffer[sent:]
@@ -654,7 +665,7 @@ class IPCChannel:
             pdata = cPickle.dumps(data, 2)
 
         if packet_type[:3] == "REQ":
-            _debug(1, "<- REQUEST: seq=%d, type=%s, data=%d" % (seq, packet_type, len(pdata)))
+            _debug(1, "<- REQUEST: seq=%d, type=%s, data=%d, timeout=%d" % (seq, packet_type, len(pdata), timeout))
             self._wait_queue[seq] = [data, None, None, time.time(), reply_cb]
             if timeout > 0:
                 self._wait_queue[seq][1] = False
@@ -670,6 +681,7 @@ class IPCChannel:
                 kaa.notifier.step()
         else:
             self.handle_write()
+        _debug(1, "<- REQUEST COMPLETE: seq=%d, type=%s" % (seq, packet_type))
         return seq
 
 
@@ -901,7 +913,12 @@ class IPCChannel:
 
 
 class IPCClient(IPCChannel):
-    pass
+    def __init__(self, server_or_address, auth_secret = None, sock = None):
+        super(IPCClient, self).__init__(server_or_address, auth_secret, sock)
+        # IPCChannels that are created by server will be closed on shutdown
+        # by IPCServer.close, but for IPCClients, we need to add our own 
+        # handler.
+        kaa.signals["shutdown"].connect_weak(self.handle_close)
 
 
 

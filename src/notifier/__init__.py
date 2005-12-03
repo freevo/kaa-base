@@ -34,6 +34,7 @@ import sys
 import logging
 import os
 import traceback
+import time
 
 # kaa.notifier imports
 from popen import Process
@@ -146,7 +147,11 @@ def step(*args, **kwargs):
     Notifier step function with signal support.
     """
     if not is_mainthread():
+        # If step is being called from a thread, wake up the mainthread
+        # instead of allowing the thread into notifier.step.
         wakeup()
+        # Sleep for epsilon to prevent busy loops.
+        time.sleep(0.001)
         return
 
     try:

@@ -772,7 +772,7 @@ class IPCChannel(object):
 
     def handle_request_call(self, (objid, args, kwargs)):
         _ipc_args = {}
-        for arg in ("copy_result", "oneway"):
+        for arg in ("copy_result", "noproxy_result", "oneway", "noproxy_args"):
             if "__ipc_" + arg in kwargs:
                 _ipc_args[arg] = kwargs["__ipc_" + arg]
                 del kwargs["__ipc_" + arg]
@@ -788,7 +788,8 @@ class IPCChannel(object):
             # handle_rqeuest_call() to prevent replying.
             raise "NOREPLY"
 
-        if _ipc_args.get("copy_result"):
+        # noproxy_result deprecates copy_result
+        if _ipc_args.get("noproxy_result") or _ipc_args.get("copy_result"):
             return result
         else:
             return self._proxy_data(result)
@@ -1042,7 +1043,12 @@ class IPCProxy(object):
             except AttributeError:
                 self._ipc_callable = False
         
-        args = self._ipc_client._proxy_data(args)
+        if "__ipc_copy_result" in kwargs:
+            print "DEPRECATION WARNING: use __ipc_noproxy_result instead of __ipc_copy_result"
+        if not kwargs.get("__ipc_noproxy_args"):
+            args = self._ipc_client._proxy_data(args)
+            # FIXME: should proxy kwargs, but there's a bug.
+            #kwargs = self._ipc_client._proxy_data(kwargs)
         timeout = reply_cb = None
         if kwargs.get("__ipc_timeout"):
             timeout = kwargs.get("__ipc_timeout")

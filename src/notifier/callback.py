@@ -303,12 +303,30 @@ class Signal(object):
 
 
     def __iter__(self):
-        for callback in self._callbacks:
-            yield callback[0]
+        for cb in self._callbacks:
+            cb_callback, cb_args, cb_kwargs, cb_once, cb_weak = cb
+            if cb_weak:
+                cb_callback = cb_callback._get_callback()
+
+            yield cb_callback
+
 
     def __len__(self):
         return len(self._callbacks)
 
+
+    def __contains__(self, key):
+        if not callable(key):
+            return False
+
+        for cb in self._callbacks:
+            cb_callback, cb_args, cb_kwargs, cb_once, cb_weak = cb
+            if cb_weak:
+                cb_callback = cb_callback._get_callback()
+            if cb_callback == key:
+                return True
+
+        return False
 
     def _connect(self, callback, args = (), kwargs = {}, once = False, 
                  weak = False, pos = -1):

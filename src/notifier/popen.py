@@ -309,7 +309,8 @@ class IO_Handler(object):
     def __init__( self, name, fp, callback, logger = None):
         self.name = name
         self.fp = fp
-        fcntl.fcntl( self.fp.fileno(), fcntl.F_SETFL, os.O_NONBLOCK )
+        flags = fcntl.fcntl(self.fp.fileno(), fcntl.F_GETFL)
+        fcntl.fcntl( self.fp.fileno(), fcntl.F_SETFL, flags | os.O_NONBLOCK )
         self.callback = callback
         self.logger = None
         self.saved = ''

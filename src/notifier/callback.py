@@ -427,7 +427,15 @@ class Signal(object):
         retval = False
         for cb_callback, cb_args, cb_kwargs, cb_once, cb_weak in self._callbacks[:]:
             if cb_weak:
-                cb_callback = cb_callback._get_callback()
+                cb_callback_u = cb_callback._get_callback()
+                if cb_callback_u == None:
+                    # A reference died while we were in the process of
+                    # emitting this signal.  This callback should already be
+                    # disconnected, but since we're working on a copy we will
+                    # encounter it.
+                    continue
+
+                cb_callback = cb_callback_u
                 cb_args, cb_kwargs = unweakref_data((cb_args, cb_kwargs))
             else:
                 cb_kwargs = cb_kwargs.copy()

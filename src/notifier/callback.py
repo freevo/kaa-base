@@ -249,7 +249,7 @@ class WeakCallback(Callback):
 
     def _get_callback(self):
         if self._instance:
-            if self._instance():
+            if self._instance() != None:
                 return getattr(self._instance(), self._callback)
         else:
             return self._callback
@@ -382,15 +382,19 @@ class Signal(object):
         return self._connect(callback, args, kwargs, weak = True, pos = 0)
 
     def _disconnect(self, callback, args, kwargs):
+        assert(callback != None)
         new_callbacks = []
         for cb in self._callbacks[:]:
             cb_callback, cb_args, cb_kwargs, cb_once, cb_weak = cb
             if cb_weak:
-                cb_callback = cb_callback._get_callback()
-                cb_args, cb_kwargs = unweakref_data((cb_args, cb_kwargs))
+                cb_callback_u = cb_callback._get_callback()
+                cb_args_u, cb_kwargs_u = unweakref_data((cb_args, cb_kwargs))
+            else:
+                cb_callback_u = cb_args_u = cb_kwargs_u = None
 
-            if (cb_callback == callback and len(args) == 0) or \
-               (cb_callback, cb_args, cb_kwargs) == (callback, args, kwargs):
+            if (callback in (cb_callback, cb_callback_u) and len(args) == 0) or \
+               (cb_callback, cb_args, cb_kwargs) == (callback, args, kwargs) or \
+               (cb_callback_u, cb_args_u, cb_kwargs_u) == (callback, args, kwargs):
                 # This matches what we want to disconnect.
                 continue
 
@@ -439,7 +443,7 @@ class Signal(object):
 
     def _weakref_destroyed(self, callback, weakref):
         if Signal and self:
-            self._disconnect(callback, None, None)
+            self._disconnect(callback, (), None)
 
 
     def count(self):

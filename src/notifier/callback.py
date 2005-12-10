@@ -440,11 +440,11 @@ class Signal(object):
             else:
                 cb_kwargs = cb_kwargs.copy()
 
+            if cb_once:
+                self.disconnect(cb_callback, *cb_args, **cb_kwargs)
             cb_kwargs.update(kwargs)
             if cb_callback(*(args + cb_args), **cb_kwargs):
                 retval = True
-            if cb_once:
-                self.disconnect(cb_callback, *cb_args, **cb_kwargs)
 
         return retval
 

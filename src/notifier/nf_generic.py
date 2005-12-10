@@ -146,7 +146,7 @@ def step( sleep = True, external = True ):
             try:
                 if not callback():
                     trash_can.append( i )
-                else:
+                elif i in __timers:
                     # Update timer's timestamp again to reflect callback
                     # execution time.
                     __timers[ i ] = ( interval, __millisecs(), callback )

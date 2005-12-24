@@ -79,9 +79,12 @@ class Extension(object):
         libraries. The basic logic is taken from pygame.
         """
         try:
-            #for parameter in ('version', 'cflags', 'libs'):
-            command = name + '-config --version 2>/dev/null'
-            version = os.popen(command).read().strip()
+            if os.system("pkg-config --exists %s &>/dev/null" % name) == 0:
+                command = "pkg-config %s %%s 2>/dev/null" % name
+            else:
+                command = "%s-config %%s 2>/dev/null" % name
+
+            version = os.popen(command % "--version").read().strip()
             if len(version) == 0:
                 raise ValueError, 'command not found'
             if minver and version < minver:
@@ -89,20 +92,18 @@ class Extension(object):
                      (name, minver, version)
                 raise ValueError, err
 
-            command = name + '-config --cflags 2>/dev/null'
-            for inc in os.popen(command).read().strip().split(' '):
+            for inc in os.popen(command % "--cflags").read().strip().split(' '):
                 if inc[2:] and not inc[2:] in self.include_dirs:
                     self.include_dirs.append(inc[2:])
                 
-            command = name + '-config --libs 2>/dev/null'
-            for flag in os.popen(command).read().strip().split(' '):
+            for flag in os.popen(command % "--libs").read().strip().split(' '):
                 if flag[:2] == '-L' and not flag[2:] in self.library_dirs:
                     self.library_dirs.append(flag[2:])
                 if flag[:2] == '-l' and not flag[2:] in self.libraries:
                     self.libraries.append(flag[2:])
             return True
         except Exception, e:
-            print 'WARNING: "%s-config" failed: %s' % (name, e)
+            print 'WARNING: "%s" library check failed: %s' % (name, e)
             return False
 
 

@@ -81,10 +81,12 @@ class Extension(object):
         try:
             if os.system("pkg-config --exists %s &>/dev/null" % name) == 0:
                 command = "pkg-config %s %%s 2>/dev/null" % name
+                version_arg = "--modversion"
             else:
                 command = "%s-config %%s 2>/dev/null" % name
+                version_arg = "--version"
 
-            version = os.popen(command % "--version").read().strip()
+            version = os.popen(command % version_arg).read().strip()
             if len(version) == 0:
                 raise ValueError, 'command not found'
             if minver and version < minver:

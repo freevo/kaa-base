@@ -79,12 +79,16 @@ class Extension(object):
         libraries. The basic logic is taken from pygame.
         """
         try:
-            if os.system("pkg-config --exists %s &>/dev/null" % name) == 0:
+            if os.system("%s-config --version &>/dev/null" % name) == 0:
+                # Use foo-config if it exists.
+                command = "%s-config %%s 2>/dev/null" % name
+                version_arg = "--version"
+            elif os.system("pkg-config %s --exists &>/dev/null" % name) == 0:
+                # Otherwise try pkg-config foo.
                 command = "pkg-config %s %%s 2>/dev/null" % name
                 version_arg = "--modversion"
             else:
-                command = "%s-config %%s 2>/dev/null" % name
-                version_arg = "--version"
+                raise Exception, "not found"
 
             version = os.popen(command % version_arg).read().strip()
             if len(version) == 0:

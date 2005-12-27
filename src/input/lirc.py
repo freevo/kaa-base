@@ -53,15 +53,20 @@ def init(appname = None, cfg = None):
     has_lirc = False
     try:
         import pylirc
-        fd = pylirc.init(appname, cfgfile)
-        if fd:
-            pylirc.blocking(0)
-            kaa.notifier.SocketDispatcher(_handle_lirc_input).register(fd)
-            kaa.signals["shutdown"].connect(pylirc.exit)
-            kaa.signals["lirc"] = kaa.notifier.Signal()
-            has_lirc = True
     except ImportError:
-        pass
+        return False
+
+    try:
+        fd = pylirc.init(appname, cfgfile)
+    except IOError:
+        return False
+
+    if fd:
+        pylirc.blocking(0)
+        kaa.notifier.SocketDispatcher(_handle_lirc_input).register(fd)
+        kaa.signals["shutdown"].connect(pylirc.exit)
+        kaa.signals["lirc"] = kaa.notifier.Signal()
+        has_lirc = True
     
     return has_lirc
 

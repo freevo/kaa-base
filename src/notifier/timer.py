@@ -39,6 +39,7 @@ class Timer(NotifierCallback):
     def __init__(self, callback, *args, **kwargs):
         super(Timer, self).__init__(callback, *args, **kwargs)
         self.restart_when_active = True
+        self._interval = None
 
 
     def start(self, interval):
@@ -51,6 +52,7 @@ class Timer(NotifierCallback):
             self.unregister()
 
         self._id = notifier.timer_add(int(interval * 1000), self)
+        self._interval = interval
 
 
     def stop(self):
@@ -63,6 +65,10 @@ class Timer(NotifierCallback):
         if self.active():
             notifier.timer_remove(self._id)
             super(Timer, self).unregister()
+
+
+    def get_interval(self):
+        return self._interval
 
 
 

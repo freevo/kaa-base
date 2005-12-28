@@ -173,7 +173,7 @@ class Callback(object):
         return result
 
 
-    def __str__(self):
+    def __repr__(self):
         """
         Convert to string for debug.
         """

@@ -177,7 +177,7 @@ class Callback(object):
         """
         Convert to string for debug.
         """
-        return '<%s for %s>' % (str(self.__class__)[8:-2], self._callback)
+        return '<%s for %s>' % (self.__class__.__name__, self._callback)
 
 
 class NotifierCallback(Callback):
@@ -246,6 +246,13 @@ class WeakCallback(Callback):
         self._kwargs = weakref_data(kwargs, self._weakref_destroyed)
         self._weakref_destroyed_user_cb = None
 
+
+    def __repr__(self):
+        if self._instance and self._instance():
+            name = "method %s of %s" % (self._callback, self._instance())
+        else:
+            name = self._callback
+        return '<%s for %s>' % (self.__class__.__name__, name)
 
     def _get_callback(self):
         if self._instance:

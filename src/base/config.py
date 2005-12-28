@@ -1,7 +1,9 @@
-VALUE       = 0
-TYPE        = 1
-DESCRIPTION = 2
-DEFAULT     = 3
+VALUE       = 'value'
+TYPE        = 'type'
+DESCRIPTION = 'descr'
+DEFAULT     = 'default'
+
+import copy
 
 class Group(object):
     def __init__(self, schema):
@@ -9,12 +11,16 @@ class Group(object):
         self.__vars = []
         for data in schema:
             # add special unicode/string conversion
-            self.__dict[data[0]] = [ data[TYPE](data[DEFAULT]) ] + list(data[1:])
-            self.__vars.append(data[0])
+            data = copy.copy(data)
+            data['value'] = data['default']
+            self.__dict[data['name']] = data
+            self.__vars.append(data['name'])
             
 
     def add_group(self, name, group, description):
-        self.__dict[name] = [ group, Group, description, group ]
+        self.__dict[name] = { 'name' : name, 'value' : group,
+                              'type' : Group, 'descr' : description,
+                              'default' : group }
         self.__vars.append(name)
 
 
@@ -23,7 +29,7 @@ class Group(object):
         for var in self.__vars:
             info = self.__dict[var]
             if info[TYPE] == Group:
-                ret += info[VALUE].extract(var.upper() + '_')
+                ret += info[VALUE].extract(prefix + var.upper() + '_')
             else:
                 ret.append((prefix + var.upper(), info[VALUE]))
         return ret
@@ -95,22 +101,26 @@ class Group(object):
 
 # TEST CODE
 
-schema = [
-    ('foo', int, 'some text', 5),
-    ('bar', unicode, 'more text\ndescription has two lines', 'bar' ),
-    ('subgroup', Group, 'this is a subgroup',
-     [ ( 'x', int, 'descr_x', 7),
-       ( 'y', int, 'descr_y', 8),
-       ( 'z', Group, 'subsubgroup',
-         [ ( 'a', int, 'descr a', 3 ) ] ) ] ) ]
+config = Group([
+    { 'name' : 'foo', 'type' : int, 'descr' : 'some text', 'default':5 },
+    { 'name' : 'bar', 'type' : unicode,
+      'descr' : 'more text\ndescription has two lines', 'default':'bar' } ])
 
-config = Group(schema)
+subgroup = Group( [
+    { 'name' : 'x', 'type' : int, 'descr' : 'descr_x', 'default' : 7 },
+    { 'name' : 'y', 'type' : int, 'descr' : 'descr_y', 'default' : 8 } ])
+config.add_group('subgroup', subgroup, 'this is a subgroup')
+
+subsubgroup = Group( [
+    { 'name' : 'a', 'type' : int, 'descr' : 'descr a', 'default' : 3 } ])
+subgroup.add_group('z', subsubgroup, 'desrc of subsubgroup')
+
 print config.foo
 print config.getattr('foo')
 
 config.foo = 10
 print config.foo
-# This crahes because hello is no int
+# This crashes because hello is no int
 try:
     config.foo = 'hello'
 except Exception, e:
@@ -121,8 +131,8 @@ print config.subgroup.x
 
 # create new group on the fly
 dvb_schema = [
-    ('card', int, 'card number', 0),
-    ('priority', int, 'card priority', 6) ]
+    { 'name' : 'card', 'type' : int, 'descr' : 'card number', 'default' : 0 },
+    { 'name' : 'priority', 'type' : int, 'descr' : 'card priority', 'default' : 6} ]
     
 dvb0 = Group(dvb_schema)
 dvb1 = Group(dvb_schema)
@@ -148,10 +158,8 @@ print 'config.subgroup.z.a is', config.subgroup.z.a
 
 print 'save config to filename config.test'
 config.save('config.test')
-print 'create new config object'
-config = Group(schema)
-config.add_group('dvb0', dvb0, 'dvb card 0')
-config.add_group('dvb1', dvb1, 'dvb card 1')
+print 'change config object'
+config.subgroup.z.a = 6
 print 'config.subgroup.z.a is', config.subgroup.z.a
 print 'read config file into new object'
 config.load('config.test')

@@ -210,6 +210,7 @@ class Config(Group):
         f.write('# *************************************************************\n\n')
         f.write(self._cfg_string(''))
         if self._bad_lines:
+            f.write('\n\n\n')
             f.write('# *************************************************************\n')
             f.write('# The following lines caused some errors and were ignored\n')
             f.write('# Possible reasons are removed variables or bad configuration\n')
@@ -222,7 +223,8 @@ class Config(Group):
     def load(self, filename):
         local_encoding = ENCODING
         self._filename = filename
-        regexp = re.compile('(([a-zA-Z0-9_]+)|(\[.*?\]))')
+        line_regexp = re.compile('^([a-zA-Z0-9_]+|\[.*?\]|\.)+ *= *(.*)')
+        key_regexp = re.compile('(([a-zA-Z0-9_]+)|(\[.*?\]))')
         f = open(filename)
         for line in f.readlines():
             line = line.strip()
@@ -242,14 +244,18 @@ class Config(Group):
             line = line.strip()
             if not line:
                 continue
-            if line.count('=') != 1:
+
+            # split line in key = value
+            m = line_regexp.match(line.strip())
+            if not m:
                 error = ('Unable to parse the line', line.encode(local_encoding))
                 if not error in self._bad_lines:
                     self._bad_lines.append(error)
                 continue
-            key, value = line.split('=')
+            value = m.groups()[1]
+            key = line[:-len(value)].rstrip(' =')
             try:
-                keylist = [x[0] for x in regexp.findall(key.strip()) if x[0] ]
+                keylist = [x[0] for x in key_regexp.findall(key.strip()) if x[0] ]
                 object = self
                 while len(keylist) > 1:
                     key = keylist.pop(0)
@@ -259,7 +265,10 @@ class Config(Group):
                         object = getattr(object, key)
                 key = keylist[0]
                 value = value.strip()
-                setattr(object, key, value)
+                if isinstance(object, (Dict, List)):
+                    object[key[1:-1]] = value
+                else:
+                    setattr(object, key, value)
             except Exception, e:
                 error = (str(e), line.encode(local_encoding))
                 if not error in self._bad_lines:
@@ -344,6 +353,8 @@ epg['foo'] = 'bar'
 epg['x']   = u'non-ascii: ö'
 epg[u'also-non-ascii ä'] = u'non-ascii: ö'
 epg['this.has.a.dot'] = 'something'
+epg['this.has.a.='] = 'something'
+epg['the other way around'] = 'something=bar'
 
 print epg['foo']
 

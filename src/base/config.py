@@ -1,26 +1,25 @@
-VALUE       = 'value'
-TYPE        = 'type'
-DESCRIPTION = 'descr'
-DEFAULT     = 'default'
-
 import copy
 
+class Var(object):
+    def __init__(self, name, type, descr='', default=None):
+        self.name  = name
+        self.type  = type
+        self.descr = descr
+        self.default = default
+        self.value = default
+        
 class Group(object):
     def __init__(self, schema):
         self.__dict = {}
         self.__vars = []
         for data in schema:
             # add special unicode/string conversion
-            data = copy.copy(data)
-            data['value'] = data['default']
-            self.__dict[data['name']] = data
-            self.__vars.append(data['name'])
+            self.__dict[data.name] = data
+            self.__vars.append(data.name)
             
 
     def add_group(self, name, group, description):
-        self.__dict[name] = { 'name' : name, 'value' : group,
-                              'type' : Group, 'descr' : description,
-                              'default' : group }
+        self.__dict[name] = Var(name, Group, description, group)
         self.__vars.append(name)
 
 
@@ -28,10 +27,10 @@ class Group(object):
         ret = []
         for var in self.__vars:
             info = self.__dict[var]
-            if info[TYPE] == Group:
-                ret += info[VALUE].extract(prefix + var.upper() + '_')
+            if info.type == Group:
+                ret += info.value.extract(prefix + var.upper() + '_')
             else:
-                ret.append((prefix + var.upper(), info[VALUE]))
+                ret.append((prefix + var.upper(), info.value))
         return ret
     
 
@@ -43,16 +42,16 @@ class Group(object):
         for var in self.__vars:
             info = self.__dict[var]
             name = prefix + var
-            desc = info[DESCRIPTION].replace('\n', '\n# ')
-            if info[TYPE] == Group:
+            desc = info.descr.replace('\n', '\n# ')
+            if info.type == Group:
                 ret.append('#\n# SECTION %s\n# %s\n#\n' % (name, desc))
-                ret.append(info[VALUE].save(prefix=name + '.'))
-            elif info[VALUE] == info[DEFAULT]:
+                ret.append(info.value.save(prefix=name + '.'))
+            elif info.value == info.default:
                 # add special unicode/string conversion
-                ret.append('# %s\n# %s = %s\n' % (desc, name, info[VALUE]))
+                ret.append('# %s\n# %s = %s\n' % (desc, name, info.value))
             else:
                 # add special unicode/string conversion
-                ret.append('# %s\n%s = %s\n' % (desc, name, info[VALUE]))
+                ret.append('# %s\n%s = %s\n' % (desc, name, info.value))
         if not filename:
             return '\n'.join(ret)
         f = open(filename, 'w')
@@ -85,14 +84,14 @@ class Group(object):
         if key.startswith('_'):
             return object.__setattr__(self, key, value)
         var = self.__dict[key]
-        if not isinstance(value, var[TYPE]):
+        if not isinstance(value, var.type):
             # This could crash, but that is ok
-            value = var[TYPE](value)
-        var[VALUE] = value
+            value = var.type(value)
+        var.value = value
 
 
     def __getattr__(self, key):
-        return self.__dict[key][VALUE]
+        return self.__dict[key].value
 
 
     def getattr(self, key):
@@ -102,17 +101,17 @@ class Group(object):
 # TEST CODE
 
 config = Group([
-    { 'name' : 'foo', 'type' : int, 'descr' : 'some text', 'default':5 },
-    { 'name' : 'bar', 'type' : unicode,
-      'descr' : 'more text\ndescription has two lines', 'default':'bar' } ])
+    Var(name='foo', type=int, descr='some text', default=5),
+    Var(name='bar', type=unicode, default='bar',
+        descr='more text\ndescription has two lines')])
 
 subgroup = Group( [
-    { 'name' : 'x', 'type' : int, 'descr' : 'descr_x', 'default' : 7 },
-    { 'name' : 'y', 'type' : int, 'descr' : 'descr_y', 'default' : 8 } ])
+    Var(name='x', type=int, descr='descr_x', default=7 ),
+    Var(name='y', type=int, descr='descr_y', default=8 ) ])
 config.add_group('subgroup', subgroup, 'this is a subgroup')
 
 subsubgroup = Group( [
-    { 'name' : 'a', 'type' : int, 'descr' : 'descr a', 'default' : 3 } ])
+    Var(name='a', type=int, descr='descr a', default=3 ) ])
 subgroup.add_group('z', subsubgroup, 'desrc of subsubgroup')
 
 print config.foo
@@ -131,8 +130,8 @@ print config.subgroup.x
 
 # create new group on the fly
 dvb_schema = [
-    { 'name' : 'card', 'type' : int, 'descr' : 'card number', 'default' : 0 },
-    { 'name' : 'priority', 'type' : int, 'descr' : 'card priority', 'default' : 6} ]
+    Var(name='card', type=int, descr='card number', default=0 ),
+    Var(name='priority', type=int, descr='card priority', default=6) ]
     
 dvb0 = Group(dvb_schema)
 dvb1 = Group(dvb_schema)

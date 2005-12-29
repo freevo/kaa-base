@@ -24,7 +24,7 @@ class Var(object):
         if not descr and hasattr(default, '_descr'):
             self.descr = default._descr
         if isinstance(self.descr, str):
-            self.descr = unicode(self.descr, ENCODING, 'r')
+            self.descr = unicode(self.descr, ENCODING, 'replace')
         
 
     def _cfg_string(self, prefix, print_descr=True):
@@ -34,12 +34,13 @@ class Var(object):
             return self.value._cfg_string(prefix, print_descr)
         descr = newline = ''
         if print_descr:
-            descr = '# %s\n' % self.descr.encode(ENCODING, 'r').replace('\n', '\n# ')
+            descr = '# %s\n' % self.descr.encode(ENCODING, 'replace').\
+                    replace('\n', '\n# ')
             newline = '\n'
         value = self.value
         if isinstance(self.value, unicode):
             # convert unicode to string
-            value = self.value.encode(ENCODING, 'r')
+            value = self.value.encode(ENCODING, 'replace')
         if self.value == self.default:
             return '%s# %s = %s%s' % (descr, prefix, value, newline)
         return '%s%s = %s%s' % (descr, prefix, value, newline)
@@ -75,7 +76,7 @@ class Group(object):
             self._dict[data.name] = data
             self._vars.append(data.name)
         if isinstance(self._descr, str):
-            self._descr = unicode(self._descr, ENCODING, 'r')
+            self._descr = unicode(self._descr, ENCODING, 'replace')
             
     def add_group(self, name, value):
         self._dict[name] = Var(name=name, default=value)
@@ -84,7 +85,7 @@ class Group(object):
 
     def _cfg_string(self, prefix, print_descr=True):
         ret  = []
-        desc = self._descr.encode(ENCODING, 'r').replace('\n', '\n# ')
+        desc = self._descr.encode(ENCODING, 'replace').replace('\n', '\n# ')
         if prefix:
             if print_descr:
                 ret.append('#\n# %s\n# %s\n#\n' % (prefix, desc))
@@ -122,7 +123,7 @@ class Dict(object):
         self._descr = descr
         self._name  = name
         if isinstance(self._descr, str):
-            self._descr = unicode(self._descr, ENCODING, 'r')
+            self._descr = unicode(self._descr, ENCODING, 'replace')
         
 
     def __getitem__(self, index):
@@ -139,9 +140,9 @@ class Dict(object):
         if not isinstance(index, self._type):
             # this could crash, we don't care.
             if self._type == unicode and type(index) == str:
-                index = unicode(index, ENCODING, 'r')
+                index = unicode(index, ENCODING, 'replace')
             elif self._type == str and type(index) == unicode:
-                index = index.encode(ENCODING, 'r')
+                index = index.encode(ENCODING, 'replace')
             index = self._type(index)
         if not index in self._dict:
             self._dict[index] = copy.deepcopy(self._schema)
@@ -152,7 +153,7 @@ class Dict(object):
         ret = []
         if type(self._schema) == Var and print_descr:
             ret.append('#\n# %s\n# %s\n#\n' % \
-                       (prefix, self._descr.encode(ENCODING, 'r')))
+                       (prefix, self._descr.encode(ENCODING, 'replace')))
             print_descr = False
 
         # sort config by key names
@@ -163,7 +164,7 @@ class Dict(object):
             # get the var before we might change the key to string
             var = self._dict[key]
             if isinstance(key, unicode):
-                key = key.encode(ENCODING, 'r')
+                key = key.encode(ENCODING, 'replace')
             ret.append(var._cfg_string('%s[%s]' % (prefix, key), print_descr))
         if not print_descr:
             ret.append('')

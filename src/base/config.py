@@ -11,30 +11,30 @@ except:
     ENCODING = 'latin-1'
 
 class Var(object):
-    def __init__(self, name, type='', descr=u'', default=None):
+    def __init__(self, name, type='', desc=u'', default=None):
         self.name = name
         self.type = type
-        self.descr = descr
+        self.desc = desc
         self.default = default
         self.value = default
         if type == '':
             if default == None:
                 raise AttributeError('define type or default')
             self.type = default.__class__
-        if not descr and hasattr(default, '_descr'):
-            self.descr = default._descr
-        if isinstance(self.descr, str):
-            self.descr = unicode(self.descr, ENCODING, 'replace')
+        if not desc and hasattr(default, '_desc'):
+            self.desc = default._desc
+        if isinstance(self.desc, str):
+            self.desc = unicode(self.desc, ENCODING, 'replace')
         
 
-    def _cfg_string(self, prefix, print_descr=True):
+    def _cfg_string(self, prefix, print_desc=True):
         if not prefix.endswith(']'):
             prefix = prefix + self.name
         if hasattr(self.value, '_cfg_string'):
-            return self.value._cfg_string(prefix, print_descr)
-        descr = newline = ''
-        if print_descr:
-            descr = '# %s\n' % self.descr.encode(ENCODING, 'replace').\
+            return self.value._cfg_string(prefix, print_desc)
+        desc = newline = ''
+        if print_desc:
+            desc = '# %s\n' % self.desc.encode(ENCODING, 'replace').\
                     replace('\n', '\n# ')
             newline = '\n'
         value = self.value
@@ -42,8 +42,8 @@ class Var(object):
             # convert unicode to string
             value = self.value.encode(ENCODING, 'replace')
         if self.value == self.default:
-            return '%s# %s = %s%s' % (descr, prefix, value, newline)
-        return '%s%s = %s%s' % (descr, prefix, value, newline)
+            return '%s# %s = %s%s' % (desc, prefix, value, newline)
+        return '%s%s = %s%s' % (desc, prefix, value, newline)
 
 
     def _cfg_set(self, value):
@@ -56,17 +56,22 @@ class Var(object):
                 return value
             raise AttributeError('Variable must be one of %s' % str(self.type))
         if not isinstance(value, self.type):
-            # This could crash, but that is ok
-            value = self.type(value)
+            if isinstance(value, str) and self.type == unicode:
+                value = unicode(value, ENCODING, 'replace')
+            elif isinstance(value, unicode) and self.type == str:
+                value = value.encode(ENCODING, 'replace')
+            else:
+                # This could crash, but that is ok
+                value = self.type(value)
         self.value = value
         return value
 
     
 class Group(object):
-    def __init__(self, schema, descr=u'', name=''):
+    def __init__(self, schema, desc=u'', name=''):
         self._dict  = {}
         self._vars  = []
-        self._descr = descr
+        self._desc = desc
         self._name  = name
         for data in copy.deepcopy(schema):
             if not isinstance(data, Var):
@@ -75,24 +80,24 @@ class Group(object):
                 data = Var(name=data._name, default=data)
             self._dict[data.name] = data
             self._vars.append(data.name)
-        if isinstance(self._descr, str):
-            self._descr = unicode(self._descr, ENCODING, 'replace')
+        if isinstance(self._desc, str):
+            self._desc = unicode(self._desc, ENCODING, 'replace')
             
     def add_group(self, name, value):
         self._dict[name] = Var(name=name, default=value)
         self._vars.append(name)
 
 
-    def _cfg_string(self, prefix, print_descr=True):
+    def _cfg_string(self, prefix, print_desc=True):
         ret  = []
-        desc = self._descr.encode(ENCODING, 'replace').replace('\n', '\n# ')
+        desc = self._desc.encode(ENCODING, 'replace').replace('\n', '\n# ')
         if prefix:
-            if print_descr:
+            if print_desc:
                 ret.append('#\n# %s\n# %s\n#\n' % (prefix, desc))
             prefix += '.'
         for name in self._vars:
             var = self._dict[name]
-            ret.append(var._cfg_string(prefix, print_descr))
+            ret.append(var._cfg_string(prefix, print_desc))
         return '\n'.join(ret)
 
 
@@ -114,16 +119,16 @@ class Group(object):
 
 
 class Dict(object):
-    def __init__(self, schema, descr=u'', name='', type=unicode):
+    def __init__(self, schema, desc=u'', name='', type=unicode):
         if not isinstance(schema, Var):
             schema = Var(name=name, default=schema)
         self._schema  = copy.deepcopy(schema)
         self._dict  = {}
         self._type  = type
-        self._descr = descr
+        self._desc = desc
         self._name  = name
-        if isinstance(self._descr, str):
-            self._descr = unicode(self._descr, ENCODING, 'replace')
+        if isinstance(self._desc, str):
+            self._desc = unicode(self._desc, ENCODING, 'replace')
         
 
     def __getitem__(self, index):
@@ -149,12 +154,12 @@ class Dict(object):
         self._dict[index]._cfg_set(value)
 
 
-    def _cfg_string(self, prefix, print_descr=True):
+    def _cfg_string(self, prefix, print_desc=True):
         ret = []
-        if type(self._schema) == Var and print_descr:
+        if type(self._schema) == Var and print_desc:
             ret.append('#\n# %s\n# %s\n#\n' % \
-                       (prefix, self._descr.encode(ENCODING, 'replace')))
-            print_descr = False
+                       (prefix, self._desc.encode(ENCODING, 'replace')))
+            print_desc = False
 
         # sort config by key names
         keys = self._dict.keys()[:]
@@ -165,20 +170,20 @@ class Dict(object):
             var = self._dict[key]
             if isinstance(key, unicode):
                 key = key.encode(ENCODING, 'replace')
-            ret.append(var._cfg_string('%s[%s]' % (prefix, key), print_descr))
-        if not print_descr:
+            ret.append(var._cfg_string('%s[%s]' % (prefix, key), print_desc))
+        if not print_desc:
             ret.append('')
         return '\n'.join(ret)
 
     
 class List(Dict):
-    def __init__(self, schema, descr=u'', name=''):
-        Dict.__init__(self, schema, descr, name, int)
+    def __init__(self, schema, desc=u'', name=''):
+        Dict.__init__(self, schema, desc, name, int)
 
 
 class Config(Group):
-    def __init__(self, schema, descr=u'', name=''):
-        Group.__init__(self, schema, descr, name)
+    def __init__(self, schema, desc=u'', name=''):
+        Group.__init__(self, schema, desc, name)
         self._filename = ''
         self._bad_lines = []
         
@@ -215,17 +220,30 @@ class Config(Group):
 
 
     def load(self, filename):
+        local_encoding = ENCODING
         self._filename = filename
         regexp = re.compile('(([a-zA-Z0-9_]+)|(\[.*?\]))')
         f = open(filename)
         for line in f.readlines():
+            line = line.strip()
+            if line.startswith('# -*- coding:'):
+                # a encoding is set in the config file, use it
+                try:
+                    encoding = line[14:-4]
+                    ''.encode(encoding)
+                    local_encoding = encoding
+                except:
+                    # bad encoding, ignore it
+                    pass
+            # convert lines based on local encoding
+            line = unicode(line, local_encoding)
             if line.find('#') >= 0:
                 line = line[:line.find('#')]
             line = line.strip()
             if not line:
                 continue
             if line.count('=') != 1:
-                error = ('Unable to parse the line', line)
+                error = ('Unable to parse the line', line.encode(local_encoding))
                 if not error in self._bad_lines:
                     self._bad_lines.append(error)
                 continue
@@ -243,7 +261,7 @@ class Config(Group):
                 value = value.strip()
                 setattr(object, key, value)
             except Exception, e:
-                error = (str(e), line)
+                error = (str(e), line.encode(local_encoding))
                 if not error in self._bad_lines:
                     self._bad_lines.append(error)
         f.close()
@@ -252,48 +270,48 @@ class Config(Group):
     
 # TEST CODE
 
-config = Config(descr='basic config group', schema=[
-    Var(name='foo', descr='some text', default=5),
+config = Config(desc='basic config group', schema=[
+    Var(name='foo', desc='some text', default=5),
     Var(name='bar', default=u'bar',
-        descr='more text\ndescription has two lines'),
+        desc='more text\ndescription has two lines'),
 
     # group defined inside the basic schema
-    Group(name='inline', descr='this is a subgroup', schema=[
-    Var(name='x', descr='descr_x', default=7 ),
-    Var(name='y', type=range(0,5), descr='descr_y', default=3 ) ])
+    Group(name='inline', desc='this is a subgroup', schema=[
+    Var(name='x', desc='desc_x', default=7 ),
+    Var(name='y', type=range(0,5), desc='desc_y', default=3 ) ])
     ])
 
 # create extra group and add it to the schema
-subgroup = Group(descr='this is a subgroup', schema=[
-    Var(name='x', descr='descr_x with non ascii ü', default=7 ),
+subgroup = Group(desc='this is a subgroup', schema=[
+    Var(name='x', desc=u'desc_x with non ascii ü', default=7 ),
     # the next variable allows numbers from 0-4
-    Var(name='y', type=range(0,5), descr='descr_y', default=3 ) ])
+    Var(name='y', type=range(0,5), desc='desc_y', default=3 ) ])
 config.add_group('subgroup', subgroup)
 
 # create a group again deeper in the tree
-subsubgroup = Group(descr='desrc of subsubgroup', schema=[
-    Var(name='a', descr='descr a', default=3 ) ])
+subsubgroup = Group(desc='desrc of subsubgroup', schema=[
+    Var(name='a', desc='desc a', default=3 ) ])
 subgroup.add_group('z', subsubgroup)
 
 # create a list of a group
-l = List(descr='desrc of list subsubgroup', schema=Group([
-    Var(name='a', type=int, descr='descr a', default=3 ),
+l = List(desc='desrc of list subsubgroup', schema=Group([
+    Var(name='a', type=int, desc='desc a', default=3 ),
     # z is again a group
-    Group(name='z', descr='this is a subgroup', schema=[
-    Var(name='x', descr='descr_x', default=7 ),
-    Var(name='y', type=range(0,5), descr='descr_y', default=3 ) ]) ]))
+    Group(name='z', desc='this is a subgroup', schema=[
+    Var(name='x', desc='desc_x', default=7 ),
+    Var(name='y', type=range(0,5), desc='desc_y', default=3 ) ]) ]))
 subgroup.add_group('list', l)
 
 # create a dict of strings
-epg = Dict(descr='desrc of dict epg', schema=Var(name='a', descr='descr a', default='' ))
+epg = Dict(desc='desrc of dict epg', schema=Var(name='a', desc='desc a', default='' ))
 subgroup.add_group('epg', epg)
 
 # store the schema up to this point, we will need it later
 part_config = copy.deepcopy(config)
 
 # create extra group and add it to the schema
-subgroup = Group(descr='this is a subgroup', schema=[
-    Var(name='x', descr='descr_x', default=7 ) ])
+subgroup = Group(desc='this is a subgroup', schema=[
+    Var(name='x', desc='desc_x', default=7 ) ])
 config.add_group('some_group', subgroup)
 
 # OK, let's play with the config
@@ -323,8 +341,8 @@ print
 print '** Test 2: play with the dict **'
 
 epg['foo'] = 'bar'
-epg['x']   = 'non-ascii: ö'
-epg['also-non-ascii ä'] = 'non-ascii: ö'
+epg['x']   = u'non-ascii: ö'
+epg[u'also-non-ascii ä'] = u'non-ascii: ö'
 epg['this.has.a.dot'] = 'something'
 
 print epg['foo']

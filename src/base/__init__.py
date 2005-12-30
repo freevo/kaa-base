@@ -1,6 +1,6 @@
 import logging
 
-from kaa.base.weakref import weakref
+from weakref import weakref
 
 def create_logger(level = logging.WARNING):
     """

@@ -1,4 +1,34 @@
 # -*- coding: iso-8859-1 -*-
+# -----------------------------------------------------------------------------
+# config.py - config file reader
+# -----------------------------------------------------------------------------
+# $Id$
+#
+# -----------------------------------------------------------------------------
+# Copyright (C) 2005 Dirk Meyer, Jason Tackaberry
+#
+# First Edition: Dirk Meyer <dmeyer@tzi.de>
+# Maintainer:    Dirk Meyer <dmeyer@tzi.de>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MER-
+# CHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+# Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+#
+# -----------------------------------------------------------------------------
+
+__all__ = [ "Var", "Group", "Dict", "List", "Config" ]
+
+# Python imports
 import re
 import copy
 import locale
@@ -10,91 +40,134 @@ try:
 except:
     ENCODING = 'latin-1'
 
+def _convert(string, type):
+    """
+    Convert str to unicode or the other way around. Do nothing if the
+    string is already correct.
+    """
+    if type == str and isinstance(string, unicode):
+        return string.encode(ENCODING, 'replace')
+    if type == unicode and isinstance(string, str):
+        return unicode(string, ENCODING, 'replace')
+    return string
+
+
 class Var(object):
-    def __init__(self, name, type='', desc=u'', default=None):
-        self.name = name
-        self.type = type
-        self.desc = desc
-        self.default = default
-        self.value = default
+    """
+    A config variable.
+    """
+    def __init__(self, name='', type='', desc=u'', default=None):
+        self._name = name
+        self._type = type
+        self._desc = _convert(desc, unicode)
+        self._default = default
+        self._value = default
         if type == '':
+            # create type based on default
             if default == None:
                 raise AttributeError('define type or default')
-            self.type = default.__class__
-        if not desc and hasattr(default, '_desc'):
-            self.desc = default._desc
-        if isinstance(self.desc, str):
-            self.desc = unicode(self.desc, ENCODING, 'replace')
-        
+            self._type = default.__class__
+
+
+    def copy(self):
+        """
+        Return a deep copy of the object.
+        """
+        return copy.deepcopy(self)
+
 
     def _cfg_string(self, prefix, print_desc=True):
+        """
+        Convert object into a string to write into a config file.
+        """
         if not prefix.endswith(']'):
-            prefix = prefix + self.name
-        if hasattr(self.value, '_cfg_string'):
-            return self.value._cfg_string(prefix, print_desc)
+            # add name if the prefix is not a dict
+            prefix = prefix + self._name
+
+        # create description
         desc = newline = ''
         if print_desc:
-            desc = '# %s\n' % self.desc.encode(ENCODING, 'replace').\
-                    replace('\n', '\n# ')
+            desc = '# %s\n' % _convert(self._desc, str).replace('\n', '\n# ')
             newline = '\n'
-        value = self.value
-        if isinstance(self.value, unicode):
-            # convert unicode to string
-            value = self.value.encode(ENCODING, 'replace')
-        if self.value == self.default:
+        # convert value to string
+        value = _convert(self._value, str)
+        if self._value == self._default:
+            # print default value
             return '%s# %s = %s%s' % (desc, prefix, value, newline)
+        # print current value
         return '%s%s = %s%s' % (desc, prefix, value, newline)
 
 
     def _cfg_set(self, value):
-        if isinstance(self.type, (list, tuple)):
-            if not value in self.type:
+        """
+        Set variable to value. If the type is not right, an expection will
+        be raised. The function will convert between string and unicode.
+        """
+        if isinstance(self._type, (list, tuple)):
+            if not value in self._type:
                 # This could crash, but that is ok
-                value = self.type[0].__class__(value)
-            if value in self.type:
-                self.value = value
+                value = self._type[0].__class__(value)
+            if value in self._type:
+                self._value = value
                 return value
-            raise AttributeError('Variable must be one of %s' % str(self.type))
-        if not isinstance(value, self.type):
-            if isinstance(value, str) and self.type == unicode:
-                value = unicode(value, ENCODING, 'replace')
-            elif isinstance(value, unicode) and self.type == str:
-                value = value.encode(ENCODING, 'replace')
+            raise AttributeError('Variable must be one of %s' % str(self._type))
+        if not isinstance(value, self._type):
+            if self._type in (str, unicode):
+                value = _convert(value, self._type)
             else:
                 # This could crash, but that is ok
-                value = self.type(value)
-        self.value = value
+                value = self._type(value)
+        self._value = value
         return value
 
-    
+
 class Group(object):
+    """
+    A config group.
+    """
     def __init__(self, schema, desc=u'', name=''):
-        self._dict  = {}
-        self._vars  = []
-        self._desc = desc
-        self._name  = name
-        for data in copy.deepcopy(schema):
-            if not isinstance(data, Var):
-                if not data._name:
-                    raise AttributeError('Inline Group needs name')
-                data = Var(name=data._name, default=data)
-            self._dict[data.name] = data
-            self._vars.append(data.name)
-        if isinstance(self._desc, str):
-            self._desc = unicode(self._desc, ENCODING, 'replace')
-            
-    def add_group(self, name, value):
-        self._dict[name] = Var(name=name, default=value)
+        self._dict = {}
+        self._vars = []
+        self._desc = _convert(desc, unicode)
+        self._name = name
+        for data in schema:
+            if not data._name:
+                raise AttributeError('no name given')
+            self._dict[data._name] = data
+            self._vars.append(data._name)
+        # the value of a group is the group itself
+        self._value = self
+
+
+    def add_variable(self, name, value):
+        """
+        Add a variable to the group. The name will be set into the
+        given value. The object will _not_ be copied.
+        """
+        value._name = name
+        self._dict[name] = value
         self._vars.append(name)
 
 
+    def copy(self):
+        """
+        Return a deep copy of the object.
+        """
+        return copy.deepcopy(self)
+
+
     def _cfg_string(self, prefix, print_desc=True):
+        """
+        Convert object into a string to write into a config file.
+        """
         ret  = []
-        desc = self._desc.encode(ENCODING, 'replace').replace('\n', '\n# ')
-        if prefix:
-            if print_desc:
-                ret.append('#\n# %s\n# %s\n#\n' % (prefix, desc))
-            prefix += '.'
+        desc = _convert(self._desc, str).replace('\n', '\n# ')
+        if self._name:
+            # add self._name to prefix and add a '.'
+            prefix = prefix + self._name + '.'
+        if prefix and not prefix.endswith('].') and print_desc:
+            # print description for 'stand alone' groups
+            ret.append('#\n# %s\n# %s\n#\n' % (prefix[:-1], desc))
         for name in self._vars:
             var = self._dict[name]
             ret.append(var._cfg_string(prefix, print_desc))
@@ -102,6 +175,9 @@ class Group(object):
 
 
     def __setattr__(self, key, value):
+        """
+        Set a variable in the group.
+        """
         if key.startswith('_'):
             return object.__setattr__(self, key, value)
         if not key in self._dict:
@@ -110,87 +186,150 @@ class Group(object):
 
 
     def __getattr__(self, key):
+        """
+        Get variable, subgroup, dict or list.
+        """
         if key.startswith('_'):
             return object.__getattr__(self, key)
         if not key in self._dict:
             raise AttributeError('No attribute %s' % key)
-        return self._dict[key].value
-
+        return self._dict[key]._value
 
 
 class Dict(object):
+    """
+    A config dict.
+    """
     def __init__(self, schema, desc=u'', name='', type=unicode):
-        if not isinstance(schema, Var):
-            schema = Var(name=name, default=schema)
-        self._schema  = copy.deepcopy(schema)
-        self._dict  = {}
-        self._type  = type
-        self._desc = desc
-        self._name  = name
-        if isinstance(self._desc, str):
-            self._desc = unicode(self._desc, ENCODING, 'replace')
-        
+        self._schema = schema
+        self._dict = {}
+        self._type = type
+        self._desc = _convert(desc, unicode)
+        self._name = name
+        # the value of a dict is the dict itself
+        self._value = self
+
+
+    def keys(self):
+        """
+        Return the keys (sorted by name)
+        """
+        keys = self._dict.keys()[:]
+        keys.sort()
+        return keys
+
+
+    def items(self):
+        """
+        Return key,value list (sorted by key name)
+        """
+        return [ (key, self._dict[key]._value) for key in self.keys() ]
+
+
+    def values(self):
+        """
+        Return value list (sorted by key name)
+        """
+        return [ self._dict[key]._value for key in self.keys() ]
+
+
+    def copy(self):
+        """
+        Return a deep copy of the object.
+        """
+        return copy.deepcopy(self)
+
+
+    def _cfg_string(self, prefix, print_desc=True):
+        """
+        Convert object into a string to write into a config file.
+        """
+        ret = []
+        prefix = prefix + self._name
+        if type(self._schema) == Var and print_desc:
+            ret.append('#\n# %s\n# %s\n#\n' % (prefix, _convert(self._desc, str)))
+            print_desc = False
+
+        for key in self.keys():
+            # get the var before we might change the key to string
+            var = self._dict[key]
+            # convert key to string
+            if isinstance(key, unicode):
+                key = _convert(key, str)
+            # create new prefix. The prefix is the old one + [key] and
+            # if the next item is not a Var, add a '.'
+            new_prefix = '%s[%s]' % (prefix, key)
+            if not isinstance(self._schema, Var):
+                new_prefix += '.'
+            ret.append(var._cfg_string(new_prefix, print_desc))
+        if not print_desc:
+            ret.append('')
+        return '\n'.join(ret)
+
 
     def __getitem__(self, index):
+        """
+        Get group or variable with the given index.
+        """
         if not isinstance(index, self._type):
             # this could crash, we don't care.
             # FIXME: but string/unicode stuff may be important here
             index = self._type(index)
         if not index in self._dict:
-            self._dict[index] = copy.deepcopy(self._schema)
-        return self._dict[index].value
+            self._dict[index] = self._schema.copy()
+        return self._dict[index]._value
 
 
     def __setitem__(self, index, value):
+        """
+        Create group or variable with the given index.
+        """
         if not isinstance(index, self._type):
             # this could crash, we don't care.
-            if self._type == unicode and type(index) == str:
-                index = unicode(index, ENCODING, 'replace')
-            elif self._type == str and type(index) == unicode:
-                index = index.encode(ENCODING, 'replace')
+            if self._type in (unicode, str):
+                index = _convert(index, self._type)
             index = self._type(index)
         if not index in self._dict:
-            self._dict[index] = copy.deepcopy(self._schema)
+            self._dict[index] = self._schema.copy()
         self._dict[index]._cfg_set(value)
 
 
-    def _cfg_string(self, prefix, print_desc=True):
-        ret = []
-        if type(self._schema) == Var and print_desc:
-            ret.append('#\n# %s\n# %s\n#\n' % \
-                       (prefix, self._desc.encode(ENCODING, 'replace')))
-            print_desc = False
+    def __iter__(self):
+        """
+        Iterate through keys.
+        """
+        return self.keys().__iter__()
 
-        # sort config by key names
-        keys = self._dict.keys()[:]
-        keys.sort()
 
-        for key in keys:
-            # get the var before we might change the key to string
-            var = self._dict[key]
-            if isinstance(key, unicode):
-                key = key.encode(ENCODING, 'replace')
-            ret.append(var._cfg_string('%s[%s]' % (prefix, key), print_desc))
-        if not print_desc:
-            ret.append('')
-        return '\n'.join(ret)
 
-    
 class List(Dict):
+    """
+    A config list. A list is only a dict with integers as index.
+    """
     def __init__(self, schema, desc=u'', name=''):
         Dict.__init__(self, schema, desc, name, int)
 
 
+    def __iter__(self):
+        """
+        Iterate through values.
+        """
+        return self.values().__iter__()
+
+
 class Config(Group):
+    """
+    A config object. This is a group with functions to load and save a file.
+    """
     def __init__(self, schema, desc=u'', name=''):
         Group.__init__(self, schema, desc, name)
         self._filename = ''
         self._bad_lines = []
-        
+
 
     def save(self, filename=''):
         """
-        Save file. If filename is not given, return the config as string.
+        Save file. If filename is not given use filename from last load.
         """
         if not filename:
             filename = self._filename
@@ -221,6 +360,9 @@ class Config(Group):
 
 
     def load(self, filename):
+        """
+        Load config from a config file.
+        """
         local_encoding = ENCODING
         self._filename = filename
         line_regexp = re.compile('^([a-zA-Z0-9_]+|\[.*?\]|\.)+ *= *(.*)')
@@ -275,140 +417,3 @@ class Config(Group):
                     self._bad_lines.append(error)
         f.close()
         return len(self._bad_lines) == 0
-    
-    
-# TEST CODE
-
-config = Config(desc='basic config group', schema=[
-    Var(name='foo', desc='some text', default=5),
-    Var(name='bar', default=u'bar',
-        desc='more text\ndescription has two lines'),
-
-    # group defined inside the basic schema
-    Group(name='inline', desc='this is a subgroup', schema=[
-    Var(name='x', desc='desc_x', default=7 ),
-    Var(name='y', type=range(0,5), desc='desc_y', default=3 ) ])
-    ])
-
-# create extra group and add it to the schema
-subgroup = Group(desc='this is a subgroup', schema=[
-    Var(name='x', desc=u'desc_x with non ascii ü', default=7 ),
-    # the next variable allows numbers from 0-4
-    Var(name='y', type=range(0,5), desc='desc_y', default=3 ) ])
-config.add_group('subgroup', subgroup)
-
-# create a group again deeper in the tree
-subsubgroup = Group(desc='desrc of subsubgroup', schema=[
-    Var(name='a', desc='desc a', default=3 ) ])
-subgroup.add_group('z', subsubgroup)
-
-# create a list of a group
-l = List(desc='desrc of list subsubgroup', schema=Group([
-    Var(name='a', type=int, desc='desc a', default=3 ),
-    # z is again a group
-    Group(name='z', desc='this is a subgroup', schema=[
-    Var(name='x', desc='desc_x', default=7 ),
-    Var(name='y', type=range(0,5), desc='desc_y', default=3 ) ]) ]))
-subgroup.add_group('list', l)
-
-# create a dict of strings
-epg = Dict(desc='desrc of dict epg', schema=Var(name='a', desc='desc a', default='' ))
-subgroup.add_group('epg', epg)
-
-# store the schema up to this point, we will need it later
-part_config = copy.deepcopy(config)
-
-# create extra group and add it to the schema
-subgroup = Group(desc='this is a subgroup', schema=[
-    Var(name='x', desc='desc_x', default=7 ) ])
-config.add_group('some_group', subgroup)
-
-# OK, let's play with the config
-
-print '** Test 1: change config.subgroup.list and create some errors **'
-print config.subgroup.list[0].a
-config.subgroup.list[0].a = 6
-print config.subgroup.list[0].a
-
-# This crashes because there is no .a
-try:
-    config.subgroup.list[1].z.a = 7
-except Exception, e:
-    print e
-
-# This crashes because the index is no int
-try:
-    config.subgroup.list['foo'].z.x = 7
-except Exception, e:
-    print e
-
-print config.subgroup.list[1].z.x
-config.subgroup.list[1].z.x = 8
-print config.subgroup.list[1].z.x
-
-print
-print '** Test 2: play with the dict **'
-
-epg['foo'] = 'bar'
-epg['x']   = u'non-ascii: ö'
-epg[u'also-non-ascii ä'] = u'non-ascii: ö'
-epg['this.has.a.dot'] = 'something'
-epg['this.has.a.='] = 'something'
-epg['the other way around'] = 'something=bar'
-
-print epg['foo']
-
-print
-print '** Test 3: play some other variables **'
-
-print config.foo
-
-config.foo = 10
-print config.foo
-# This crashes because hello is no int
-try:
-    config.foo = 'hello'
-except Exception, e:
-    print e
-print config.subgroup.x
-config.subgroup.x = 10
-print config.subgroup.x
-
-print 'y', config.subgroup.y
-# This crashes because 8 is not in range
-try:
-    config.subgroup.y = 8
-except AttributeError, e:
-    print e
-print 'y', config.subgroup.y
-config.subgroup.y = 2
-print 'y', config.subgroup.y
-
-try:
-    config.not_there
-except Exception, e:
-    print e
-
-config.some_group.x = 1
-
-print
-print '** Test 4: save and reload **'
-    
-print 'config.subgroup.z.a is', config.subgroup.z.a
-print 'set to 5'
-config.subgroup.z.a = 5
-print 'config.subgroup.z.a is', config.subgroup.z.a
-
-print 'save config to filename config.test'
-config.save('config.test')
-print 'change config object'
-config.subgroup.z.a = 6
-print 'config.subgroup.z.a is', config.subgroup.z.a
-print 'read config file into new object'
-if not config.load('config.test'):
-    print 'load error, bad lines saved, not expected'
-print 'config.subgroup.z.a is', config.subgroup.z.a
-print 'load again in incomplete schema'
-if not part_config.load('config.test'):
-    print 'load error, bad lines saved as expected'
-part_config.save('config.test2')

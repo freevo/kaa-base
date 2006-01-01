@@ -29,6 +29,7 @@
 __all__ = [ "Var", "Group", "Dict", "List", "Config" ]
 
 # Python imports
+import os
 import re
 import copy
 import locale
@@ -98,29 +99,35 @@ class Var(object):
         return '%s%s = %s%s' % (desc, prefix, value, newline)
 
 
-    def _cfg_set(self, value):
+    def _cfg_set(self, value, default=False):
         """
         Set variable to value. If the type is not right, an expection will
         be raised. The function will convert between string and unicode.
+        If default is set to True, the default value will also be changed.
         """
         if isinstance(self._type, (list, tuple)):
             if not value in self._type:
                 # This could crash, but that is ok
                 value = self._type[0].__class__(value)
-            if value in self._type:
-                self._value = value
-                return value
-            raise AttributeError('Variable must be one of %s' % str(self._type))
-        if not isinstance(value, self._type):
+            if not value in self._type:
+                raise AttributeError('Variable must be one of %s' % str(self._type))
+        elif not isinstance(value, self._type):
             if self._type in (str, unicode):
                 value = _convert(value, self._type)
+            if self._type == bool:
+                if not value or value.lower() in ('0', 'false', 'no'):
+                    value = False
+                else:
+                    value = True
             else:
                 # This could crash, but that is ok
                 value = self._type(value)
+        if default:
+            self._default = value
         self._value = value
         return value
 
-
+        
 class Group(object):
     """
     A config group.
@@ -174,15 +181,22 @@ class Group(object):
         return '\n'.join(ret)
 
 
+    def _cfg_get(self, key):
+        """
+        Get variable, subgroup, dict or list object (as object not value).
+        """
+        if not key in self._dict:
+            raise AttributeError('No attribute %s' % key)
+        return self._dict[key]
+
+
     def __setattr__(self, key, value):
         """
         Set a variable in the group.
         """
         if key.startswith('_'):
             return object.__setattr__(self, key, value)
-        if not key in self._dict:
-            raise AttributeError('No attribute %s' % key)
-        self._dict[key]._cfg_set(value)
+        self._cfg_get(key)._cfg_set(value)
 
 
     def __getattr__(self, key):
@@ -190,10 +204,9 @@ class Group(object):
         Get variable, subgroup, dict or list.
         """
         if key.startswith('_'):
-            return object.__getattr__(self, key)
-        if not key in self._dict:
-            raise AttributeError('No attribute %s' % key)
-        return self._dict[key]._value
+            return object.__getattribute__(self, key)
+        return self._cfg_get(key)._value
+
 
 
 class Dict(object):
@@ -267,31 +280,32 @@ class Dict(object):
         return '\n'.join(ret)
 
 
+    def _cfg_get(self, index):
+        """
+        Get group or variable with the given index (as object, not value).
+        """
+        if not isinstance(index, self._type):
+            if self._type in (unicode, str):
+                index = _convert(index, self._type)
+            # this could crash, we don't care.
+            index = self._type(index)
+        if not index in self._dict:
+            self._dict[index] = self._schema.copy()
+        return self._dict[index]
+
+
     def __getitem__(self, index):
         """
         Get group or variable with the given index.
         """
-        if not isinstance(index, self._type):
-            # this could crash, we don't care.
-            # FIXME: but string/unicode stuff may be important here
-            index = self._type(index)
-        if not index in self._dict:
-            self._dict[index] = self._schema.copy()
-        return self._dict[index]._value
+        return self._cfg_get(index)._value
 
 
     def __setitem__(self, index, value):
         """
-        Create group or variable with the given index.
+        Access group or variable with the given index.
         """
-        if not isinstance(index, self._type):
-            # this could crash, we don't care.
-            if self._type in (unicode, str):
-                index = _convert(index, self._type)
-            index = self._type(index)
-        if not index in self._dict:
-            self._dict[index] = self._schema.copy()
-        self._dict[index]._cfg_set(value)
+        self._cfg_get(index)._cfg_set(value)
 
 
     def __iter__(self):
@@ -335,6 +349,10 @@ class Config(Group):
             filename = self._filename
         if not filename:
             raise AttributeError('no file to save to')
+
+        if os.path.dirname(filename) and not os.path.isdir(os.path.dirname(filename)):
+            os.makedirs(os.path.dirname(filename))
+
         f = open(filename, 'w')
         f.write('# -*- coding: %s -*-\n' % ENCODING.lower())
         f.write('# *************************************************************\n')
@@ -367,6 +385,9 @@ class Config(Group):
         self._filename = filename
         line_regexp = re.compile('^([a-zA-Z0-9_]+|\[.*?\]|\.)+ *= *(.*)')
         key_regexp = re.compile('(([a-zA-Z0-9_]+)|(\[.*?\]))')
+        if not os.path.isfile(filename):
+            # filename not found
+            return False
         f = open(filename)
         for line in f.readlines():
             line = line.strip()
@@ -417,3 +438,10 @@ class Config(Group):
                     self._bad_lines.append(error)
         f.close()
         return len(self._bad_lines) == 0
+
+
+    def get_filename(self):
+        """
+        Return the current used filename.
+        """
+        return self._filename

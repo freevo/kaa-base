@@ -285,7 +285,7 @@ class Dict(object):
         return '\n'.join(ret)
 
 
-    def _cfg_get(self, index):
+    def _cfg_get(self, index, create=True):
         """
         Get group or variable with the given index (as object, not value).
         """
@@ -294,11 +294,22 @@ class Dict(object):
                 index = _convert(index, self._type)
             # this could crash, we don't care.
             index = self._type(index)
-        if not index in self._dict:
+        if not index in self._dict and create:
             self._dict[index] = self._schema.copy()
         return self._dict[index]
 
 
+    def get(self, index):
+        """
+        Get group or variable with the given index. Return None if it does
+        not exist.
+        """
+        try:
+            return self._cfg_get(index, False)._value
+        except KeyError:
+            return None
+
+        
     def __getitem__(self, index):
         """
         Get group or variable with the given index.
@@ -320,7 +331,13 @@ class Dict(object):
         return self.keys().__iter__()
 
 
+    def __nonzero__(self):
+        """
+        Return False if there are no elements in the dict.
+        """
+        return len(self._dict.keys()) > 0
 
+    
 class List(Dict):
     """
     A config list. A list is only a dict with integers as index.

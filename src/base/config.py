@@ -33,6 +33,7 @@ import os
 import re
 import copy
 import locale
+import logging
 
 # find the correct encoding
 try:
@@ -40,6 +41,10 @@ try:
     ''.encode(ENCODING)
 except:
     ENCODING = 'latin-1'
+
+# get logging object
+log = logging.getLogger('config')
+
 
 def _convert(string, type):
     """
@@ -413,10 +418,14 @@ class Config(Group):
             if not m:
                 error = ('Unable to parse the line', line.encode(local_encoding))
                 if not error in self._bad_lines:
+                    log.warning('%s: %s' % error)
                     self._bad_lines.append(error)
                 continue
             value = m.groups()[1]
-            key = line[:-len(value)].rstrip(' =')
+            if value:
+                key = line[:-len(value)].rstrip(' =')
+            else:
+                key = line.rstrip(' =')
             try:
                 keylist = [x[0] for x in key_regexp.findall(key.strip()) if x[0] ]
                 object = self
@@ -435,6 +444,7 @@ class Config(Group):
             except Exception, e:
                 error = (str(e), line.encode(local_encoding))
                 if not error in self._bad_lines:
+                    log.warning('%s: %s' % error)
                     self._bad_lines.append(error)
         f.close()
         return len(self._bad_lines) == 0

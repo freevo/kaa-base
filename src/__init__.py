@@ -1,6 +1,10 @@
 import os
 import stat
 
+# import base.logger to update the Python logging module
+import base.logger
+
+# import some basic notifier functions
 from kaa.notifier import signals, loop as main, shutdown
 
 TEMP = '/tmp/kaa-%s' % os.getuid()

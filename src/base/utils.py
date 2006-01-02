@@ -26,7 +26,11 @@
 #
 # -----------------------------------------------------------------------------
 
-import sys, tty, termios, select, fcntl, os, atexit, types, locale
+import sys
+import tty
+import termios
+import os
+import atexit
 
 ############################################################################
 
@@ -108,34 +112,3 @@ def getch_disable():
 
     
 ############################################################################
-
-def utf8(s):
-    """
-    Returns a UTF-8 string, converting from other character sets if
-    necessary.
-    """
-    return str_to_unicode(s).encode("utf-8")
-
-def str_to_unicode(s):
-    """
-    Attempts to convert a string of unknown character set to a unicode
-    string.  First it tries to decode the string based on the locale's
-    preferred encoding, and if that fails, fall back to UTF-8 and then
-    latin-1.  If all fails, it will force encoding to the preferred
-    charset, replacing unknown characters.
-    """
-    if type(s) == unicode or s == None:
-        return s
-
-    for c in (locale.getpreferredencoding(), "utf-8", "latin-1"):
-        try:
-            return s.decode(c)
-        except UnicodeDecodeError:
-            pass
-
-    return s.decode(local.getpreferredencoding(), "replace")
-
-
-############################################################################
-
-

@@ -127,10 +127,10 @@ def to_str(s):
     Attempts to convert every object to a string using the objects
     __unicode__ or __str__ function or unicode_to_str.
     """
-    if type(s) == unicode:
-        return s
     if type(s) == str:
-        return str_to_unicode(s)
+        return s
+    if type(s) == unicode:
+        return unicode_to_str(s)
     try:
         return unicode_to_str(unicode(s))
     except UnicodeDecodeError:

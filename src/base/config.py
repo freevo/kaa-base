@@ -32,30 +32,14 @@ __all__ = [ "Var", "Group", "Dict", "List", "Config" ]
 import os
 import re
 import copy
-import locale
 import logging
 
-# find the correct encoding
-try:
-    ENCODING = locale.getdefaultlocale()[1]
-    ''.encode(ENCODING)
-except:
-    ENCODING = 'latin-1'
+# kaa.base modules
+from strutils import str_to_unicode, unicode_to_str, get_encoding
+
 
 # get logging object
 log = logging.getLogger('config')
-
-
-def _convert(string, type):
-    """
-    Convert str to unicode or the other way around. Do nothing if the
-    string is already correct.
-    """
-    if type == str and isinstance(string, unicode):
-        return string.encode(ENCODING, 'replace')
-    if type == unicode and isinstance(string, str):
-        return unicode(string, ENCODING, 'replace')
-    return string
 
 
 class Var(object):
@@ -65,7 +49,7 @@ class Var(object):
     def __init__(self, name='', type='', desc=u'', default=None):
         self._name = name
         self._type = type
-        self._desc = _convert(desc, unicode)
+        self._desc = str_to_unicode(desc)
         self._default = default
         self._value = default
         if type == '':
@@ -93,10 +77,10 @@ class Var(object):
         # create description
         desc = newline = ''
         if print_desc:
-            desc = '# %s\n' % _convert(self._desc, str).replace('\n', '\n# ')
+            desc = '# %s\n' % unicode_to_str(self._desc).replace('\n', '\n# ')
             newline = '\n'
         # convert value to string
-        value = _convert(self._value, str)
+        value = unicode_to_str(self._value)
         if self._value == self._default:
             # print default value
             return '%s# %s = %s%s' % (desc, prefix, value, newline)
@@ -117,9 +101,11 @@ class Var(object):
             if not value in self._type:
                 raise AttributeError('Variable must be one of %s' % str(self._type))
         elif not isinstance(value, self._type):
-            if self._type in (str, unicode):
-                value = _convert(value, self._type)
-            if self._type == bool:
+            if self._type == str:
+                value = unicode_to_str(value)
+            elif self._type == unicode:
+                value = str_to_unicode(value)
+            elif self._type == bool:
                 if not value or value.lower() in ('0', 'false', 'no'):
                     value = False
                 else:
@@ -140,7 +126,7 @@ class Group(object):
     def __init__(self, schema, desc=u'', name=''):
         self._dict = {}
         self._vars = []
-        self._desc = _convert(desc, unicode)
+        self._desc = str_to_unicode(desc)
         self._name = name
         for data in schema:
             if not data._name:
@@ -173,7 +159,7 @@ class Group(object):
         Convert object into a string to write into a config file.
         """
         ret  = []
-        desc = _convert(self._desc, str).replace('\n', '\n# ')
+        desc = unicode_to_str(self._desc).replace('\n', '\n# ')
         if self._name:
             # add self._name to prefix and add a '.'
             prefix = prefix + self._name + '.'
@@ -222,7 +208,7 @@ class Dict(object):
         self._schema = schema
         self._dict = {}
         self._type = type
-        self._desc = _convert(desc, unicode)
+        self._desc = str_to_unicode(desc)
         self._name = name
         # the value of a dict is the dict itself
         self._value = self
@@ -265,7 +251,7 @@ class Dict(object):
         ret = []
         prefix = prefix + self._name
         if type(self._schema) == Var and print_desc:
-            ret.append('#\n# %s\n# %s\n#\n' % (prefix, _convert(self._desc, str)))
+            ret.append('#\n# %s\n# %s\n#\n' % (prefix, unicode_to_str(self._desc)))
             print_desc = False
 
         for key in self.keys():
@@ -273,7 +259,7 @@ class Dict(object):
             var = self._dict[key]
             # convert key to string
             if isinstance(key, unicode):
-                key = _convert(key, str)
+                key = unicode_to_str(key)
             # create new prefix. The prefix is the old one + [key] and
             # if the next item is not a Var, add a '.'
             new_prefix = '%s[%s]' % (prefix, key)
@@ -290,10 +276,13 @@ class Dict(object):
         Get group or variable with the given index (as object, not value).
         """
         if not isinstance(index, self._type):
-            if self._type in (unicode, str):
-                index = _convert(index, self._type)
-            # this could crash, we don't care.
-            index = self._type(index)
+            if self._type == str:
+                index = unicode_to_str(index)
+            elif self._type == unicode:
+                index = str_to_unicode(index)
+            else:
+                # this could crash, we don't care.
+                index = self._type(index)
         if not index in self._dict and create:
             self._dict[index] = self._schema.copy()
         return self._dict[index]
@@ -376,7 +365,7 @@ class Config(Group):
             os.makedirs(os.path.dirname(filename))
 
         f = open(filename, 'w')
-        f.write('# -*- coding: %s -*-\n' % ENCODING.lower())
+        f.write('# -*- coding: %s -*-\n' % get_encoding().lower())
         f.write('# *************************************************************\n')
         f.write('# This file is auto-generated\n#\n')
         f.write('# The possible variables are commented out with the default\n')
@@ -403,7 +392,7 @@ class Config(Group):
         """
         Load config from a config file.
         """
-        local_encoding = ENCODING
+        local_encoding = get_encoding()
         self._filename = filename
         line_regexp = re.compile('^([a-zA-Z0-9_]+|\[.*?\]|\.)+ *= *(.*)')
         key_regexp = re.compile('(([a-zA-Z0-9_]+)|(\[.*?\]))')

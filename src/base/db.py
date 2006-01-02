@@ -1,5 +1,5 @@
 import string, os, time, re, math, cPickle
-from kaa.base.utils import str_to_unicode
+from strutils import str_to_unicode
 from sets import Set
 from pysqlite2 import dbapi2 as sqlite
 

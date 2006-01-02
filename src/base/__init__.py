@@ -1,27 +1,34 @@
-import logging
+# -*- coding: iso-8859-1 -*-
+# -----------------------------------------------------------------------------
+# __init__.py - Interface to kaa.base modules
+# -----------------------------------------------------------------------------
+# $Id$
+#
+# -----------------------------------------------------------------------------
+# Copyright (C) 2005 Dirk Meyer, Jason Tackaberry
+#
+# First Edition: Jason Tackaberry <tack@sault.org>
+# Maintainer:    Jason Tackaberry <tack@sault.org>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MER-
+# CHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+# Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+#
+# -----------------------------------------------------------------------------
 
+# weakref
 from weakref import weakref
 
-def create_logger(level = logging.WARNING):
-    """
-    Create a simple logging object for applicatins that don't want
-    to create a logging handler on their own. You should always have
-    a logging object.
-    """
-    log = logging.getLogger()
-    # delete current handler
-    for l in log.handlers:
-        log.removeHandler(l)
-    
-    # Create a simple logger object
-    if len(logging.getLogger().handlers) > 0:
-        # there is already a logger, skipping
-        print 'already there'
-        return
+# strutils
+import strutils
 
-    formatter = logging.Formatter('%(levelname)s %(module)s'+ \
-                                  '(%(lineno)s): %(message)s')
-    handler = logging.StreamHandler()
-    handler.setFormatter(formatter)
-    log.addHandler(handler)
-    log.setLevel(level)

@@ -5,6 +5,7 @@ _key_delay_map = [ 0.4, 0.2, 0.2, 0.15, 0.1 ]
 _last_code = None
 _key_delay_times = None
 _last_key_time = 0
+_dispatcher = None
 
 def _handle_lirc_input():
     import pylirc
@@ -43,8 +44,13 @@ def _handle_lirc_input():
 
     return True
 
+def _handle_lirc_shutdown(pylirc):
+    _dispatcher.unregister()
+    pylirc.exit()
 
 def init(appname = None, cfg = None):
+    global _dispatcher
+
     if cfg == None:
         cfgfile = os.path.expanduser("~/.lircrc")
     if appname == None:
@@ -63,8 +69,9 @@ def init(appname = None, cfg = None):
 
     if fd:
         pylirc.blocking(0)
-        kaa.notifier.SocketDispatcher(_handle_lirc_input).register(fd)
-        kaa.signals["shutdown"].connect(pylirc.exit)
+        _dispatcher = kaa.notifier.SocketDispatcher(_handle_lirc_input)
+        _dispatcher.register(fd)
+        kaa.signals["shutdown"].connect(_handle_lirc_shutdown, pylirc)
         kaa.signals["lirc"] = kaa.notifier.Signal()
         has_lirc = True
     

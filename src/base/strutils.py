@@ -27,7 +27,7 @@
 # -----------------------------------------------------------------------------
 
 __all__ = [ 'ENCODING', 'get_encoding', 'set_encoding', 'utf8', 'str_to_unicode',
-            'unicode_to_str', 'to_unicode', 'to_str' ]
+            'unicode_to_str', 'format', 'to_unicode', 'to_str' ]
 
 # python imports
 import locale
@@ -105,6 +105,18 @@ def unicode_to_str(s):
             pass
 
     return s.encode(ENCODING, "replace")
+
+
+def format(s, *args):
+    """
+    Format a string and make sure all string or unicode arguments are
+    converted to the correct type.
+    """
+    if type(s) == str:
+        return s % tuple([ unicode_to_str(x) for x in args ])
+    if type(s) == unicode:
+        return s % tuple([ str_to_unicode(x) for x in args ])
+    raise AttributeError("no format string given")
 
 
 def to_unicode(s):

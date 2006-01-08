@@ -159,7 +159,8 @@ class IPCServer:
 
 
     def __del__(self):
-        self.close()
+        if hasattr(self, "socket"):
+            self.close()
 
     def handle_connection(self):
         client_sock = self.socket.accept()[0]
@@ -186,6 +187,10 @@ class IPCServer:
 
 
     def close(self):
+        if not _debug:
+            # Python is shutting down _globals have gone away.
+            return
+
         _debug(1, "Closing IPCServer, clients:", self.clients)
         for client in self.clients.values():
             client.handle_close()
@@ -244,7 +249,8 @@ class IPCChannel(object):
 
 
     def __del__(self):
-        self.handle_close()
+        if hasattr(self, "server"):
+            self.handle_close()
 
     def set_default_timeout(self, timeout):
         self._default_timeout = timeout
@@ -960,7 +966,7 @@ class IPCProxy(object):
     def __del__(self):
         # Test _debug function too.  If it's None it means we're on shutdown.
         # This is just a hack to silence "ignored exception" messages.
-        if not self._ipc_client or not _debug:
+        if not _debug or not self._ipc_client:
             return
 
         # Drop our reference to the proxy -- if the proxy is remote, this

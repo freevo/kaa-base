@@ -33,37 +33,115 @@ import os
 import re
 import copy
 import logging
+from new import classobj
 
 # kaa.base modules
 from strutils import str_to_unicode, unicode_to_str, get_encoding
-
+from kaa.notifier import Callback
 
 # get logging object
 log = logging.getLogger('config')
 
+class NoCopyCallback(object):
+    """
+    Wraps a callable and returns None for deep copies, because deepcopy
+    has kittens when it runs into a callable.
+    """
+    def __init__(self, callback):
+        self.callback = callback
 
-class Var(object):
+    def __deepcopy__(self, memo):
+        return None
+
+
+class Base(object):
     """
-    A config variable.
+    Base class for all config objects.
     """
-    def __init__(self, name='', type='', desc=u'', default=None):
+
+    def __init__(self, name='', desc=u'', default=None):
+        self._parent = None
         self._name = name
-        self._type = type
         self._desc = str_to_unicode(desc)
         self._default = default
         self._value = default
-        if type == '':
-            # create type based on default
-            if default == None:
-                raise AttributeError('define type or default')
-            self._type = default.__class__
-
+        self._monitors = []
 
     def copy(self):
         """
         Return a deep copy of the object.
         """
         return copy.deepcopy(self)
+
+    def add_monitor(self, callback):
+        assert(callable(callback))
+        # Wrap the function or method in a class that will ignore deep copies
+        # because deepcopy() is unable to copy callables.
+        callback = NoCopyCallback(callback)
+        self._monitors.append(callback)
+
+    def remove_monitor(self, callback):
+        for monitor in self._monitors:
+            if callback == monitor.callback:
+                self._monitors.remove(monitor)
+
+    def _notify_monitors(self, oldval):
+        names = []
+        o = self
+        while o:
+            if o._name:
+                if names and names[0][0] == "[":
+                    # List/dict index, just concat to previous name.
+                    names[0] = o._name + names[0]
+                else:
+                    names.insert(0, o._name)
+
+            for monitor in o._monitors:
+                if names:
+                    name = ".".join(names)
+                else:
+                    name = None
+                monitor.callback(name, oldval, self._value)
+            o = o._parent
+
+    def get_parent(self):
+        return self._parent
+
+
+class VarProxy(Base):
+    """
+    Wraps a config variable value, inheriting the actual type of that
+    value (int, str, unicode, etc.) and offers add_monitor and remove_monitor
+    methods to manage the monitor list of the original Var object.
+    """
+    def __new__(cls, value = None, monitors = [], parent = None):
+        clstype = type(value)
+        newclass = classobj("VarProxy", (clstype, cls), {})
+        if value:
+            return newclass(value)
+        else:
+            return newclass()
+
+    def __init__(self, value = None, monitors = [], parent = None):
+        super(Base, self).__init__(default = value)
+        self._monitors = monitors
+        self._parent = parent
+
+
+
+class Var(Base):
+    """
+    A config variable.
+    """
+    def __init__(self, name='', type='', desc=u'', default=None):
+        super(Var, self).__init__(name, desc, default)
+        if type == '':
+            # create type based on default
+            if default == None:
+                raise AttributeError('define type or default')
+            type = default.__class__
+
+        self._type = type
 
 
     def _cfg_string(self, prefix, print_desc=True):
@@ -85,7 +163,7 @@ class Var(object):
             # print default value
             return '%s# %s = %s%s' % (desc, prefix, value, newline)
         # print current value
-        return '%s%s = %s%s' % (desc, prefix, value, newline)
+        return '%s%s = %s%s' % (desc, unicode_to_str(prefix), value, newline)
 
 
     def _cfg_set(self, value, default=False):
@@ -115,26 +193,35 @@ class Var(object):
                 value = self._type(value)
         if default:
             self._default = value
-        self._value = value
+        if self._value != value:
+            oldval = self._value
+            self._value = value
+            self._notify_monitors(oldval)
         return value
 
         
-class Group(object):
+class Group(Base):
     """
     A config group.
     """
     def __init__(self, schema, desc=u'', name=''):
+        super(Group, self).__init__(name, desc)
         self._dict = {}
         self._vars = []
-        self._desc = str_to_unicode(desc)
-        self._name = name
+        self._schema = schema
+
         for data in schema:
             if not data._name:
                 raise AttributeError('no name given')
             self._dict[data._name] = data
             self._vars.append(data._name)
+
         # the value of a group is the group itself
         self._value = self
+
+        # Parent all the items in the schema
+        for item in schema:
+            item._parent = self
 
 
     def add_variable(self, name, value):
@@ -143,15 +230,9 @@ class Group(object):
         given value. The object will _not_ be copied.
         """
         value._name = name
+        value._parent = self
         self._dict[name] = value
         self._vars.append(name)
-
-
-    def copy(self):
-        """
-        Return a deep copy of the object.
-        """
-        return copy.deepcopy(self)
 
 
     def _cfg_string(self, prefix, print_desc=True):
@@ -168,7 +249,7 @@ class Group(object):
             ret.append('#\n# %s\n# %s\n#\n' % (prefix[:-1], desc))
         for name in self._vars:
             var = self._dict[name]
-            ret.append(var._cfg_string(prefix, print_desc))
+            ret.append(var._cfg_string(unicode_to_str(prefix), print_desc))
         return '\n'.join(ret)
 
 
@@ -196,22 +277,26 @@ class Group(object):
         """
         if key.startswith('_'):
             return object.__getattribute__(self, key)
-        return self._cfg_get(key)._value
+        item = self._cfg_get(key)
+        if isinstance(item, Var):
+            return VarProxy(item._value, item._monitors, item._parent)
+
+        return item
 
 
 
-class Dict(object):
+class Dict(Base):
     """
     A config dict.
     """
     def __init__(self, schema, desc=u'', name='', type=unicode):
+        super(Dict, self).__init__(name, desc)
         self._schema = schema
         self._dict = {}
         self._type = type
-        self._desc = str_to_unicode(desc)
-        self._name = name
         # the value of a dict is the dict itself
         self._value = self
+        schema._parent = self
 
 
     def keys(self):
@@ -237,13 +322,6 @@ class Dict(object):
         return [ self._dict[key]._value for key in self.keys() ]
 
 
-    def copy(self):
-        """
-        Return a deep copy of the object.
-        """
-        return copy.deepcopy(self)
-
-
     def _cfg_string(self, prefix, print_desc=True):
         """
         Convert object into a string to write into a config file.
@@ -262,7 +340,7 @@ class Dict(object):
                 key = unicode_to_str(key)
             # create new prefix. The prefix is the old one + [key] and
             # if the next item is not a Var, add a '.'
-            new_prefix = '%s[%s]' % (prefix, key)
+            new_prefix = '%s' % (prefix)
             if not isinstance(self._schema, Var):
                 new_prefix += '.'
             ret.append(var._cfg_string(new_prefix, print_desc))
@@ -284,7 +362,15 @@ class Dict(object):
                 # this could crash, we don't care.
                 index = self._type(index)
         if not index in self._dict and create:
-            self._dict[index] = self._schema.copy()
+            newitem = self._dict[index] = self._schema.copy()
+            newitem._parent = self
+            newitem._name = u"[%s]" % unicode(index)
+            if isinstance(newitem, Group):
+                for item in newitem._schema:
+                    item._parent = newitem
+            elif isinstance(newitem, Dict):
+                newitem._schema._parent = newitem
+
         return self._dict[index]
 
 

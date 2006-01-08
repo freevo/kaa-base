@@ -44,6 +44,14 @@ class weakref(object):
     weakref.ref you need to call foo().x to get, this class makes it
     possible to just use foo.x.
     """
+    def __new__(cls, object):
+        # Make an instance of callable weakref iff the object is callable.
+        # This way callable(weakref) == False if the underlying object isn't
+        # callable.
+        if callable(object):
+            cls = _callable_weakref
+        return super(weakref, weakref).__new__(cls, object)
+
     def __init__(self, object):
         if object:
             if type(object) == weakref:
@@ -52,13 +60,15 @@ class weakref(object):
                 self._ref = ref(object)
         else:
             self._ref = None
+
             
     def __getattribute__(self, attr):
         if attr == "__class__" and self:
             return self._ref().__class__
         if attr == "_ref":
             return object.__getattribute__(self, attr)
-        return getattr(self._ref(), attr)
+        if self._ref:
+            return getattr(self._ref(), attr)
 
     def __setattr__(self, attr, value):
         if attr == "_ref":
@@ -67,9 +77,6 @@ class weakref(object):
 
     def __delattr__(self, attr):
         return delattr(self._ref(), attr)
-
-    def __call__(self, *args, **kwargs):
-        return self._ref()(*args, **kwargs)
 
     def __getitem__(self, key):
         return self._ref()[key]
@@ -97,3 +104,14 @@ class weakref(object):
         else:
             return 'weak reference to None'
 
+    def __deepcopy__(self, memo):
+        if self._ref:
+            return weakref(self._ref())
+
+
+class _callable_weakref(weakref):
+    def __new__(cls, object):
+        return super(weakref, weakref).__new__(cls)
+
+    def __call__(self, *args, **kwargs):
+            return self._ref()(*args, **kwargs)

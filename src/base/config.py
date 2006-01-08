@@ -115,18 +115,39 @@ class VarProxy(Base):
     methods to manage the monitor list of the original Var object.
     """
     def __new__(cls, value = None, monitors = [], parent = None):
-        clstype = type(value)
-        newclass = classobj("VarProxy", (clstype, cls), {})
+        clstype = realclass = type(value)
+        if clstype == bool:
+            # You can't subclass a boolean, so use int instead.  In practice,
+            # this isn't a problem, since __class__ will end up being bool,
+            # thanks to __getattribute__, so isinstance(o, bool) will be True.
+            clstype = int
+        newclass = classobj("VarProxy", (clstype, cls), {
+            "__getattribute__": cls.__getattribute__,
+            "__str__": cls.__str__,
+        })
         if value:
-            return newclass(value)
+            self = newclass(value)
         else:
-            return newclass()
+            self = newclass()
+        self._class = realclass
+        return self
+
 
     def __init__(self, value = None, monitors = [], parent = None):
         super(Base, self).__init__(default = value)
         self._monitors = monitors
         self._parent = parent
 
+    def __getattribute__(self, attr):
+        if attr == "__class__":
+            return super(VarProxy, self).__getattribute__("_class")
+        return super(VarProxy, self).__getattribute__(attr)
+
+    def __str__(self):
+        return self._class.__str__(self)
+
+    def __repr__(self):
+        return self._class.__repr__(self)
 
 
 class Var(Base):

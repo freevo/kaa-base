@@ -29,8 +29,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'WeakCallback', 'WeakSocketDispatcher', 'Socket',
-            'IO_READ', 'IO_WRITE', 'IO_EXCEPT' ]
+__all__ = [ 'WeakSocketDispatcher', 'Socket', 'IO_READ', 'IO_WRITE', 'IO_EXCEPT' ]
 
 import socket, cStringIO
 from callback import NotifierCallback, WeakNotifierCallback, Callback, Signal, notifier

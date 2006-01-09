@@ -37,15 +37,13 @@ import traceback
 import time
 
 # kaa.notifier imports
-from popen import Process
-from popen import kill_all_processes, stop_all_processes
-from callback import Callback, WeakCallback, Signal, notifier
-from thread import MainThreadCallback, Thread, is_mainthread, wakeup
-from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer
-from sockets import SocketDispatcher, WeakSocketDispatcher, Socket, \
-     IO_READ, IO_WRITE, IO_EXCEPT
-from event import Event, EventHandler, WeakEventHandler
-from jobserver import ThreadCallback
+from popen import *
+from callback import *
+from thread import *
+from timer import *
+from sockets import *
+from event import *
+from jobserver import *
 from jobserver import killall as kill_jobserver
 from kaa.base import utils
 
@@ -127,6 +125,7 @@ def loop():
     global running
     running = True
 
+    set_current_as_mainthread()
     e = None
     try:
         notifier.loop()

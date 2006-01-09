@@ -29,7 +29,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Callback', 'notifier', 'Signal' ]
+__all__ = [ 'Callback', 'WeakCallback', 'notifier', 'Signal' ]
 
 import _weakref
 import types

@@ -44,7 +44,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Process', 'killall' ]
+__all__ = [ 'Process', 'stop_all_processes', 'kill_all_processes']
 
 # python imports
 import os
@@ -87,6 +87,7 @@ class Process(object):
         self.__dead = True
         self.stopping = False
         self.__kill_timer = None
+        self.child = None
 
     def _normalize_cmd(self, cmd):
         """
@@ -175,7 +176,7 @@ class Process(object):
         """
         Return True if the app is still running
         """
-        return not self.__dead
+        return self.child and not self.__dead
 
     def set_stop_command(self, cmd):
         """

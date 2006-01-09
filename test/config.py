@@ -1,6 +1,10 @@
 # -*- coding: iso-8859-1 -*-
 
-from kaa.base.config import Var, Group, Dict, List, Config
+from kaa.base.config import Var, Group, Dict, List, Config, VarProxy
+
+
+def config_change_cb(name, oldval, newval):
+    print "******* CFG ITEM CHANGE", name, oldval, newval
 
 config = Config(desc='basic config group', schema=[
     Var(name='foo', desc='some text', default=5),
@@ -12,6 +16,7 @@ config = Config(desc='basic config group', schema=[
     Var(name='x', desc='desc_x', default=7 ),
     Var(name='y', type=range(0,5), desc='desc_y', default=3 ) ])
     ])
+
 
 # create extra group and add it to the schema
 subgroup = Group(desc='this is a subgroup', schema=[
@@ -48,6 +53,8 @@ config.add_variable('some_group', subgroup)
 
 # OK, let's play with the config
 
+config.subgroup.list.add_monitor(config_change_cb)
+config.add_monitor(config_change_cb)
 print '** Test 1: change config.subgroup.list and create some errors **'
 print config.subgroup
 print config.subgroup.list
@@ -144,4 +151,5 @@ print 'config.subgroup.z.a is', config.subgroup.z.a
 print 'load again in incomplete schema'
 if not part_config.load('config.test'):
     print 'load error, bad lines saved as expected'
+print isinstance(config.subgroup.z.a, str)
 part_config.save('config.test2')

@@ -66,6 +66,7 @@ class MainThreadCallback(Callback):
         super(MainThreadCallback, self).__init__(callback, *args, **kwargs)
         self.lock = threading.Lock()
         self._sync_return = None
+        self._sync_exception = None
         self.set_async()
 
     def set_async(self, async = True):
@@ -85,6 +86,8 @@ class MainThreadCallback(Callback):
                 # Synchronous execution: wait for main call us and collect
                 # the return value.
                 self.lock.acquire()
+                if self._sync_exception:
+                    raise self._sync_exception
                 return self._sync_return
 
             # Asynchronous: explicitly return None here.  We could return
@@ -176,7 +179,10 @@ def _thread_notifier_run_queue(fd):
         _thread_notifier_lock.acquire()
         callback, args, kwargs = _thread_notifier_queue.pop()
         _thread_notifier_lock.release()
-        callback(*args, **kwargs)
+        try:
+            callback(*args, **kwargs)
+        except Exception, callback._sync_exception:
+            log.exception('mainthread callback')
         callback.lock.acquire(False)
         callback.lock.release()
     return True

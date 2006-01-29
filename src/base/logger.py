@@ -50,7 +50,6 @@ def create_logger(level = logging.WARNING):
     # Create a simple logger object
     if len(logging.getLogger().handlers) > 0:
         # there is already a logger, skipping
-        print 'already there'
         return
 
     formatter = logging.Formatter('%(levelname)s %(module)s'+ \

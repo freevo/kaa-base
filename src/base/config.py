@@ -42,6 +42,10 @@ from kaa.notifier import Callback
 # get logging object
 log = logging.getLogger('config')
 
+# align regexp
+align = re.compile(u'\n *', re.MULTILINE)
+
+
 class NoCopyCallback(object):
     """
     Wraps a callable and returns None for deep copies, because deepcopy
@@ -54,6 +58,31 @@ class NoCopyCallback(object):
         return None
 
 
+def _format(text):
+    """
+    Format a description with multiple lines.
+    """
+    if text.find('\n') == -1:
+        return text
+    
+    # description with more than one line, format the text
+    if not text.startswith(u'\n'):
+        # add newline at the beginning for regexp
+        text = u'\n' + text
+    # align desc
+    strip = 100
+    for m in align.findall(text, re.MULTILINE):
+        strip = min(len(m), strip)
+    if strip == 100 or strip < 2:
+        # nothing found
+        return text
+
+    newtext = []
+    for line in text.split(u'\n'):
+        newtext.append(line[strip-1:])
+    return u'\n'.join(newtext)[1:]
+
+
 class Base(object):
     """
     Base class for all config objects.
@@ -62,7 +91,7 @@ class Base(object):
     def __init__(self, name='', desc=u'', default=None):
         self._parent = None
         self._name = name
-        self._desc = str_to_unicode(desc)
+        self._desc = _format(str_to_unicode(desc))
         self._default = default
         self._value = default
         self._monitors = []

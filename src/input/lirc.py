@@ -1,3 +1,7 @@
+### FIXME: make this a class to make it possible to start one than one
+### lirc instance (different app names or different rc files) and make
+### it possible to stop it (e.g. freevo-daemon needs this)
+
 import os, time
 import kaa, kaa.notifier
 

@@ -34,6 +34,7 @@ __all__ = [ 'Callback', 'WeakCallback', 'notifier', 'Signal' ]
 import _weakref
 import types
 import sys
+import logging
 
 try:
     # try to import pyNotifier
@@ -46,6 +47,11 @@ try:
         # init pyNotifier with the generic notifier
         notifier.init(notifier.GENERIC)
     use_pynotifier = True
+
+    # delete basic notifier handler
+    log = logging.getLogger('notifier')
+    for l in log.handlers:
+        log.removeHandler(l)
 
 except ImportError:
     # use a copy of nf_generic

@@ -1,9 +1,50 @@
-### FIXME: make this a class to make it possible to start one than one
-### lirc instance (different app names or different rc files) and make
-### it possible to stop it (e.g. freevo-daemon needs this)
+# -*- coding: iso-8859-1 -*-
+# -----------------------------------------------------------------------------
+# lirc.py - Lirc input module
+# -----------------------------------------------------------------------------
+# $Id$
+#
+# -----------------------------------------------------------------------------
+# kaa.input - Kaa input subsystem
+# Copyright (C) 2005-2006 Dirk Meyer, Jason Tackaberry
+#
+# First Edition: Jason Tackaberry <tack@sault.org>
+# Maintainer:    Jason Tackaberry <tack@sault.org>
+#
+# Please see the file doc/AUTHORS for a complete list of authors.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MER-
+# CHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+# Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+#
+# -----------------------------------------------------------------------------
 
-import os, time
-import kaa, kaa.notifier
+__all__ = [ 'init', 'stop' ]
+
+# python imports
+import os
+import time
+
+# kaa imports
+import kaa.notifier
+
+try:
+    # try to import python lirc module
+    import pylirc
+except ImportError:
+    # pylirc not installed
+    pylirc = None
+
 
 _key_delay_map = [ 0.4, 0.2, 0.2, 0.15, 0.1 ]
 _last_code = None
@@ -11,10 +52,18 @@ _key_delay_times = None
 _last_key_time = 0
 _dispatcher = None
 
+# make sure we have the lirc signal, no matter
+# if lirc is working or not
+kaa.notifier.signals["lirc"] = kaa.notifier.Signal()
+
+
 def _handle_lirc_input():
-    import pylirc
+    """
+    callback to handle a button press.
+    """
 
     global _key_delay_times, _last_code, _repeat_count, _last_key_time
+
     now = time.time()
     codes = pylirc.nextcode()
 
@@ -25,6 +74,7 @@ def _handle_lirc_input():
             _last_key_time = 0
             _repeat_count = 0
         return
+
     elif codes == []:
         if not _key_delay_times:
             return True
@@ -37,53 +87,76 @@ def _handle_lirc_input():
             _repeat_count += 1
         else:
             return True
+
     else:
         _key_delay_times = [[0, now]] + [ [x, 0] for x in _key_delay_map ]
         _repeat_count = 0
-        
+
     _last_key_time = now
     for code in codes:
-        kaa.signals["lirc"].emit(code)
+        kaa.notifier.signals["lirc"].emit(code)
         _last_code = code
 
     return True
 
-def _handle_lirc_shutdown(pylirc):
+
+def stop():
+    """
+    Callback for shutdown.
+    """
+    global _dispatcher
+    if not _dispatcher:
+        # already disconnected
+        return
     _dispatcher.unregister()
+    _dispatcher = None
     pylirc.exit()
+    kaa.notifier.signals["shutdown"].disconnect(stop)
+
 
 def init(appname = None, cfg = None):
+    """
+    Init pylirc and connect to the notifier.
+    """
     global _dispatcher
 
+    if _dispatcher:
+        # already running
+        return False
+
+    if not pylirc:
+        # not installed
+        return False
+
     if cfg == None:
-        cfgfile = os.path.expanduser("~/.lircrc")
+        cfg = os.path.expanduser("~/.lircrc")
     if appname == None:
         appname = "kaa"
 
-    has_lirc = False
     try:
-        import pylirc
-    except ImportError:
-        return False
-
-    try:
-        fd = pylirc.init(appname, cfgfile)
+        fd = pylirc.init(appname, cfg)
     except IOError:
+        # something went wrong
         return False
 
-    if fd:
-        pylirc.blocking(0)
-        _dispatcher = kaa.notifier.SocketDispatcher(_handle_lirc_input)
-        _dispatcher.register(fd)
-        kaa.signals["shutdown"].connect(_handle_lirc_shutdown, pylirc)
-        kaa.signals["lirc"] = kaa.notifier.Signal()
-        has_lirc = True
-    
-    return has_lirc
+    if not fd:
+        # something went wrong
+        return False
+
+    pylirc.blocking(0)
+    _dispatcher = kaa.notifier.SocketDispatcher(_handle_lirc_input)
+    _dispatcher.register(fd)
+    kaa.notifier.signals["shutdown"].connect(stop)
+
+    return True
+
 
 if __name__ == "__main__":
+    """
+    Some test code
+    """
     init()
     def cb(code):
         print "CODE", code
-    kaa.signals["lirc"].connect(cb)
-    kaa.main()
+    kaa.notifier.signals["lirc"].connect(cb)
+    kaa.notifier.loop()

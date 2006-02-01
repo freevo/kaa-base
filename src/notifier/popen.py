@@ -102,7 +102,7 @@ class Process(object):
                 cmd.remove('')
             return cmd
 
-        assert(type(cmd) == str)
+        assert(isinstance(cmd, str))
 
         # This might be how you'd do it in C. :)
         cmdlist = []

@@ -37,9 +37,12 @@ except ImportError:
 
 # call setup
 setup(
-    name        = 'kaa-base',
-    version     = '0.1',
-    package_dir = { 'kaa': 'src', 'kaa.base': 'src/base',
-                    'kaa.notifier': 'src/notifier', 'kaa.input': 'src/input' },
-    packages    = [ 'kaa', 'kaa.base', 'kaa.notifier', 'kaa.input' ],
-    ext_modules = extensions)
+    name             = 'kaa-base',
+    version          = '0.1',
+    maintainer       = 'The Freevo Project',
+    maintainer_email = 'developer@freevo.org',
+    url              = 'http://www.freevo.org/kaa',
+    package_dir      = { 'kaa': 'src', 'kaa.base': 'src/base',
+                         'kaa.notifier': 'src/notifier', 'kaa.input': 'src/input' },
+    packages         = [ 'kaa', 'kaa.base', 'kaa.notifier', 'kaa.input' ],
+    ext_modules      = extensions)

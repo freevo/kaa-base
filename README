@@ -1,0 +1,12 @@
+This module contains some basic code needed in all kaa modules. This
+is a requirement for all the other modules in the repository.
+
+The module also contains a main loop (notifier). Some kaa modules like
+kaa-Display require the main loop to be running, for other modules
+like kaa-Thumb it's optional and some like kaa-Metadata don't need the
+main loop at all. The documentation of the module should explain if
+and why the main loop is needed. If you already have a main loop
+running, please read SourceDoc/MainLoop how to merge the main loop you
+use with the kaa main loop.
+
+See http://www.freevo.org/kaa for more information

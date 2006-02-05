@@ -9,7 +9,15 @@ class Foo(object):
         if not x:
             return False
         y = x.pop(0)
-        print y
+        print '1', y
+        return True
+
+    @execute_in_timer(Timer, 0.1, 'once')
+    def poll2(self, x):
+        if not x:
+            return False
+        y = x.pop(0)
+        print '2', y
         return True
 
     @execute_in_thread('name')
@@ -39,6 +47,7 @@ def bla(f, msg):
     
 f = Foo()
 f.poll([0,1,2,3,4,5])
+f.poll2(['a','b','c','d','e','f'])
 
 poll([10,11,12,13,14,15])
 bla(f, 'test')

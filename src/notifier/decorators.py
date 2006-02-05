@@ -61,31 +61,31 @@ def execute_in_timer(timer, interval, type=''):
                 # just start the timer
                 timer(func, *args, **kwargs).start(interval)
                 return True
-
+            # object to save the timer in
+            obj  = func
+            # name of the attribute in the object
+            name = '__kaa_timer_decorator'
             # Try to find out if the function is bound to an object.
             # FIXME: maybe this is bad solution, how fast is comparing
             # the func_code attributes?
-            obj = func
             if args and args[0] and hasattr(args[0], func.func_name) and \
                    newfunc.func_code == getattr(args[0], func.func_name).func_code:
-                obj = args[0]
+                obj  = args[0]
+                name = '%s__%s' % (name, func.func_name)
             # check current timer
-            if hasattr(obj, '__kaa_timer_decorator') and \
-                   obj.__kaa_timer_decorator.active():
+            if hasattr(obj, name) and getattr(obj, name).active():
                 if type == 'once':
                     # timer already running and not override
                     return False
                 # stop old timer
-                obj.__kaa_timer_decorator.stop()
+                getattr(obj, name).stop()
 
             # create new timer, set it to the object and start it
-            obj.__kaa_timer_decorator = timer(func, *args, **kwargs)
-            obj.__kaa_timer_decorator.start(interval)
+            setattr(obj, name, timer(func, *args, **kwargs))
+            getattr(obj, name).start(interval)
             return True
-        try:
-            newfunc.func_name = func.func_name
-        except TypeError:
-            pass
+
+        newfunc.func_name = func.func_name
         return newfunc
 
     return decorator

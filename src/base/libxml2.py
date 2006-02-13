@@ -46,6 +46,7 @@
 #
 # -----------------------------------------------------------------------------
 
+import os
 import re
 import libxml2mod
 
@@ -68,12 +69,16 @@ class ParserError(XMLError):
 
 
 class Node(object):
-    def __init__(self, _obj=None):
+    def __init__(self, _obj=None, content=None, **attrs):
         if isinstance(_obj, (str, unicode)):
             _obj = libxml2mod.xmlNewNode(_obj)
         if type(_obj).__name__ != 'PyCObject':
             raise TypeError, 'Node needs a PyCObject argument'
         self._o = _obj
+        for key, value in attrs.items():
+            self.setattr(key, value)
+        if content:
+            self.content = content
 
     def __str__(self):
         return libxml2mod.serializeNode(self._o, None, 1)
@@ -150,7 +155,19 @@ class Node(object):
         return unicode(libxml2mod.xmlNodeGetContent(self._o), 'utf-8')
 
     def set_content(self, content):
-        libxml2mod.xmlNodeSetContent(self._o, content.encode('utf-8'))
+        if isinstance(content, unicode):
+            content = content.encode('utf-8')
+        if not isinstance(content, str):
+            content = str(content)
+        content = content.replace('&', '&amp;')
+        libxml2mod.xmlNodeSetContent(self._o, content)
+
+    def set_content_raw(self, content):
+        if isinstance(content, unicode):
+            content = content.encode('utf-8')
+        if not isinstance(content, str):
+            content = str(content)
+        libxml2mod.xmlNodeSetContent(self._o, content)
 
     content = property(get_content, set_content, None, "Content of this node")
 
@@ -211,10 +228,18 @@ class Node(object):
                 raise TreeError('xmlAddChild() failed')
             return Node(_obj=ret)
 
-        if isinstance(content, unicode):
-            content = content.encode('utf-8')
-        if content and not isinstance(content, str):
-            content = str(content)
+        if hasattr(name_or_child, '__xml__'):
+            ret = libxml2mod.xmlAddChild(self._o, name_or_child.__xml__()._o)
+            if ret is None:
+                raise TreeError('xmlAddChild() failed')
+            return Node(_obj=ret)
+            
+        if content:
+            if isinstance(content, unicode):
+                content = content.encode('utf-8')
+            if not isinstance(content, str):
+                content = str(content)
+            content = content.replace('&', '&amp;')
         ret = libxml2mod.xmlNewChild(self._o, None, name_or_child, content)
         if ret is None:
             raise TreeError('xmlNewChild() failed')
@@ -278,11 +303,11 @@ class Document(Node):
     def save(self, filename):
         if self._doc:
             # this is not real doc, it is the root node
-            return libxml2mod.xmlSaveFormatFile(filename, self._doc._o, 1)
+            return self._doc.save(filename)
         # delete old file (just in case)
         if os.path.isfile(filename):
             os.unlink(filename)
-        return libxml2mod.xmlSaveFormatFile(filename, self._o, 1)
+        return libxml2mod.xmlSaveFormatFileEnc(filename, self._o, 'UTF-8', 1)
 
 
     def __repr__(self):

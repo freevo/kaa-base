@@ -211,6 +211,10 @@ class Node(object):
                 raise TreeError('xmlAddChild() failed')
             return Node(_obj=ret)
 
+        if isinstance(content, unicode):
+            content = content.encode('utf-8')
+        if content and not isinstance(content, str):
+            content = str(content)
         ret = libxml2mod.xmlNewChild(self._o, None, name_or_child, content)
         if ret is None:
             raise TreeError('xmlNewChild() failed')
@@ -275,6 +279,9 @@ class Document(Node):
         if self._doc:
             # this is not real doc, it is the root node
             return libxml2mod.xmlSaveFormatFile(filename, self._doc._o, 1)
+        # delete old file (just in case)
+        if os.path.isfile(filename):
+            os.unlink(filename)
         return libxml2mod.xmlSaveFormatFile(filename, self._o, 1)
 
 

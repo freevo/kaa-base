@@ -48,7 +48,13 @@
 
 import os
 import re
-import libxml2mod
+
+try:
+    import libxml2mod
+except ImportError:
+    print 'The libxml2 python bindings are not installed'
+    print 'They are part of the libxml2 package.'
+    raise ImportError('libxml2 not found')
 
 _space_subn = re.compile(u'[ \t\n]+').subn
 

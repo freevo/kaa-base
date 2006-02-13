@@ -5,11 +5,20 @@ x = libxml2.Document(sys.argv[1], 'freevo')
 
 for c in x.children:
     print c.name, c.type, c.parent.name
+print
+
+for c in x:
+    print c.name, c.type
+print
+
+for c in x.children:
     if c.name == 'movie':
         print 'title is', c.getattr('title')
         for y in c.get_child('info').children:
             print y.name, y.content, type(y.content)
+print
         
+
 
 x = libxml2.Document(root='freevo')
 

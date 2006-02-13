@@ -128,6 +128,9 @@ class Node(object):
             return None
         return Node(_obj=ret)
 
+    def __iter__(self):
+        return NodeIterator(self)
+    
     parent = property(get_parent, None, None, "Parent node")
     children = property(get_children, None, None, "All not text children nodes")
 
@@ -219,6 +222,21 @@ class Node(object):
             libxml2mod.xmlSetProp(ret, key, value)
         return Node(_obj=ret)
         
+
+
+class NodeIterator:
+    def __init__(self, node):
+        self.node = node.get_first()
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        if not self.node:
+            raise StopIteration
+        ret = self.node
+        self.node = self.node.next
+        return ret
 
 
 class Document(Node):

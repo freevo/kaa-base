@@ -34,6 +34,7 @@ __all__ = [ 'execute_in_timer', 'execute_in_thread', 'execute_in_mainloop' ]
 # notifier thread imports
 from thread import MainThreadCallback, is_mainthread
 from jobserver import ThreadCallback
+from kaa.base import weakref
 
 def execute_in_timer(timer, interval, type=''):
     """
@@ -73,7 +74,8 @@ def execute_in_timer(timer, interval, type=''):
                 obj  = args[0]
                 name = '%s__%s' % (name, func.func_name)
             # check current timer
-            if hasattr(obj, name) and getattr(obj, name).active():
+            if hasattr(obj, name) and getattr(obj, name) and \
+                   getattr(obj, name).active():
                 if type == 'once':
                     # timer already running and not override
                     return False
@@ -81,7 +83,8 @@ def execute_in_timer(timer, interval, type=''):
                 getattr(obj, name).stop()
 
             # create new timer, set it to the object and start it
-            setattr(obj, name, timer(func, *args, **kwargs))
+            t = timer(func, *args, **kwargs)
+            setattr(obj, name, weakref(t))
             getattr(obj, name).start(interval)
             return True
 

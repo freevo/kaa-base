@@ -17,6 +17,7 @@
 
 import logging
 import socket, os, select, time, types, struct, cPickle, thread, sys, sha
+import popen2
 import traceback, string, copy_reg
 from new import classobj
 import kaa.notifier
@@ -1096,3 +1097,59 @@ def is_proxy_alive(obj):
     # If remote has disconnected, find out now.
     client.handle_read()
     return client.socket != None
+
+
+def launch(server, timeout, client, *args, **kwargs):
+    """
+    Try to execute client(*args, **kwargs) to connect the client to
+    the ipc server. If this does not work, launch the server and try
+    again.  'server' is either a string (file) or a list (file +
+    arguments). You do not need to add the Python interpreter
+    here. After launching, client(*args, **kwargs) will be tried for
+    the next 'timeout' seconds using notifier.step(). If connecting
+    does not work, raise a RunTimeError, if it does work, return the
+    result of client(*args, **kwargs). The server won't stop when the
+    client stops, it has to stop on it's own.
+    """
+    try:
+        # try to connect to an already running server
+        return client(*args, **kwargs)
+    except socket.error:
+        pass
+
+    if isinstance(server, str):
+        server = [ server ]
+    log.info('start python -OO %s', ' '.join(server)) 
+    server = popen2.popen3(['python', '-OO'] + server)
+
+    # wait for server to start
+    # use a small timer to make sure step() comes back
+    stop = time.time() + timeout
+    t = kaa.notifier.Timer(lambda x: True, 1)
+    t.start(0.01)
+    while time.time() < stop:
+        kaa.notifier.step()
+        try:
+            c = client(*args, **kwargs)
+            # client ready, close fd to server
+            for fd in server:
+                fd.close()
+            # stop temp timer
+            t.stop()
+            return c
+        except socket.error:
+            pass
+
+    # no server found, print debug
+    for fd in server:
+        try:
+            for msg in fd.readlines():
+                log.error(msg[:-1])
+        except IOError:
+            pass
+        fd.close()
+    # stop temp timer
+    t.stop()
+
+    # raise error
+    raise RuntimeError('Unable to start server')

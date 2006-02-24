@@ -37,7 +37,42 @@ import distutils.core
 # version checking
 from version import Version
 
+class Configfile(object):
+    """
+    Config file for the build process.
+    """
+    def __init__(self, filename):
+        self.file = os.path.abspath(filename)
+        # create config file
+        open(self.file, 'w').close()
 
+
+    def append(self, line):
+        """
+        Append something to the config file.
+        """
+        f = open(self.file, 'a')
+        f.write(line + '\n')
+        f.close()
+
+
+    def define(self, variable, value=None):
+        """
+        Set a #define.
+        """
+        if value == None:
+            self.append('#define %s' % variable)
+        else:
+            self.append('#define %s %s' % (variable, value))
+
+            
+    def unlink(self):
+        """
+        Delete config file.
+        """
+        os.unlink(self.file)
+
+        
 class Extension(object):
     """
     Extension wrapper with additional functions to find libraries and
@@ -55,9 +90,7 @@ class Extension(object):
         self.libraries = libraries
         self.extra_compile_args = ["-Wall"]
         if config:
-            self.configfile = os.path.abspath(config)
-            # create config file
-            open(config, 'w').close()
+            self.configfile = Configfile(config)
         else:
             self.configfile = None
 
@@ -68,9 +101,7 @@ class Extension(object):
         """
         if not self.configfile:
             raise AttributeError('No config file defined')
-        f = open(self.configfile, 'a')
-        f.write(line + '\n')
-        f.close()
+        self.configfile.append(line)
         
         
     def check_library(self, name, minver):
@@ -150,7 +181,7 @@ class Extension(object):
         Delete the config file.
         """
         if self.configfile:
-            os.unlink(self.configfile)
+            self.configfile.unlink()
 
 
 

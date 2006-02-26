@@ -35,6 +35,7 @@ import logging
 import os
 import traceback
 import time
+import signal
 
 # kaa.notifier imports
 from popen import *
@@ -132,10 +133,18 @@ def loop():
     try:
         notifier.loop()
     except (KeyboardInterrupt, SystemExit):
-        pass
+        try:
+            # This looks stupid, I know that. The problem is that if we have
+            # a KeyboardInterrupt, that flag is still valid somewhere inside
+            # python. The next system call will fail because of that. Since we
+            # don't want a join of threads or similar fail, we use a very short
+            # sleep here. In most cases we won't sleep at all because this sleep
+            # fails. But after that everything is back to normal.
+            time.sleep(0.001)
+        except:
+            pass
     except Exception, e:
         pass
-
     running = False
     shutdown()
     if e:
@@ -159,3 +168,11 @@ def step(*args, **kwargs):
         notifier.step(*args, **kwargs)
     except (KeyboardInterrupt, SystemExit):
         pass
+
+
+# set signal handler to catch term signal for
+# clean shutdown
+def _signal_handler(signum, frame):
+    shutdown()
+
+signal.signal(signal.SIGTERM, _signal_handler)

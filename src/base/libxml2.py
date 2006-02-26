@@ -202,7 +202,7 @@ class Node(object):
 
 
     def getattr(self, name):
-        return libxml2mod.xmlGetProp(self._o, name)
+        return unicode(libxml2mod.xmlGetProp(self._o, name), 'utf-8')
 
 
     def setattr(self, name, value):
@@ -293,7 +293,13 @@ class Document(Node):
 
         # a "normal" document without special root node
         self._doc = None
-        if filename:
+        if filename and filename.startswith('<?xml'):
+            # memory based
+            self._o = libxml2mod.xmlParseDoc(filename)
+            if self._o is None:
+                # Oops, something went wrong
+                raise ParserError('xmlParseFile() failed')
+        elif filename:
             # load file
             self._o = libxml2mod.xmlParseFile(filename)
             if self._o is None:

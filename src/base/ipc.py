@@ -1120,7 +1120,7 @@ def launch(server, timeout, client, *args, **kwargs):
     if isinstance(server, str):
         server = [ server ]
     log.info('start python -OO %s', ' '.join(server)) 
-    server = popen2.popen3(['python', '-OO'] + server)
+    server_fd = popen2.popen3(['python', '-OO'] + server)
 
     # wait for server to start
     # use a small timer to make sure step() comes back
@@ -1132,7 +1132,7 @@ def launch(server, timeout, client, *args, **kwargs):
         try:
             c = client(*args, **kwargs)
             # client ready, close fd to server
-            for fd in server:
+            for fd in server_fd:
                 fd.close()
             # stop temp timer
             t.stop()
@@ -1141,7 +1141,7 @@ def launch(server, timeout, client, *args, **kwargs):
             pass
 
     # no server found, print debug
-    for fd in server:
+    for fd in server_fd:
         try:
             for msg in fd.readlines():
                 log.error(msg[:-1])
@@ -1152,4 +1152,4 @@ def launch(server, timeout, client, *args, **kwargs):
     t.stop()
 
     # raise error
-    raise RuntimeError('Unable to start server')
+    raise RuntimeError('Unable to start python -OO %s' % ' '.join(server))

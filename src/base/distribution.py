@@ -157,7 +157,7 @@ class Extension(object):
         
         for i in includes:
             f.write('#include %s\n' % i)
-        f.write('void main() { ' + code + '};')
+        f.write('int main() { ' + code + '\nreturn 0;\n};')
         result = f.close()
         
         if os.path.exists(outfile):

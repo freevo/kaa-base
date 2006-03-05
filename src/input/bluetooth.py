@@ -112,7 +112,6 @@ class Bluetooth(object):
         Ready to send data. This is only needed to know when the connect function
         is done and we are ready for reading or have an error.
         """
-        self._sock.send('AT+CMER=3,2,0,0,0\r')
         try:
             data = self._sock.recv(1)
         except Exception, e:
@@ -126,6 +125,7 @@ class Bluetooth(object):
                 pass
             else:
                 raise IOError(e.args)
+        self._sock.send('AT+CMER=3,2,0,0,0\r')
         self.signals['connected'].emit()
         SocketDispatcher(self._read).register(self._sock.fileno())
         return False

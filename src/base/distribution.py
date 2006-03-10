@@ -28,6 +28,7 @@
 
 # python imports
 import os
+import sys
 import math
 import stat
 import re
@@ -36,6 +37,100 @@ import distutils.core
 
 # version checking
 from version import Version
+
+_libraries = []
+_modules = []
+
+class Library(object):
+    def __init__(self, name):
+        self.name = name
+        self.include_dirs = []
+        self.library_dirs = []
+        self.libraries = []
+        self.valid = False
+
+    
+    def check(self, minver):
+        """
+        Check dependencies add add the flags to include_dirs, library_dirs and
+        libraries. The basic logic is taken from pygame.
+        """
+        print 'checking for', self.name, '>=', minver, '...',
+        sys.__stdout__.flush()
+
+        if os.system("%s-config --version &>/dev/null" % self.name) == 0:
+            # Use foo-config if it exists.
+            command = "%s-config %%s 2>/dev/null" % self.name
+            version_arg = "--version"
+        elif os.system("pkg-config %s --exists &>/dev/null" % self.name) == 0:
+            # Otherwise try pkg-config foo.
+            command = "pkg-config %s %%s 2>/dev/null" % self.name
+            version_arg = "--modversion"
+        else:
+            print 'no'
+            return False
+
+        version = os.popen(command % version_arg).read().strip()
+        if len(version) == 0:
+            print 'no'
+            return False
+        if minver and version < minver:
+            print 'no (%s)' % version
+            return False
+
+        for inc in os.popen(command % "--cflags").read().strip().split(' '):
+            if inc[2:] and not inc[2:] in self.include_dirs:
+                self.include_dirs.append(inc[2:])
+
+        for flag in os.popen(command % "--libs").read().strip().split(' '):
+            if flag[:2] == '-L' and not flag[2:] in self.library_dirs:
+                self.library_dirs.append(flag[2:])
+            if flag[:2] == '-l' and not flag[2:] in self.libraries:
+                self.libraries.append(flag[2:])
+        print version
+        self.valid = True
+        return True
+
+    def compile(self, includes, code, args=''):
+        print 'checking for', self.name, '...',
+        fd, outfile = tempfile.mkstemp()
+        os.close(fd)
+        f = os.popen("cc -x c - -o %s %s 2>/dev/null >/dev/null" % (outfile, args), "w")
+        if not f:
+            print 'failed'
+            return False
+        
+        for i in includes:
+            f.write('#include %s\n' % i)
+        f.write('int main() { ' + code + '\nreturn 0;\n};')
+        result = f.close()
+
+        if os.path.exists(outfile):
+            os.unlink(outfile)
+
+        if result == None:
+            print 'ok'
+            self.valid = True
+            return True
+        print 'no'
+        return False
+
+        
+def check_library(name, *args):
+    lib = Library(name)
+    if len(args) < 2:
+        lib.check(args[0])
+    else:
+        lib.compile(*args)
+    _libraries.append(lib)
+    return lib
+
+
+def get_library(name):
+    for l in _libraries:
+        if l.name == name and l.valid:
+            return l
+    return None
 
 class Configfile(object):
     """
@@ -104,6 +199,25 @@ class Extension(object):
         self.configfile.append(line)
         
         
+    def add_library(self, name):
+        """
+        """
+        for l in _libraries:
+            if l.name == name and l.valid:
+                for attr in ('include_dirs', 'library_dirs', 'libraries'):
+                    for val in getattr(l, attr):
+                        if not val in getattr(self, attr):
+                            getattr(self, attr).append(val)
+                return True
+        return False
+
+
+    def build(self):
+        """
+        """
+        _modules.append(self)
+
+        
     def check_library(self, name, minver):
         """
         Check dependencies add add the flags to include_dirs, library_dirs and
@@ -140,7 +254,7 @@ class Extension(object):
                     self.libraries.append(flag[2:])
             return True
         except Exception, e:
-            print 'WARNING: "%s" library check failed: %s' % (name, e)
+            self.error = e
             return False
 
 
@@ -184,6 +298,7 @@ class Extension(object):
             self.configfile.unlink()
 
 
+        
 
 def setup(**kwargs):
     """
@@ -216,6 +331,9 @@ def setup(**kwargs):
     del kwargs['module']
 
     # convert Extensions
+    if not kwargs.has_key('ext_modules'):
+        kwargs['ext_modules'] = _modules
+        
     if kwargs.has_key('ext_modules'):
         kaa_ext_modules = kwargs['ext_modules']
         ext_modules = []

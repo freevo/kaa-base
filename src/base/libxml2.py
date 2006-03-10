@@ -202,7 +202,10 @@ class Node(object):
 
 
     def getattr(self, name):
-        return unicode(libxml2mod.xmlGetProp(self._o, name), 'utf-8')
+        value = libxml2mod.xmlGetProp(self._o, name)
+        if value == None:
+            return value
+        return unicode(value, 'utf-8')
 
 
     def setattr(self, name, value):

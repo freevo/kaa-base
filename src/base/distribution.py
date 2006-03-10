@@ -39,7 +39,6 @@ import distutils.core
 from version import Version
 
 _libraries = []
-_modules = []
 
 class Library(object):
     def __init__(self, name):
@@ -212,12 +211,6 @@ class Extension(object):
         return False
 
 
-    def build(self):
-        """
-        """
-        _modules.append(self)
-
-        
     def check_library(self, name, minver):
         """
         Check dependencies add add the flags to include_dirs, library_dirs and
@@ -331,9 +324,6 @@ def setup(**kwargs):
     del kwargs['module']
 
     # convert Extensions
-    if not kwargs.has_key('ext_modules'):
-        kwargs['ext_modules'] = _modules
-        
     if kwargs.has_key('ext_modules'):
         kaa_ext_modules = kwargs['ext_modules']
         ext_modules = []

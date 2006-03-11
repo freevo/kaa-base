@@ -46,7 +46,7 @@ from sockets import *
 from event import *
 from jobserver import *
 from jobserver import killall as kill_jobserver
-from kaa.base import utils
+from kaa import utils
 
 from decorators import execute_in_timer, execute_in_thread, execute_in_mainloop
 

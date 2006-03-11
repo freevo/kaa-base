@@ -1,11 +1,17 @@
 import os
 import stat
 
-# import base.logger to update the Python logging module
-import base.logger
+# import logger to update the Python logging module
+import logger
 
 # import some basic notifier functions
 from kaa.notifier import signals, loop as main, shutdown
+
+# weakref
+from weakref import weakref
+
+# strutils
+import strutils
 
 TEMP = '/tmp/kaa-%s' % os.getuid()
 

@@ -34,7 +34,7 @@ __all__ = [ 'execute_in_timer', 'execute_in_thread', 'execute_in_mainloop' ]
 # notifier thread imports
 from thread import MainThreadCallback, is_mainthread
 from jobserver import ThreadCallback
-from kaa.base import weakref
+from kaa import weakref
 
 def execute_in_timer(timer, interval, type=''):
     """

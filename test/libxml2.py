@@ -1,5 +1,5 @@
 import sys
-from kaa.base import libxml2
+from kaa import libxml2
 
 x = libxml2.Document(sys.argv[1], 'freevo')
 

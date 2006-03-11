@@ -1,6 +1,6 @@
 # -*- coding: iso-8859-1 -*-
 
-from kaa.base.config import Var, Group, Dict, List, Config, VarProxy
+from kaa.config import Var, Group, Dict, List, Config, VarProxy
 
 
 def config_change_cb(name, oldval, newval):

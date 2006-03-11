@@ -1,7 +1,7 @@
 import sys
-from kaa import libxml2
+from kaa import xml
 
-x = libxml2.Document(sys.argv[1], 'freevo')
+x = xml.Document(sys.argv[1], 'freevo')
 
 for c in x.children:
     print c.name, c.type, c.parent.name
@@ -20,9 +20,9 @@ print
         
 
 
-x = libxml2.Document(root='freevo')
+x = xml.Document(root='freevo')
 
-c = libxml2.Node('foo')
+c = xml.Node('foo')
 c.content = "hallo"
 
 x.add_child(c)

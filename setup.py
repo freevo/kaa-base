@@ -42,7 +42,7 @@ setup(
     maintainer       = 'The Freevo Project',
     maintainer_email = 'developer@freevo.org',
     url              = 'http://www.freevo.org/kaa',
-    package_dir      = { 'kaa': 'src', 'kaa.base': 'src/base',
-                         'kaa.notifier': 'src/notifier', 'kaa.input': 'src/input' },
-    packages         = [ 'kaa', 'kaa.base', 'kaa.notifier', 'kaa.input' ],
+    package_dir      = { 'kaa': 'src', 'kaa.notifier': 'src/notifier',
+                         'kaa.input': 'src/input' },
+    packages         = [ 'kaa', 'kaa.notifier', 'kaa.input' ],
     ext_modules      = extensions)

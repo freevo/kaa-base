@@ -1063,7 +1063,7 @@ class Database:
         # Fetch number of files that are keyword indexed.  (Used in score
         # calculations.)
         row = self._db_query_row("SELECT value FROM meta WHERE attr='keywords_objectcount'")
-        objectcount = int(row[0])
+        objectcount = int(float(row[0]))
 
         # Convert words string to a tuple of lower case words.
         words = tuple(str_to_unicode(words).lower().split())

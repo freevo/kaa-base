@@ -915,8 +915,12 @@ class IPCChannel(object):
 
     def ping(self):
         start = time.time()
-        if self.request("PING", None):
-            return time.time() - start
+        try:
+            if self.request("PING", None):
+                return time.time() - start
+        except IPCDisconnectedError:
+            return False
+
         return False
 
 

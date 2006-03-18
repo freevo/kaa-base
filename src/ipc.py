@@ -23,7 +23,7 @@ from new import classobj
 import kaa.notifier
 import kaa
 
-log = logging.getLogger('notifier')
+log = logging.getLogger('ipc')
 
 IPC_DEFAULT_TIMEOUT = 5.0
 
@@ -34,7 +34,7 @@ def _debug(level, text, *args):
     if DEBUG  >= level:
         for arg in args:
             text += " " + str(arg)
-        print text
+        log.error(text)
 
 def _pickle_slice(slice):
     return _unpickle_slice, (slice.start, slice.stop, slice.step)
@@ -74,7 +74,6 @@ def _unpickle_proxy(clsname, *args):
                                 "hash", "iadd", "imul", "iter", "le", "len",
                                 "lt", "mul", "ne", "nonzero", "rmul", "setitem") or \
            attr in ("next,"):
-            #print "--setattr", attr
             setattr(cls, attr, eval("lambda self, *a: self._ipc_meth('%s', a)" % attr))
 
     i = cls()
@@ -433,7 +432,7 @@ class IPCChannel(object):
         else:
             _debug(1, "-> REQUEST: seq=%d, command=%s, data=%d" % (seq, command, len(payload)))
             if not hasattr(self, "handle_request_%s" % command):
-                print "handle_request_%s doesn't exist!" % command
+                log.error("handle_request_%s doesn't exist!" % command)
                 return
             try:
                 reply = getattr(self, "handle_request_%s" % command)(data)
@@ -1055,7 +1054,7 @@ class IPCProxy(object):
                 self._ipc_callable = False
         
         if "__ipc_copy_result" in kwargs:
-            print "DEPRECATION WARNING: use __ipc_noproxy_result instead of __ipc_copy_result"
+            log.warning("DEPRECATION WARNING: use __ipc_noproxy_result instead of __ipc_copy_result")
         if not kwargs.get("__ipc_noproxy_args"):
             args = self._ipc_client._proxy_data(args)
             # FIXME: should proxy kwargs, but there's a bug.

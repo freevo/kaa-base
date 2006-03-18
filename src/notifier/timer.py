@@ -31,8 +31,13 @@
 
 __all__ = [ 'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer' ]
 
+import logging
+
 from callback import NotifierCallback, WeakNotifierCallback, notifier
 from thread import MainThreadCallback, is_mainthread
+
+# get logging object
+log = logging.getLogger('notifier')
 
 class Timer(NotifierCallback):
 
@@ -71,6 +76,17 @@ class Timer(NotifierCallback):
         return self._interval
 
 
+    def __call__(self, *args, **kwargs):
+        if not self.active():
+            # This should not happen, but it does. Somewhere deep inside the
+            # notifier code is a bug
+            log.error('calling inactivate callback for %s', self)
+            import traceback
+            traceback.print_stack()
+            return False
+
+        return super(Timer, self).__call__(*args, **kwargs)
+
 
 class OneShotTimer(Timer):
     """
@@ -81,7 +97,7 @@ class OneShotTimer(Timer):
     """
     def __call__(self, *args, **kwargs):
         self.unregister()
-        super(OneShotTimer, self).__call__(*args, **kwargs)
+        super(Timer, self).__call__(*args, **kwargs)
         return False
 
 

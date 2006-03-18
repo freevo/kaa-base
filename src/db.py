@@ -1093,7 +1093,7 @@ class Database:
                 "idf_t": math.log(objectcount / row[2] + 1) + order_weight
             }
             ids.append(row[0])
-            print "WORD: %s (%d), freq=%d/%d, idf_t=%f" % (row[1], row[0], row[2], objectcount, words[row[0]]["idf_t"])
+            # print "WORD: %s (%d), freq=%d/%d, idf_t=%f" % (row[1], row[0], row[2], objectcount, words[row[0]]["idf_t"])
 
         # Not all the words we requested are in the database, so we return
         # 0 results.

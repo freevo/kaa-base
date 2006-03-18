@@ -31,10 +31,16 @@
 
 __all__ = [ 'execute_in_timer', 'execute_in_thread', 'execute_in_mainloop' ]
 
+# python imports
+import logging
+
 # notifier thread imports
 from thread import MainThreadCallback, is_mainthread
 from jobserver import ThreadCallback
 from kaa.weakref import weakref
+
+# get logging object
+log = logging.getLogger('notifier')
 
 def execute_in_timer(timer, interval, type=''):
     """
@@ -60,7 +66,9 @@ def execute_in_timer(timer, interval, type=''):
         def newfunc(*args, **kwargs):
             if not type:
                 # just start the timer
-                timer(func, *args, **kwargs).start(interval)
+                t = timer(func, *args, **kwargs)
+                t.set_prevent_recursion()
+                t.start(interval)
                 return True
             # object to save the timer in
             obj  = func
@@ -84,6 +92,7 @@ def execute_in_timer(timer, interval, type=''):
 
             # create new timer, set it to the object and start it
             t = timer(func, *args, **kwargs)
+            t.set_prevent_recursion()
             setattr(obj, name, weakref(t))
             getattr(obj, name).start(interval)
             return True

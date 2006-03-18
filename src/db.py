@@ -101,8 +101,8 @@ class QExpr(object):
     Flexible query expressions for use with Database.query()
     """
     def __init__(self, operator, operand):
-        assert(operator in ("=", "!=", "<", "<=", ">", ">=", "in", "not in",
-                            "range"))
+        operator = operator.lower()
+        assert(operator in ("=", "!=", "<", "<=", ">", ">=", "in", "not in", "range", "like"))
         if operator in ("in", "not in", "range"):
             assert(type(operand) == tuple)
             if operator == "range":

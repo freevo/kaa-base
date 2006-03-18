@@ -251,7 +251,7 @@ class IPCChannel(object):
     def __del__(self):
         if hasattr(self, "server"):
             self.handle_close()
-
+        
     def set_default_timeout(self, timeout):
         self._default_timeout = timeout
 
@@ -270,7 +270,9 @@ class IPCChannel(object):
         self._wait_queue = {}
         self._proxied_objects = {}
         self.signals["closed"].emit()
-        kaa.signals["shutdown"].disconnect(self.handle_close)
+        if kaa.signals:
+            # on system shutdown kaa.signals is already gone
+            kaa.signals["shutdown"].disconnect(self.handle_close)
 
 
     def handle_read(self):

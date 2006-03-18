@@ -71,13 +71,13 @@ RESERVED_ATTRIBUTES = ("parent", "object", "keywords", "type", "limit",
 def _list_to_printable(value):
     """
     Takes a list of mixed types and outputs a unicode string.  For
-    example, a list [42, 'foo', None, "foo's string"], this returns the
+    example, a list [42, 'foo', None, "foo's' string"], this returns the
     string:
 
-        (42, 'foo', NULL, 'foo''s string')
+        (42, 'foo', NULL, 'foo''s'' string')
 
     Single quotes are escaped as ''.  This is suitable for use in SQL 
-    queries.  
+    queries.
     """
     fixed_items = []
     for item in value:

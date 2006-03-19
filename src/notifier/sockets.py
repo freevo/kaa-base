@@ -31,9 +31,14 @@
 
 __all__ = [ 'SocketDispatcher', 'WeakSocketDispatcher', 'Socket', 'IO_READ', 'IO_WRITE', 'IO_EXCEPT' ]
 
-import socket, cStringIO
+import socket
+import logging
+
 from callback import NotifierCallback, WeakNotifierCallback, Callback, Signal, notifier
 from thread import MainThreadCallback, Thread, is_mainthread
+
+# get logging object
+log = logging.getLogger('notifier')
 
 IO_READ   = notifier.IO_READ
 IO_WRITE  = notifier.IO_WRITE
@@ -75,36 +80,44 @@ class Socket(object):
     """
     Notifier-aware socket class.
     """
-    def __init__(self, addr = None, listen = False, async = None):
+    def __init__(self, addr = None, async = None):
         self._addr = self._socket = None
         self._write_buffer = ""
         self._read_delim = None
 
         self.signals = {
             "closed": Signal(),
-            "read": Signal()
+            "read": Signal(),
+            "connected": Signal()
         }
 
         self._rmon = SocketDispatcher(self._handle_read)
         self._wmon = SocketDispatcher(self._handle_write)
+        self._listening = False
 
         if addr:
-            if not listen:
-                self.connect(addr, async = async)
+            self.connect(addr, async = async)
 
-    def _make_socket(self, addr):
-        if ":" in addr:
+
+    def _normalize_address(self, addr):
+        if isinstance(addr, basestring) and ":" in addr:
             addr = addr.split(":")
             assert(len(addr) == 2)
             addr[1] = int(addr[1])
             addr = tuple(addr)
 
+        return addr
+
+
+    def _make_socket(self, addr = None):
+        addr = self._normalize_address(addr)
+
         if self._socket:
             self.close()
 
-        assert(type(addr) in (str, tuple))
+        assert(type(addr) in (str, tuple, None))
 
-        if type(addr) == str:
+        if isinstance(addr, basestring):
             self._socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         else:
             self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -113,7 +126,31 @@ class Socket(object):
         self._addr = addr
 
 
-    def connect(self, addr, async = None):
+    def listen(self, bind_info, qlen = 5):
+        if isinstance(bind_info, int):
+            # Change port to (None, port)
+            bind_info = ("", bind_info)
+
+        if not isinstance(bind_info, (tuple, list)) or not isinstance(bind_info[0], (tuple, list)):
+            bind_info = (bind_info, )
+
+
+        self._make_socket(bind_info[0])
+
+        for addr in bind_info:
+            addr = self._normalize_address(addr)
+            try:
+                self._socket.bind(addr)
+            except socket.error:
+                log.error('Failed to bind socket to: %s' % str(addr))
+
+        self._socket.listen(qlen)
+        self._listening = True
+        self.wrap()
+
+
+
+    def connect(self, addr, async = False):
         """
         Connects to the host specified in addr.  If addr is a string in the
         form host:port, or a tuple the form (host, port), a TCP socket is
@@ -129,15 +166,15 @@ class Socket(object):
         exception is raised.  Although this call blocks, the notifier loop
         remains active.
         """
-        assert(async == None or callable(async))
         self._make_socket(addr)
 
 
         thread = Thread(self._connect_thread)
         result_holder = []
-        cb = async
-        if not cb:
+        if not async:
             cb = Callback(lambda res, x: x.append(res), result_holder)
+        else:
+            cb = self.signals["connected"].emit
 
         thread.signals["completed"].connect(cb)
         thread.signals["exception"].connect(cb)
@@ -164,15 +201,35 @@ class Socket(object):
                 host = socket.gethostbyname(host)
             self._socket.connect((host, port))
 
+        self.wrap()
+        return True
+
+
+
+    def wrap(self, sock = None, addr = None):
+        if sock:
+            self._socket = sock
+        if addr:
+            self._addr = addr
+
         self._socket.setblocking(False)
+
+        self._rmon.unregister()
+        self._wmon.unregister()
 
         self._rmon.register(self._socket, IO_READ)
         if self._write_buffer:
             self._wmon.register(self._socket, IO_WRITE)
 
-        return True
 
     def _handle_read(self):
+        if self._listening:
+            sock, addr = self._socket.accept()
+            client_socket = Socket()
+            client_socket.wrap(sock, addr)
+            self.signals["connected"].emit(client_socket)
+            return
+
         try:
             data = self._socket.recv(1024*1024)
         except socket.error, (errno, msg):

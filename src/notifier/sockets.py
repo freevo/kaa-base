@@ -91,8 +91,12 @@ class Socket(object):
             "connected": Signal()
         }
 
-        self._rmon = SocketDispatcher(self._handle_read)
-        self._wmon = SocketDispatcher(self._handle_write)
+        # These variables hold the socket dispatchers for monitoring; we
+        # only allocate a dispatcher when the socket is connected to avoid
+        # a ref cycle so that disconnected sockets will get properly deleted
+        # when they are not referenced.
+        self._rmon = self._wmon = None
+
         self._listening = False
 
         if addr:
@@ -214,8 +218,12 @@ class Socket(object):
 
         self._socket.setblocking(False)
 
-        self._rmon.unregister()
-        self._wmon.unregister()
+        if self._rmon:
+            self._rmon.unregister()
+            self._wmon.unregister()
+
+        self._rmon = SocketDispatcher(self._handle_read)
+        self._wmon = SocketDispatcher(self._handle_write)
 
         self._rmon.register(self._socket, IO_READ)
         if self._write_buffer:
@@ -249,6 +257,7 @@ class Socket(object):
     def close(self, expected = True):
         self._rmon.unregister()
         self._wmon.unregister()
+        self._rmon = self._wmon = None
         self._write_buffer = ""
 
         self._socket.close()

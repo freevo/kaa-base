@@ -43,7 +43,7 @@ from kaa.notifier import Callback
 log = logging.getLogger('config')
 
 # align regexp
-align = re.compile(u'\n *', re.MULTILINE)
+align = re.compile(u'\n( *)[^\n]', re.MULTILINE)
 
 
 class NoCopyCallback(object):
@@ -64,6 +64,10 @@ def _format(text):
     """
     if text.find('\n') == -1:
         return text
+
+    # This can happen if you use multiple lines and use the python
+    # code formating. So there are spaces at each line. Find the maximum
+    # number of spaces to delete.
     
     # description with more than one line, format the text
     if not text.startswith(u'\n'):
@@ -79,8 +83,8 @@ def _format(text):
 
     newtext = []
     for line in text.split(u'\n'):
-        newtext.append(line[strip-1:])
-    return u'\n'.join(newtext)[1:]
+        newtext.append(line[strip+1:])
+    return u'\n'.join(newtext)[1:].strip()
 
 
 class Base(object):
@@ -205,7 +209,8 @@ class Var(Base):
         # create description
         desc = newline = ''
         if print_desc:
-            desc = '# %s\n' % unicode_to_str(self._desc).replace('\n', '\n# ')
+            if self._desc:
+                desc = '# %s\n' % unicode_to_str(self._desc).replace('\n', '\n# ')
             newline = '\n'
         # convert value to string
         value = unicode_to_str(self._value)
@@ -254,12 +259,15 @@ class Group(Base):
     """
     A config group.
     """
-    def __init__(self, schema, desc=u'', name=''):
+    def __init__(self, schema, desc=u'', name='', desc_type='default'):
         super(Group, self).__init__(name, desc)
         self._dict = {}
         self._vars = []
         self._schema = schema
-
+        # 'default' will print all data
+        # 'group' will only print the group description
+        self._desc_type = desc_type
+        
         for data in schema:
             if not data._name:
                 raise AttributeError('no name given')
@@ -294,12 +302,20 @@ class Group(Base):
         if self._name:
             # add self._name to prefix and add a '.'
             prefix = prefix + self._name + '.'
+        print_var_desc = print_desc
         if prefix and not prefix.endswith('].') and print_desc:
             # print description for 'stand alone' groups
-            ret.append('#\n# %s\n# %s\n#\n' % (prefix[:-1], desc))
+            if self._desc_type == 'default':
+                ret.append('#\n# %s\n# %s\n#\n' % (prefix[:-1], desc))
+            else:
+                ret.append('#\n# %s\n#\n' % desc)
+                print_var_desc = False
+
         for name in self._vars:
             var = self._dict[name]
-            ret.append(var._cfg_string(unicode_to_str(prefix), print_desc))
+            ret.append(var._cfg_string(unicode_to_str(prefix), print_var_desc))
+        if print_desc and not print_var_desc:
+            ret.append('')
         return '\n'.join(ret)
 
 

@@ -187,7 +187,7 @@ class IPCServer:
 
 
     def close(self):
-        if not _debug:
+        if not _debug or not hasattr(self, 'address'):
             # Python is shutting down _globals have gone away.
             return
 

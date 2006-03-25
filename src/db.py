@@ -926,7 +926,7 @@ class Database:
 
             # FIXME: don't hardcode path length; is there a PATH_MAX in python?
             if len(text) < 255 and re.search("\.\w{2,5}$", text):
-                # Treat 
+                # Treat input as filename since it looks like it ends with an extension.
                 dirname, filename = os.path.split(text)
                 fname_noext, ext = os.path.splitext(filename)
                 # Remove the first 2 levels (like /home/user/) and then take

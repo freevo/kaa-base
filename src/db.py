@@ -49,7 +49,8 @@ ATTR_SEARCHABLE        = 0x01      # Is a SQL column, not a pickled field
 ATTR_INDEXED           = 0x02      # Will have an SQL index
 ATTR_KEYWORDS          = 0x04      # Also indexed for keyword queries
 
-ATTR_KEYWORDS_FILENAME = 0x100     # Treat as filename for keywords index
+# XXX: deprecated, same as ATTR_KEYWORDS now
+ATTR_KEYWORDS_FILENAME = 0x04      # Treat as filename for keywords index
 
 STOP_WORDS = (
     "about", "and", "are", "but", "com", "for", "from", "how", "not", 
@@ -923,7 +924,9 @@ class Database:
             if attr_type == str:
                 text = str_to_unicode(text)
 
-            if flags & ATTR_KEYWORDS_FILENAME:
+            # FIXME: don't hardcode path length; is there a PATH_MAX in python?
+            if len(text) < 255 and re.search("\.\w{2,5}$", text):
+                # Treat 
                 dirname, filename = os.path.split(text)
                 fname_noext, ext = os.path.splitext(filename)
                 # Remove the first 2 levels (like /home/user/) and then take

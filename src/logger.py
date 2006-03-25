@@ -57,7 +57,6 @@ def create_logger(level = logging.WARNING):
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
     log.addHandler(handler)
-    log.setLevel(level)
 
 
 def make_record(self, name, level, fn, lno, msg, args, exc_info):

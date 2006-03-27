@@ -3,8 +3,9 @@ from strutils import str_to_unicode
 from sets import Set
 from pysqlite2 import dbapi2 as sqlite
 
-__all__ = ['Database', 'QExpr', 'ATTR_SIMPLE', 'ATTR_SEARCHABLE', 
-           'ATTR_INDEXED', 'ATTR_KEYWORDS', 'ATTR_KEYWORDS_FILENAME']
+__all__ = ['Database', 'QExpr', 'ATTR_SIMPLE', 'ATTR_SEARCHABLE', 'ATTR_IGNORE_CASE',
+           'ATTR_INDEXED', 'ATTR_INDEXED_IGNORE_CASE', 'ATTR_KEYWORDS', 
+           'ATTR_KEYWORDS_FILENAME', 'create_column_map', 'iter_raw_data']
 
 CREATE_SCHEMA = """
     CREATE TABLE meta (
@@ -44,10 +45,13 @@ CREATE_SCHEMA = """
 """
 
 
-ATTR_SIMPLE            = 0x00
-ATTR_SEARCHABLE        = 0x01      # Is a SQL column, not a pickled field
-ATTR_INDEXED           = 0x02      # Will have an SQL index
-ATTR_KEYWORDS          = 0x04      # Also indexed for keyword queries
+ATTR_SIMPLE              = 0x00
+ATTR_SEARCHABLE          = 0x01      # Is a SQL column, not a pickled field
+ATTR_INDEXED             = 0x02      # Will have an SQL index
+ATTR_KEYWORDS            = 0x04      # Indexed for keyword queries
+ATTR_IGNORE_CASE         = 0x08      # Store in db as lowercase for searches.
+ATTR_INDEXED_IGNORE_CASE = ATTR_INDEXED | ATTR_IGNORE_CASE
+
 
 # XXX: deprecated, same as ATTR_KEYWORDS now
 ATTR_KEYWORDS_FILENAME = 0x04      # Treat as filename for keywords index
@@ -126,15 +130,19 @@ class QExpr(object):
 
 
 # Convenience functions for dealing with raw datasets.
-def create_column_map(query_info, colname):
+def create_column_map(query_info, object_type = None):
     """
     Takes a query_info dict (the first argument returned by Database.query_raw)
     and returns a dictionary that maps attribute names to their corresponding
-    array index in each row entry.
+    array index in each row entry for the given object type.  If object_type is
+    None then it uses the first object type found in the query_info.
 
     e.g. ('foo', 'bar') returns {"foo":0, "bar":1}
     """
-    cols = query_info["columns"][colname]
+    if object_type == None:
+        object_type = query_info["columns"].keys()[0]
+
+    cols = query_info["columns"][object_type]
     return dict(zip(cols, range(len(cols))))
 
 
@@ -150,20 +158,46 @@ def iter_raw_data((query_info, rows), columns):
     pickled_columns = None
 
     if len(rows) > 0:
-        cmap = create_column_map(query_info, rows[0][0])
+        object_type = query_info["columns"].keys()[0]
+        cmap = create_column_map(query_info, object_type)
         pickled_columns = Set(columns).difference(cmap.keys())
 
+        # If any of the requested columns are ATTR_INDEXED_IGNORE_CASE then
+        # we have to grab the pickle too because the true (original case)
+        # value is stored there.
+        attrs = query_info["attrs"][object_type]
+        flag = ATTR_INDEXED_IGNORE_CASE
+        # Get requested columns that are ATTR_INDEXED_IGNORE_CASE
+        ic_attrs = Set(columns).intersection([ x for x in attrs if attrs[x][1] & flag == flag ])
+        # Flag that indicates if we want to look for __foo attrs in the
+        # pickle.  Do this here rather than in the inner loop.
+        has_ic_attrs = len(ic_attrs) > 0
+        # Add these attributes to the list of attrs we want to grab from the
+        # pickle.
+        pickled_columns.update(ic_attrs)
+
+
     if pickled_columns != None and len(pickled_columns) == 0:
+        # Simple case where we don't need the pickle
         for row in rows:
             yield [ row[cmap[col]] for col in columns ]
+
     elif pickled_columns != None:
+        # Ugly case where some of the requested columns exist in the pickle.
         cmap.update(dict(zip(pickled_columns, range(len(cmap), len(cmap)+len(pickled_columns)))))
         extra_dummy = (None,)*len(pickled_columns)
         for row in rows:
             pickle = row[cmap["pickle"]]
             if pickle:
                 pickled_attrs = cPickle.loads(str(pickle))
+                if has_ic_attrs:
+                    for key in [ k[2:] for k in pickled_attrs.keys() if k.startswith("__") ]:
+                        print key
+                        pickled_attrs[key] = pickled_attrs["__" + key]
+                        del pickled_attrs["__" + key]
+
                 extra = tuple([ pickled_attrs.get(x) for x in pickled_columns ])
+                print extra
             else:
                 extra = extra_dummy
             yield [ (row + extra)[cmap[col]] for col in columns ]
@@ -172,7 +206,7 @@ def iter_raw_data((query_info, rows), columns):
 class Database:
     def __init__(self, dbfile = None):
         if not dbfile:
-            dbfile = "kaavfs.sqlite"
+            dbfile = "kaa.db.sqlite"
 
         self._object_types = {}
         self._dbfile = dbfile
@@ -399,22 +433,28 @@ class Database:
             if flags != ATTR_SIMPLE and name in attrs:
                 columns.append(name)
                 placeholders.append("?")
-                if name in attrs:
-                    value = attrs[name]
-                    # Coercion for numberic types
-                    if type(value) in (int, long, float) and attr_type in (int, long, float):
-                        value = attr_type(value)
+                value = attrs[name]
+                # Coercion for numberic types
+                if isinstance(value, (int, long, float)) and attr_type in (int, long, float):
+                    value = attr_type(value)
+                elif isinstance(value, basestring) and \
+                     flags & ATTR_INDEXED_IGNORE_CASE == ATTR_INDEXED_IGNORE_CASE:
+                    # If the attribute is ATTR_INDEXED_IGNORE_CASE and it's a string
+                    # then we store it as lowercase in the table column, while
+                    # keeping the original (unchanged case) value in the pickle.
+                    # This allows us to do case-insensitive searches on indexed
+                    # columns and still benefit from the index.
+                    attrs_copy["__" + name] = value
+                    value = value.lower()
 
-                    if attr_type != type(value):
-                        raise ValueError, "Type mismatch in query for %s: '%s' (%s) is not a %s" % \
+                if attr_type != type(value):
+                    raise ValueError, "Type mismatch in query for %s: '%s' (%s) is not a %s" % \
                                           (name, str(value), str(type(value)), str(attr_type))
-                    if attr_type == str:
-                        # Treat strings (non-unicode) as buffers.
-                        value = buffer(value)
-                    values.append(value)
-                    del attrs_copy[name]
-                else:
-                    values.append(None)
+                if attr_type == str:
+                    # Treat strings (non-unicode) as buffers.
+                    value = buffer(value)
+                values.append(value)
+                del attrs_copy[name]
 
         if len(attrs_copy) > 0:
             columns.append("pickle")
@@ -642,6 +682,7 @@ class Database:
         query_type = "ALL"
         results = []
         query_info["columns"] = {}
+        query_info["attrs"] = {}
 
         if "object" in attrs:
             attrs["type"], attrs["id"] = attrs["object"]
@@ -780,6 +821,18 @@ class Database:
                    type(value._operand) != attr_type:
                     raise ValueError, "Type mismatch in query: '%s' (%s) is not a %s" % \
                                           (str(value._operand), str(type(value._operand)), str(attr_type))
+
+                # Queries on string columns are case-insensitive.
+                if isinstance(value._operand, basestring) and type_attrs[attr][1] & ATTR_IGNORE_CASE:
+                    value._operand = value._operand.lower()
+                    if not (type_attrs[attr][1] & ATTR_INDEXED):
+                        # If this column is ATTR_INDEXED then we already ensure
+                        # the values are stored in lowercase in the db, so we
+                        # don't want to get sql to lower() the column because
+                        # it's needless, and more importantly, we won't be able
+                        # to use any indices on the column.
+                        attr = 'lower(%s)' % attr
+
                 if type(value._operand) == str:
                     # Treat strings (non-unicode) as buffers.
                     value._operand = buffer(value._operand)
@@ -804,6 +857,7 @@ class Database:
                 query_info["columns"][type_name] = ["type", "computed_id"] + columns
             else:
                 query_info["columns"][type_name] = ["type"] + columns
+            query_info["attrs"][type_name] = type_attrs
 
             if result_limit != None and len(rows) == result_limit:
                 # No need to try the other types, we're done.
@@ -868,6 +922,13 @@ class Database:
 
             if result["pickle"]:
                 pickle = cPickle.loads(str(result["pickle"]))
+                # Any keys in the pickle that are prefixed with __ are 
+                # saved values of ATTR_INDEXED_IGNORE_CASE attributes before
+                # their case got lowered.
+                for key in [ k[2:] for k in pickle.keys() if k.startswith("__") ]:
+                    pickle[key] = pickle["__" + key]
+                    del pickle["__" + key]
+
                 result.update(pickle)
             del result["pickle"]
 
@@ -877,21 +938,6 @@ class Database:
                                     result["parent_id"])
             new_results.append(result)
         return new_results
-
-
-    def list_query_results_names(self, (query_info, results)):
-        """
-        Do a quick-and-dirty list of filenames given a query results list,
-        sorted by filename.
-        """
-        return []
-        # XXX: This logic needs to be in vfs, not db.
-        #name_index = {}
-        #for type, c in query_info["columns"].items():
-        #    name_index[type] = c.index("name")
-        #files = [ str(row[name_index[row[0]]]) for row in results ]
-        #files.sort()
-        #return files
 
 
     def _score_words(self, text_parts):

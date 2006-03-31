@@ -141,7 +141,9 @@ def is_mainthread():
     """
     Return True if the caller is in the main thread right now.
     """
-    return threading.currentThread() == _thread_notifier_mainthread
+    # If threading module is None, assume main thread.  (Silences pointless
+    # exceptions on shutdown.)
+    return (not threading) or threading.currentThread() == _thread_notifier_mainthread
 
 
 

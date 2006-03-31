@@ -27,7 +27,7 @@ CREATE_SCHEMA = """
         word            TEXT,
         count           INTEGER
     );
-    CREATE UNIQUE INDEX words_idx on WORDS (word) ON CONFLICT REPLACE;
+    CREATE UNIQUE INDEX words_idx on WORDS (word);
 
     CREATE TABLE words_map (
         rank            INTEGER,
@@ -1059,7 +1059,7 @@ class Database:
         for word, score in words.items():
             if word not in db_words_count:
                 # New word, so insert it now.
-                self._db_query("INSERT INTO words VALUES(NULL, ?, 1)", (word,))
+                self._db_query("INSERT OR REPLACE INTO words VALUES(NULL, ?, 1)", (word,))
                 db_id, db_count = self._cursor.lastrowid, 1
                 db_words_count[word] = db_id, db_count
             else:

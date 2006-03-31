@@ -2,7 +2,7 @@
 # -----------------------------------------------------------------------------
 # logger.py - Updates to the Python logging module
 # -----------------------------------------------------------------------------
-# $Id: utils.py 915 2005-11-23 19:26:28Z dmeyer $
+# $Id$
 #
 # This module 'fixes' the Python logging module to accept fixed string and
 # unicode arguments. It will also make sure that there is a logging handler

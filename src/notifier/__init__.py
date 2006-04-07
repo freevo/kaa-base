@@ -58,12 +58,6 @@ running = False
 # Set if currently in shutdown() (to prevent reentrancy)
 shutting_down = False
 
-def _handle_stdin_keypress(fd):
-    ch = utils.getch()
-    signals["stdin_key_press_event"].emit(ch)
-    return True
-
-
 def _idle_signal_changed(signal, flag):
     if flag == Signal.SIGNAL_CONNECTED and signal.count() == 1:
         notifier.dispatcher_add(signal.emit)
@@ -71,20 +65,9 @@ def _idle_signal_changed(signal, flag):
         notifier.dispatcher_remove(signal.emit)
 
 
-def _keypress_signal_changed(signal, flag):
-    if flag == Signal.SIGNAL_CONNECTED and signal.count() == 1:
-        utils.getch_enable()
-        notifier.socket_add(sys.stdin, _handle_stdin_keypress)
-    elif flag == Signal.SIGNAL_DISCONNECTED and signal.count() == 0:
-        utils.getch_disable()
-        notifier.socket_remove(sys.stdin)
-
-
 signals = {
     "shutdown": Signal(),
     "idle": Signal(changed_cb = _idle_signal_changed),
-    # Temporary until I find a better place.
-    "stdin_key_press_event": Signal(changed_cb = _keypress_signal_changed),
 }
 
 

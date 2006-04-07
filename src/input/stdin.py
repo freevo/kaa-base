@@ -1,38 +1,11 @@
-# -*- coding: iso-8859-1 -*-
-# -----------------------------------------------------------------------------
-# utils.py - Miscellaneous utilities
-# -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
-# Copyright (C) 2005 Dirk Meyer, Jason Tackaberry
-#
-# First Edition: Jason Tackaberry <tack@sault.org>
-# Maintainer:    Jason Tackaberry <tack@sault.org>
-#
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of MER-
-# CHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
-# Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
-#
-# -----------------------------------------------------------------------------
-
 import sys
 import tty
 import termios
 import os
 import atexit
 
-############################################################################
+import kaa
+import kaa.notifier
 
 _tc_orig_settings = None
 _getch_enabled = False
@@ -110,5 +83,24 @@ def getch_disable():
         termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _tc_orig_settings)
     os.system("stty echo")
 
-    
-############################################################################
+
+def _handle_stdin_keypress(fd):
+    ch = getch()
+    kaa.signals["stdin_key_press_event"].emit(ch)
+    return True
+
+
+_dispatcher = kaa.notifier.SocketDispatcher(_handle_stdin_keypress)
+
+def _keypress_signal_changed(signal, flag):
+    if flag == kaa.notifier.Signal.SIGNAL_CONNECTED and signal.count() == 1:
+        getch_enable()
+        _dispatcher.register(sys.stdin)
+    elif flag == kaa.notifier.Signal.SIGNAL_DISCONNECTED and signal.count() == 0:
+        getch_disable()
+        _dispatcher.unregister()
+
+
+# init
+_signal = kaa.notifier.Signal(changed_cb = _keypress_signal_changed)
+kaa.signals["stdin_key_press_event"] = _signal

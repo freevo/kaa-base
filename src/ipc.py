@@ -686,7 +686,6 @@ class IPCChannel(object):
         if packet_type[:3] == "REQ" and timeout > 0:
             t0 = time.time()
             while self.socket and self._wait_queue[seq][1] == False and time.time() - t0 < timeout:
-                print 'step'
                 kaa.notifier.step()
         else:
             self.handle_write()

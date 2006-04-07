@@ -192,12 +192,10 @@ def iter_raw_data((query_info, rows), columns):
                 pickled_attrs = cPickle.loads(str(pickle))
                 if has_ic_attrs:
                     for key in [ k[2:] for k in pickled_attrs.keys() if k.startswith("__") ]:
-                        print key
                         pickled_attrs[key] = pickled_attrs["__" + key]
                         del pickled_attrs["__" + key]
 
                 extra = tuple([ pickled_attrs.get(x) for x in pickled_columns ])
-                print extra
             else:
                 extra = extra_dummy
             yield [ (row + extra)[cmap[col]] for col in columns ]

@@ -7,6 +7,8 @@ import atexit
 import kaa
 import kaa.notifier
 
+__all__ = [ 'signal' ]
+
 _tc_orig_settings = None
 _getch_enabled = False
 
@@ -92,15 +94,15 @@ def _handle_stdin_keypress():
 
 _dispatcher = kaa.notifier.SocketDispatcher(_handle_stdin_keypress)
 
-def _keypress_signal_changed(signal, flag):
-    if flag == kaa.notifier.Signal.SIGNAL_CONNECTED and signal.count() == 1:
+def _keypress_signal_changed(s, flag):
+    if flag == kaa.notifier.Signal.SIGNAL_CONNECTED and s.count() == 1:
         getch_enable()
         _dispatcher.register(sys.stdin)
-    elif flag == kaa.notifier.Signal.SIGNAL_DISCONNECTED and signal.count() == 0:
+    elif flag == kaa.notifier.Signal.SIGNAL_DISCONNECTED and s.count() == 0:
         getch_disable()
         _dispatcher.unregister()
 
 
 # init
-_signal = kaa.notifier.Signal(changed_cb = _keypress_signal_changed)
-kaa.signals["stdin_key_press_event"] = _signal
+signal = kaa.notifier.Signal(changed_cb = _keypress_signal_changed)
+kaa.signals["stdin_key_press_event"] = signal

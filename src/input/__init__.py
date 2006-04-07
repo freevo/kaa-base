@@ -1,2 +1,1 @@
 import lirc
-import stdin

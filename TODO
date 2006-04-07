@@ -1,5 +1,4 @@
-Cleanup the lirc input module and move the getch functions from
-base/utils.py into the input submodule.
+Cleanup the lirc and stdin input modules.
 
 Remove unix signal handling code, it does not work right. Maybe auto
 catch SIG15 and send the normal sys.exit at this point.

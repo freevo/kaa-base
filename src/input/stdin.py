@@ -84,7 +84,7 @@ def getch_disable():
     os.system("stty echo")
 
 
-def _handle_stdin_keypress(fd):
+def _handle_stdin_keypress():
     ch = getch()
     kaa.signals["stdin_key_press_event"].emit(ch)
     return True

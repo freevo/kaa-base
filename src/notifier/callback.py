@@ -43,11 +43,21 @@ try:
         # notifier to be sure it is the correct version
         raise ImportError
     import notifier
-    if not notifier.loop:
-        # init pyNotifier with the generic notifier
-        notifier.init(notifier.GENERIC)
+    if notifier.loop:
+        # pyNotifier should be used and already active
+        log = logging.getLogger('notifier')
+        log.info('pynotifier already running, I hope you know what you are doing')
+    else:
+        # pyNotifier is installed, so we use it
+        if sys.modules.has_key('gtk'):
+            # The gtk module is loaded, this means that we will hook
+            # ourself into the gtk main loop
+            notifier.init(notifier.GTK)
+        else:
+            # init pyNotifier with the generic notifier
+            notifier.init(notifier.GENERIC)
     use_pynotifier = True
-
+        
     # delete basic notifier handler
     log = logging.getLogger('notifier')
     for l in log.handlers:
@@ -55,6 +65,10 @@ try:
 
 except ImportError:
     # use a copy of nf_generic
+    if sys.modules.has_key('gtk'):
+        log = logging.getLogger('notifier')
+        log.error('To use gtk with kaa.notifier requires pynotifier to be installed')
+        sys.exit(1)
     import nf_generic as notifier
     use_pynotifier = False
 

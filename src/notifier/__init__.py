@@ -36,6 +36,7 @@ import os
 import traceback
 import time
 import signal
+import atexit
 
 # kaa.notifier imports
 from popen import *
@@ -157,4 +158,20 @@ def step(*args, **kwargs):
 def _signal_handler(signum, frame):
     shutdown()
 
+# catch SIGTERM
 signal.signal(signal.SIGTERM, _signal_handler)
+
+def _shutdown_check():
+    # Helper function to shutdown kaa on system exit
+    # The problem is that pytgtk just exits python and
+    # does not simply return from the main loop and kaa
+    # can't call the shutdown handler. This is not a perfect
+    # solution, e.g. with the generic notifier you can do
+    # stuff after kaa.main() which is not possible with gtk
+    global running
+    if running:
+        running = False
+        shutdown()
+
+# check to make sure we really call our shutdown function
+atexit.register(_shutdown_check)

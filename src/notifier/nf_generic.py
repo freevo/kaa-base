@@ -115,7 +115,7 @@ def dispatcher_remove( method ):
     """Removes an external dispatcher function from the list"""
     global __dispatchers
     if method in __dispatchers:
-        __dispatcher.remove( method )
+        __dispatchers.remove( method )
 
 __current_sockets = {}
 __current_sockets[ IO_READ ] = []

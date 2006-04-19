@@ -36,7 +36,7 @@ CREATE_SCHEMA = """
         object_id       INTEGER,
         frequency       FLOAT
     );
-    CREATE INDEX words_map_word_idx ON words_map (word_id, rank, object_type);
+    CREATE INDEX words_map_word_idx ON words_map (word_id, rank, object_type, object_id);
     CREATE INDEX words_map_object_idx ON words_map (object_id, object_type);
     CREATE TRIGGER delete_words_map DELETE ON words_map
     BEGIN
@@ -1137,7 +1137,8 @@ class Database:
             words[row[0]] = {
                 "word": row[1],
                 "count": row[2],
-                "idf_t": math.log(objectcount / row[2] + 1) + order_weight
+                "idf_t": math.log(objectcount / row[2] + 1) + order_weight,
+                "ids": {}
             }
             ids.append(row[0])
             # print "WORD: %s (%d), freq=%d/%d, idf_t=%f" % (row[1], row[0], row[2], objectcount, words[row[0]]["idf_t"])
@@ -1156,26 +1157,35 @@ class Database:
             results[id] = {}
             state[id] = {
                 "offset": [0]*11,
-                "more": [True]*11
+                "more": [True]*11,
+                "count": 0,
+                "done": False
             }
 
         all_results = {}
         if limit == None:
             limit = objectcount
 
-        sql_limit = max(limit*3, 100)
+        sql_limit = min(limit*3, 200)
         finished = False
         nqueries = 0
 
+        # Keep a dict keyed on object_id that we can use to narrow queries
+        # once we have a full list of all objects that match a given word.
+        id_constraints = None
         while not finished:
             for rank in range(10, -1, -1):
                 for id in ids:
-                    if not state[id]["more"][rank]:
+                    if not state[id]["more"][rank] or state[id]["done"]:
+                        # If there's no more results at this rank, or we know
+                        # we've already seen all the results for this word, we
+                        # don't bother with the query.
                         continue
 
                     q = "SELECT object_type,object_id,frequency FROM " \
-                        "words_map WHERE word_id=? AND rank=? %s " \
+                        "words_map WHERE word_id=? AND rank=? %s %%s" \
                         "LIMIT ? OFFSET ?"
+
                     if object_type == None:
                         q %= ""
                         v = (id, rank, sql_limit, state[id]["offset"][rank])
@@ -1183,12 +1193,38 @@ class Database:
                         q %= "AND object_type=?"
                         v = (id, rank, object_type, sql_limit, state[id]["offset"][rank])
 
+                    if id_constraints:
+                        # We know about all objects that match one or more of the other
+                        # search words, so we add the constraint that all rows for this 
+                        # word match the others as well.  Effectively we push the logic
+                        # to generate the intersection into the db.
+                        # This can't benefit from the index if object_type is not specified.
+                        q %= " AND object_id IN %s" % _list_to_printable(tuple(id_constraints))
+                    else:
+                        q %= ""
+
                     rows = self._db_query(q, v)
                     nqueries += 1
                     state[id]["more"][rank] = len(rows) == sql_limit
+                    state[id]["count"] += len(rows)
 
                     for row in rows:
                         results[id][row[0], row[1]] = row[2] * words[id]["idf_t"]
+                        words[id]["ids"][row[1]] = 1
+
+                    if state[id]["count"] >= words[id]["count"] or \
+                       (id_constraints and len(rows) == len(id_constraints)):
+                        # If we've now retrieved all objects for this word, or if
+                        # all the results we just got now intersect with our
+                        # constraints set, we're done this word and don't bother
+                        # querying it at other ranks.
+                        #print "Done word '%s' at rank %d" % (words[id]["word"], rank)
+                        state[id]["done"] = True
+                        if id_constraints is not None:
+                            id_constraints = id_constraints.intersection(words[id]["ids"])
+                        else:
+                            id_constraints = Set(words[id]["ids"])
+
 
                 # end loop over words
                 for r in reduce(lambda a, b: Set(a).intersection(Set(b)), results.values()):
@@ -1236,7 +1272,7 @@ class Database:
                 # see if more exists at any rank, increasing offset and
                 # unsetting finished flag so we iterate again.
                 for rank in range(10, -1, -1):
-                    if state[id]["more"][rank]:
+                    if state[id]["more"][rank] and not state[id]["done"]:
                         state[id]["offset"][rank] += sql_limit
                         finished = False
 

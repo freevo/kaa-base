@@ -17,7 +17,7 @@
 
 import logging
 import socket, os, select, time, types, struct, cPickle, thread, sys, sha
-import popen2
+import popen2, errno
 import traceback, string, copy_reg
 from new import classobj
 import kaa.notifier
@@ -88,17 +88,26 @@ def _unpickle_proxy(clsname, *args):
     return i
 
 
-
-class IPCDisconnectedError(Exception):
+class IPCError(Exception):
     pass
 
-class IPCTimeoutError(Exception):
+class IPCSocketError(socket.error, IPCError):
     pass
 
-class IPCAuthenticationError(Exception):
+class IPCDisconnectedError(IPCSocketError):
+    def __init__(self):
+        socket.error.__init__(self, errno.ECONNRESET, "Remote disconnected")
+
+
+class IPCTimeoutError(IPCSocketError):
+    def __init__(self, type):
+        socket.error.__init__(self, errno.ETIMEDOUT, "IPC operation timed out with request type '%s'" % type)
+
+
+class IPCAuthenticationError(IPCError):
     pass
 
-class IPCRemoteException(Exception):
+class IPCRemoteException(IPCError):
     def __init__(self, remote_exc, remote_value, remote_tb):
         self.exc = remote_exc
         self.val = remote_value
@@ -122,13 +131,13 @@ class IPCServer:
                 try:
                     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                     s.connect(address)
-                except socket.error, e:
-                    if e[0] == 111:
+                except socket.error, (err, msg):
+                    if err == errno.ECONNREFUSED:
                         # not running, everything is fine
                         log.info('remove socket from dead server')
                     else:
                         # some error we do not expect
-                        raise e
+                        raise socket.error(err, msg)
                 else:
                     # server already running
                     raise IOError('server already running')
@@ -214,7 +223,11 @@ class IPCChannel(object):
                 self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             if type(server_or_address) == tuple:
                 self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.connect(server_or_address)
+            try:
+                self.socket.connect(server_or_address)
+            except socket.error, (err, msg):
+                raise IPCSocketError(err, msg)
+
             self.socket.setblocking(False)
             self.server = None
         else:
@@ -278,8 +291,8 @@ class IPCChannel(object):
     def handle_read(self):
         try:
             data = self.socket.recv(1024*1024)
-        except socket.error, (errno, msg):
-            if errno == 11:
+        except socket.error, (err, msg):
+            if err == errno.EAGAIN:
                 # Resource temporarily unavailable -- we are trying to read
                 # data on a socket when none is available.
                 return
@@ -368,8 +381,8 @@ class IPCChannel(object):
             self.write_buffer = self.write_buffer[sent:]
             if not self.write_buffer:
                 self._wmon.unregister()
-        except socket.error, (errno, msg):
-            if errno == 11:
+        except socket.error, (err, msg):
+            if err == errno.EAGAIN:
                 # Resource temporarily unavailable -- we are trying to write
                 # data to a socket when none is available.
                 return
@@ -729,7 +742,7 @@ class IPCChannel(object):
             return self.handle_reply(*self._wait_queue[seq][2])
         elif timeout > 0:
             del self._wait_queue[seq]
-            raise IPCTimeoutError, (type,)
+            raise IPCTimeoutError(type)
 
 
     def reply(self, type, data, seq):
@@ -981,6 +994,7 @@ class IPCProxy(object):
             self._ipc_client._decref_proxied_object(self._ipc_obj)
         except IPCDisconnectedError:
             pass
+
 
     def _ipc_get_str(self):
         if self._ipc_client:

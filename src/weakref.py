@@ -53,7 +53,7 @@ class weakref(object):
         return super(weakref, weakref).__new__(cls, object)
 
     def __init__(self, object):
-        if object:
+        if object is not None:
             if type(object) == weakref:
                 self._ref = object._ref
             else:

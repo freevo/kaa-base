@@ -35,6 +35,10 @@
 from _weakref import ref
 import types
 
+class NoneProxy(object):
+    def __call__(self):
+        return None
+    
 class weakref(object):
     """
     This class represents a weak reference based on the python
@@ -43,6 +47,11 @@ class weakref(object):
     E.g.: foo = weak(bar) and bar has the attribute x. With a normal
     weakref.ref you need to call foo().x to get, this class makes it
     possible to just use foo.x.
+
+    All functions are passed to the real object behind the weakref. To
+    check if the weakref is alive or not, you can compare the object with
+    None. Do not use a simple if, because an object still alive can also
+    be False (e.g. an empty list).
     """
     def __new__(cls, object):
         # Make an instance of callable weakref iff the object is callable.
@@ -59,17 +68,15 @@ class weakref(object):
             else:
                 self._ref = ref(object)
         else:
-            self._ref = None
+            self._ref = NoneProxy()
 
-            
     def __getattribute__(self, attr):
-        if attr == "__class__" and self:
+        if attr == "__class__":
             return self._ref().__class__
         if attr == "_ref":
             return object.__getattribute__(self, attr)
-        if self._ref:
-            return getattr(self._ref(), attr)
-
+        return getattr(self._ref(), attr)
+        
     def __setattr__(self, attr, value):
         if attr == "_ref":
             return object.__setattr__(self, attr, value)
@@ -88,7 +95,7 @@ class weakref(object):
         self._ref()[key] = value
 
     def __nonzero__(self):
-        if self._ref and self._ref():
+        if self._ref():
             return 1
         else:
             return 0
@@ -99,14 +106,10 @@ class weakref(object):
         return cmp(self._ref(), other)
 
     def __str__(self):
-        if self._ref:
-            return "<weakref proxy; %s>" % str(self._ref())
-        else:
-            return 'weak reference to None'
+        return "<weakref proxy; %s>" % str(self._ref())
 
     def __deepcopy__(self, memo):
-        if self._ref:
-            return weakref(self._ref())
+        return weakref(self._ref())
 
 
 class _callable_weakref(weakref):
@@ -114,4 +117,4 @@ class _callable_weakref(weakref):
         return super(weakref, weakref).__new__(cls)
 
     def __call__(self, *args, **kwargs):
-            return self._ref()(*args, **kwargs)
+        return self._ref()(*args, **kwargs)

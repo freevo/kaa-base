@@ -88,7 +88,7 @@ class weakref(object):
         self._ref()[key] = value
 
     def __nonzero__(self):
-        if self._ref and self._ref():
+        if self._ref and self._ref() is not None:
             return 1
         else:
             return 0

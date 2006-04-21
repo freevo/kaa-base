@@ -402,7 +402,7 @@ class Watcher(object):
         log.info('new process watcher instance')
         self.__processes = {}
         self.__timer = None
-
+        self.status = 'running'
 
     def append( self, proc, cb ):
         self.__processes[ proc ] = cb
@@ -456,11 +456,22 @@ class Watcher(object):
 
 
     def stopall( self ):
+        if self.status != 'running':
+            return
         # stop all childs without waiting
         for p in self.__processes.keys():
             p.stop()
+        self.status = 'stopping'
 
+        
     def killall( self ):
+        # prevent recursion
+        if not self.status in ('running', 'stopping'):
+            return
+        # make sure every child is stopped
+        self.stopall()
+        self.status = 'stopped'
+        
         # now wait until all childs are dead
         while self.__processes:
             self.check()

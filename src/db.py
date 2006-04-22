@@ -61,7 +61,7 @@ STOP_WORDS = (
     "some", "that", "the", "this", "was", "what", "when", "where", "who", 
     "will", "with", "the", "www", "http", "org", "of"
 )
-WORDS_DELIM = re.compile("[\W_]+", re.U)
+WORDS_DELIM = re.compile("[\W_\d]+", re.U)
 
 # Word length limits for keyword indexing
 MIN_WORD_LENGTH = 2

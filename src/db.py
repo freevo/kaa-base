@@ -813,8 +813,13 @@ class Database:
                 if type(value) != QExpr:
                     value = QExpr("=", value)
 
-                if type(value._operand) in (int, long, float) and attr_type in (int, long, float):
+                # Coerce between numeric types; also coerce a string of digits into a numeric
+                # type.
+                if attr_type in (int, long, float) and (type(value._operand) in (int, long, float) or \
+                    isinstance(value._operand, basestring) and value._operand.isdigit()):
                     value._operand = attr_type(value._operand)
+
+                # Verify expression operand type is correct for this attribute.
                 if value._operator not in ("range", "in", "not in") and \
                    type(value._operand) != attr_type:
                     raise ValueError, "Type mismatch in query: '%s' (%s) is not a %s" % \
@@ -1091,7 +1096,7 @@ class Database:
 
         The worst case scenario is given two search terms, each term matches
         50% of all rows but there is only one intersection row.  (Or, more
-        generally, given N rows, each term matches (1/N)*100 percent rows with
+        generally, given N terms, each term matches (1/N)*100 percent rows with
         only 1 row intersection between all N terms.)   This could be improved
         by avoiding the OFFSET/LIMIT technique as described above, but that
         approach provides a big performance win in more common cases.  This

@@ -455,7 +455,7 @@ class IPCChannel(object):
                 # handle_request_XXX will raise "NOREPLY" to prevent us
                 # from replying -- for oneway functions.
                 pass
-            except (SystemExit,):
+            except (SystemExit, KeyboardInterrupt):
                 raise sys.exc_info()[0], sys.exc_info()[1]
             except IPCAuthenticationError, data:
                 self.reply(command, ("auth", data), seq)

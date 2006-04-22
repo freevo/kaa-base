@@ -847,9 +847,6 @@ class Database:
                 query_values.extend(values)
             
             if result_limit != None:
-                # Coerce string of digits into integer type
-                if isinstance(result_limit, basestring) and result_limit.isdigit():
-                    result_limit = int(result_limit)
                 q.append(" LIMIT %d" % result_limit)
 
             q = " ".join(q)

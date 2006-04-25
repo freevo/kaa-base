@@ -984,6 +984,10 @@ class IPCProxy(object):
             self._ipc_client._decref_proxied_object(self._ipc_obj)
         except IPCDisconnectedError:
             pass
+        except TypeError:
+            # Suppress lame exceptions on shutdown due to modules having gone
+            # away.
+            pass
 
 
     def _ipc_get_str(self):

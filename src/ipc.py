@@ -27,15 +27,6 @@ log = logging.getLogger('ipc')
 
 IPC_DEFAULT_TIMEOUT = 5.0
 
-DEBUG=1
-DEBUG=0
-
-def _debug(level, text, *args):
-    if DEBUG  >= level:
-        for arg in args:
-            text += " " + str(arg)
-        log.error(text)
-
 def _pickle_slice(slice):
     return _unpickle_slice, (slice.start, slice.stop, slice.step)
 def _unpickle_slice(start, stop, step):
@@ -174,7 +165,7 @@ class IPCServer:
     def handle_connection(self):
         client_sock = self.socket.accept()[0]
         client_sock.setblocking(False)
-        _debug(1, "New connection", client_sock)
+        log.debug("New connection", client_sock)
         client = IPCChannel(self, auth_secret = self._auth_secret, sock = client_sock)
         self.clients[client_sock] = client
         self.signals["client_connected"].emit(client)
@@ -196,11 +187,11 @@ class IPCServer:
 
 
     def close(self):
-        if not _debug or not hasattr(self, 'address'):
+        if not hasattr(self, 'address'):
             # Python is shutting down _globals have gone away.
             return
 
-        _debug(1, "Closing IPCServer, clients:", self.clients)
+        log.debug("Closing IPCServer, clients:", self.clients)
         for client in self.clients.values():
             client.handle_close()
 
@@ -270,8 +261,8 @@ class IPCChannel(object):
 
 
     def handle_close(self):
-        _debug(1, "Client closed", self.socket)
-        _debug(1, "Current proxied objects", self._proxied_objects)
+        log.debug("Client closed", self.socket)
+        log.debug("Current proxied objects", self._proxied_objects)
         self._rmon.unregister()
         self._wmon.unregister()
         if self.socket:
@@ -303,7 +294,8 @@ class IPCChannel(object):
 
         if not data:
             self.handle_close()
-            return
+            # Return False to cause notifier to remove fd handler.
+            return False
 
         header_size = struct.calcsize("I20sI")
         self.read_buffer.append(data)
@@ -349,7 +341,7 @@ class IPCChannel(object):
                 # We've also received portion of another packet that we
                 # haven't fully received yet.  Put back to the buffer what
                 # we have so far, and we can exit the loop.
-                _debug(1, "Short packet, need %d, have %d" % (payload_len, len(self.read_buffer)))
+                log.debug("Short packet, need %d, have %d" % (payload_len, len(self.read_buffer)))
                 self.read_buffer.append(str(strbuf))
                 break
 
@@ -363,7 +355,7 @@ class IPCChannel(object):
     def write(self, data):
         self.write_buffer += data
         if not self._wmon.active():
-            _debug(2, "Registered write monitor, write buffer length=%d" % len(self.write_buffer))
+            log.debug("Registered write monitor, write buffer length=%d" % len(self.write_buffer))
             self._wmon.register(self.socket.fileno(), kaa.notifier.IO_WRITE)
 
 
@@ -375,7 +367,7 @@ class IPCChannel(object):
         if not self.writable():
             return
 
-        _debug(2, "Handle write, write buffer length=%d" % len(self.write_buffer))
+        log.debug("Handle write, write buffer length=%d" % len(self.write_buffer))
         try:
             sent = self.socket.send(self.write_buffer)
             self.write_buffer = self.write_buffer[sent:]
@@ -430,7 +422,7 @@ class IPCChannel(object):
                 log.warning("Received reply for unknown sequence (%d)" % seq)
                 return
 
-            _debug(1, "-> REPLY: seq=%d, command=%s, data=%d" % (seq, command, len(payload)))
+            log.debug("-> REPLY: seq=%d, command=%s, data=%d" % (seq, command, len(payload)))
 
             if self._wait_queue[seq][1] == False:
                 # If the second element of the wait queue is False, it means
@@ -445,7 +437,7 @@ class IPCChannel(object):
                     # TODO: be smarter about remote exceptions
                     result_cb(self._proxy_data(result))
         else:
-            _debug(1, "-> REQUEST: seq=%d, command=%s, data=%d" % (seq, command, len(payload)))
+            log.debug("-> REQUEST: seq=%d, command=%s, data=%d" % (seq, command, len(payload)))
             if not hasattr(self, "handle_request_%s" % command):
                 log.error("handle_request_%s doesn't exist!" % command)
                 return
@@ -686,12 +678,12 @@ class IPCChannel(object):
             pdata = cPickle.dumps(data, 2)
 
         if packet_type[:3] == "REQ":
-            _debug(1, "<- REQUEST: seq=%d, type=%s, data=%d, timeout=%d" % (seq, packet_type, len(pdata), timeout))
+            log.debug("<- REQUEST: seq=%d, type=%s, data=%d, timeout=%d" % (seq, packet_type, len(pdata), timeout))
             self._wait_queue[seq] = [data, None, None, time.time(), reply_cb]
             if timeout > 0:
                 self._wait_queue[seq][1] = False
         else:
-            _debug(1, "<- REPLY: seq=%d, type=%s, data=%d" % (seq, packet_type, len(pdata)))
+            log.debug("<- REPLY: seq=%d, type=%s, data=%d" % (seq, packet_type, len(pdata)))
 
         self.write(struct.pack("I20sI", seq, packet_type, len(pdata)) + pdata)
         if not self.socket:
@@ -702,7 +694,7 @@ class IPCChannel(object):
                 kaa.notifier.step()
         else:
             self.handle_write()
-        _debug(1, "<- REQUEST COMPLETE: seq=%d, type=%s" % (seq, packet_type))
+        log.debug("<- REQUEST COMPLETE: seq=%d, type=%s" % (seq, packet_type))
         return seq
 
 
@@ -767,7 +759,7 @@ class IPCChannel(object):
 
     def handle_request_getattr(self, (objid, attr)):
         obj = self._get_proxied_object(objid)
-        _debug(1, "-> getattr", type(obj), objid, attr)
+        log.debug("-> getattr", type(obj), objid, attr)
         if attr == "__ipcstr__":
             return str(obj)
 
@@ -778,7 +770,7 @@ class IPCChannel(object):
     def handle_request_setattr(self, (objid, attr, value)):
         obj = self._get_proxied_object(objid)
         value = self._unproxy_data(value)
-        _debug(1, "-> setattr", type(obj), objid, attr, value)
+        log.debug("-> setattr", type(obj), objid, attr, value)
         # It'd be nice to raise NOREPLY here and make setattr oneway, but
         # we need to be able to send exceptions to the remote side.
         setattr(obj, attr, value)
@@ -801,7 +793,7 @@ class IPCChannel(object):
         args = self._unproxy_data(args)
         kwargs = self._unproxy_data(kwargs)
         obj = self._get_proxied_object(objid)
-        _debug(1, "-> () CALL %s" % obj.__name__)
+        log.debug("-> () CALL %s" % obj.__name__)
         result = obj(*args, **kwargs)
 
         if _ipc_args.get("oneway"):
@@ -819,7 +811,7 @@ class IPCChannel(object):
     def handle_request_callmeth(self, (objid, meth, args, kwargs)):
         args = self._unproxy_data(args)
         obj = self._get_proxied_object(objid)
-        _debug(1, "-> () CALL METH: ", objid, meth)
+        log.debug("-> () CALL METH: ", objid, meth)
         result = getattr(obj, meth)(*args, **kwargs)
         return self._proxy_data(result)
 
@@ -827,7 +819,7 @@ class IPCChannel(object):
     def handle_request_decref(self, objid):
         if objid not in self._proxied_objects:
             return
-        _debug(1, "-> Refcount-- on local object", objid)
+        log.debug("-> Refcount-- on local object", objid)
         self._decref_proxied_object(objid)
         raise "NOREPLY"
 
@@ -835,7 +827,7 @@ class IPCChannel(object):
     def handle_request_incref(self, objid):
         if objid not in self._proxied_objects:
             return
-        _debug(1, "-> Refcount++ on local object", objid)
+        log.debug("-> Refcount++ on local object", objid)
         self._incref_proxied_object(objid)
         raise "NOREPLY"
 
@@ -844,10 +836,10 @@ class IPCChannel(object):
         if objid in self._proxied_objects:
             self._proxied_objects[objid][1] -= 1
             if self._proxied_objects[objid][1] == 0:
-                _debug(1, "-> Refcount=0; EXPIRING local proxied object", objid, type(self._proxied_objects[objid][0]))
+                log.debug("-> Refcount=0; EXPIRING local proxied object", objid, type(self._proxied_objects[objid][0]))
                 del self._proxied_objects[objid]
         else:
-            _debug(1, "<- Refcount-- on remote object", objid)
+            log.debug("<- Refcount-- on remote object", objid)
             self.request("DECREF", objid, timeout = 0)
 
 
@@ -855,7 +847,7 @@ class IPCChannel(object):
         if objid in self._proxied_objects:
             self._proxied_objects[objid][1] += 1
         else:
-            _debug(1, "<- Refcount++ on object", objid)
+            log.debug("<- Refcount++ on object", objid)
             self.request("INCREF", objid, timeout = 0)
         
 
@@ -875,10 +867,10 @@ class IPCChannel(object):
         if objid in self._proxied_objects:
             # Increase refcount
             self._proxied_objects[objid][1] += 1
-            _debug(1, "PROXY: (EXISTING) IPCProxy object created from", type(obj), objid)
+            log.debug("PROXY: (EXISTING) IPCProxy object created from", type(obj), objid)
         else:
             self._proxied_objects[objid] = [obj, 1]
-            _debug(1, "PROXY: (NEW) IPCProxy object created from", type(obj), objid)
+            log.debug("PROXY: (NEW) IPCProxy object created from", type(obj), objid)
 
         return IPCProxy(objid, obj)
 
@@ -983,9 +975,7 @@ class IPCProxy(object):
 
 
     def __del__(self):
-        # Test _debug function too.  If it's None it means we're on shutdown.
-        # This is just a hack to silence "ignored exception" messages.
-        if not _debug or not self._ipc_client:
+        if not self._ipc_client:
             return
 
         # Drop our reference to the proxy -- if the proxy is remote, this
@@ -1031,7 +1021,7 @@ class IPCProxy(object):
 
 
     def __getattribute__(self, attr):
-        _debug(2, "IPCProxy.__getattribute__: %s" % attr)
+        log.debug("IPCProxy.__getattribute__: %s" % attr)
         if attr == "__class__" and not self._ipc_local() and self._ipc_class:
             #print "Spoofing type", self, self._ipc_class
             return self._ipc_class
@@ -1089,7 +1079,7 @@ class IPCProxy(object):
         if timeout != 0:
             result = self._ipc_client._unproxy_data(result)
 
-        _debug(1, "TIME: invocation took %.04f" % (time.time()-t0))
+        log.debug("TIME: invocation took %.04f" % (time.time()-t0))
         return result
 
 

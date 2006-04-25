@@ -1032,10 +1032,6 @@ class Database:
                            _list_to_printable(object_ids), (type_id,))
             count += self._cursor.rowcount
 
-        # FIXME: We need to do this eventually, but there's no index on count,
-        # so this could potentially be slow.  It doesn't hurt to leave rows
-        # with count=0, so this could be done intermittently.
-        #self._db_query("DELETE FROM words WHERE count=0")
 
 
     def _add_object_keywords(self, (object_type, object_id), words):
@@ -1295,4 +1291,43 @@ class Database:
         #print "* Did %d subqueries" % (nqueries), time.time()-t0, len(keys)
         return keys
         #return [ (all_results[file], file) for file in keys ]
-        
+
+    def get_db_info(self):
+        """
+        Returns a dict of information on the database:
+            count: dict of object types holding their counts
+            total: total number of objects in db
+            types: dict keyed on object type holding a dict:
+                attrs: dict of attributes
+                idx: list of multi-column indices
+            wordcount: number of words in the keyword index
+        """
+        info = {
+            "count": {},
+            "types": {}
+        }
+        for name in self._object_types:
+            id, attrs, idx = self._object_types[name]    
+            info["types"][name] = {
+                "attrs": attrs,
+                "idx": idx
+            }
+            row = self._db_query_row("SELECT COUNT(*) FROM objects_%s" % name)
+            info["count"][name] = row[0]
+
+
+        row = self._db_query_row("SELECT value FROM meta WHERE attr='keywords_objectcount'")
+        info["total"] = int(row[0])
+
+        row = self._db_query_row("SELECT COUNT(*) FROM words")
+        info["wordcount"] = int(row[0])
+        return info
+
+
+    def vacuum(self):
+        # We need to do this eventually, but there's no index on count, so
+        # this could potentially be slow.  It doesn't hurt to leave rows
+        # with count=0, so this could be done intermittently.
+        self._db_query("DELETE FROM words WHERE count=0")
+        self._db_query("VACUUM")
+

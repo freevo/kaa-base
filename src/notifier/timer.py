@@ -78,11 +78,10 @@ class Timer(NotifierCallback):
 
     def __call__(self, *args, **kwargs):
         if not self.active():
-            # This should not happen, but it does. Somewhere deep inside the
-            # notifier code is a bug
-            log.error('calling inactivate callback for %s', self)
-            import traceback
-            traceback.print_stack()
+            # This happens if previous timer that has been called during the
+            # same notifier step has stopped us.  This is a workaround to a
+            # bug that exists in notifier.
+            log.debug('calling callback on inactive timer (%s)' % repr(self))
             return False
 
         return super(Timer, self).__call__(*args, **kwargs)

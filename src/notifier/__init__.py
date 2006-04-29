@@ -58,19 +58,11 @@ running = False
 # Set if currently in shutdown() (to prevent reentrancy)
 shutting_down = False
 
-def _step_signal_emit():
-    """
-    Wrapper for idle signal emit that ignores return value, otherwise notifier
-    may remove the dispatcher if the signal returns false.
-    """
-    signals["step"].emit()
-    return True
-
 def _step_signal_changed(signal, flag):
     if flag == Signal.SIGNAL_CONNECTED and signal.count() == 1:
-        notifier.dispatcher_add(_step_signal_emit)
+        notifier.dispatcher_add(signals["step"].emit)
     elif flag == Signal.SIGNAL_DISCONNECTED and signal.count() == 0:
-        notifier.dispatcher_remove(_step_signal_emit)
+        notifier.dispatcher_remove(signals["step"].emit)
 
 
 signals = {

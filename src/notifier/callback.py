@@ -448,10 +448,15 @@ class Signal(object):
             self._changed_cb(self, Signal.SIGNAL_DISCONNECTED)
 
     def emit(self, *args, **kwargs):
+        """
+        Emits the signal, passing the args and kwargs to each signal handler.
+        The default return value is True, but if any of the signal handlers
+        return False, this method will return False.
+        """
         if len(self._callbacks) == 0:
-            return False
+            return True
 
-        retval = False
+        retval = True
         for cb_callback, cb_args, cb_kwargs, cb_once, cb_weak in self._callbacks[:]:
             if cb_weak:
                 cb_callback_u = cb_callback._get_callback()
@@ -470,8 +475,8 @@ class Signal(object):
             if cb_once:
                 self.disconnect(cb_callback, *cb_args, **cb_kwargs)
             cb_kwargs.update(kwargs)
-            if cb_callback(*(args + cb_args), **cb_kwargs):
-                retval = True
+            if cb_callback(*(args + cb_args), **cb_kwargs) == False:
+                retval = False
 
         return retval
 

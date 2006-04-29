@@ -330,6 +330,6 @@ class Document(Node):
 
 
     def __del__(self):
-        if not self._doc:
+        if hasattr(self, '_doc') and not self._doc:
             # this is a real doc
             libxml2mod.xmlFreeDoc(self._o)

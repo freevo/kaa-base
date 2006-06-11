@@ -112,7 +112,6 @@ def loop():
     running = True
 
     set_current_as_mainthread()
-    e = None
     try:
         notifier.loop()
     except (KeyboardInterrupt, SystemExit):
@@ -127,12 +126,9 @@ def loop():
         except:
             pass
     except Exception, e:
-        pass
+        log.exception('loop')
     running = False
     shutdown()
-    if e:
-        # print last exception
-        traceback.print_exc()
 
 
 def step(*args, **kwargs):

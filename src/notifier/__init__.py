@@ -146,7 +146,7 @@ def step(*args, **kwargs):
     try:
         notifier.step(*args, **kwargs)
     except (KeyboardInterrupt, SystemExit):
-        pass
+        raise SystemExit
 
 
 # set signal handler to catch term signal for

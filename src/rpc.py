@@ -14,6 +14,41 @@
 # confuse the garbage collector and a simple function call on an object can
 # result in many notifier steps incl. recursion inside the notifier.
 #
+#
+# Documentation:
+#
+# Start a server: kaa.rpc.Server(address, secret)
+# Start a client: kaa.rpc.Client(address, secret)
+# 
+# Since everything is async, the challenge response is done in the
+# background and you can start using it right away. If the
+# authentication is wrong, it will fail without notifing the user (I
+# know this is bad, but it is designed to work internaly where
+# everything is correct).
+# 
+# Next you need to define functions the remote side is allowed to call
+# and give it a name. Use use expose for that.
+# 
+# | class MyClass(object)
+# |   @kaa.rpc.expose("do_something")
+# |   def my_function(self, foo)
+# 
+# Connect the object with that function to the server/client. You can
+# connect as many objects as you want
+# | server.connect(MyClass())
+# 
+# The client can now call do_something (not my_function, this is the
+# internal name). To do that, you need to create a RPC object with the
+# callback you want to have
+# 
+# | x = client.rpc('do_something', callback, (cb_args, **cb_kwargs)
+# 
+# This object is the remote function you want to call
+# | x(foo=4) or x(6)
+# 
+# If you set callback to None, not callback will be used,
+# callback='blocking' waits using step.
+# 
 # -----------------------------------------------------------------------------
 # Copyright (C) 2006 Dirk Meyer, et al.
 #

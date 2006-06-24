@@ -19,36 +19,41 @@
 #
 # Start a server: kaa.rpc.Server(address, secret)
 # Start a client: kaa.rpc.Client(address, secret)
-# 
-# Since everything is async, the challenge response is done in the
-# background and you can start using it right away. If the
-# authentication is wrong, it will fail without notifing the user (I
-# know this is bad, but it is designed to work internaly where
-# everything is correct).
-# 
-# Next you need to define functions the remote side is allowed to call
-# and give it a name. Use use expose for that.
-# 
+#
+# Since everything is async, the challenge response is done in the background
+# and you can start using it right away. If the authentication is wrong, it
+# will fail without notifing the user (I know this is bad, but it is designed
+# to work internaly where everything is correct).
+#
+# Next you need to define functions the remote side is allowed to call and
+# give it a name. Use use expose for that.
+#
 # | class MyClass(object)
 # |   @kaa.rpc.expose("do_something")
 # |   def my_function(self, foo)
-# 
-# Connect the object with that function to the server/client. You can
-# connect as many objects as you want
+#
+# Connect the object with that function to the server/client. You can connect
+# as many objects as you want
 # | server.connect(MyClass())
-# 
-# The client can now call do_something (not my_function, this is the
-# internal name). To do that, you need to create a RPC object with the
-# callback you want to have
-# 
+#
+# The client can now call do_something (not my_function, this is the internal
+# name). To do that, you need to create a RPC object with the callback you
+# want to have
+#
 # | x = client.rpc('do_something', callback, (cb_args, **cb_kwargs)
-# 
+#
 # This object is the remote function you want to call
 # | x(foo=4) or x(6)
-# 
-# If you set callback to None, not callback will be used,
-# callback='blocking' waits using step.
-# 
+#
+# If you set callback to None, not callback will be used, callback='blocking'
+# waits using step.
+#
+# When a new client connects to the server, the 'client_connected' signals will
+# be emitted with a Channel object as parameter. This object can be used to
+# call functions on client side the same way the client calls functions on
+# server side. The client and the channel objects have a signal 'disconnected'
+# to be called when the connection gets lost.
+#
 # -----------------------------------------------------------------------------
 # Copyright (C) 2006 Dirk Meyer, et al.
 #
@@ -73,6 +78,9 @@
 #
 # -----------------------------------------------------------------------------
 
+__all__ = [ 'Server', 'Client', 'expose' ]
+
+# python imports
 import types
 import socket
 import errno
@@ -85,13 +93,17 @@ import sys
 import sha
 import time
 
+# kaa imports
 import kaa
 import kaa.notifier
 
-log = logging.getLogger('ipc')
+# get logging object
+log = logging.getLogger('rpc')
 
 class Server(object):
-
+    """
+    RPC server class.
+    """
     def __init__(self, address, auth_secret = ''):
 
         self._auth_secret = auth_secret
@@ -99,7 +111,7 @@ class Server(object):
             if address.find('/') == -1:
                 # create socket in kaa temp dir
                 address = '%s/%s' % (kaa.TEMP, address)
-                
+
             if os.path.exists(address):
                 # maybe a server is already running at this address, test it
                 try:
@@ -118,7 +130,7 @@ class Server(object):
                 os.unlink(address)
             self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             kaa.signals["shutdown"].connect_weak(self.close)
-            
+
         elif type(address) == tuple:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -126,8 +138,8 @@ class Server(object):
         self.socket.setblocking(False)
         self.socket.bind(address)
         self.socket.listen(5)
-        self._monitor = kaa.notifier.WeakSocketDispatcher(self.handle_connection)
-        self._monitor.register(self.socket.fileno())
+        self._mon = kaa.notifier.WeakSocketDispatcher(self._new_connection)
+        self._mon.register(self.socket.fileno())
         # Remove socket file and close clients on shutdown
         kaa.signals["shutdown"].connect_weak(self.close)
 
@@ -135,9 +147,12 @@ class Server(object):
             "client_connected": kaa.notifier.Signal(),
         }
         self.objects = []
-        
 
-    def handle_connection(self):
+
+    def _new_connection(self):
+        """
+        Callback when a new client connects.
+        """
         client_sock = self.socket.accept()[0]
         client_sock.setblocking(False)
         log.error("New connection %s", client_sock)
@@ -149,37 +164,52 @@ class Server(object):
 
 
     def close(self):
+        """
+        Close the server socket.
+        """
         self.socket = None
-        self._monitor.unregister()
+        self._mon.unregister()
         kaa.signals["shutdown"].disconnect(self.close)
 
-    
+
     def connect(self, obj):
+        """
+        Connect an object to be exposed to the rpc.
+        """
         self.objects.append(obj)
-        
+
 
 class RPC(kaa.notifier.Callback):
     """
     Client part of RPC. An object of this class has a call function to do
     the real calling of the RPC.
     """
-    def __init__(self, channel, command, function=None, *args, **kwargs):
+    def __init__(self, _chan, _cmd, function=None, *args, **kwargs):
         if callable(function):
             super(RPC, self).__init__(function, *args, **kwargs)
         else:
-            self.handle_return = function
-        self.channel = channel
-        self.command = command
+            self._return = function
+        self._chan = _chan
+        self._cmd = _cmd
 
-    def handle_return(self, result):
+    def _return(self, result):
+        """
+        Call the callback.
+        """
         super(RPC, self).__call__(result)
 
     def __call__(self, *args, **kwargs):
-        return self.channel._send_rpc(self.command, args, kwargs, self.handle_return)
+        """
+        Call the remote fucntion.
+        """
+        return self._chan._send_rpc(self._cmd, args, kwargs, self._return)
 
 
 class Channel(object):
-    
+    """
+    Channel object for two point communication. The server creates a Channel
+    object for each client connection, Client itslef is a Channel.
+    """
     def __init__(self, socket, auth_secret):
         self._socket = socket
 
@@ -196,21 +226,28 @@ class Channel(object):
         self._pending_challenge = None
 
         self.signals = { 'closed': kaa.notifier.Signal() }
-        
-        
+
+
     def connect(self, obj):
+        """
+        Connect an object to be exposed to the rpc.
+        """
         for func in [ getattr(obj, func) for func in dir(obj) ]:
             if callable(func) and hasattr(func, '_kaa_rpc'):
                 self._callbacks[func._kaa_rpc] = func
 
-        
+
     def _send_rpc(self, function, args, kwargs, callback):
+        """
+        Send a rpc.
+        """
         if not self._wmon:
             raise IOError('channel is disconnected')
         seq = self._next_seq
         self._next_seq += 1
         packet_type = 'CALL'
-        payload = cPickle.dumps((function, args, kwargs), pickle.HIGHEST_PROTOCOL)
+        payload = cPickle.dumps((function, args, kwargs),
+                                pickle.HIGHEST_PROTOCOL)
         self._send_packet(seq, packet_type, len(payload), payload)
         if callable(callback):
             self._rpc_in_progress[seq] = callback
@@ -227,12 +264,18 @@ class Channel(object):
             return result
         return seq
 
-    
+
     def rpc(self, function, *args, **kwargs):
+        """
+        Create RPC object for commuication with the other side.
+        """
         return RPC(self, function, *args, **kwargs)
 
-    
+
     def _handle_close(self):
+        """
+        Socket is closed.
+        """
         log.info('close socket for %s', self)
         self._socket.close()
         if self._wmon.active():
@@ -243,8 +286,11 @@ class Channel(object):
         self.signals['closed'].emit()
         self.signals = {}
 
-        
+
     def _handle_read(self):
+        """
+        Read from the socket (callback from notifier).
+        """
         try:
             data = self._socket.recv(1024*1024)
         except socket.error, (err, msg):
@@ -268,7 +314,7 @@ class Channel(object):
         self._read_buffer.append(data)
         # Before we start into the loop, make sure we have enough data for
         # a full packet.  For very large packets (if we just received a huge
-        # pickled object), this saves the string.join() which can be very 
+        # pickled object), this saves the string.join() which can be very
         # expensive.  (This is the reason we use a list for our read buffer.)
         buflen = reduce(lambda x, y: x + len(y), self._read_buffer, 0)
         if buflen < header_size:
@@ -284,7 +330,8 @@ class Channel(object):
 
         # Make sure the the buffer holds enough data as indicated by the
         # payload size in the header.
-        payload_len = struct.unpack("I4sI", self._read_buffer[0][:header_size])[2]
+        header = self._read_buffer[0][:header_size]
+        payload_len = struct.unpack("I4sI", header)[2]
         if buflen < payload_len + header_size:
             return
 
@@ -297,7 +344,8 @@ class Channel(object):
                 if len(strbuf) > 0:
                     self._read_buffer.append(str(strbuf))
                 break
-            seq, packet_type, payload_len = struct.unpack("I4sI", strbuf[:header_size])
+            header = strbuf[:header_size]
+            seq, packet_type, payload_len = struct.unpack("I4sI", header)
             if len(strbuf) < payload_len + header_size:
                 # We've also received portion of another packet that we
                 # haven't fully received yet.  Put back to the buffer what
@@ -313,12 +361,16 @@ class Channel(object):
 
 
     def _send_packet(self, seq, packet_type, length, payload):
+        """
+        Send a packet (header + payload) to the other side.
+        """
         header = struct.pack("I4sI", seq, packet_type, length)
         if not self._authenticated:
             if packet_type in ('RESP', 'AUTH'):
                 self._write_buffer = header + payload + self._write_buffer
                 if not self._wmon.active():
-                    self._wmon.register(self._socket.fileno(), kaa.notifier.IO_WRITE)
+                    self._wmon.register(self._socket.fileno(),
+                                        kaa.notifier.IO_WRITE)
                 return True
             log.info('delay packet %s', packet_type)
             self._write_buffer += header + payload
@@ -330,6 +382,9 @@ class Channel(object):
 
 
     def _handle_write(self):
+        """
+        Write to the socket (callback from notifier).
+        """
         if not len(self._write_buffer):
             return False
         try:
@@ -346,17 +401,21 @@ class Channel(object):
             self._handle_close()
             return False
         return True
-    
+
 
     def _handle_packet(self, seq, type, payload):
+        """
+        Handle incoming packet (called from _handle_write).
+        """
         if not self._authenticated:
+            # Not authenticated, only AUTH and RESP are allowed.
             if type == 'AUTH':
                 response, salt = self._get_challenge_response(payload)
                 payload = struct.pack("20s20s20s", payload, response, salt)
                 self._send_packet(seq, 'RESP', len(payload), payload)
                 self._authenticated = True
                 return True
-            
+
             if type == 'RESP':
                 challenge, response, salt = struct.unpack("20s20s20s", payload)
                 if response == self._get_challenge_response(challenge, salt)[0] \
@@ -368,7 +427,7 @@ class Channel(object):
 
             log.error('got %s before challenge response is complete', type)
             return True
-        
+
         if type == 'CALL':
             # Remote function call, send answer
             payload = cPickle.loads(payload)
@@ -403,7 +462,7 @@ class Channel(object):
                 return True
             self._rpc_in_progress[seq] = False, True, payload
             return True
-            
+
         if type == 'EXCP':
             # Exception for remote call
             error = cPickle.loads(payload)
@@ -417,11 +476,11 @@ class Channel(object):
                 return True
             self._rpc_in_progress[seq] = False, False, error
             return True
-        
+
         log.error('unknown packet type %s', type)
         return True
 
-                
+
     def _request_auth_packet(self):
         """
         Request an auth packet response for initial setup.
@@ -436,10 +495,9 @@ class Channel(object):
         Generate a response for the challenge based on the auth secret
         supplied to the constructor.  This hashes twice to prevent against
         certain attacks on the hash function.  If salt is not None, it is
-        the value generated by the remote end that was used in computing 
+        the value generated by the remote end that was used in computing
         their response.  If it is None, a new 20-byte salt is generated
-        and used in computing our response.  
-        
+        and used in computing our response.
         """
         if salt == None:
             rbytes = file("/dev/urandom").read(64)
@@ -448,7 +506,11 @@ class Channel(object):
         return sha.sha(sha.sha(m).digest() + m).digest(), salt
 
 
+
 class Client(Channel):
+    """
+    RPC client to be connected to a server.
+    """
     def __init__(self, address, auth_secret = ''):
         if type(address) in types.StringTypes:
             address = '%s/%s' % (kaa.TEMP, address)

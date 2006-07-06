@@ -155,7 +155,7 @@ class Server(object):
         """
         client_sock = self.socket.accept()[0]
         client_sock.setblocking(False)
-        log.error("New connection %s", client_sock)
+        log.info("New connection %s", client_sock)
         client = Channel(socket = client_sock, auth_secret = self._auth_secret)
         for obj in self.objects:
             client.connect(obj)
@@ -439,6 +439,8 @@ class Channel(object):
                 sys.exit(0)
             except Exception, e:
                 log.exception('rpc call %s', function)
+                if not function in self._callbacks:
+                    log.error(self._callbacks.keys())
                 packet_type = 'EXCP'
                 payload = e
             payload = cPickle.dumps(payload, pickle.HIGHEST_PROTOCOL)

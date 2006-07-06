@@ -45,6 +45,7 @@ from thread import *
 from timer import *
 from sockets import *
 from event import *
+from yieldfunc import *
 from jobserver import *
 from jobserver import killall as kill_jobserver
 

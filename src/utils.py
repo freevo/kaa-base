@@ -81,6 +81,9 @@ def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None, pidfile=
             if exit:
                 # Exit from the first parent.
                 sys.exit(0)
+
+            # Wait for child to fork again (otherwise we have a zombie)
+            os.waitpid(pid, 0)
             return pid
     except OSError, e: 
         log.error("Initial daemonize fork failed: %d, %s\n" % (e.errno, e.strerror))

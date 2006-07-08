@@ -42,7 +42,6 @@ def which(file, path = None):
     if not path:
         path = os.getenv("PATH")
 
-    results = []
     for p in path.split(":"):
         fullpath = os.path.join(p, file)
         try:
@@ -60,9 +59,9 @@ def which(file, path = None):
             perm = perms[2]
 
         if int(perm) & 1:
-            results.append(fullpath)
+            return fullpath
 
-    return results
+    return None
 
 
 def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None, pidfile=None, exit = True):

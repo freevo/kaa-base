@@ -273,6 +273,9 @@ class Process(object):
                     pid = int(cmdline_filename.split('/')[2])
                     try:
                         os.kill(pid, signal)
+                    except (KeyboardInterrupt, SystemExit), e:
+                        os.kill(pid, signal)
+                        sys.exit(0)
                     except:
                         pass
         except OSError:
@@ -321,6 +324,8 @@ class IO_Handler(object):
             try:
                 try:
                     os.unlink(logger)
+                except (KeyboardInterrupt, SystemExit), e:
+                    sys.exit(0)
                 except:
                     pass
                 self.logger = open(logger, 'w')

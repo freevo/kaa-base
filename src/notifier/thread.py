@@ -183,6 +183,10 @@ def _thread_notifier_run_queue(fd):
         _thread_notifier_lock.release()
         try:
             callback(*args, **kwargs)
+        except ( KeyboardInterrupt, SystemExit ), e:
+            callback.lock.acquire(False)
+            callback.lock.release()
+            raise SystemExit
         except Exception, callback._sync_exception:
             log.exception('mainthread callback')
         callback.lock.acquire(False)

@@ -291,6 +291,35 @@ class Extension(object):
             self.configfile.unlink()
 
 
+class EmptyExtensionsList(list):
+    """
+    A list that is non-zero even when empty.  Used for the ext_modules
+    kwarg in setup() in extensions with no ext_modules.
+
+    This is a kludge to solve a peculiar problem.  On architectures like
+    x86_64, distutils will install "pure" modules (i.e. no C extensions)
+    under /usr/lib, and platform-specific modules (with extensions) under
+    /usr/lib64.  This is a problem for kaa, because with kaa we have a single
+    namespace (kaa/) that have several independent extensions: that is, each
+    extension in Kaa can be installed separately, but they coexist under the
+    kaa/ directory hierarchy.
+
+    On x86_64, this results in some kaa modules being installed in /usr/lib
+    and others installed in /usr/lib64.  The first problem is that 
+    kaa/__init__.py is provided by kaa.base, so if kaa.base is installed
+    in /usr/lib/ then /usr/lib64/python*/site-packages/kaa/__init__.py does
+    not exist and therefore we can't import any modules from that.  We could
+    drop a dummy __init__.py there, but then python will have two valid kaa
+    modules and only ever see one of them, the other will be  ignored.
+
+    So this kludge makes distutils always think the module has extensions,
+    so it will install in the platform-specific libdir.  As a result, on
+    x86_64, all kaa modules will be installed in /usr/lib64, which is what
+    we want.
+    """
+    def __nonzero__(self):
+        return True
+
         
 
 def setup(**kwargs):
@@ -324,12 +353,16 @@ def setup(**kwargs):
     del kwargs['module']
 
     # convert Extensions
-    if kwargs.has_key('ext_modules'):
+    if kwargs.get('ext_modules'):
         kaa_ext_modules = kwargs['ext_modules']
         ext_modules = []
         for ext in kaa_ext_modules:
             ext_modules.append(ext.convert())
         kwargs['ext_modules'] = ext_modules
+    else:
+        # No extensions, but trick distutils into thinking we do have, so
+        # the module gets installed in the platform-specific libdir.
+        kwargs['ext_modules'] = EmptyExtensionsList()
 
     # check version.py information
     write_version = False

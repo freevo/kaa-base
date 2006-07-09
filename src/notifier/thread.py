@@ -79,6 +79,8 @@ class MainThreadCallback(Callback):
             _thread_notifier_lock.acquire()
             _thread_notifier_queue.insert(0, (self, args, kwargs))
             if len(_thread_notifier_queue) == 1:
+                if not _thread_notifier_pipe:
+                    _create_thread_notifier_pipe()
                 os.write(_thread_notifier_pipe[1], "1")
             _thread_notifier_lock.release()
 
@@ -103,7 +105,9 @@ class MainThreadCallback(Callback):
 
 class Thread(threading.Thread):
     """
-    Notifier aware wrapper for threads.
+    Notifier aware wrapper for threads. When a thread is started, it is impossible to
+    fork the current process into a second one without exec both using the notifier
+    main loop because of the shared _thread_notifier_pipe.
     """
     def __init__(self, function, *args, **kargs):
         threading.Thread.__init__(self)
@@ -149,20 +153,30 @@ def is_mainthread():
 
 
 
-# For MainThread* callbacks
-_thread_notifier_pipe = os.pipe()
-_thread_notifier_queue = []
-_thread_notifier_lock = threading.Lock()
 _thread_notifier_mainthread = threading.currentThread()
 
-fcntl.fcntl(_thread_notifier_pipe[0] , fcntl.F_SETFL, os.O_NONBLOCK )
-fcntl.fcntl(_thread_notifier_pipe[1] , fcntl.F_SETFL, os.O_NONBLOCK )
+# For MainThread* callbacks. The pipe will be created when it is used the first time.
+# This solves a nasty bug when you fork() into a second notifier based process without
+# exec. If you have this pipe, communication will go wrong.
+_thread_notifier_pipe = None
+def _create_thread_notifier_pipe():
+    global _thread_notifier_pipe
+    log.info('create thread notifier pipe')
+    _thread_notifier_pipe = os.pipe()
+    _thread_notifier_queue = []
+    _thread_notifier_lock = threading.Lock()
 
+    fcntl.fcntl(_thread_notifier_pipe[0] , fcntl.F_SETFL, os.O_NONBLOCK )
+    fcntl.fcntl(_thread_notifier_pipe[1] , fcntl.F_SETFL, os.O_NONBLOCK )
+
+    notifier.socket_add(_thread_notifier_pipe[0], _thread_notifier_run_queue)
 
 def wakeup():
     """
     Wake up main thread.
     """
+    if not _thread_notifier_pipe:
+        _create_thread_notifier_pipe()
     if len(_thread_notifier_queue) == 0:
         os.write(_thread_notifier_pipe[1], "1")
  
@@ -194,5 +208,3 @@ def _thread_notifier_run_queue(fd):
         callback.lock.acquire(False)
         callback.lock.release()
     return True
-
-notifier.socket_add(_thread_notifier_pipe[0], _thread_notifier_run_queue)

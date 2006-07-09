@@ -294,14 +294,14 @@ class Extension(object):
 class EmptyExtensionsList(list):
     """
     A list that is non-zero even when empty.  Used for the ext_modules
-    kwarg in setup() in extensions with no ext_modules.
+    kwarg in setup() for modules with no ext_modules.
 
     This is a kludge to solve a peculiar problem.  On architectures like
     x86_64, distutils will install "pure" modules (i.e. no C extensions)
     under /usr/lib, and platform-specific modules (with extensions) under
     /usr/lib64.  This is a problem for kaa, because with kaa we have a single
-    namespace (kaa/) that have several independent extensions: that is, each
-    extension in Kaa can be installed separately, but they coexist under the
+    namespace (kaa/) that have several independent modules: that is, each
+    module in Kaa can be installed separately, but they coexist under the
     kaa/ directory hierarchy.
 
     On x86_64, this results in some kaa modules being installed in /usr/lib
@@ -310,7 +310,7 @@ class EmptyExtensionsList(list):
     in /usr/lib/ then /usr/lib64/python*/site-packages/kaa/__init__.py does
     not exist and therefore we can't import any modules from that.  We could
     drop a dummy __init__.py there, but then python will have two valid kaa
-    modules and only ever see one of them, the other will be  ignored.
+    modules and only ever see one of them, the other will be ignored.
 
     So this kludge makes distutils always think the module has extensions,
     so it will install in the platform-specific libdir.  As a result, on

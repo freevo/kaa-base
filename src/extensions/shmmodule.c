@@ -572,7 +572,7 @@ PyShmMemory_repr(self, name)
     if (self->addr == NULL)
 	sprintf(buf2, "None");
     else
-	sprintf(buf2, "0x%lx", self->addr);
+	sprintf(buf2, "0x%p", self->addr);
     sprintf(buf, "<%s shared memory object, id=%d, size=%u, addr=%s>",
 	    (self->addr == NULL) ? "detached" : (self->mode & SHM_RDONLY) ?
 	    "attached RO" : "attached R/W",
@@ -1364,8 +1364,10 @@ set_member_type(sxm_memberlist, index, typesize)
 	t = T_UINT;
     else if (typesize == sizeof(long))
 	t = T_ULONG;
-    else
+    else {
 	Py_FatalError("can't initialize shm module");
+	return;
+    }
     sxm_memberlist[index].type = t;
 };
   

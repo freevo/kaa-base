@@ -167,7 +167,12 @@ def _shutdown_check():
     # stuff after kaa.main() which is not possible with gtk
     global running
     if running:
-        running = False
+        # If the kaa mainthread (i.e. thread the mainloop is running in)
+        # is not the program's main thread, then is_mainthread() will be False
+        # and we don't need to set running=False since shutdown() will raise a
+        # SystemExit and things will exit normally.
+        if is_mainthread():
+            running = False
         shutdown()
 
 # check to make sure we really call our shutdown function

@@ -121,7 +121,9 @@ class Thread(threading.Thread):
         Run callback signals and join dead thread.
         """
         self.signals[signal].emit(arg)
-        self.join()
+        if self != threading.currentThread():
+            # Only join if we're not the current thread (i.e. mainthread).
+            self.join()
 
 
     def run(self):

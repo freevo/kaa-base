@@ -49,16 +49,14 @@ def which(file, path = None):
         except OSError:
             continue
 
-        perms = oct(stat.S_IMODE(st[stat.ST_MODE]))[-3:]
-
         if os.geteuid() == st[stat.ST_UID]:
-            perm = perms[0]  # Look at owner permission
+            mask = stat.S_IXUSR
         elif st[stat.ST_GID] in os.getgroups():
-            perm = perms[1]
+            mask = stat.S_IXGRP
         else:
-            perm = perms[2]
+            mask = stat.S_IXOTH
 
-        if int(perm) & 1:
+        if stat.S_IMODE(st[stat.ST_MODE]) & mask:
             return fullpath
 
     return None

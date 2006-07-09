@@ -26,14 +26,34 @@
 #
 # -----------------------------------------------------------------------------
 
-from distutils.core import setup, Extension
+from distutils.core import setup
+
+# We have some extensions but kaa.distribution isn't installed yet.  So import
+# it directly from the source tree.  First add src/ to the modules patch ...
+import sys
+sys.path.insert(0, "src")
+# ... and now import it.
+from distribution import Extension
 
 extensions = []
-try:
-    import shm
-except ImportError:
-    print "Building kaa shm module (no system shm module already available)."
-    extensions.append( Extension('shmmodule', ['src/extensions/shmmodule.c']) )
+extensions.append(Extension('kaa.shmmodule', ['src/extensions/shmmodule.c']).convert())
+
+inotify_ext = Extension("kaa.inotify._inotify",
+                        ["src/extensions/inotify/inotify.c"],
+                        config='src/extensions/inotify/config.h')
+
+if not inotify_ext.check_cc(["<sys/inotify.h>"], "inotify_init();"):
+    if not inotify_ext.check_cc(["<sys/syscall.h>"], "syscall(0);"):
+        print "inotify not enabled: doesn't look like a Linux system."
+    else:
+        print "inotify not supported in glibc; using fallback."
+        inotify_ext.config("#define USE_FALLBACK")
+        extensions.append(inotify_ext.convert())
+
+else:
+    print "inotify supported by glibc; good."
+    extensions.append(inotify_ext.convert())
+
 
 # call setup
 setup(
@@ -42,7 +62,9 @@ setup(
     maintainer       = 'The Freevo Project',
     maintainer_email = 'developer@freevo.org',
     url              = 'http://www.freevo.org/kaa',
-    package_dir      = { 'kaa': 'src', 'kaa.notifier': 'src/notifier',
-                         'kaa.input': 'src/input' },
-    packages         = [ 'kaa', 'kaa.notifier', 'kaa.input' ],
+    package_dir      = { 'kaa': 'src', 
+                         'kaa.notifier': 'src/notifier',
+                         'kaa.input': 'src/input',
+                         'kaa.inotify': 'src/extensions/inotify' },
+    packages         = [ 'kaa', 'kaa.notifier', 'kaa.input', 'kaa.inotify' ],
     ext_modules      = extensions)

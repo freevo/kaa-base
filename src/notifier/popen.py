@@ -55,7 +55,8 @@ import re
 import logging
 
 # notifier imports
-from callback import notifier, Signal, Callback
+import nf_wrapper as notifier
+from callback import Signal, Callback
 from thread import MainThreadCallback, is_mainthread
 
 # get logging object

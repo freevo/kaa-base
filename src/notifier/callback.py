@@ -29,49 +29,12 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Callback', 'WeakCallback', 'notifier', 'Signal' ]
+__all__ = [ 'Callback', 'WeakCallback', 'Signal' ]
 
 import _weakref
 import types
 import sys
 import logging
-
-try:
-    # try to import pyNotifier
-    if sys.argv[0] == 'setup.py':
-        # we use the setup script, use the internal
-        # notifier to be sure it is the correct version
-        raise ImportError
-    import notifier
-    if notifier.loop:
-        # pyNotifier should be used and already active
-        log = logging.getLogger('notifier')
-        log.info('pynotifier already running, I hope you know what you are doing')
-    else:
-        # pyNotifier is installed, so we use it
-        if sys.modules.has_key('gtk'):
-            # The gtk module is loaded, this means that we will hook
-            # ourself into the gtk main loop
-            notifier.init(notifier.GTK)
-        else:
-            # init pyNotifier with the generic notifier
-            notifier.init(notifier.GENERIC)
-    use_pynotifier = True
-        
-    # delete basic notifier handler
-    log = logging.getLogger('notifier')
-    for l in log.handlers:
-        log.removeHandler(l)
-
-except ImportError:
-    # use a copy of nf_generic
-    if sys.modules.has_key('gtk'):
-        log = logging.getLogger('notifier')
-        log.error('To use gtk with kaa.notifier requires pynotifier to be installed')
-        sys.exit(1)
-    import nf_generic as notifier
-    use_pynotifier = False
-
 
 def weakref_data(data, destroy_cb = None):
     if type(data) in (str, int, long, types.NoneType):

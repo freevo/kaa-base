@@ -33,7 +33,8 @@ __all__ = [ 'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer' ]
 
 import logging
 
-from callback import NotifierCallback, WeakNotifierCallback, notifier
+import nf_wrapper as notifier
+from callback import NotifierCallback, WeakNotifierCallback
 from thread import MainThreadCallback, is_mainthread
 
 # get logging object

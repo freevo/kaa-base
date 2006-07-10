@@ -39,6 +39,10 @@ import signal
 import atexit
 
 # kaa.notifier imports
+import nf_wrapper as notifier
+
+init = notifier.init
+
 from popen import *
 from callback import *
 from thread import *
@@ -177,3 +181,4 @@ def _shutdown_check():
 
 # check to make sure we really call our shutdown function
 atexit.register(_shutdown_check)
+    

@@ -29,21 +29,20 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'SocketDispatcher', 'WeakSocketDispatcher', 'Socket', 'IO_READ', 'IO_WRITE', 'IO_EXCEPT' ]
+__all__ = [ 'SocketDispatcher', 'WeakSocketDispatcher', 'Socket', 'IO_READ', 'IO_WRITE' ]
 
 import socket
 import logging
 
-from callback import NotifierCallback, WeakNotifierCallback, Callback, Signal, notifier
+import nf_wrapper as notifier
+from callback import NotifierCallback, WeakNotifierCallback, Callback, Signal
 from thread import MainThreadCallback, Thread, is_mainthread
 
 # get logging object
 log = logging.getLogger('notifier')
 
-IO_READ   = notifier.IO_READ
-IO_WRITE  = notifier.IO_WRITE
-IO_EXCEPT = notifier.IO_EXCEPT
-
+IO_READ   = 0
+IO_WRITE  = 1
 
 class SocketDispatcher(NotifierCallback):
 

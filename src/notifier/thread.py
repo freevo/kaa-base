@@ -56,7 +56,8 @@ import fcntl
 import socket
 
 # notifier imports
-from callback import Callback, notifier, Signal
+import nf_wrapper as notifier
+from callback import Callback, Signal
 
 # get logging object
 log = logging.getLogger('notifier')

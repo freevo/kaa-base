@@ -10,6 +10,8 @@ import struct
 
 class INotify:
 
+    # TODO: use singleton design pattern.
+
     def __init__(self):
         if not _inotify:
             self._fd = -1
@@ -153,6 +155,7 @@ class INotify:
             if mask & INotify.DELETE_SELF:
                 # Self got deleted, so remove the watch data.
                 del self._watches[wd]
+                del self._watches_by_path[path]
 
 
 if _inotify:

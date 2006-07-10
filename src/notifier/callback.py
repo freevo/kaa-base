@@ -200,6 +200,13 @@ class Callback(object):
         return '<%s for %s>' % (self.__class__.__name__, self._callback)
 
 
+    def __deepcopy__(self, memo):
+        """
+        Disable deepcopying because deepcopy can't deal with callables.
+        """
+        return None
+
+
 class NotifierCallback(Callback):
     
     def __init__(self, callback, *args, **kwargs):

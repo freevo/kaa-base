@@ -33,11 +33,13 @@ import os
 import re
 import copy
 import logging
+import stat
 from new import classobj
 
 # kaa.base modules
 from strutils import str_to_unicode, unicode_to_str, get_encoding
-from kaa.notifier import Callback
+from kaa.notifier import Callback, WeakTimer, OneShotTimer
+from kaa.inotify import INotify
 
 # get logging object
 log = logging.getLogger('config')
@@ -500,18 +502,29 @@ class Config(Group):
     """
     def __init__(self, schema, desc=u'', name=''):
         Group.__init__(self, schema, desc, name)
-        self._filename = ''
+        self._filename = None
         self._bad_lines = []
 
+        # If we are watching the config file for changes.
+        self._watching = False
+        self._watch_mtime = 0
+        self._watch_timer = WeakTimer(self._check_file_changed)
+        try:
+            self._inotify = INotify()
+            #raise SystemError  # Debug, disable inotify.
+        except SystemError:
+            self._inotify = None
 
-    def save(self, filename=''):
+
+
+    def save(self, filename=None):
         """
         Save file. If filename is not given use filename from last load.
         """
         if not filename:
+            if not self._filename:
+                raise ValueError, "Filename not specified and no default filename set."
             filename = self._filename
-        if not filename:
-            raise AttributeError('no file to save to')
 
         if os.path.dirname(filename) and not os.path.isdir(os.path.dirname(filename)):
             os.makedirs(os.path.dirname(filename))
@@ -524,6 +537,9 @@ class Config(Group):
         f.write('# values. Removing lines has no effect, they will be added\n')
         f.write('# again when this file is saved again. Changing the order of\n')
         f.write('# the items will also be changed back on the next write.\n')
+        # FIXME: custom comments lost, would be nice if they were kept.  Might
+        # be tricky to fix.
+        f.write('# Any custom comments will also be removed.\n')
         if self._bad_lines:
             f.write('#\n# See the end of the file for bad lines ignored when the file\n')
             f.write('# was last saved.\n')
@@ -540,17 +556,23 @@ class Config(Group):
         f.close()
 
 
-    def load(self, filename):
+    def load(self, filename = None):
         """
         Load config from a config file.
         """
         local_encoding = get_encoding()
-        self._filename = filename
+        if not filename:
+            if not self._filename:
+                raise ValueError, "Filename not specified and no default filename set."
+            filename = self._filename
+
         line_regexp = re.compile('^([a-zA-Z0-9_]+|\[.*?\]|\.)+ *= *(.*)')
         key_regexp = re.compile('(([a-zA-Z0-9_]+)|(\[.*?\]))')
+
         if not os.path.isfile(filename):
             # filename not found
             return False
+
         f = open(filename)
         for line in f.readlines():
             line = line.strip()
@@ -605,6 +627,7 @@ class Config(Group):
                     log.warning('%s: %s' % error)
                     self._bad_lines.append(error)
         f.close()
+        self._watch_mtime = os.stat(filename)[stat.ST_MTIME]
         return len(self._bad_lines) == 0
 
 
@@ -613,3 +636,69 @@ class Config(Group):
         Return the current used filename.
         """
         return self._filename
+
+    def set_filename(self, filename):
+        """
+        Set the default filename for this config.
+        """
+        self._filename = filename
+
+
+    def watch(self, watch = True):
+        """
+        If argument is True (default), adds a watch to the config file and will
+        reload the config if it changes.  If INotify is available, use that,
+        otherwise stat the file every 3 seconds.
+
+        If argument is False, disable any watches.
+        """
+        assert(self._filename)
+        if self._watch_mtime == 0:
+            self.load()
+
+        if not watch and self._watching:
+            if self._inotify:
+                self._inotify.ignore(self._filename)
+            self._watch_timer.stop()
+            self._watching = False
+
+        elif watch and not self._watching:
+            if self._inotify:
+                try:
+                    signal = self._inotify.watch(self._filename)
+                    signal.connect_weak(self._file_changed)
+                except IOError:
+                    # Adding watch falied, use timer to wait for file to 
+                    # appear.
+                    self._watch_timer.start(3)
+            else:
+                self._watch_timer.start(3)
+
+            self._watching = True
+
+
+    def _check_file_changed(self):
+        try:
+            mtime = os.stat(self._filename)[stat.ST_MTIME]
+        except:
+            # Config file not available.
+            return
+
+        if self._inotify:
+            # Config file is now available, stop this timer and add INotify 
+            # watch.
+            self.watch(False)
+            self.watch()
+
+        if mtime != self._watch_mtime:
+            return self._file_changed(INotify.MODIFY, self._filename)
+
+
+    def _file_changed(self, mask, path):
+        if mask & (INotify.MODIFY | INotify.ATTRIB):
+            self.load()
+        elif mask & INotify.DELETE_SELF:
+            # Edited with vim?  Check immediately.
+            OneShotTimer(self._check_file_changed).start(0.1)
+            # Add a slower timer in case it doesn't reappear right away.
+            self._watch_timer.start(3)

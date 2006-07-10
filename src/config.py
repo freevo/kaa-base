@@ -149,6 +149,10 @@ class Base(object):
         return self._parent
 
 
+    def __repr__(self):
+        return repr(self._value)
+
+
 class VarProxy(Base):
     """
     Wraps a config variable value, inheriting the actual type of that
@@ -357,6 +361,8 @@ class Group(Base):
 
         return item
 
+    def __repr__(self):
+        return repr(self._dict)
 
 
 class Dict(Base):
@@ -403,6 +409,7 @@ class Dict(Base):
         ret = []
         prefix = prefix + self._name
         if type(self._schema) == Var and print_desc:
+            # TODO: more detailed comments, show full spec of var and some examples.
             ret.append('#\n# %s\n# %s\n#\n' % (prefix, unicode_to_str(self._desc)))
             print_desc = False
 
@@ -413,9 +420,9 @@ class Dict(Base):
             if isinstance(key, unicode):
                 key = unicode_to_str(key)
             # create new prefix. The prefix is the old one + [key] and
-            # if the next item is not a Var, add a '.'
-            new_prefix = '%s' % (prefix)
-            if not isinstance(self._schema, Var):
+            # if the next item is not a Var, add a '.' if we are not a list.
+            new_prefix = prefix
+            if not isinstance(self._schema, Var) and not isinstance(self, List):
                 new_prefix += '.'
             ret.append(var._cfg_string(new_prefix, print_desc))
         if not print_desc:
@@ -486,6 +493,16 @@ class Dict(Base):
         """
         return len(self._dict.keys()) > 0
 
+    def __len__(self):
+        """
+        Returns number of items in the dict.
+        """
+        return len(self._dict.keys())
+
+
+    def __repr__(self):
+        return repr(self._dict)
+        
     
 class List(Dict):
     """
@@ -500,6 +517,9 @@ class List(Dict):
         Iterate through values.
         """
         return self.values().__iter__()
+
+    def __repr__(self):
+        return repr(self._dict.values())
 
 
 class Config(Group):

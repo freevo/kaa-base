@@ -172,17 +172,17 @@ class Extension(object):
     Extension wrapper with additional functions to find libraries and
     support for config files.
     """
-    def __init__(self, output, files, include_dirs=[],
-                 library_dirs=[], libraries=[], config=None):
+    def __init__(self, output, files, include_dirs=[], library_dirs=[], 
+                 libraries=[], extra_compile_args = [], config=None):
         """
         Init the Extention object.
         """
         self.output = output
         self.files = files
-        self.include_dirs = include_dirs
-        self.library_dirs = library_dirs
-        self.libraries = libraries
-        self.extra_compile_args = ["-Wall"]
+        self.include_dirs = include_dirs[:]
+        self.library_dirs = library_dirs[:]
+        self.libraries = libraries[:]
+        self.extra_compile_args = ["-Wall"] + extra_compile_args
         if config:
             self.configfile = Configfile(config)
         else:

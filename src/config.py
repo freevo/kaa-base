@@ -401,7 +401,7 @@ class Dict(Base):
         prefix = prefix + self._name
         if type(self._schema) == Var and print_desc:
             # TODO: more detailed comments, show full spec of var and some examples.
-            ret.append('#\n# %s\n# %s\n#\n' % (prefix, unicode_to_str(self._desc)))
+            ret.append('#\n# %s\n# %s\n#\n' % (prefix, unicode_to_str(self._desc).replace('\n', '\n# ')))
             print_desc = False
 
         for key in self.keys():

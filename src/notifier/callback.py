@@ -206,6 +206,12 @@ class Callback(object):
         """
         return None
 
+    def __cmp__(self, func):
+        """
+        Compares the given function with the callback function we're wrapping.
+        """
+        return cmp(self._get_callback(), func)
+
 
 class NotifierCallback(Callback):
     

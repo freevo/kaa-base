@@ -38,7 +38,7 @@ from new import classobj
 
 # kaa.base modules
 from strutils import str_to_unicode, unicode_to_str, get_encoding
-from kaa.notifier import Callback, WeakTimer, OneShotTimer
+from kaa.notifier import Callback, WeakCallback, WeakTimer, WeakOneShotTimer
 from kaa.inotify import INotify
 
 # get logging object
@@ -52,18 +52,6 @@ try:
     #raise SystemError  # Debug, disable inotify.
 except SystemError:
     _inotify = None
-
-
-class NoCopyCallback(object):
-    """
-    Wraps a callable and returns None for deep copies, because deepcopy
-    has kittens when it runs into a callable.
-    """
-    def __init__(self, callback):
-        self.callback = callback
-
-    def __deepcopy__(self, memo):
-        return None
 
 
 def _format(text):
@@ -118,12 +106,11 @@ class Base(object):
         assert(callable(callback))
         # Wrap the function or method in a class that will ignore deep copies
         # because deepcopy() is unable to copy callables.
-        callback = NoCopyCallback(callback)
-        self._monitors.append(callback)
+        self._monitors.append(Callback(callback))
 
     def remove_monitor(self, callback):
         for monitor in self._monitors:
-            if callback == monitor.callback:
+            if callback == monitor:
                 self._monitors.remove(monitor)
 
     def _notify_monitors(self, oldval):
@@ -138,11 +125,15 @@ class Base(object):
                     names.insert(0, o._name)
 
             for monitor in o._monitors:
+                if not callable(monitor):
+                    # Happens when deepcopying, callables don't get copied,
+                    # they become None.  So remove them now.
+                    o._monitors.remove(monitor)
                 if names:
                     name = ".".join(names)
                 else:
                     name = None
-                monitor.callback(name, oldval, self._value)
+                monitor(name, oldval, self._value)
             o = o._parent
 
     def get_parent(self):
@@ -531,11 +522,28 @@ class Config(Group):
         self._filename = None
         self._bad_lines = []
 
+        # Whether or not to autosave config file when options have changed
+        self._autosave = None
+        self._autosave_timer = WeakOneShotTimer(self.save)
+        self.set_autosave(True)
+
         # If we are watching the config file for changes.
         self._watching = False
         self._watch_mtime = 0
-        self._watch_timer = NoCopyCallback(WeakTimer(self._check_file_changed))
+        self._watch_timer = WeakTimer(self._check_file_changed)
 
+
+    def copy(self):
+        """
+        Make a deepcopy of the config.  Reset the filename so we don't clobber
+        the original config object's config file, and recreate the timers for
+        the new object.
+        """
+        copy = Group.copy(self)
+        copy._filename = None
+        copy._watch_timer = WeakTimer(copy._check_file_changed)
+        copy._autosave_timer = WeakOneShotTimer(copy.save)
+        return copy
 
     def save(self, filename=None):
         """
@@ -549,6 +557,7 @@ class Config(Group):
         if os.path.dirname(filename) and not os.path.isdir(os.path.dirname(filename)):
             os.makedirs(os.path.dirname(filename))
 
+        self._autosave_timer.stop()
         f = open(filename, 'w')
         f.write('# -*- coding: %s -*-\n' % get_encoding().lower())
         f.write('# *************************************************************\n')
@@ -592,6 +601,10 @@ class Config(Group):
         if not os.path.isfile(filename):
             # filename not found
             return False
+
+        # Disable autosaving while we load the config file.
+        autosave_orig = self.get_autosave()
+        self.set_autosave(False)
 
         f = open(filename)
         for line in f.readlines():
@@ -647,6 +660,7 @@ class Config(Group):
                     log.warning('%s: %s' % error)
                     self._bad_lines.append(error)
         f.close()
+        self.set_autosave(autosave_orig)
         self._watch_mtime = os.stat(filename)[stat.ST_MTIME]
         return len(self._bad_lines) == 0
 
@@ -663,6 +677,31 @@ class Config(Group):
         """
         self._filename = filename
 
+
+    def get_autosave(self):
+        """
+        Fetches the current autosave value.
+        """
+        return self._autosave
+
+    def set_autosave(self, autosave = True):
+        """
+        Sets whether or not to automatically save configuration changes.
+        If True, will write the config file set by set_filename 5 seconds
+        after the last config value update.
+        """
+        if autosave and not self._autosave:
+            self.add_monitor(WeakCallback(self._config_changed_cb))
+        elif not autosave and self._autosave:
+            self.remove_monitor(WeakCallback(self._config_changed_cb))
+            self._autosave_timer.stop() 
+        self._autosave = autosave
+
+
+    def _config_changed_cb(self, name, oldval, newval):
+        if self._filename:
+            # Start/restart the timer to save in 5 seconds.
+            self._autosave_timer.start(5) 
 
     def watch(self, watch = True):
         """
@@ -719,6 +758,7 @@ class Config(Group):
             self.load()
         elif mask & INotify.DELETE_SELF:
             # Edited with vim?  Check immediately.
-            OneShotTimer(self._check_file_changed).start(0.1)
+            WeakOneShotTimer(self._check_file_changed).start(0.1)
             # Add a slower timer in case it doesn't reappear right away.
             self._watch_timer.start(3)
+

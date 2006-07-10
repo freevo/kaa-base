@@ -219,6 +219,7 @@ class Database:
         self._db = sqlite.connect(self._dbfile)
         self._cursor = self._db.cursor()
         self._cursor.execute("PRAGMA synchronous=OFF")
+        #self._cursor.execute("PRAGMA temp_store=MEMORY")
         self._cursor.execute("PRAGMA count_changes=OFF")
         self._cursor.execute("PRAGMA cache_size=50000")
 
@@ -232,6 +233,7 @@ class Database:
     def _db_query(self, statement, args = ()):
         self._cursor.execute(statement, args)
         rows = self._cursor.fetchall()
+        #print "QUERY (%d): %s" % (len(rows), statement)
         return rows
 
 
@@ -587,6 +589,10 @@ class Database:
         pickled dictionary.
         """
         type_attrs = self._get_type_attrs(object_type)
+
+        # Figure out whether we need to reindex keywords (i.e. ATTR_KEYWORDS
+        # attribute is specified in the kwargs), and what ATTR_KEYWORDS
+        # attributes exist for this object.
         needs_keyword_reindex = False
         keyword_columns = []
         for name, (attr_type, flags) in type_attrs.items():
@@ -595,13 +601,16 @@ class Database:
                     needs_keyword_reindex = True
                 keyword_columns.append(name)
 
+        # Get the pickle for this object, as well as all keyword attributes
+        # if we need a keyword reindex.  First construct the query.
         q = "SELECT pickle%%s FROM objects_%s WHERE id=?" % object_type
         if needs_keyword_reindex:
             q %= "," + ",".join(keyword_columns)
         else:
             q %= ""
-        
+        # Now get the row.
         row = self._db_query_row(q, (object_id,))
+        # TODO: raise a more useful exception here.
         assert(row)
         if row[0]:
             row_attrs = cPickle.loads(str(row[0]))
@@ -898,6 +907,7 @@ class Database:
         if len(results) == 0:
             return []
 
+        t0=time.time()
         new_results = []
         # Map object type ids to names.
         object_type_ids = dict( [(b[0],a) for a,b in self._object_types.items()] )
@@ -915,6 +925,7 @@ class Database:
                                                     and x in col_desc 
                 ]
 
+        pt=0
         for row in results:
             type_name = row[0]
             col_desc = query_info["columns"][type_name]
@@ -924,6 +935,7 @@ class Database:
                 result[attr] = tp(result[attr])
 
             if result["pickle"]:
+                tx=time.time()
                 pickle = cPickle.loads(str(result["pickle"]))
                 # Any keys in the pickle that are prefixed with __ are 
                 # saved values of ATTR_INDEXED_IGNORE_CASE attributes before
@@ -933,6 +945,7 @@ class Database:
                     del pickle["__" + key]
 
                 result.update(pickle)
+                pt+=time.time()-tx
             del result["pickle"]
 
             # Add convenience parent key, mapping parent_type id to name.
@@ -940,6 +953,7 @@ class Database:
                 result["parent"] = (object_type_ids.get(result["parent_type"]), 
                                     result["parent_id"])
             new_results.append(result)
+        #print "Normalize took", time.time()-t0, pt, pt/(time.time()-t0)*100.0
         return new_results
 
 

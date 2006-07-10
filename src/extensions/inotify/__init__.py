@@ -35,7 +35,7 @@ class INotify:
 
 
     def __del__(self):
-        if self._fd >= 0:
+        if os and self._fd >= 0:
             os.close(self._fd)
             self._mon.unregister()
 

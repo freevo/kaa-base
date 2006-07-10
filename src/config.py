@@ -47,6 +47,12 @@ log = logging.getLogger('config')
 # align regexp
 align = re.compile(u'\n( *)[^\n]', re.MULTILINE)
 
+try:
+    _inotify = INotify()
+    #raise SystemError  # Debug, disable inotify.
+except SystemError:
+    _inotify = None
+
 
 class NoCopyCallback(object):
     """
@@ -508,13 +514,7 @@ class Config(Group):
         # If we are watching the config file for changes.
         self._watching = False
         self._watch_mtime = 0
-        self._watch_timer = WeakTimer(self._check_file_changed)
-        try:
-            self._inotify = INotify()
-            #raise SystemError  # Debug, disable inotify.
-        except SystemError:
-            self._inotify = None
-
+        self._watch_timer = NoCopyCallback(WeakTimer(self._check_file_changed))
 
 
     def save(self, filename=None):
@@ -657,15 +657,15 @@ class Config(Group):
             self.load()
 
         if not watch and self._watching:
-            if self._inotify:
-                self._inotify.ignore(self._filename)
+            if _inotify:
+                _inotify.ignore(self._filename)
             self._watch_timer.stop()
             self._watching = False
 
         elif watch and not self._watching:
-            if self._inotify:
+            if _inotify:
                 try:
-                    signal = self._inotify.watch(self._filename)
+                    signal = _inotify.watch(self._filename)
                     signal.connect_weak(self._file_changed)
                 except IOError:
                     # Adding watch falied, use timer to wait for file to 
@@ -684,7 +684,7 @@ class Config(Group):
             # Config file not available.
             return
 
-        if self._inotify:
+        if _inotify:
             # Config file is now available, stop this timer and add INotify 
             # watch.
             self.watch(False)

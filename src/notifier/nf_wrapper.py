@@ -22,11 +22,11 @@ socket_add = _Wrapper('socket_add')
 # socket wrapper
 
 nf_conditions = []
-def _socket_add(id, method, condition):
+def _socket_add(id, method, condition = 0):
     return nf_socket_add(id, method, nf_conditions[condition])
 
 
-def _socket_remove(id, condition):
+def _socket_remove(id, condition = 0):
     return nf_socket_remove(id, nf_conditions[condition])
 
 

@@ -429,7 +429,8 @@ PyShmMemory_write(self, args)
     PyObject *args;
 {
     char *data;
-    unsigned long n, offset = 0;
+    unsigned long offset = 0;
+    int n;
     char buf[128];
     char *addr;
 

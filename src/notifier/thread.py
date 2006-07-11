@@ -155,6 +155,8 @@ def is_mainthread():
 
 
 _thread_notifier_mainthread = threading.currentThread()
+_thread_notifier_lock = threading.Lock()
+_thread_notifier_queue = []
 
 # For MainThread* callbacks. The pipe will be created when it is used the first time.
 # This solves a nasty bug when you fork() into a second notifier based process without
@@ -164,8 +166,6 @@ def _create_thread_notifier_pipe():
     global _thread_notifier_pipe
     log.info('create thread notifier pipe')
     _thread_notifier_pipe = os.pipe()
-    _thread_notifier_queue = []
-    _thread_notifier_lock = threading.Lock()
 
     fcntl.fcntl(_thread_notifier_pipe[0] , fcntl.F_SETFL, os.O_NONBLOCK )
     fcntl.fcntl(_thread_notifier_pipe[1] , fcntl.F_SETFL, os.O_NONBLOCK )

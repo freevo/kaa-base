@@ -90,6 +90,7 @@ class Process(object):
         self.__kill_timer = None
         self.child = None
 
+
     def _normalize_cmd(self, cmd):
         """
         Converts a command string into a list while honoring quoting, or
@@ -97,7 +98,9 @@ class Process(object):
         """
         if cmd == None:
             return []
-        elif type(cmd) == list:
+        if isinstance(cmd, tuple):
+            cmd = list(cmd)
+        if isinstance(cmd, list):
             # Remove empty strings from argument list.
             while '' in cmd:
                 cmd.remove('')

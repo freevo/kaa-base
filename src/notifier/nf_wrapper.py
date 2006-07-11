@@ -65,7 +65,7 @@ def init( module = None ):
             # use generic
             module = 'generic'
 
-        if getattr(notifier, module.upper()):
+        if getattr(notifier, module.upper()) is not None:
             # use the selected module
             notifier.init(getattr(notifier, module.upper()))
             if module.upper() == 'GTK':

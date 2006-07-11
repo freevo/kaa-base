@@ -34,11 +34,15 @@ from select import error as select_error
 import os, sys
 
 import socket
+from time import time
 
 # internal packages
-import notifier
 import log
 import dispatch
+
+def millisecs():
+    """returns the current time in milliseconds"""
+    return int( time() * 1000 )
 
 IO_READ = 1
 IO_WRITE = 2
@@ -84,7 +88,7 @@ def timer_add( interval, method ):
     except OverflowError:
         __timer_id = 0
 
-    __timers[ __timer_id ] = [ interval, notifier.millisecs(), method ]
+    __timers[ __timer_id ] = [ interval, millisecs(), method ]
 
     return __timer_id
 
@@ -131,7 +135,7 @@ def step( sleep = True, external = True ):
     # handle timers
     _copy = __timers.copy()
     for i, timer in _copy.items():
-	now = notifier.millisecs()
+	now = millisecs()
 	timestamp = timer[ TIMESTAMP ]
 	if timer[ INTERVAL ] + timestamp <= now:
             # Update timestamp on timer before calling the callback to
@@ -165,7 +169,7 @@ def step( sleep = True, external = True ):
     else:
         for t in __timers:
             interval, timestamp, callback = __timers[ t ]
-            nextCall = interval + timestamp - notifier.millisecs()
+            nextCall = interval + timestamp - millisecs()
             if timeout == None or nextCall < timeout:
                 if nextCall > 0: timeout = nextCall
                 else: timeout = 0

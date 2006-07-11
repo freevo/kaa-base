@@ -119,7 +119,3 @@ class Callback:
 
     def __hash__( self ):
         return self._function.__hash__()
-
-def millisecs():
-    """returns the current time in milliseconds"""
-    return int( time() * 1000 )

@@ -64,7 +64,9 @@ setup(
     url              = 'http://www.freevo.org/kaa',
     package_dir      = { 'kaa': 'src', 
                          'kaa.notifier': 'src/notifier',
+                         'kaa.notifier.pynotifier': 'src/notifier/pynotifier',
                          'kaa.input': 'src/input',
                          'kaa.inotify': 'src/extensions/inotify' },
-    packages         = [ 'kaa', 'kaa.notifier', 'kaa.input', 'kaa.inotify' ],
+    packages         = [ 'kaa', 'kaa.notifier', 'kaa.notifier.pynotifier',
+                         'kaa.input', 'kaa.inotify' ],
     ext_modules      = extensions)

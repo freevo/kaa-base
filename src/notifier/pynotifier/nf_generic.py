@@ -7,9 +7,9 @@
 #
 # generic notifier implementation
 #
-# $Id$
+# $Id: nf_generic.py 82 2006-06-14 22:35:47Z crunchy $
 #
-# Copyright (C) 2004, 2005 Andreas Büsching <crunchy@bitkipper.net>
+# Copyright (C) 2004, 2005, 2006 Andreas Büsching <crunchy@bitkipper.net>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,33 +32,28 @@ from copy import copy
 from select import select
 from select import error as select_error
 import os, sys
-import time
 
 import socket
 
-import logging
-
-# get logging object
-log = logging.getLogger('notifier')
+# internal packages
+import notifier
+import log
+import dispatch
 
 IO_READ = 1
 IO_WRITE = 2
 IO_EXCEPT = 4
 
-MIN_TIMER = 100
-
 __sockets = {}
 __sockets[ IO_READ ] = {}
 __sockets[ IO_WRITE ] = {}
 __sockets[ IO_EXCEPT ] = {}
-__dispatchers = []
 __timers = {}
 __timer_id = 0
 __min_timer = None
-
-def __millisecs():
-    """returns the current time in milliseconds"""
-    return int( time.time() * 1000 )
+__in_step = False
+__step_depth = 0
+__step_depth_max = 2
 
 def socket_add( id, method, condition = IO_READ ):
     """The first argument specifies a socket, the second argument has to be a
@@ -89,7 +84,7 @@ def timer_add( interval, method ):
     except OverflowError:
         __timer_id = 0
 
-    __timers[ __timer_id ] = ( interval, __millisecs(), method )
+    __timers[ __timer_id ] = [ interval, notifier.millisecs(), method ]
 
     return __timer_id
 
@@ -99,31 +94,20 @@ def timer_remove( id ):
         del __timers[ id ]
 
 def dispatcher_add( method ):
-    """The notifier supports external dispatcher functions that will be called
-    within each scheduler step. This functionality may be usful for
-    applications having an own event mechanism that needs to be triggered as
-    often as possible. This method registers a new dispatcher function. To
-    ensure that the notifier loop does not suspend to long in the sleep state
-    during the select a minimal timer MIN_TIMER is set to guarantee that the
-    dispatcher functions are called at least every MIN_TIMER milliseconds."""
-    global __dispatchers
     global __min_timer
-    __dispatchers.append( method )
-    __min_timer = MIN_TIMER
+    __min_timer = dispatch.MIN_TIMER
+    dispatch.dispatcher_add( method )
 
-def dispatcher_remove( method ):
-    """Removes an external dispatcher function from the list"""
-    global __dispatchers
-    if method in __dispatchers:
-        __dispatchers.remove( method )
+dispatcher_remove = dispatch.dispatcher_remove
 
 __current_sockets = {}
 __current_sockets[ IO_READ ] = []
 __current_sockets[ IO_WRITE ] = []
 __current_sockets[ IO_EXCEPT ] = []
 
+( INTERVAL, TIMESTAMP, CALLBACK ) = range( 3 )
+
 def step( sleep = True, external = True ):
-    # IDEA: Add parameter to specify max timeamount to spend in mainloop
     """Do one step forward in the main loop. First all timers are checked for
     expiration and if necessary the accociated callback function is called.
     After that the timer list is searched for the next timer that will expire.
@@ -132,34 +116,47 @@ def step( sleep = True, external = True ):
     callback functions from the sockets reported by the select system call are
     invoked. As a final task in a notifier step all registered external
     dispatcher functions are invoked."""
+
+    global __in_step, __step_depth, __step_depth_max
+
+    __in_step = True
+    __step_depth += 1
+
+    if __step_depth > __step_depth_max:
+	log.exception( 'maximum recursion depth reached' )
+	__step_depth -= 1
+	__in_step = False
+	return
+
     # handle timers
-    trash_can = []
     _copy = __timers.copy()
-    for i in _copy:
-        interval, timestamp, callback = _copy[ i ]
-        if interval + timestamp <= __millisecs():
-            retval = None
+    for i, timer in _copy.items():
+	now = notifier.millisecs()
+	timestamp = timer[ TIMESTAMP ]
+	if timer[ INTERVAL ] + timestamp <= now:
             # Update timestamp on timer before calling the callback to
             # prevent infinite recursion in case the callback calls
             # step().
-            __timers[ i ] = ( interval, __millisecs(), callback )
-            try:
-                if not callback():
-                    trash_can.append( i )
-                elif i in __timers:
-                    # Update timer's timestamp again to reflect callback
-                    # execution time.
-                    __timers[ i ] = ( interval, __millisecs(), callback )
+            timer[ TIMESTAMP ] = 0
+	    try:
+		if not timer[ CALLBACK ]():
+		    if __timers.has_key( i ):
+			del __timers[ i ]
+		else:
+		    timer[ TIMESTAMP ] = timestamp + timer[ INTERVAL ]
             except ( KeyboardInterrupt, SystemExit ), e:
+		__step_depth -= 1
+		__in_step = False
                 raise e
-            except:
+	    except:
                 log.exception( 'removed timer %d' % i )
-                trash_can.append( i )
+		if __timers.has_key( i ):
+		    del __timers[ i ]
 
-    # remove functions that returned false from scheduler
-    trash_can.reverse()
-    for r in trash_can:
-        if __timers.has_key( r ): del __timers[ r ]
+	# if it causes problems to iterate over probably non-existing
+	# timers, I think about adding the following code:
+	# if not __in_step:
+	#     break
 
     # get minInterval for max timeout
     timeout = None
@@ -168,11 +165,11 @@ def step( sleep = True, external = True ):
     else:
         for t in __timers:
             interval, timestamp, callback = __timers[ t ]
-            nextCall = interval + timestamp - __millisecs()
+            nextCall = interval + timestamp - notifier.millisecs()
             if timeout == None or nextCall < timeout:
                 if nextCall > 0: timeout = nextCall
                 else: timeout = 0
-        if timeout == None: timeout = MIN_TIMER
+        if timeout == None: timeout = dispatch.MIN_TIMER
         if __min_timer and __min_timer < timeout: timeout = __min_timer
 
     r = w = e = ()
@@ -182,16 +179,16 @@ def step( sleep = True, external = True ):
                           __sockets[ IO_EXCEPT ].keys(), timeout / 1000.0 )
     except ( ValueError, select_error ):
         log.exception( 'error in select' )
-        sys.exit( 1 )
+	sys.exit( 1 )
 
     for sl in ( ( r, IO_READ ), ( w, IO_WRITE ), ( e, IO_EXCEPT ) ):
         sockets, condition = sl
-        # append all unknown sockets to check list
-        for s in sockets:
-            if not s in __current_sockets[ condition ]:
-                __current_sockets[ condition ].append( s )
+	# append all unknown sockets to check list
+	for s in sockets:
+	    if not s in __current_sockets[ condition ]:
+	        __current_sockets[ condition ].append( s )
         while len( __current_sockets[ condition ] ):
-            sock = __current_sockets[ condition ].pop( 0 )
+	    sock = __current_sockets[ condition ].pop( 0 )
             if ( isinstance( sock, socket.socket ) and \
                  sock.fileno() != -1 ) or \
                  ( isinstance( sock, socket._socketobject ) and \
@@ -206,14 +203,26 @@ def step( sleep = True, external = True ):
                         raise e
                     except:
                         log.exception( 'error in socket callback' )
-                        sys.exit( 1 )
+			sys.exit( 1 )
 
     # handle external dispatchers
     if external:
-        for disp in copy( __dispatchers ):
-            disp()
+	try:
+	    dispatch.dispatcher_run()
+        except ( KeyboardInterrupt, SystemExit ), e:
+            __step_depth -= 1
+            __in_step = False
+            raise e
+        except Exception, e:
+            __step_depth -= 1
+            __in_step = False
+            log.exception( 'error in dispatcher function' )
+            raise e
+
+    __step_depth -= 1
+    __in_step = False
 
 def loop():
     """Executes the "main loop" forever by calling step in an endless loop"""
     while 1:
-        step()
+	step()

@@ -47,38 +47,38 @@ def init( module = None ):
     
     try:
         import notifier
+    except ImportError:
+        # use our own copy of pynotifier
+        import pynotifier as notifier
         
-        if notifier.loop:
-            # pyNotifier should be used and already active
-            log = logging.getLogger('notifier')
-            log.info('pynotifier already running, I hope you know what you are doing')
-        else:
-            # pyNotifier is installed, so we use it
-            if module and getattr(notifier, module.upper()):
-                # use the selected module
-                notifier.init(getattr(notifier, module.upper()))
-            elif module:
-                raise AttributeError('no notifier module %s' % module)
-            elif sys.modules.has_key('gtk'):
-                # The gtk module is loaded, this means that we will hook
-                # ourself into the gtk main loop
-                notifier.init(notifier.GTK)
-            else:
-                # init pyNotifier with the generic notifier
-                notifier.init(notifier.GENERIC)
+    if notifier.loop:
+        # pyNotifier should be used and already active
+        log = logging.getLogger('notifier')
+        log.info('pynotifier already running, I hope you know what you are doing')
+    else:
+        # find a good main loop
+        if not module and sys.modules.has_key('gtk'):
+            # The gtk module is loaded, this means that we will hook
+            # ourself into the gtk main loop
+            module = 'gtk'
+        elif not module:
+            # use generic
+            module = 'generic'
+
+        if getattr(notifier, module.upper()):
+            # use the selected module
+            notifier.init(getattr(notifier, module.upper()))
+            if module.upper() == 'GTK':
+                # add gtk thread support
+                import gobject
+                gobject.threads_init()
+        elif module:
+            raise AttributeError('no notifier module %s' % module)
 
         # delete basic notifier handler
         log = logging.getLogger('notifier')
         for l in log.handlers:
             log.removeHandler(l)
-
-    except ImportError:
-        # use a copy of nf_generic
-        if sys.modules.has_key('gtk'):
-            log = logging.getLogger('notifier')
-            log.error('To use gtk with kaa.notifier requires pynotifier to be installed')
-            sys.exit(1)
-        import nf_generic as notifier
 
     timer_remove = notifier.timer_remove
     timer_add = notifier.timer_add

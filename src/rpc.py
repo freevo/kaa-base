@@ -159,8 +159,8 @@ class Server(object):
         client = Channel(socket = client_sock, auth_secret = self._auth_secret)
         for obj in self.objects:
             client.connect(obj)
-        self.signals["client_connected"].emit(client)
         client._request_auth_packet()
+        self.signals["client_connected"].emit(client)
 
 
     def close(self):
@@ -391,7 +391,7 @@ class Channel(object):
             sent = self._socket.send(self._write_buffer)
             self._write_buffer = self._write_buffer[sent:]
             if not self._write_buffer:
-                self._wmon.unregister()
+                return False
         except socket.error, (err, msg):
             if err == errno.EAGAIN:
                 # Resource temporarily unavailable -- we are trying to write
@@ -414,6 +414,9 @@ class Channel(object):
                 payload = struct.pack("20s20s20s", payload, response, salt)
                 self._send_packet(seq, 'RESP', len(payload), payload)
                 self._authenticated = True
+                if not self._wmon.active() and self._write_buffer:
+                    # send delayed stuff now
+                    self._wmon.register(self._socket.fileno(), kaa.notifier.IO_WRITE)
                 return True
 
             if type == 'RESP':
@@ -421,6 +424,9 @@ class Channel(object):
                 if response == self._get_challenge_response(challenge, salt)[0] \
                    and challenge == self._pending_challenge:
                     self._authenticated = True
+                    if not self._wmon.active() and self._write_buffer:
+                        # send delayed stuff now
+                        self._wmon.register(self._socket.fileno(), kaa.notifier.IO_WRITE)
                     return True
                 log.error('authentication error')
                 return True
@@ -508,6 +514,9 @@ class Channel(object):
         return sha.sha(sha.sha(m).digest() + m).digest(), salt
 
 
+    def __repr__(self):
+        return '<kaa.rpc.server.channel %s' % self._socket.fileno()
+
 
 class Client(Channel):
     """
@@ -522,6 +531,11 @@ class Client(Channel):
         fd.connect(address)
         fd.setblocking(False)
         Channel.__init__(self, fd, auth_secret)
+
+
+    def __repr__(self):
+        return '<kaa.rpc.client.channel %s' % self._socket.fileno()
+
 
 
 def expose(command):

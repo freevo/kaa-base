@@ -36,6 +36,10 @@ import types
 import sys
 import logging
 
+# get logging object
+log = logging.getLogger('notifier')
+
+
 def weakref_data(data, destroy_cb = None):
     if type(data) in (str, int, long, types.NoneType):
         # Naive optimization for common immutable cases.
@@ -173,7 +177,7 @@ class Callback(object):
         """
         Compares the given function with the callback function we're wrapping.
         """
-        return cmp(self._get_callback(), func)
+        return cmp(id(self), id(func)) or cmp(self._get_callback(), func)
 
 
 class NotifierCallback(Callback):
@@ -281,8 +285,11 @@ class WeakCallback(Callback):
 
 
     def _weakref_destroyed(self, object):
-        if self and self._weakref_destroyed_user_cb:
-            return self._weakref_destroyed_user_cb(object)
+        try:
+            if self and self._weakref_destroyed_user_cb:
+                return self._weakref_destroyed_user_cb(object)
+        except:
+            log.exception("Exception raised during weakref destroyed callback")
 
 
 
@@ -385,7 +392,7 @@ class Signal(object):
         return self._connect(callback, args, kwargs, weak = True, pos = 0)
 
     def _disconnect(self, callback, args, kwargs):
-        assert(callback != None)
+        assert(callable(callback))
         new_callbacks = []
         for cb in self._callbacks[:]:
             cb_callback, cb_args, cb_kwargs, cb_once, cb_weak = cb

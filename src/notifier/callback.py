@@ -451,9 +451,13 @@ class Signal(object):
             if cb_once:
                 self.disconnect(cb_callback, *cb_args, **cb_kwargs)
             cb_kwargs.update(kwargs)
-            if cb_callback(*(args + cb_args), **cb_kwargs) == False:
-                retval = False
-
+            try:
+                if cb_callback(*(args + cb_args), **cb_kwargs) == False:
+                    retval = False
+            except (KeyboardInterrupt, SystemExit):
+                raise SystemExit
+            except Exception, e:
+                log.exception('signal.emit')
         return retval
 
 

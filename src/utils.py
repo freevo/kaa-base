@@ -87,7 +87,6 @@ def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None, pidfile=
         sys.exit(1)
         
     os.chdir("/") 
-    os.umask(0) 
     os.setsid() 
     
     # Second fork.

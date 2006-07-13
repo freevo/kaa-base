@@ -109,7 +109,7 @@ class QExpr(object):
         operator = operator.lower()
         assert(operator in ("=", "!=", "<", "<=", ">", ">=", "in", "not in", "range", "like"))
         if operator in ("in", "not in", "range"):
-            assert(type(operand) == tuple)
+            assert(isinstance(operand, (list, tuple)))
             if operator == "range":
                 assert(len(operand) == 2)
 

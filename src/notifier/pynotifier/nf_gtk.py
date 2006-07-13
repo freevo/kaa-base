@@ -7,7 +7,7 @@
 #
 # notifier wrapper for GTK+ 2.x
 #
-# $Id: nf_gtk.py 75 2006-04-23 11:19:05Z crunchy $
+# $Id: nf_gtk.py 87 2006-07-11 21:55:58Z crunchy $
 #
 # Copyright (C) 2004, 2005, 2006 Andreas Büsching <crunchy@bitkipper.net>
 #
@@ -55,10 +55,12 @@ def _socketCallback( source, condition, method ):
     if _gtk_socketIDs[ condition ].has_key( source ):
         ret = method( source )
         if not ret:
-            del _gtk_socketIDs[ condition ][ source ]
-        return ret
+            if _gtk_socketIDs[ condition ].has_key( source ):
+                del _gtk_socketIDs[ condition ][ source ]
+            return False
+        return True
 
-    print 'socket not found'
+    log.error('socket not found')
     return False
 
 def socket_remove( socket, condition = IO_READ ):
@@ -94,3 +96,6 @@ def loop():
     """Execute main loop forver."""
     while 1:
         step()
+
+def _init():
+    gobject.threads_init()

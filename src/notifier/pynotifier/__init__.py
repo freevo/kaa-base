@@ -7,7 +7,7 @@
 #
 # package initialisation
 #
-# $Id: __init__.py 82 2006-06-14 22:35:47Z crunchy $
+# $Id: __init__.py 87 2006-07-11 21:55:58Z crunchy $
 #
 # Copyright (C) 2004, 2005, 2006 Andreas Büsching <crunchy@bitkipper.net>
 #
@@ -45,8 +45,6 @@ dispatcher_remove = None
 
 loop = None
 step = None
-
-in_use = None
 
 # notifier types
 ( GENERIC, QT, GTK, WX ) = range( 4 )
@@ -89,6 +87,9 @@ def init( type = GENERIC ):
     IO_READ = nf_impl.IO_READ
     IO_WRITE = nf_impl.IO_WRITE
     IO_EXCEPT = nf_impl.IO_EXCEPT
+
+    if hasattr( nf_impl, '_init' ):
+        nf_impl._init()
 
 class Callback:
     def __init__( self, function, *args ):

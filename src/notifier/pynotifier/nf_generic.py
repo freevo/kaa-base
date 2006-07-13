@@ -7,7 +7,7 @@
 #
 # generic notifier implementation
 #
-# $Id: nf_generic.py 82 2006-06-14 22:35:47Z crunchy $
+# $Id: nf_generic.py 88 2006-07-12 18:07:13Z crunchy $
 #
 # Copyright (C) 2004, 2005, 2006 Andreas Büsching <crunchy@bitkipper.net>
 #
@@ -31,18 +31,15 @@
 from copy import copy
 from select import select
 from select import error as select_error
+from time import time
+
 import os, sys
 
 import socket
-from time import time
 
 # internal packages
 import log
 import dispatch
-
-def millisecs():
-    """returns the current time in milliseconds"""
-    return int( time() * 1000 )
 
 IO_READ = 1
 IO_WRITE = 2
@@ -88,7 +85,7 @@ def timer_add( interval, method ):
     except OverflowError:
         __timer_id = 0
 
-    __timers[ __timer_id ] = [ interval, millisecs(), method ]
+    __timers[ __timer_id ] = [ interval, int( time() * 1000 ) + interval, method ]
 
     return __timer_id
 
@@ -135,9 +132,12 @@ def step( sleep = True, external = True ):
     # handle timers
     _copy = __timers.copy()
     for i, timer in _copy.items():
-	now = millisecs()
 	timestamp = timer[ TIMESTAMP ]
-	if timer[ INTERVAL ] + timestamp <= now:
+        if not timestamp:
+            # prevert recursion, ignore this timer
+            continue
+	now = int( time() * 1000 )
+	if timestamp <= now:
             # Update timestamp on timer before calling the callback to
             # prevent infinite recursion in case the callback calls
             # step().
@@ -147,7 +147,14 @@ def step( sleep = True, external = True ):
 		    if __timers.has_key( i ):
 			del __timers[ i ]
 		else:
-		    timer[ TIMESTAMP ] = timestamp + timer[ INTERVAL ]
+		    # Find a moment in the future. If interval is 0, we
+                    # just reuse the old timestamp, doesn't matter.
+		    now = int( time() * 1000 )
+		    if timer[ INTERVAL ]:
+			timestamp += timer[ INTERVAL ]
+			while timestamp <= now:
+			    timestamp += timer[ INTERVAL ]
+		    timer[ TIMESTAMP ] = timestamp
             except ( KeyboardInterrupt, SystemExit ), e:
 		__step_depth -= 1
 		__in_step = False
@@ -167,12 +174,19 @@ def step( sleep = True, external = True ):
     if not sleep:
         timeout = 0
     else:
+        now = int( time() * 1000 )
         for t in __timers:
             interval, timestamp, callback = __timers[ t ]
-            nextCall = interval + timestamp - millisecs()
+            if not timestamp:
+                # timer is blocked (recursion), ignore it
+                continue
+            nextCall = timestamp - now
             if timeout == None or nextCall < timeout:
-                if nextCall > 0: timeout = nextCall
-                else: timeout = 0
+                if nextCall > 0:
+		    timeout = nextCall
+                else:
+		    timeout = 0
+		    break
         if timeout == None: timeout = dispatch.MIN_TIMER
         if __min_timer and __min_timer < timeout: timeout = __min_timer
 

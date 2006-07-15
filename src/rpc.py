@@ -256,6 +256,8 @@ class Channel(object):
                 return
             # If we're here, then the socket is likely disconnected.
             data = None
+        except (KeyboardInterrupt, SystemExit):
+            raise SystemExit
         except:
             log.exception('_handle_read failed, close socket')
             data = None
@@ -266,8 +268,18 @@ class Channel(object):
             # Return False to cause notifier to remove fd handler.
             return False
 
-        header_size = struct.calcsize("I4sI")
         self._read_buffer.append(data)
+        # read as much data as we have
+        while True:
+            try:
+                data = self._socket.recv(1024*1024)
+            except socket.error, (err, msg):
+                break
+            if not data:
+                break
+            self._read_buffer.append(data)
+                
+        header_size = struct.calcsize("I4sI")
         # Before we start into the loop, make sure we have enough data for
         # a full packet.  For very large packets (if we just received a huge
         # pickled object), this saves the string.join() which can be very
@@ -324,7 +336,8 @@ class Channel(object):
         if not self._authenticated:
             if packet_type in ('RESP', 'AUTH'):
                 self._write_buffer = header + payload + self._write_buffer
-                if not self._wmon.active():
+                self._handle_write(close_on_error=False)
+                if not self._wmon.active() and self._write_buffer:
                     self._wmon.register(self._socket.fileno(),
                                         kaa.notifier.IO_WRITE)
                 return True
@@ -333,11 +346,12 @@ class Channel(object):
             return True
 
         self._write_buffer += header + payload
-        if not self._wmon.active():
+        self._handle_write(close_on_error=False)
+        if not self._wmon.active() and self._write_buffer:
             self._wmon.register(self._socket.fileno(), kaa.notifier.IO_WRITE)
 
 
-    def _handle_write(self):
+    def _handle_write(self, close_on_error=True):
         """
         Write to the socket (callback from notifier).
         """
@@ -354,7 +368,8 @@ class Channel(object):
                 # data to a socket when none is available.
                 return
             # If we're here, then the socket is likely disconnected.
-            self._handle_close()
+            if close_on_error:
+                self._handle_close()
             return False
         return True
 

@@ -40,13 +40,10 @@
 # name). To do that, you need to create a RPC object with the callback you
 # want to have
 #
-# | x = client.rpc('do_something', callback, (cb_args, **cb_kwargs)
+# | x = client.rpc('do_something', 6) or
+# | x = client.rpc('do_something', foo=4)
 #
-# This object is the remote function you want to call
-# | x(foo=4) or x(6)
-#
-# If you set callback to None, not callback will be used, callback='blocking'
-# waits using step.
+# The result is an InProgress object. Connect to it to get the result.
 #
 # When a new client connects to the server, the 'client_connected' signals will
 # be emitted with a Channel object as parameter. This object can be used to
@@ -179,31 +176,6 @@ class Server(object):
         self.objects.append(obj)
 
 
-class RPC(kaa.notifier.Callback):
-    """
-    Client part of RPC. An object of this class has a call function to do
-    the real calling of the RPC.
-    """
-    def __init__(self, _chan, _cmd, function=None, *args, **kwargs):
-        if callable(function):
-            super(RPC, self).__init__(function, *args, **kwargs)
-        else:
-            self._return = function
-        self._chan = _chan
-        self._cmd = _cmd
-
-    def _return(self, result):
-        """
-        Call the callback.
-        """
-        super(RPC, self).__call__(result)
-
-    def __call__(self, *args, **kwargs):
-        """
-        Call the remote fucntion.
-        """
-        return self._chan._send_rpc(self._cmd, args, kwargs, self._return)
-
 
 class Channel(object):
     """
@@ -237,39 +209,22 @@ class Channel(object):
                 self._callbacks[func._kaa_rpc] = func
 
 
-    def _send_rpc(self, function, args, kwargs, callback):
+    def rpc(self, cmd, *args, **kwargs):
         """
-        Send a rpc.
+        Call the remote command and return InProgress.
         """
         if not self._wmon:
             raise IOError('channel is disconnected')
         seq = self._next_seq
         self._next_seq += 1
         packet_type = 'CALL'
-        payload = cPickle.dumps((function, args, kwargs),
-                                pickle.HIGHEST_PROTOCOL)
+        payload = cPickle.dumps((cmd, args, kwargs), pickle.HIGHEST_PROTOCOL)
         self._send_packet(seq, packet_type, len(payload), payload)
-        if callable(callback):
-            self._rpc_in_progress[seq] = callback
-            return seq
-        if callback == 'blocking':
-            self._rpc_in_progress[seq] = True, True, None
-            while self._rpc_in_progress[seq][0]:
-                # print 'step'
-                kaa.notifier.step()
-            ok, result = self._rpc_in_progress[seq][1:]
-            del self._rpc_in_progress[seq]
-            if not ok:
-                raise Exception(result)
-            return result
-        return seq
-
-
-    def rpc(self, function, *args, **kwargs):
-        """
-        Create RPC object for commuication with the other side.
-        """
-        return RPC(self, function, *args, **kwargs)
+        # create InProgress object and return
+        callback = kaa.notifier.InProgress()
+        # callback with error handler
+        self._rpc_in_progress[seq] = callback
+        return callback
 
 
     def _handle_close(self):
@@ -403,6 +358,14 @@ class Channel(object):
         return True
 
 
+    def _send_delayed_answer(self, payload, seq, packet_type):
+        """
+        Send delayed answer when callback returns InProgress.
+        """
+        payload = cPickle.dumps(payload, pickle.HIGHEST_PROTOCOL)
+        self._send_packet(seq, packet_type, len(payload), payload)
+
+        
     def _handle_packet(self, seq, type, payload):
         """
         Handle incoming packet (called from _handle_write).
@@ -440,6 +403,10 @@ class Channel(object):
             function, args, kwargs = payload
             try:
                 payload = self._callbacks[function](*args, **kwargs)
+                if isinstance(payload, kaa.notifier.InProgress):
+                    payload.connect(self._send_delayed_answer, seq, 'RETN')
+                    payload.exception_handler.connect(self._send_delayed_answer, seq, 'EXCP')
+                    return True
                 packet_type = 'RETN'
             except (SystemExit, KeyboardInterrupt):
                 sys.exit(0)
@@ -459,16 +426,8 @@ class Channel(object):
             callback = self._rpc_in_progress.get(seq)
             if not callback:
                 return True
-            if callable(callback):
-                del self._rpc_in_progress[seq]
-                try:
-                    callback(payload)
-                except (SystemExit, KeyboardInterrupt):
-                    sys.exit(0)
-                except Exception, e:
-                    log.exception('rpc return')
-                return True
-            self._rpc_in_progress[seq] = False, True, payload
+            del self._rpc_in_progress[seq]
+            callback.finished(payload)
             return True
 
         if type == 'EXCP':
@@ -477,12 +436,8 @@ class Channel(object):
             callback = self._rpc_in_progress.get(seq)
             if not callback:
                 return True
-            if callable(callback):
-                # nothing to do
-                del self._rpc_in_progress[seq]
-                log.error(error)
-                return True
-            self._rpc_in_progress[seq] = False, False, error
+            del self._rpc_in_progress[seq]
+            callback.exception(error)
             return True
 
         log.error('unknown packet type %s', type)

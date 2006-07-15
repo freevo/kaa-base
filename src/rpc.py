@@ -126,7 +126,6 @@ class Server(object):
                     raise IOError('server already running')
                 os.unlink(address)
             self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            kaa.signals["shutdown"].connect_weak(self.close)
 
         elif type(address) == tuple:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -198,6 +197,7 @@ class Channel(object):
         self._pending_challenge = None
 
         self.signals = { 'closed': kaa.notifier.Signal() }
+        kaa.signals["shutdown"].connect_weak(self._handle_close)
 
 
     def connect(self, obj):
@@ -240,6 +240,7 @@ class Channel(object):
         self._wmon = self._rmon = None
         self.signals['closed'].emit()
         self.signals = {}
+        kaa.signals["shutdown"].disconnect(self._handle_close)
 
 
     def _handle_read(self):

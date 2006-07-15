@@ -231,6 +231,9 @@ class Channel(object):
         """
         Socket is closed.
         """
+        if not self._wmon:
+            # already closed (no idea why this happens)
+            return False
         log.info('close socket for %s', self)
         self._socket.close()
         if self._wmon.active():

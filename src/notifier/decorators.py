@@ -29,15 +29,15 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'execute_in_timer', 'execute_in_thread', 'execute_in_mainloop' ]
+__all__ = [ 'execute_in_timer', 'execute_in_mainloop' ]
 
 # python imports
 import logging
 
 # notifier thread imports
 from thread import MainThreadCallback, is_mainthread
-from jobserver import ThreadCallback
 from kaa.weakref import weakref
+from yieldfunc import InProgress
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -119,27 +119,6 @@ def execute_in_mainloop(async=False):
             t = MainThreadCallback(func, *args, **kwargs)
             t.set_async(async)
             return t()
-
-        try:
-            newfunc.func_name = func.func_name
-        except TypeError:
-            pass
-        return newfunc
-
-    return decorator
-
-
-def execute_in_thread(name):
-    """
-    The decorator makes sure the function is always called in the thread
-    with the given name. There is no way to get the results of the call,
-    make sure you define a callback n the function attributes are you need
-    to use ThreadCallback without this decorator.
-    """
-    def decorator(func):
-
-        def newfunc(*args, **kwargs):
-            ThreadCallback(func, *args, **kwargs).register(name)
 
         try:
             newfunc.func_name = func.func_name

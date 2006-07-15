@@ -58,6 +58,7 @@ import socket
 # notifier imports
 import nf_wrapper as notifier
 from callback import Callback, Signal
+from async import InProgress
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -73,35 +74,56 @@ class MainThreadCallback(Callback):
     def set_async(self, async = True):
         self._async = async
 
+    def _set_result(self, result):
+        self._sync_return = result
+        if isinstance(self._sync_return, InProgress):
+            if not self._sync_return.is_finished:
+                self._sync_return.connect(self._set_result)
+                self._sync_return.exception_handler.connect(self._set_exception)
+                return
+            self._sync_return = self._sync_return()
+        self._wakeup()
+
+    def _set_exception(self, e):
+        self._sync_exception = e
+        self._wakeup()
+        
+    def _wakeup(self):
+        self.lock.acquire(False)
+        self.lock.release()
+        
     def __call__(self, *args, **kwargs):
-        if threading.currentThread() != _thread_notifier_mainthread:
-            self.lock.acquire(False)
+        if threading.currentThread() == _thread_notifier_mainthread:
+            return super(MainThreadCallback, self).__call__(*args, **kwargs)
 
-            _thread_notifier_lock.acquire()
-            _thread_notifier_queue.insert(0, (self, args, kwargs))
-            if len(_thread_notifier_queue) == 1:
-                if not _thread_notifier_pipe:
-                    _create_thread_notifier_pipe()
-                os.write(_thread_notifier_pipe[1], "1")
-            _thread_notifier_lock.release()
+        self.lock.acquire(False)
 
-            if not self._async:
-                # Synchronous execution: wait for main call us and collect
-                # the return value.
-                self.lock.acquire()
-                if self._sync_exception:
-                    raise self._sync_exception
-                return self._sync_return
+        _thread_notifier_lock.acquire()
+        _thread_notifier_queue.insert(0, (self, args, kwargs))
+        if len(_thread_notifier_queue) == 1:
+            if not _thread_notifier_pipe:
+                _create_thread_notifier_pipe()
+            os.write(_thread_notifier_pipe[1], "1")
+        _thread_notifier_lock.release()
 
-            # Asynchronous: explicitly return None here.  We could return
-            # self._sync_return and there's a chance it'd be valid even
-            # in the async case, but that's non-deterministic and dangerous
-            # to rely on.
-            return None
+        # FIXME: what happens if we switch threads here and execute
+        # the callback? In that case we may block because we already
+        # have the result. Should we use a Condition here?
 
-        else:
-            self._sync_return = super(MainThreadCallback, self).__call__(*args, **kwargs)
+        if not self._async:
+            # Synchronous execution: wait for main call us and collect
+            # the return value.
+            self.lock.acquire()
+            if self._sync_exception:
+                raise self._sync_exception
+
             return self._sync_return
+
+        # Asynchronous: explicitly return None here.  We could return
+        # self._sync_return and there's a chance it'd be valid even
+        # in the async case, but that's non-deterministic and dangerous
+        # to rely on.
+        return None
 
 
 class Thread(threading.Thread):
@@ -199,13 +221,14 @@ def _thread_notifier_run_queue(fd):
         callback, args, kwargs = _thread_notifier_queue.pop()
         _thread_notifier_lock.release()
         try:
-            callback(*args, **kwargs)
+            # call callback and set result
+            callback._set_result(callback(*args, **kwargs))
         except ( KeyboardInterrupt, SystemExit ), e:
-            callback.lock.acquire(False)
-            callback.lock.release()
+            # only wakeup to make it possible to stop the thread
+            callback._wakeup()
             raise SystemExit
-        except Exception, callback._sync_exception:
+        except Exception, e:
             log.exception('mainthread callback')
-        callback.lock.acquire(False)
-        callback.lock.release()
+            # set exception in callback
+            callback._set_exception(e)
     return True

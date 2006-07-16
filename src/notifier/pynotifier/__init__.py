@@ -5,7 +5,7 @@
 #
 # package initialisation
 #
-# $Id: __init__.py 95 2006-07-16 17:52:36Z crunchy $
+# $Id$
 #
 # Copyright (C) 2004, 2005, 2006
 #	Andreas Büsching <crunchy@bitkipper.net>

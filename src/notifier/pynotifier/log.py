@@ -5,7 +5,7 @@
 #
 # log - a logging facility for the generic notifier module
 #
-# $Id: log.py 95 2006-07-16 17:52:36Z crunchy $
+# $Id$
 #
 # Copyright (C) 2005, 2006
 #	Andreas Büsching <crunchy@bitkipper.net>

@@ -2,7 +2,7 @@
 # -----------------------------------------------------------------------------
 # yieldfunc.py - Yield decorator and helper functions
 # -----------------------------------------------------------------------------
-# $Id: callback.py 1526 2006-04-29 14:55:39Z tack $
+# $Id$
 #
 # This file contains a decorator usefull for functions that may need more
 # time to execute and that needs more than one step to fullfill the task.

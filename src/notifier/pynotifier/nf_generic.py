@@ -1,29 +1,28 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# nf_generic.py
-#
 # Author: Andreas Büsching <crunchy@bitkipper.net>
 #
 # generic notifier implementation
 #
-# $Id: nf_generic.py 88 2006-07-12 18:07:13Z crunchy $
+# $Id: nf_generic.py 95 2006-07-16 17:52:36Z crunchy $
 #
-# Copyright (C) 2004, 2005, 2006 Andreas Büsching <crunchy@bitkipper.net>
+# Copyright (C) 2004, 2005, 2006
+#	Andreas Büsching <crunchy@bitkipper.net>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2, or (at your option)
-# any later version.
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
 
 """Simple mainloop that watches sockets and timers."""
 
@@ -32,7 +31,6 @@ from copy import copy
 from select import select
 from select import error as select_error
 from time import time
-
 import os, sys
 
 import socket
@@ -85,7 +83,8 @@ def timer_add( interval, method ):
     except OverflowError:
         __timer_id = 0
 
-    __timers[ __timer_id ] = [ interval, int( time() * 1000 ) + interval, method ]
+    __timers[ __timer_id ] = \
+	[ interval, int( time() * 1000 ) + interval, method ]
 
     return __timer_id
 

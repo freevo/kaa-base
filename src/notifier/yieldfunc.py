@@ -56,7 +56,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'YieldContinue', 'YieldCallback', 'yield_execution' ]
+__all__ = [ 'YieldContinue', 'YieldCallback', 'yield_execution', 'YieldFunction' ]
 
 import sys
 import logging
@@ -77,11 +77,13 @@ class YieldCallback(object):
     def __call__(self, *args, **kwargs):
         self._args = args
         self._kwargs = kwargs
-        self._timer.start(self._interval)
+        self._callback()
+        self._callback = None
 
-    def _connect(self, timer, interval):
-        self._timer = timer
-        self._interval = interval
+
+    def _connect(self, callback):
+        self._callback = callback
+
 
     def get(self):
         """
@@ -122,7 +124,7 @@ def yield_execution(interval=0):
                 # everything went fine, return result
                 return result
             # we need a step callback to finish this later
-            return YieldFunction(function, result, interval)
+            return YieldFunction(function, interval, result)
 
         newfunc.func_name = func.func_name
         return newfunc
@@ -139,37 +141,50 @@ class YieldInProgress(object):
     Internal function to handle InProgress returns from yield.
     """
     def __init__(self, in_progress):
-        in_progress.connect(self._start_timer)
-        in_progress.exception_handler.connect(self._start_timer)
-        self._callback = in_progress
+        self._in_progress = in_progress
 
-    def _start_timer(self, result):
-        self._timer.start(self._interval)
 
-    def _connect(self, timer, interval):
-        self._timer = timer
-        self._interval = interval
+    def _connect(self, callback):
+        self._in_progress.connect(callback)
+        self._in_progress.exception_handler.connect(callback)
+
 
     def __call__(self, *args, **kwargs):
-        return self._callback()
+        return self._in_progress()
 
 
 class YieldFunction(InProgress):
     """
     InProgress class to continue function execution.
     """
-    def __init__(self, function, status, interval):
+    def __init__(self, function, interval, status=None):
         InProgress.__init__(self)
         self._yield__function = function
         self._timer = Timer(self._step)
         self._interval = interval
+        if status == None:
+            # call function later
+            return
         if status == YieldContinue:
             return self._timer.start(interval)
         if isinstance(status, InProgress):
             status = YieldInProgress(status)
-        status._connect(self._timer, interval)
+        status._connect(self._continue)
 
 
+    def __call__(self, *args, **kwargs):
+        self._yield__function = self._yield__function(*args, **kwargs).next
+        self._continue()
+        
+        
+    def _continue(self, *args, **kwargs):
+        """
+        Restart timer.
+        """
+        if self._timer:
+            self._timer.start(self._interval)
+
+            
     def _step(self):
         """
         Call next step of the yield function.
@@ -179,6 +194,7 @@ class YieldFunction(InProgress):
         except (SystemExit, KeyboardInterrupt):
             sys.exit(0)
         except Exception, e:
+            log.exception('YieldFunction')
             self.exception(e)
             return False
         if result == YieldContinue:
@@ -187,8 +203,19 @@ class YieldFunction(InProgress):
         if isinstance(result, InProgress):
             result = YieldInProgress(result)
         if isinstance(result, (YieldCallback, YieldInProgress)):
-            result._connect(self._timer, self._interval)
+            result._connect(self._continue)
             return False
         self._timer = None
         self.finished(result)
         return False
+
+
+    def stop(self):
+        """
+        Stop the function, no callbacks called.
+        """
+        if self._timer and self._timer.active():
+            self._timer.stop()
+        self._timer = None
+        self._yield__function = None
+        

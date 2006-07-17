@@ -164,7 +164,9 @@ class YieldFunction(InProgress):
         self._interval = interval
         if status == None:
             # call function later
+            self._valid = False
             return
+        self._valid = True
         if status == YieldContinue:
             return self._timer.start(interval)
         if isinstance(status, InProgress):
@@ -173,9 +175,14 @@ class YieldFunction(InProgress):
 
 
     def __call__(self, *args, **kwargs):
-        self._yield__function = self._yield__function(*args, **kwargs).next
-        self._continue()
-        
+        if not self._valid:
+            # setup call
+            self._valid = True
+            self._yield__function = self._yield__function(*args, **kwargs).next
+            self._continue()
+            return True
+        return InProgress.__call__(self, *args, **kwargs)
+
         
     def _continue(self, *args, **kwargs):
         """

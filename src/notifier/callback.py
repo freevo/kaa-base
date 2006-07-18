@@ -110,8 +110,6 @@ class Callback(object):
         self._kwargs = kwargs
         self._ignore_caller_args = False
         self._user_args_first = False
-        self._prevent_recursion = False
-        self._entered = False
 
 
     def set_ignore_caller_args(self, flag = True):
@@ -120,9 +118,6 @@ class Callback(object):
 
     def set_user_args_first(self, flag = True):
         self._user_args_first = flag
-
-    def set_prevent_recursion(self, flag = True):
-        self._prevent_recursion = flag
 
     def _get_callback(self):
         return self._callback
@@ -145,9 +140,6 @@ class Callback(object):
         """
         Call the callback function.
         """
-        if self._entered and self._prevent_recursion:
-            return
-
         cb = self._get_callback()
         cb_args, cb_kwargs = self._merge_args(args, kwargs)
         if not cb:

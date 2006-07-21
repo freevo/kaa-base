@@ -236,6 +236,7 @@ class Channel(object):
             return False
         log.info('close socket for %s', self)
         self._socket.close()
+        self._socket = None
         if self._wmon.active():
             self._wmon.unregister()
         if self._rmon.active():
@@ -335,6 +336,8 @@ class Channel(object):
         """
         Send a packet (header + payload) to the other side.
         """
+        if not self._socket:
+            return
         header = struct.pack("I4sI", seq, packet_type, length)
         if not self._authenticated:
             if packet_type in ('RESP', 'AUTH'):
@@ -489,6 +492,8 @@ class Channel(object):
 
 
     def __repr__(self):
+        if not self._socket:
+            return '<kaa.rpc.server.channel - disconnected'
         return '<kaa.rpc.server.channel %s' % self._socket.fileno()
 
 
@@ -508,6 +513,8 @@ class Client(Channel):
 
 
     def __repr__(self):
+        if not self._socket:
+            return '<kaa.rpc.client.channel - disconnected'
         return '<kaa.rpc.client.channel %s' % self._socket.fileno()
 
 

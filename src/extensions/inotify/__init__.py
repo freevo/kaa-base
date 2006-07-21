@@ -7,6 +7,7 @@ import kaa.notifier
 import os
 import struct
 
+# TODO: hook in gamin if it is running. See gamin.py
 
 class INotify:
 

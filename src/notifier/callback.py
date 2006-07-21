@@ -35,10 +35,12 @@ import _weakref
 import types
 import sys
 import logging
+import atexit
 
 # get logging object
 log = logging.getLogger('notifier')
 
+_notifier_running = True
 
 def weakref_data(data, destroy_cb = None):
     if type(data) in (str, int, long, types.NoneType):
@@ -255,11 +257,11 @@ class WeakCallback(Callback):
 
 
     def __call__(self, *args, **kwargs):
-        save_args, save_kwargs = self._args, self._kwargs
-    
-        if not unweakref_data:
+        if not _notifier_running:
             # Shutdown
             return False
+        
+        save_args, save_kwargs = self._args, self._kwargs
     
         # Remove weakrefs from user data before invoking the callback.
         self._args = unweakref_data(self._args)
@@ -277,8 +279,11 @@ class WeakCallback(Callback):
 
 
     def _weakref_destroyed(self, object):
+        if not _notifier_running:
+            # Shutdown
+            return
         try:
-            if self and self._weakref_destroyed_user_cb:
+            if self._weakref_destroyed_user_cb:
                 return self._weakref_destroyed_user_cb(object)
         except:
             log.exception("Exception raised during weakref destroyed callback")
@@ -288,7 +293,7 @@ class WeakCallback(Callback):
 class WeakNotifierCallback(WeakCallback, NotifierCallback):
 
     def _weakref_destroyed(self, object):
-        if WeakNotifierCallback and self:
+        if _notifier_running:
             super(WeakNotifierCallback, self)._weakref_destroyed(object)
             self.unregister()
 
@@ -461,9 +466,16 @@ class Signal(object):
 
 
     def _weakref_destroyed(self, callback, weakref):
-        if Signal and self:
+        if _notifier_running:
             self._disconnect(callback, (), None)
 
 
     def count(self):
         return len(self._callbacks)
+
+
+def _shutdown_weakref_destroyed():
+    global _notifier_running
+    _notifier_running = False
+    
+atexit.register(_shutdown_weakref_destroyed)

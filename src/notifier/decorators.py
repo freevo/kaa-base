@@ -67,7 +67,6 @@ def execute_in_timer(timer, interval, type=''):
             if not type:
                 # just start the timer
                 t = timer(func, *args, **kwargs)
-                t.set_prevent_recursion()
                 t.start(interval)
                 return True
             # object to save the timer in
@@ -92,7 +91,6 @@ def execute_in_timer(timer, interval, type=''):
 
             # create new timer, set it to the object and start it
             t = timer(func, *args, **kwargs)
-            t.set_prevent_recursion()
             setattr(obj, name, weakref(t))
             getattr(obj, name).start(interval)
             return True

@@ -585,7 +585,7 @@ class Config(Group):
         f.close()
 
 
-    def load(self, filename = None):
+    def load(self, filename = None, remember = True):
         """
         Load config from a config file.
         """
@@ -594,7 +594,8 @@ class Config(Group):
             if not self._filename:
                 raise ValueError, "Filename not specified and no default filename set."
             filename = self._filename
-
+        elif remember:
+            self._filename = filename
         line_regexp = re.compile('^([a-zA-Z0-9_]+|\[.*?\]|\.)+ *= *(.*)')
         key_regexp = re.compile('(([a-zA-Z0-9_]+)|(\[.*?\]))')
 

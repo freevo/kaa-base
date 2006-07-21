@@ -98,6 +98,9 @@ def shutdown():
 
     stop_all_processes()
     signals["shutdown"].emit()
+    signals["shutdown"].disconnect_all()
+    signals["step"].disconnect_all()
+
     # Kill processes _after_ shutdown emits to give callbacks a chance to
     # close them properly.
     kill_all_processes()
@@ -182,4 +185,3 @@ def _shutdown_check():
 
 # check to make sure we really call our shutdown function
 atexit.register(_shutdown_check)
-    

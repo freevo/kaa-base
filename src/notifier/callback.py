@@ -40,7 +40,14 @@ import atexit
 # get logging object
 log = logging.getLogger('notifier')
 
-_notifier_running = True
+# Variable that is set to True (via atexit callback) when python interpreter
+# is in the process of shutting down.  If we're interested if the interpreter
+# is shutting down, we don't want to test that this variable is True, but 
+# rather that it is not False, because as it is prefixed with an underscore,
+# the interpreter might already have deleted this variable in which case it 
+# is None.
+_python_shutting_down = False
+
 
 def weakref_data(data, destroy_cb = None):
     if type(data) in (str, int, long, types.NoneType):
@@ -257,7 +264,7 @@ class WeakCallback(Callback):
 
 
     def __call__(self, *args, **kwargs):
-        if not _notifier_running:
+        if _python_shutting_down != False:
             # Shutdown
             return False
         
@@ -279,7 +286,7 @@ class WeakCallback(Callback):
 
 
     def _weakref_destroyed(self, object):
-        if not _notifier_running:
+        if _python_shutting_down != False:
             # Shutdown
             return
         try:
@@ -293,7 +300,7 @@ class WeakCallback(Callback):
 class WeakNotifierCallback(WeakCallback, NotifierCallback):
 
     def _weakref_destroyed(self, object):
-        if _notifier_running:
+        if _python_shutting_down == False:
             super(WeakNotifierCallback, self)._weakref_destroyed(object)
             self.unregister()
 
@@ -466,7 +473,7 @@ class Signal(object):
 
 
     def _weakref_destroyed(self, callback, weakref):
-        if _notifier_running:
+        if _python_shutting_down == False:
             self._disconnect(callback, (), None)
 
 
@@ -475,7 +482,7 @@ class Signal(object):
 
 
 def _shutdown_weakref_destroyed():
-    global _notifier_running
-    _notifier_running = False
+    global _python_shutting_down
+    _python_shutting_down = True
     
 atexit.register(_shutdown_weakref_destroyed)

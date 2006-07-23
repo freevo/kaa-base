@@ -75,7 +75,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Server', 'Client', 'expose' ]
+__all__ = [ 'Server', 'Client', 'expose', 'ConnectError' ]
 
 # python imports
 import types
@@ -96,6 +96,9 @@ import kaa.notifier
 
 # get logging object
 log = logging.getLogger('rpc')
+
+class ConnectError(Exception):
+    pass
 
 class Server(object):
     """
@@ -507,7 +510,10 @@ class Client(Channel):
             fd = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         if type(address) == tuple:
             fd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        fd.connect(address)
+        try:
+            fd.connect(address)
+        except socket.error, e:
+            raise ConnectError(e)
         fd.setblocking(False)
         Channel.__init__(self, fd, auth_secret)
 

@@ -194,7 +194,9 @@ class NotifierCallback(Callback):
 
            
     def active(self):
-        return self._id != None
+        # callback is active if id is not None and python is not shutting down
+        # if python is in shutdown, notifier unregister could crash
+        return self._id != None and _python_shutting_down == False
 
 
     def unregister(self):

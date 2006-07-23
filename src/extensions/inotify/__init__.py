@@ -33,15 +33,8 @@ class INotify:
 
         self._mon = kaa.notifier.WeakSocketDispatcher(self._handle_data)
         self._mon.register(self._fd)
-        kaa.notifier.signals['shutdown'].connect_weak(self._close)
 
 
-    def _close(self):
-        if os and self._fd >= 0 and self._mon:
-            os.close(self._fd)
-            self._mon.unregister()
-            self._mon = None
-        
     def __del__(self):
         if os and self._fd >= 0 and self._mon:
             os.close(self._fd)

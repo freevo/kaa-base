@@ -37,6 +37,9 @@ from distribution import Extension
 
 extensions = []
 extensions.append(Extension('kaa.shmmodule', ['src/extensions/shmmodule.c']).convert())
+objectrow = Extension('kaa._objectrow', ['src/extensions/objectrow.c'])
+objectrow.check_library("glib-2.0", "2.4.0")
+extensions.append(objectrow.convert())
 
 inotify_ext = Extension("kaa.inotify._inotify",
                         ["src/extensions/inotify/inotify.c"],

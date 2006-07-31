@@ -217,24 +217,27 @@ class Extension(object):
         libraries. The basic logic is taken from pygame.
         """
         try:
-            if os.system("%s-config --version &>/dev/null" % name) == 0:
+            if os.system("pkg-config %s --exists &>/dev/null" % name) == 0:
+                # Use pkg-config (it also wraps foo-config)
+                command = "pkg-config %s %%s 2>/dev/null" % name
+                if minver:
+                    if not os.system(command % '--atleast-version %s' % minver) == 0:
+                        err= 'requires %s version %s' % (name, minver)
+                        raise ValueError, err
+            elif os.system("%s-config --version &>/dev/null" % name) == 0:
                 # Use foo-config if it exists.
                 command = "%s-config %%s 2>/dev/null" % name
-                version_arg = "--version"
-            elif os.system("pkg-config %s --exists &>/dev/null" % name) == 0:
-                # Otherwise try pkg-config foo.
-                command = "pkg-config %s %%s 2>/dev/null" % name
-                version_arg = "--modversion"
+                version = os.popen(command % '--version').read().strip()
+                if len(version) == 0:
+                    raise ValueError, 'command not found'
+                # this check may be wrong, but it works if wrapped with
+                # pkg-config. Maybe always use pkg-config?
+                if minver and version < minver:
+                    err= 'requires %s version %s (%s found)' % \
+                         (name, minver, version)
+                    raise ValueError, err
             else:
-                raise Exception, "not found"
-
-            version = os.popen(command % version_arg).read().strip()
-            if len(version) == 0:
-                raise ValueError, 'command not found'
-            if minver and version < minver:
-                err= 'requires %s version %s (%s found)' % \
-                     (name, minver, version)
-                raise ValueError, err
+                raise ValueError, "%s is not installed" % name
 
             for inc in os.popen(command % "--cflags").read().strip().split(' '):
                 if inc[2:] and not inc[2:] in self.include_dirs:

@@ -40,6 +40,7 @@ extensions.append(Extension('kaa.shmmodule', ['src/extensions/shmmodule.c']).con
 objectrow = Extension('kaa._objectrow', ['src/extensions/objectrow.c'])
 if not objectrow.check_library("glib-2.0", "2.4.0"):
     print "glib >= 2.4.0 not found; devel package missing maybe?"
+    print objectrow.error
     sys.exit(1)
 
 extensions.append(objectrow.convert())

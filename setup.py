@@ -38,12 +38,10 @@ from distribution import Extension
 extensions = []
 extensions.append(Extension('kaa.shmmodule', ['src/extensions/shmmodule.c']).convert())
 objectrow = Extension('kaa._objectrow', ['src/extensions/objectrow.c'])
-if not objectrow.check_library("glib-2.0", "2.4.0"):
-    print "glib >= 2.4.0 not found; devel package missing maybe?"
-    print objectrow.error
-    sys.exit(1)
-
-extensions.append(objectrow.convert())
+if objectrow.check_library("glib-2.0", "2.4.0"):
+    extensions.append(objectrow.convert())
+else:
+    print "glib >= 2.4.0 not found; kaa.db will be unavailable"
 
 inotify_ext = Extension("kaa.inotify._inotify",
                         ["src/extensions/inotify/inotify.c"],
@@ -53,7 +51,7 @@ if not inotify_ext.check_cc(["<sys/inotify.h>"], "inotify_init();"):
     if not inotify_ext.check_cc(["<sys/syscall.h>"], "syscall(0);"):
         print "inotify not enabled: doesn't look like a Linux system."
     else:
-        print "inotify not supported in glibc; using fallback."
+        print "inotify not supported in glibc; using built-in support instead."
         inotify_ext.config("#define USE_FALLBACK")
         extensions.append(inotify_ext.convert())
 

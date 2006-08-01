@@ -8,6 +8,9 @@ import kaa._objectrow
 __all__ = ['Database', 'QExpr', 'ATTR_SIMPLE', 'ATTR_SEARCHABLE', 'ATTR_IGNORE_CASE',
            'ATTR_INDEXED', 'ATTR_INDEXED_IGNORE_CASE', 'ATTR_KEYWORDS']
 
+if sqlite.version < '2.1.0':
+    raise ImportError('pysqlite 2.1.0 or higher required')
+
 SCHEMA_VERSION = 0.1
 SCHEMA_VERSION_COMPATIBLE = 0.1
 CREATE_SCHEMA = """

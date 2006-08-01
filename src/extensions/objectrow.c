@@ -45,8 +45,8 @@ PyObject *ObjectRow_PyObject__items(ObjectRow_PyObject *, PyObject *, PyObject *
 
 int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    PyObject *cursor, *row, *db, *o_types, *o_type;
-    if (!PyArg_ParseTuple(args, "OO", &cursor, &row))
+    PyObject *cursor, *row, *db, *o_types, *o_type, *pickle_dict = 0;
+    if (!PyArg_ParseTuple(args, "OO|O", &cursor, &row, &pickle_dict))
         return -1;
 
     self->unpickled = 0;
@@ -60,12 +60,21 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
     self->desc = PyObject_GetAttrString(cursor, "description"); // new ref
     self->db = PyObject_GetAttrString(cursor, "_db"); // new ref
     self->type_name = PySequence_GetItem(row, 0); // new ref
+    if (!PyString_Check(self->type_name) && !PyUnicode_Check(self->type_name)) {
+        PyErr_Format(PyExc_ValueError, "First element of row must be object type");
+        return -1;
+    }
+
 
     db = PyWeakref_GetObject(self->db); // borrowed ref
 
     o_types = PyObject_GetAttrString(db, "_object_types"); // new ref
     o_type = PyDict_GetItem(o_types, self->type_name); // borrowed ref
     self->attrs = PySequence_GetItem(o_type, 1); // new ref
+    if (!self->attrs) {
+        PyErr_Format(PyExc_ValueError, "Object type '%s' not defined.", PyString_AsString(self->type_name));
+        return -1;
+    }
 
     self->query_info = g_hash_table_lookup(queries, self->desc);
     if (!self->query_info) {
@@ -143,23 +152,30 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
         PySequence_Fast_GET_ITEM(self->row, self->query_info->pickle_idx) != Py_None)
         self->has_pickle = 1;
 
+    if (pickle_dict) {
+        self->pickle = pickle_dict;
+        Py_INCREF(self->pickle);
+        self->has_pickle = self->unpickled = 1;
+    }
     return 0;
 }
 
 void ObjectRow_PyObject__dealloc(ObjectRow_PyObject *self)
 {
-    self->query_info->refcount--;
-    if (self->query_info->refcount <= 0) {
-        g_hash_table_remove(queries, self->desc);
-        g_hash_table_destroy(self->query_info->idxmap);
-        g_hash_table_destroy(self->query_info->type_names);
-        free(self->query_info);
+    if (self->query_info) {
+        self->query_info->refcount--;
+        if (self->query_info->refcount <= 0) {
+            g_hash_table_remove(queries, self->desc);
+            g_hash_table_destroy(self->query_info->idxmap);
+            g_hash_table_destroy(self->query_info->type_names);
+            free(self->query_info);
+        }
     }
     Py_DECREF(self->type_name);
     Py_DECREF(self->db);
-    Py_DECREF(self->attrs);
     Py_DECREF(self->desc);
     Py_DECREF(self->row);
+    Py_XDECREF(self->attrs);
     Py_XDECREF(self->pickle);
     Py_XDECREF(self->keys);
     Py_XDECREF(self->parent);
@@ -257,7 +273,7 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
             Py_INCREF(self->parent);
             return self->parent;
         }
-        else if (!strcmp(skey, "row")) {
+        else if (!strcmp(skey, "_row")) {
             Py_INCREF(self->row);
             return(self->row);
         }
@@ -349,11 +365,13 @@ int ObjectRow_PyObject__length(ObjectRow_PyObject *self)
 
 void attrs_iter(gpointer key, ObjectAttribute *attr, ObjectRow_PyObject *self)
 {
-    if (attr->index >= 0 || self->has_pickle) {
-        //if (!strcmp(key, "pickle"))
-         //   return;
+    if (attr->index >= 0 || (self->has_pickle && attr->pickled)) {
+        PyObject *o;
 
-        PyObject *o = PyString_FromString(key);
+        if (!strcmp(key, "pickle"))
+            return;
+
+        o = PyString_FromString(key);
         PyList_Append(self->keys, o);
         Py_DECREF(o);
     }
@@ -393,7 +411,7 @@ PyObject *ObjectRow_PyObject__values(ObjectRow_PyObject *self, PyObject *args, P
 {
     PyObject *keys, *values;
     int i;
-    if (!do_unpickle(self))
+    if (self->has_pickle && !self->unpickled && !do_unpickle(self))
         PyErr_Clear();
 
     keys = ObjectRow_PyObject__keys(self, NULL, NULL);
@@ -436,6 +454,19 @@ PyObject *ObjectRow_PyObject__get(ObjectRow_PyObject *self, PyObject *args, PyOb
     return value;
 }
 
+PyObject *ObjectRow_PyObject__has_key(ObjectRow_PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    PyObject *key, *keys;
+    int has_key;
+    if (!PyArg_ParseTuple(args, "O", &key))
+        return NULL;
+    keys = ObjectRow_PyObject__keys(self, NULL, NULL);
+    has_key = PySequence_Contains(keys, key);
+    Py_DECREF(keys);
+    return PyBool_FromLong(has_key);
+}
+
+
 PyMappingMethods row_as_mapping = {
     /* mp_length        */ (inquiry)ObjectRow_PyObject__length,
     /* mp_subscript     */ (binaryfunc)ObjectRow_PyObject__subscript,
@@ -447,6 +478,7 @@ PyMethodDef ObjectRow_PyObject_methods[] = {
     {"values", (PyCFunction) ObjectRow_PyObject__values, METH_VARARGS },
     {"items", (PyCFunction) ObjectRow_PyObject__items, METH_VARARGS },
     {"get", (PyCFunction) ObjectRow_PyObject__get, METH_VARARGS },
+    {"has_key", (PyCFunction) ObjectRow_PyObject__has_key, METH_VARARGS },
     {NULL, NULL}
 };
 

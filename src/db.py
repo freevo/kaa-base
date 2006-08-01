@@ -1,19 +1,22 @@
 import string, os, time, re, math, cPickle
 from strutils import str_to_unicode
+import _weakref
 from sets import Set
 from pysqlite2 import dbapi2 as sqlite
+import kaa._objectrow
 
 __all__ = ['Database', 'QExpr', 'ATTR_SIMPLE', 'ATTR_SEARCHABLE', 'ATTR_IGNORE_CASE',
-           'ATTR_INDEXED', 'ATTR_INDEXED_IGNORE_CASE', 'ATTR_KEYWORDS', 
-           'ATTR_KEYWORDS_FILENAME', 'create_column_map', 'iter_raw_data']
+           'ATTR_INDEXED', 'ATTR_INDEXED_IGNORE_CASE', 'ATTR_KEYWORDS']
 
+SCHEMA_VERSION = 0.1
+SCHEMA_VERSION_COMPATIBLE = 0.1
 CREATE_SCHEMA = """
     CREATE TABLE meta (
         attr        TEXT UNIQUE, 
         value       TEXT
     );
     INSERT INTO meta VALUES('keywords_objectcount', 0);
-    INSERT INTO meta VALUES('version', 0.1);
+    INSERT INTO meta VALUES('version', %s);
 
     CREATE TABLE types (
         id              INTEGER PRIMARY KEY AUTOINCREMENT, 
@@ -51,10 +54,6 @@ ATTR_INDEXED             = 0x02      # Will have an SQL index
 ATTR_KEYWORDS            = 0x04      # Indexed for keyword queries
 ATTR_IGNORE_CASE         = 0x08      # Store in db as lowercase for searches.
 ATTR_INDEXED_IGNORE_CASE = ATTR_INDEXED | ATTR_IGNORE_CASE
-
-
-# XXX: deprecated, same as ATTR_KEYWORDS now
-ATTR_KEYWORDS_FILENAME = 0x04      # Treat as filename for keywords index
 
 STOP_WORDS = (
     "about", "and", "are", "but", "com", "for", "from", "how", "not", 
@@ -129,78 +128,6 @@ class QExpr(object):
 
 
 
-# Convenience functions for dealing with raw datasets.
-def create_column_map(query_info, object_type = None):
-    """
-    Takes a query_info dict (the first argument returned by Database.query_raw)
-    and returns a dictionary that maps attribute names to their corresponding
-    array index in each row entry for the given object type.  If object_type is
-    None then it uses the first object type found in the query_info.
-
-    e.g. ('foo', 'bar') returns {"foo":0, "bar":1}
-    """
-    if object_type == None:
-        object_type = query_info["columns"].keys()[0]
-
-    cols = query_info["columns"][object_type]
-    return dict(zip(cols, range(len(cols))))
-
-
-def iter_raw_data((query_info, rows), columns):
-    """
-    Takes query data (the tuple returned by Database.query_raw()) and returns
-    a generator that iterates over the rows in the result set, where each
-    iteration provides a tuple of attributes corresponding to the tuple
-    of column names in the columns parameter.
-
-    e.g. for foo,bar in iter_raw_data(data, ("foo", "bar"))
-    """
-    pickled_columns = None
-
-    if len(rows) > 0:
-        object_type = query_info["columns"].keys()[0]
-        cmap = create_column_map(query_info, object_type)
-        pickled_columns = Set(columns).difference(cmap.keys())
-
-        # If any of the requested columns are ATTR_INDEXED_IGNORE_CASE then
-        # we have to grab the pickle too because the true (original case)
-        # value is stored there.
-        attrs = query_info["attrs"][object_type]
-        flag = ATTR_INDEXED_IGNORE_CASE
-        # Get requested columns that are ATTR_INDEXED_IGNORE_CASE
-        ic_attrs = Set(columns).intersection([ x for x in attrs if attrs[x][1] & flag == flag ])
-        # Flag that indicates if we want to look for __foo attrs in the
-        # pickle.  Do this here rather than in the inner loop.
-        has_ic_attrs = len(ic_attrs) > 0
-        # Add these attributes to the list of attrs we want to grab from the
-        # pickle.
-        pickled_columns.update(ic_attrs)
-
-
-    if pickled_columns != None and len(pickled_columns) == 0:
-        # Simple case where we don't need the pickle
-        for row in rows:
-            yield [ row[cmap[col]] for col in columns ]
-
-    elif pickled_columns != None:
-        # Ugly case where some of the requested columns exist in the pickle.
-        cmap.update(dict(zip(pickled_columns, range(len(cmap), len(cmap)+len(pickled_columns)))))
-        extra_dummy = (None,)*len(pickled_columns)
-        for row in rows:
-            pickle = row[cmap["pickle"]]
-            if pickle:
-                pickled_attrs = cPickle.loads(str(pickle))
-                if has_ic_attrs:
-                    for key in [ k[2:] for k in pickled_attrs.keys() if k.startswith("__") ]:
-                        pickled_attrs[key] = pickled_attrs["__" + key]
-                        del pickled_attrs["__" + key]
-
-                extra = tuple([ pickled_attrs.get(x) for x in pickled_columns ])
-            else:
-                extra = extra_dummy
-            yield [ (row + extra)[cmap[col]] for col in columns ]
-
-
 class Database:
     def __init__(self, dbfile = None):
         if not dbfile:
@@ -223,22 +150,36 @@ class Database:
         self._cursor.execute("PRAGMA count_changes=OFF")
         self._cursor.execute("PRAGMA cache_size=50000")
 
+        class Cursor(sqlite.Cursor):
+            # XXX: ref cycle here, but weakref too slow.
+            _db = _weakref.ref(self)
+        self._db.row_factory = kaa._objectrow.ObjectRow
+        # Queries done through this cursor will use the ObjectRow row factory.
+        self._qcursor = self._db.cursor(Cursor)
+
         if not self.check_table_exists("meta"):
             self._db.close()
             self._create_db()
+        else:
+            row = self._db_query_row("SELECT value FROM meta WHERE attr='version'")
+            if float(row[0]) < SCHEMA_VERSION_COMPATIBLE:
+                raise SystemError, "Database '%s' has schema version %s; required %s" % \
+                                   (self._dbfile, row[0], SCHEMA_VERSION_COMPATIBLE)
 
         self._load_object_types()
 
 
-    def _db_query(self, statement, args = ()):
-        self._cursor.execute(statement, args)
-        rows = self._cursor.fetchall()
+    def _db_query(self, statement, args = (), cursor = None):
+        if not cursor:
+            cursor = self._cursor
+        cursor.execute(statement, args)
+        rows = cursor.fetchall()
         #print "QUERY (%d): %s" % (len(rows), statement)
         return rows
 
 
-    def _db_query_row(self, statement, args = ()):
-        rows = self._db_query(statement, args)
+    def _db_query_row(self, statement, args = (), cursor = None):
+        rows = self._db_query(statement, args, cursor)
         if len(rows) == 0:
             return None
         return rows[0]
@@ -256,7 +197,7 @@ class Database:
         except:
             pass
         f = os.popen("sqlite3 %s" % self._dbfile, "w")
-        f.write(CREATE_SCHEMA)
+        f.write(CREATE_SCHEMA % SCHEMA_VERSION)
         f.close()
         self._open_db()
 
@@ -291,6 +232,8 @@ class Database:
             new_attrs = {}
             table_needs_rebuild = False
             for attr_name, (attr_type, attr_flags) in attrs.items():
+                # FIXME: if attribute type or flags have changed, the table
+                # won't get updated.
                 if attr_name not in cur_type_attrs:
                     new_attrs[attr_name] = attr_type, attr_flags
                     if attr_flags:
@@ -493,15 +436,15 @@ class Database:
         for argument details.  Returns number of objects deleted.
         """
         attrs["attrs"] = ["id"]
-        query_info, results = self.query_raw(**attrs)
+        results = self.query(**attrs)
         if len(results) == 0:
             return 0
 
         results_by_type = {}
-        for object_type, object_id in results:
-            if object_type not in results_by_type:
-                results_by_type[object_type] = []
-            results_by_type[object_type].append(object_id)
+        for o in results:
+            if o["type"] not in results_by_type:
+                results_by_type[o["type"]] = []
+            results_by_type[o["type"]].append(o["id"])
 
         return self._delete_multiple_objects(results_by_type)
 
@@ -551,7 +494,7 @@ class Database:
         if parent:
             attrs["parent_type"] = self._get_type_id(parent[0])
             attrs["parent_id"] = parent[1]
-        #attrs["name"] = object_name
+
         query, values = self._make_query_from_attrs("add", attrs, object_type)
         self._db_query(query, values)
 
@@ -567,15 +510,18 @@ class Database:
         words = self._score_words(word_parts)
         self._add_object_keywords((object_type, attrs["id"]), words)
 
-        # For attributes which aren't specified in kwargs, add them to the
-        # dict we're about to return, setting default value to None.
-        for name, (attr_type, flags) in type_attrs.items():
-            if name not in attrs and name != "pickle":
-                attrs[name] = None
-
         if self._type_has_keyword_attr(object_type):
             self._db_query("UPDATE meta SET value=value+1 WHERE attr='keywords_objectcount'")
-        return attrs
+
+        class DummyCursor:
+            _db = _weakref.ref(self)
+            # List of non ATTR_SIMPLE attributes for this object type.
+            description = [None] + [ (x[0],) for x in type_attrs.items() if x[1][1] != 0 ]
+
+        # Create a row that matches the description order.
+        row = [object_type] + [ attrs.pop(x[0], None) for x in DummyCursor.description[1:] ]
+        # Return the ObjectRow for this object.
+        return kaa._objectrow.ObjectRow(DummyCursor(), row, attrs)
 
 
     def update_object(self, (object_type, object_id), parent = None, **attrs):
@@ -603,6 +549,8 @@ class Database:
 
         # Get the pickle for this object, as well as all keyword attributes
         # if we need a keyword reindex.  First construct the query.
+        # FIXME: we don't need to get the pickle if no ATTR_SIMPLE attrs
+        # are being updated.
         q = "SELECT pickle%%s FROM objects_%s WHERE id=?" % object_type
         if needs_keyword_reindex:
             q %= "," + ",".join(keyword_columns)
@@ -651,7 +599,7 @@ class Database:
         self._db.commit()
 
 
-    def query_raw(self, **attrs):
+    def query(self, **attrs):
         """
         Query the database for objects matching all of the given attributes
         (specified in kwargs).  There are a few special kwarg attributes:
@@ -674,15 +622,9 @@ class Database:
                      specified, attrs kwarg must also be given, and no
                      specified attrs can be ATTR_SIMPLE.
 
-        Return value is a tuple (columns, results), where columns is a 
-        dictionary that maps object types to a tuple of column names, and
-        results is a list of rows that satisfy the query where each item
-        in each row corresponds to the item in the column tuple for that
-        type.  The first item in each results row is the name of the type,
-        so for a given row, you can get the column names by columns[row[0]].
-
-        This "raw" tuple can be passed to normalize_query_results() which will
-        return a list of dicts for more convenient use.
+        Return value is a list of ObjectRow objects, which behave like
+        dictionaries in most respects.  Attributes defined in the object
+        type are accessible, as well as 'type' and 'parent' keys.
         """
         query_info = {}
         parents = []
@@ -712,7 +654,7 @@ class Database:
 
             # No matches to our keyword search, so we're done.
             if not kw_results:
-                return {}, []
+                return []
 
             kw_results_by_type = {}
             for tp, id in kw_results:
@@ -859,7 +801,8 @@ class Database:
                 q.append(" LIMIT %d" % result_limit)
 
             q = " ".join(q)
-            rows = self._db_query(q, query_values)
+            rows = self._db_query(q, query_values, cursor = self._qcursor)
+
             if result_limit != None:
                 results.extend(rows[:result_limit - len(results) + 1])
             else:
@@ -886,75 +829,8 @@ class Database:
             # will be the computed id for that row.
             results.sort(lambda a, b: cmp(kw_results_order[a[1]], kw_results_order[b[1]]))
 
-        return query_info, results
+        return results
 
-
-    def query(self, **attrs):
-        """
-        Performs a query as in query_raw() and returns normalized results.
-        """
-        return self.normalize_query_results(self.query_raw(**attrs))
-
-
-    def normalize_query_results(self, (query_info, results)):
-        """
-        Takes a results tuple as returned from query() and converts to a list
-        of dicts.  Each result dict is given a "type" entry which corresponds 
-        to the type name of that object.  This function also unpickles the
-        pickle contained in the row, and creates a "parent" key that holds
-        (parent type name, parent id).
-        """
-        if len(results) == 0:
-            return []
-
-        t0=time.time()
-        new_results = []
-        # Map object type ids to names.
-        object_type_ids = dict( [(b[0],a) for a,b in self._object_types.items()] )
-        # For type converstion, currently just used for converting buffer 
-        # values to strings.
-        type_maps = {}
-        # Maps all type attributes to None
-        attrs_defaults = {}
-        for type_name, (type_id, type_attrs, type_idx) in self._object_types.items():
-            col_desc = query_info["columns"].get(type_name)
-            if col_desc:
-                attrs_defaults[type_name] = dict(zip(type_attrs.keys(), (None,)*len(type_attrs)))
-                type_maps[type_name] = [ 
-                    (x, str) for x in type_attrs if type_attrs[x][0] == str 
-                                                    and x in col_desc 
-                ]
-
-        pt=0
-        for row in results:
-            type_name = row[0]
-            col_desc = query_info["columns"][type_name]
-            result = attrs_defaults[type_name].copy()
-            result.update(dict(zip(col_desc, row)))
-            for attr, tp in type_maps[type_name]:
-                result[attr] = tp(result[attr])
-
-            if result["pickle"]:
-                tx=time.time()
-                pickle = cPickle.loads(str(result["pickle"]))
-                # Any keys in the pickle that are prefixed with __ are 
-                # saved values of ATTR_INDEXED_IGNORE_CASE attributes before
-                # their case got lowered.
-                for key in [ k[2:] for k in pickle.keys() if k.startswith("__") ]:
-                    pickle[key] = pickle["__" + key]
-                    del pickle["__" + key]
-
-                result.update(pickle)
-                pt+=time.time()-tx
-            del result["pickle"]
-
-            # Add convenience parent key, mapping parent_type id to name.
-            if result.get("parent_type"):
-                result["parent"] = (object_type_ids.get(result["parent_type"]), 
-                                    result["parent_id"])
-            new_results.append(result)
-        #print "Normalize took", time.time()-t0, pt, pt/(time.time()-t0)*100.0
-        return new_results
 
 
     def _score_words(self, text_parts):

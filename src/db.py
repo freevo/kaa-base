@@ -1,9 +1,9 @@
-import string, os, time, re, math, cPickle
+import string, os, time, re, math, cPickle, copy_reg
 from strutils import str_to_unicode
 import _weakref
 from sets import Set
 from pysqlite2 import dbapi2 as sqlite
-import kaa._objectrow
+from kaa._objectrow import ObjectRow
 
 __all__ = ['Database', 'QExpr', 'ATTR_SIMPLE', 'ATTR_SEARCHABLE', 'ATTR_IGNORE_CASE',
            'ATTR_INDEXED', 'ATTR_INDEXED_IGNORE_CASE', 'ATTR_KEYWORDS']
@@ -130,6 +130,16 @@ class QExpr(object):
                    (self._operand,)
 
 
+# Register handlers for pickling ObjectRow objects.
+
+def _pickle_ObjectRow(o):
+    return _unpickle_ObjectRow, (o.items(),)
+
+def _unpickle_ObjectRow(items):
+    return ObjectRow(None, None, dict(items))
+
+copy_reg.pickle(ObjectRow, _pickle_ObjectRow, _unpickle_ObjectRow)
+
 
 class Database:
     def __init__(self, dbfile = None):
@@ -154,9 +164,8 @@ class Database:
         self._cursor.execute("PRAGMA cache_size=50000")
 
         class Cursor(sqlite.Cursor):
-            # XXX: ref cycle here, but weakref too slow.
             _db = _weakref.ref(self)
-        self._db.row_factory = kaa._objectrow.ObjectRow
+        self._db.row_factory = ObjectRow
         # Queries done through this cursor will use the ObjectRow row factory.
         self._qcursor = self._db.cursor(Cursor)
 
@@ -524,7 +533,7 @@ class Database:
         # Create a row that matches the description order.
         row = [object_type] + [ attrs.pop(x[0], None) for x in DummyCursor.description[1:] ]
         # Return the ObjectRow for this object.
-        return kaa._objectrow.ObjectRow(DummyCursor(), row, attrs)
+        return ObjectRow(DummyCursor(), row, attrs)
 
 
     def update_object(self, (object_type, object_id), parent = None, **attrs):

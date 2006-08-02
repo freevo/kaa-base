@@ -49,13 +49,24 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
     if (!PyArg_ParseTuple(args, "OO|O", &cursor, &row, &pickle_dict))
         return -1;
 
-    self->unpickled = 0;
-    self->pickle = 0;
-    self->has_pickle = 0;
-    self->keys = 0;
-    self->parent = 0;
+    if (row == Py_None || cursor == Py_None) {
+        /* If row or cursor weren't specified, then we require the third arg
+         * (pickle_dict) be a dictionary, and we basically pass behave as this
+         * dict.  We do this for example when pickling an ObjectRow.
+         */
+        if (pickle_dict == 0 || !PyDict_Check(pickle_dict)) {
+            PyErr_Format(PyExc_ValueError, "pickle dict must be specified when cursor or row is None");
+            return -1;
+        }
+        self->pickle = pickle_dict;
+        Py_INCREF(self->pickle);
+        return 0;
+    }
+
     self->row = row;
-    Py_INCREF(row);
+    self->pickle = Py_None;
+    Py_INCREF(self->row);
+    Py_INCREF(self->pickle);
 
     self->desc = PyObject_GetAttrString(cursor, "description"); // new ref
     self->db = PyObject_GetAttrString(cursor, "_db"); // new ref
@@ -152,7 +163,8 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
         PySequence_Fast_GET_ITEM(self->row, self->query_info->pickle_idx) != Py_None)
         self->has_pickle = 1;
 
-    if (pickle_dict) {
+    if (pickle_dict && pickle_dict != Py_None) {
+        Py_DECREF(self->pickle);
         self->pickle = pickle_dict;
         Py_INCREF(self->pickle);
         self->has_pickle = self->unpickled = 1;
@@ -171,12 +183,12 @@ void ObjectRow_PyObject__dealloc(ObjectRow_PyObject *self)
             free(self->query_info);
         }
     }
-    Py_DECREF(self->type_name);
-    Py_DECREF(self->db);
-    Py_DECREF(self->desc);
-    Py_DECREF(self->row);
-    Py_XDECREF(self->attrs);
+    Py_XDECREF(self->type_name);
+    Py_XDECREF(self->db);
+    Py_XDECREF(self->desc);
+    Py_XDECREF(self->row);
     Py_XDECREF(self->pickle);
+    Py_XDECREF(self->attrs);
     Py_XDECREF(self->keys);
     Py_XDECREF(self->parent);
 
@@ -185,21 +197,23 @@ void ObjectRow_PyObject__dealloc(ObjectRow_PyObject *self)
 
 int do_unpickle(ObjectRow_PyObject *self)
 {
+    PyObject *result;
     if (!self->has_pickle) {
         PyErr_Format(PyExc_KeyError, "Attribute exists but row pickle is not available");
         return 0;
     }
     PyObject *pickle_str = PyObject_Str(PySequence_Fast_GET_ITEM(self->row, self->query_info->pickle_idx));
     PyObject *args = Py_BuildValue("(O)", pickle_str);
-    self->pickle = PyEval_CallObject(cPickle_loads, args);
+    result = PyEval_CallObject(cPickle_loads, args);
     Py_DECREF(args);
     Py_DECREF(pickle_str);
 
-    if (!self->pickle) {
+    if (!result) {
         self->has_pickle = 0;
         return 0;
     }
-
+    Py_DECREF(self->pickle);
+    self->pickle = result;
     self->unpickled = 1;
     return 1;
 }
@@ -224,6 +238,18 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
           skey2[80]; // we'll have a problem if attributes are >= 78 chars :)
     ObjectAttribute *attr = 0;
     PyObject *value;
+
+    if (!self->query_info) {
+        // If no query_info available, then we work strictly from the pickle
+        // dict, which init() requires be available.
+        value = PyDict_GetItem(self->pickle, key);
+        if (!value) {
+            PyErr_SetObject(PyExc_KeyError, key);
+            return NULL;
+        }
+        Py_INCREF(value);
+        return value;
+    }
 
     // String is the more common case.
     if (PyString_Check(key)) {
@@ -381,6 +407,11 @@ void attrs_iter(gpointer key, ObjectAttribute *attr, ObjectRow_PyObject *self)
 PyObject *ObjectRow_PyObject__keys(ObjectRow_PyObject *self, PyObject *args, PyObject *kwargs)
 {
     PyObject *key, *parent_type, *parent_id;
+
+    if (!self->query_info)
+        // No query_info means we work just from pickle dict.
+        return PyMapping_Keys(self->pickle);
+
     if (self->keys) {
         Py_INCREF(self->keys);
         return self->keys;
@@ -411,6 +442,11 @@ PyObject *ObjectRow_PyObject__values(ObjectRow_PyObject *self, PyObject *args, P
 {
     PyObject *keys, *values;
     int i;
+
+    if (!self->query_info)
+        // No query_info means we work just from pickle dict.
+        return PyMapping_Values(self->pickle);
+
     if (self->has_pickle && !self->unpickled && !do_unpickle(self))
         PyErr_Clear();
 
@@ -482,11 +518,18 @@ PyMethodDef ObjectRow_PyObject_methods[] = {
     {NULL, NULL}
 };
 
+static PyMemberDef ObjectRow_PyObject_members[] = {
+    {"_row", T_OBJECT_EX, offsetof(ObjectRow_PyObject, row), 0, "pysqlite row"},
+    {"_description", T_OBJECT_EX, offsetof(ObjectRow_PyObject, desc), 0, "pysqlite cursor description"},
+    {"_pickle", T_OBJECT_EX, offsetof(ObjectRow_PyObject, pickle), 0, "Unpickled dictionary"},
+    {NULL}
+};
+
 
 PyTypeObject ObjectRow_PyObject_Type = {
     PyObject_HEAD_INIT(NULL)
     0,                          /* ob_size */
-    "ObjectRow",                /* tp_name */
+    "kaa.db.ObjectRow",                /* tp_name */
     sizeof(ObjectRow_PyObject),  /* tp_basicsize */
     0,                          /* tp_itemsize */
     (destructor) ObjectRow_PyObject__dealloc,        /* tp_dealloc */
@@ -513,7 +556,7 @@ PyTypeObject ObjectRow_PyObject_Type = {
     0,                          /* tp_iter */
     0,                          /* tp_iternext */
     ObjectRow_PyObject_methods, /* tp_methods */
-    0,                          /* tp_members */
+    ObjectRow_PyObject_members, /* tp_members */
     0,                          /* tp_getset */
     0,                          /* tp_base */
     0,                          /* tp_dict */

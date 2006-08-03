@@ -30,7 +30,7 @@ def _socket_remove(id, condition = 0):
     return nf_socket_remove(id, nf_conditions[condition])
 
 
-def init( module = None ):
+def init( module = None, **options ):
     global timer_add
     global socket_add
     global dispatcher_add
@@ -67,11 +67,7 @@ def init( module = None ):
 
         if getattr(notifier, module.upper()) is not None:
             # use the selected module
-            notifier.init(getattr(notifier, module.upper()))
-            if module.upper() == 'GTK':
-                # add gtk thread support
-                import gobject
-                gobject.threads_init()
+            notifier.init(getattr(notifier, module.upper()), **options)
         elif module:
             raise AttributeError('no notifier module %s' % module)
 

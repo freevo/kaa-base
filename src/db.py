@@ -10,6 +10,9 @@ __all__ = ['Database', 'QExpr', 'ATTR_SIMPLE', 'ATTR_SEARCHABLE', 'ATTR_IGNORE_C
 
 if sqlite.version < '2.1.0':
     raise ImportError('pysqlite 2.1.0 or higher required')
+if sqlite.sqlite_version < '3.3.0':
+    raise ImportError('sqlite 3.3.0 or higher required')
+    
 
 SCHEMA_VERSION = 0.1
 SCHEMA_VERSION_COMPATIBLE = 0.1

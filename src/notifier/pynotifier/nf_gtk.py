@@ -27,7 +27,6 @@
 """Simple mainloop that watches sockets and timers."""
 
 import gobject
-import gtk
 
 import dispatch
 import log
@@ -35,6 +34,10 @@ import log
 IO_READ = gobject.IO_IN
 IO_WRITE = gobject.IO_OUT
 IO_EXCEPT = gobject.IO_ERR
+
+_options = {
+    'x11' : True,
+}
 
 # map of Sockets/Methods -> GTK source IDs
 _gtk_socketIDs = {}
@@ -88,15 +91,28 @@ def timer_remove( id ):
 dispatcher_add = dispatch.dispatcher_add
 dispatcher_remove = dispatch.dispatcher_remove
 
+_mainloop = None
+_step = None
+
 def step( sleep = True, external = True ):
-    gtk.main_iteration_do( block = sleep )
+    global _step
+    _step( sleep )
     if external:
         dispatch.dispatcher_run()
 
 def loop():
-    """Execute main loop forver."""
+    """Execute main loop forever."""
     while 1:
         step()
 
 def _init():
+    global _step, _mainloop
+
+    if _options[ 'x11' ] == True:
+	import gtk
+	_step = gtk.main_iteration_do
+    else:
+	_mainloop = gobject.main_context_default()
+	_step = _mainloop.iteration
+
     gobject.threads_init()

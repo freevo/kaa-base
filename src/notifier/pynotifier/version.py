@@ -5,7 +5,7 @@
 #
 # version information
 #
-# $Id: version.py 95 2006-07-16 17:52:36Z crunchy $
+# $Id: version.py 101 2006-08-02 20:03:22Z crunchy $
 #
 # Copyright (C) 2004, 2005, 2006
 #	Andreas Büsching <crunchy@bitkipper.net>
@@ -26,7 +26,7 @@
 
 major_number    = 0
 minor_number    = 5
-revision_number = 0
+revision_number = 1
 extension       = ''
 
 VERSION = "%d.%d.%d%s" % ( major_number, minor_number,

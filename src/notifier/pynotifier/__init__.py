@@ -52,7 +52,7 @@ IO_READ = None
 IO_WRITE = None
 IO_EXCEPT = None
 
-def init( type = GENERIC ):
+def init( model = GENERIC, **kwargs ):
     global timer_add
     global socket_add
     global dispatcher_add
@@ -62,17 +62,17 @@ def init( type = GENERIC ):
     global loop, step
     global IO_READ, IO_WRITE, IO_EXCEPT
 
-    if type == GENERIC:
+    if model == GENERIC:
         import nf_generic as nf_impl
-    elif type == QT:
+    elif model == QT:
         import nf_qt as nf_impl
-    elif type == GTK:
+    elif model == GTK:
         import nf_gtk as nf_impl
-    elif type == WX:
+    elif model == WX:
         import nf_wx as nf_impl
 	log.warn( 'the WX notifier is deprecated and is no longer maintained' )
     else:
-        raise Exception( 'unknown notifier type' )
+        raise Exception( 'unknown notifier model' )
 
     socket_add = nf_impl.socket_add
     socket_remove = nf_impl.socket_remove
@@ -85,6 +85,11 @@ def init( type = GENERIC ):
     IO_READ = nf_impl.IO_READ
     IO_WRITE = nf_impl.IO_WRITE
     IO_EXCEPT = nf_impl.IO_EXCEPT
+
+    if hasattr( nf_impl, '_options' ) and type( nf_impl._options ) == dict:
+	for k, v in kwargs.items():
+	    if nf_impl._options.has_key( k ):
+		nf_impl._options[ k ] = v
 
     if hasattr( nf_impl, '_init' ):
         nf_impl._init()

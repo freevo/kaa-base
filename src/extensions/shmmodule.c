@@ -302,7 +302,7 @@ PyShmMemory_detach(self, args)
     if (!PyArg_NoArgs(args))
 	return NULL;
     if (self->addr != NULL) {
-	refresh_memory_status(self);
+	//refresh_memory_status(self);
 	if (shmdt(self->addr) != 0)
 	    return PyShm_Err();
 	self->addr = NULL;		/* mark as detached */

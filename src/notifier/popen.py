@@ -170,8 +170,9 @@ class Process(object):
         Write a string to the app.
         """
         try:
-            self.child.tochild.write(line)
-            self.child.tochild.flush()
+            if self.child:
+                self.child.tochild.write(line)
+                self.child.tochild.flush()
         except (IOError, ValueError):
             pass
 
@@ -181,6 +182,7 @@ class Process(object):
         Return True if the app is still running
         """
         return self.child and not self.__dead
+
 
     def set_stop_command(self, cmd):
         """
@@ -194,6 +196,7 @@ class Process(object):
         """
         assert(callable(cmd) or type(cmd) in (str, unicode) or cmd == None)
         self._stop_cmd = cmd
+
 
     def stop( self, cmd = None ):
         """
@@ -304,6 +307,8 @@ class Process(object):
         # close IO handler and kill timer
         self.stdout.close()
         self.stderr.close()
+        self.child.tochild.close()
+        self.child = None
         if self.__kill_timer:
             notifier.timer_remove( self.__kill_timer )
         self.signals["completed"].emit(status >> 8)

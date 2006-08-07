@@ -28,7 +28,13 @@
 
 __all__ = [ ]
 
-import sys, os, stat, logging
+import sys
+import os
+import stat
+import time
+import logging
+
+import kaa
 
 # get logging object
 log = logging.getLogger('kaa')
@@ -62,7 +68,28 @@ def which(file, path = None):
     return None
 
 
-def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None, pidfile=None, exit = True):
+class Lock(object):
+    def __init__(self):
+        self._read, self._write = os.pipe()
+
+    def release(self, exitcode):
+        os.write(self._write, str(exitcode))
+        os.close(self._read)
+        os.close(self._write)
+
+    def wait(self):
+        exitcode = os.read(self._read, 1)
+        os.close(self._read)
+        os.close(self._write)
+        return int(exitcode)
+    
+    def ignore(self):
+        os.close(self._read)
+        os.close(self._write)
+
+            
+def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None,
+              pidfile=None, exit = True, wait = False):
     """
     Does a double-fork to daemonize the current process using the technique
     described at http://www.erlenstar.demon.co.uk/unix/faq_2.html#SEC16 .
@@ -71,10 +98,18 @@ def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None, pidfile=
     the pid of the forked child.
     """
 
+    lock = 0
+    if wait:
+        lock = Lock()
+    
     # First fork.
     try: 
         pid = os.fork() 
         if pid > 0: 
+            if wait:
+                exitcode = lock.wait()
+                if exitcode:
+                    sys.exit(exitcode)
             if exit:
                 # Exit from the first parent.
                 sys.exit(0)
@@ -106,11 +141,13 @@ def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None, pidfile=
     stdout = file(stdout, 'a+')
     stderr = file(stderr, 'a+', 0)
     if pidfile: 
-        file(pidfile, 'w+').write("%d\n" % os.getpid())
-    
+        pidfile = file(pidfile, 'w+')
+        pidfile.write("%d\n" % os.getpid())
+        pidfile.close()
+
     # Remap standard fds.
     os.dup2(stdin.fileno(), sys.stdin.fileno())
     os.dup2(stdout.fileno(), sys.stdout.fileno())
     os.dup2(stderr.fileno(), sys.stderr.fileno())
 
-    return 0
+    return lock

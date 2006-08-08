@@ -449,7 +449,7 @@ class Channel(object):
             # RPC return
             payload = cPickle.loads(payload)
             callback = self._rpc_in_progress.get(seq)
-            if not callback:
+            if callback is None:
                 return True
             del self._rpc_in_progress[seq]
             callback.finished(payload)
@@ -459,7 +459,7 @@ class Channel(object):
             # Exception for remote call
             error = cPickle.loads(payload)
             callback = self._rpc_in_progress.get(seq)
-            if not callback:
+            if callback is None:
                 return True
             del self._rpc_in_progress[seq]
             callback.exception(error)

@@ -221,7 +221,7 @@ int do_unpickle(ObjectRow_PyObject *self)
 static inline PyObject *
 convert(ObjectRow_PyObject *self, ObjectAttribute *attr, PyObject *value)
 {
-    if (attr->type == (PyObject *)&PyString_Type)  {
+    if (attr->type == (PyObject *)&PyString_Type && value != Py_None)  {
         /* Attributes of type 'str' are stored as buffers in sqlite, so we
          * convert back to str here.
          */

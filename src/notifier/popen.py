@@ -19,28 +19,28 @@
 # to stop all running processes.
 #
 # -----------------------------------------------------------------------------
-# kaa-notifier - Notifier Wrapper
-# Copyright (C) 2005 Dirk Meyer, et al.
+# kaa.notifier - Mainloop and callbacks
+# Copyright (C) 2005, 2006 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
 #
 # Based on code by Krister Lagerstrom and Andreas Büsching
-# Please see the file doc/AUTHORS for a complete list of authors.
+# Please see the file AUTHORS for a complete list of authors.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
 #
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of MER-
-# CHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
-# Public License for more details.
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
 
@@ -124,10 +124,10 @@ class Process(object):
             else:
                 curarg += c
             last = c
-    
+
         if curarg:
             cmdlist.append(curarg)
-    
+
         return cmdlist
 
 
@@ -208,7 +208,7 @@ class Process(object):
             return
         if not is_mainthread():
             return MainThreadCallback(self.stop, cmd)()
-        
+
         self.stopping = True
         cmd = cmd or self._stop_cmd
 
@@ -453,7 +453,7 @@ class Watcher(object):
                 # call stopped callback
                 callback = self.__processes[p]
                 # Delete the callback from the processes list before calling
-                # it, since it's possible the callback could call append 
+                # it, since it's possible the callback could call append
                 # again.
                 del self.__processes[p]
                 callback(status)
@@ -477,7 +477,7 @@ class Watcher(object):
             p.stop()
         self.status = 'stopping'
 
-        
+
     def killall( self ):
         # prevent recursion
         if not self.status in ('running', 'stopping'):
@@ -485,7 +485,7 @@ class Watcher(object):
         # make sure every child is stopped
         self.stopall()
         self.status = 'stopped'
-        
+
         # now wait until all childs are dead
         while self.__processes:
             self.check()

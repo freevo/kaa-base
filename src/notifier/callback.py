@@ -5,32 +5,34 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# kaa-notifier - Notifier Wrapper
-# Copyright (C) 2005 Dirk Meyer, et al.
+# kaa.notifier - Mainloop and callbacks
+# Copyright (C) 2005, 2006 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
+#                Jason Tackaberry <tack@sault.org>
 #
-# Please see the file doc/AUTHORS for a complete list of authors.
+# Please see the file AUTHORS for a complete list of authors.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
 #
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of MER-
-# CHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
-# Public License for more details.
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
 
 __all__ = [ 'Callback', 'WeakCallback', 'Signal' ]
 
+# Python imports
 import _weakref
 import types
 import sys
@@ -42,9 +44,9 @@ log = logging.getLogger('notifier')
 
 # Variable that is set to True (via atexit callback) when python interpreter
 # is in the process of shutting down.  If we're interested if the interpreter
-# is shutting down, we don't want to test that this variable is True, but 
+# is shutting down, we don't want to test that this variable is True, but
 # rather that it is not False, because as it is prefixed with an underscore,
-# the interpreter might already have deleted this variable in which case it 
+# the interpreter might already have deleted this variable in which case it
 # is None.
 _python_shutting_down = False
 
@@ -143,7 +145,7 @@ class Callback(object):
                 cb_kwargs.update(kwargs)
 
         return cb_args, cb_kwargs
-            
+
 
     def __call__(self, *args, **kwargs):
         """
@@ -182,7 +184,7 @@ class Callback(object):
 
 
 class NotifierCallback(Callback):
-    
+
     def __init__(self, callback, *args, **kwargs):
         super(NotifierCallback, self).__init__(callback, *args, **kwargs)
         self._id = None
@@ -192,7 +194,7 @@ class NotifierCallback(Callback):
             "unregistered": Signal()
         }
 
-           
+
     def active(self):
         # callback is active if id is not None and python is not shutting down
         # if python is in shutdown, notifier unregister could crash
@@ -220,7 +222,7 @@ class NotifierCallback(Callback):
             try:
                 ret = super(NotifierCallback, self).__call__(*args, **kwargs)
             except:
-                # If any of the exception handlers return True, then the 
+                # If any of the exception handlers return True, then the
                 # object is not unregistered from the Notifier.  Otherwise
                 # ret = False and it will unregister.
                 ret = self.signals["exception"].emit(sys.exc_info()[1])
@@ -269,9 +271,9 @@ class WeakCallback(Callback):
         if _python_shutting_down != False:
             # Shutdown
             return False
-        
+
         save_args, save_kwargs = self._args, self._kwargs
-    
+
         # Remove weakrefs from user data before invoking the callback.
         self._args = unweakref_data(self._args)
         self._kwargs = unweakref_data(self._kwargs)
@@ -279,7 +281,7 @@ class WeakCallback(Callback):
         result = super(WeakCallback, self).__call__(*args, **kwargs)
 
         self._args, self._kwargs = save_args, save_kwargs
-    
+
         return result
 
 
@@ -344,7 +346,7 @@ class Signal(object):
 
         return False
 
-    def _connect(self, callback, args = (), kwargs = {}, once = False, 
+    def _connect(self, callback, args = (), kwargs = {}, once = False,
                  weak = False, pos = -1):
 
         assert(callable(callback))
@@ -486,5 +488,5 @@ class Signal(object):
 def _shutdown_weakref_destroyed():
     global _python_shutting_down
     _python_shutting_down = True
-    
+
 atexit.register(_shutdown_weakref_destroyed)

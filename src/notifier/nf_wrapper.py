@@ -1,3 +1,35 @@
+# -*- coding: iso-8859-1 -*-
+# -----------------------------------------------------------------------------
+# nf_wrapper.py - Wrapper to notifier calls to delay the real import
+# -----------------------------------------------------------------------------
+# $Id$
+#
+# -----------------------------------------------------------------------------
+# kaa.notifier - Mainloop and callbacks
+# Copyright (C) 2006 Dirk Meyer, Jason Tackaberry, et al.
+#
+# First Version: Dirk Meyer <dmeyer@tzi.de>
+# Maintainer:    Dirk Meyer <dmeyer@tzi.de>
+#
+# Please see the file AUTHORS for a complete list of authors.
+#
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
+#
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
+#
+# -----------------------------------------------------------------------------
+
+# Python imports
 import logging
 import sys
 
@@ -44,13 +76,13 @@ def init( module = None, **options ):
 
     if not isinstance(loop, _Wrapper):
         raise RuntimeError('notifier loop already running')
-    
+
     try:
         import notifier
     except ImportError:
         # use our own copy of pynotifier
         import pynotifier as notifier
-        
+
     if notifier.loop:
         # pyNotifier should be used and already active
         log = logging.getLogger('notifier')
@@ -84,7 +116,7 @@ def init( module = None, **options ):
     nf_conditions = [ notifier.IO_READ, notifier.IO_WRITE ]
     socket_remove = _socket_remove
     socket_add = _socket_add
-    
+
     dispatcher_add = notifier.dispatcher_add
     dispatcher_remove = notifier.dispatcher_remove
 

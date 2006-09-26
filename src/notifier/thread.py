@@ -21,31 +21,33 @@
 # wrap a function in a thread.
 #
 # -----------------------------------------------------------------------------
-# kaa-notifier - Notifier Wrapper
-# Copyright (C) 2005 Dirk Meyer, et al.
+# kaa.notifier - Mainloop and callbacks
+# Copyright (C) 2005, 2006 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
+#                Jason Tackaberry <tack@sault.org>
 #
-# Please see the file doc/AUTHORS for a complete list of authors.
+# Please see the file AUTHORS for a complete list of authors.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
 #
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of MER-
-# CHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
-# Public License for more details.
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'MainThreadCallback', 'Thread', 'is_mainthread', 'wakeup', 'set_current_as_mainthread' ]
+__all__ = [ 'MainThreadCallback', 'Thread', 'is_mainthread', 'wakeup',
+            'set_current_as_mainthread' ]
 
 # python imports
 import sys
@@ -87,11 +89,11 @@ class MainThreadCallback(Callback):
     def _set_exception(self, e):
         self._sync_exception = e
         self._wakeup()
-        
+
     def _wakeup(self):
         self.lock.acquire(False)
         self.lock.release()
-        
+
     def __call__(self, *args, **kwargs):
         if threading.currentThread() == _thread_notifier_mainthread:
             return super(MainThreadCallback, self).__call__(*args, **kwargs)
@@ -128,9 +130,9 @@ class MainThreadCallback(Callback):
 
 class Thread(threading.Thread):
     """
-    Notifier aware wrapper for threads. When a thread is started, it is impossible to
-    fork the current process into a second one without exec both using the notifier
-    main loop because of the shared _thread_notifier_pipe.
+    Notifier aware wrapper for threads. When a thread is started, it is
+    impossible to fork the current process into a second one without exec both
+    using the notifier main loop because of the shared _thread_notifier_pipe.
     """
     def __init__(self, function, *args, **kargs):
         threading.Thread.__init__(self)
@@ -142,7 +144,7 @@ class Thread(threading.Thread):
             "completed": Signal(),
             "exception": Signal()
         }
-        
+
     def _emit_and_join(self, signal, arg):
         """
         Run callback signals and join dead thread.
@@ -180,10 +182,11 @@ _thread_notifier_mainthread = threading.currentThread()
 _thread_notifier_lock = threading.Lock()
 _thread_notifier_queue = []
 
-# For MainThread* callbacks. The pipe will be created when it is used the first time.
-# This solves a nasty bug when you fork() into a second notifier based process without
-# exec. If you have this pipe, communication will go wrong.
+# For MainThread* callbacks. The pipe will be created when it is used the first
+# time. This solves a nasty bug when you fork() into a second notifier based
+# process without exec. If you have this pipe, communication will go wrong.
 _thread_notifier_pipe = None
+
 def _create_thread_notifier_pipe():
     global _thread_notifier_pipe
     log.info('create thread notifier pipe')
@@ -202,13 +205,13 @@ def wakeup():
         _create_thread_notifier_pipe()
     if len(_thread_notifier_queue) == 0:
         os.write(_thread_notifier_pipe[1], "1")
- 
-  
+
+
 def set_current_as_mainthread():
     global _thread_notifier_mainthread
     _thread_notifier_mainthread = threading.currentThread()
- 
-    
+
+
 def _thread_notifier_run_queue(fd):
     global _thread_notifier_queue
     try:

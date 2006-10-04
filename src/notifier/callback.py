@@ -52,7 +52,7 @@ _python_shutting_down = False
 
 
 def weakref_data(data, destroy_cb = None):
-    if type(data) in (str, int, long, types.NoneType):
+    if type(data) in (str, int, long, types.NoneType, types.FunctionType):
         # Naive optimization for common immutable cases.
         return data
     elif type(data) == types.MethodType:
@@ -73,7 +73,7 @@ def weakref_data(data, destroy_cb = None):
         for key, val in data.items():
             d[weakref_data(key)] = weakref_data(val, destroy_cb)
         return d
-    elif type(data) != types.FunctionType:
+    else:
         try:
             if destroy_cb:
                 return _weakref.ref(data, destroy_cb)

@@ -64,7 +64,7 @@ ATTR_INDEXED_IGNORE_CASE = ATTR_INDEXED | ATTR_IGNORE_CASE
 STOP_WORDS = (
     "about", "and", "are", "but", "com", "for", "from", "how", "not", 
     "some", "that", "the", "this", "was", "what", "when", "where", "who", 
-    "will", "with", "the", "www", "http", "org", "of"
+    "will", "with", "the", "www", "http", "org", "of", "on"
 )
 WORDS_DELIM = re.compile("[\W_\d]+", re.U)
 
@@ -246,14 +246,17 @@ class Database:
             cur_type_id, cur_type_attrs, cur_type_idx = self._object_types[type_name]
             new_attrs = {}
             table_needs_rebuild = False
+            changed = False
             for attr_name, (attr_type, attr_flags) in attrs.items():
-                # FIXME: if attribute type or flags have changed, the table
-                # won't get updated.
-                if attr_name not in cur_type_attrs:
+                if attr_name not in cur_type_attrs or cur_type_attrs[attr_name] != (attr_type, attr_flags):
                     new_attrs[attr_name] = attr_type, attr_flags
+                    changed = True
                     if attr_flags:
                         # New attribute isn't simple, needs to alter table.
                         table_needs_rebuild = True
+
+            if not changed:
+                return
 
             # Update the attr list to merge both existing and new attributes.
             attrs = cur_type_attrs.copy()
@@ -275,6 +278,8 @@ class Database:
                     self._db_query("UPDATE types SET idx_pickle=? WHERE id=?",
                                    (buffer(cPickle.dumps(indexes, 2)), cur_type_id))
 
+                self.commit()
+                self._load_object_types()
                 return
 
             # We need to update the database now ...
@@ -322,6 +327,10 @@ class Database:
 
         if new_attrs:
             # Migrate rows from old table to new one.
+            # FIXME: this does not migrate data in the case of an attribute
+            # being changed from simple to searchable or vice versa.  In the
+            # simple->searchable case, the data will stay in the pickle; in
+            # the searchable->simple case, the data will be lost.
             columns = filter(lambda x: cur_type_attrs[x][1], cur_type_attrs.keys())
             columns = string.join(columns, ",")
             self._db_query("INSERT INTO %s_tmp (%s) SELECT %s FROM %s" % \
@@ -354,6 +363,7 @@ class Database:
 
         # Create multi-column indexes; indexes value has already been verified.
         self._register_create_multi_indexes(indexes, table_name)
+        self.commit()
 
 
     def _load_object_types(self):

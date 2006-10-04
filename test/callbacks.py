@@ -172,6 +172,8 @@ test(sig.count(), 1)
 del cb
 # XXX: with the new code this will fail until emit() is called.
 test(sig.count(), 0)
+sig.emit()
+test(sig.count(), 0)
 
 result = []
 sig.emit()
@@ -181,6 +183,7 @@ test(result, [])
 cb = Cls().meth
 sig.connect_weak(cb, Cls())
 test(sig.count(), 0)
-
+sig.emit()
+test(sig.count(), 0)
 
 # TODO: test threads too.

@@ -42,6 +42,8 @@
 PyObject *init(PyObject *self, PyObject *args)
 {
     int fd = inotify_init();
+    if (fd == -1)
+	perror("inotify_init");
     return Py_BuildValue("l", fd);
 }
 

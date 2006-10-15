@@ -2,8 +2,12 @@
 #include <glib.h>
 #include "structmember.h"
 
-#define ATTR_SIMPLE         0x00
-#define ATTR_IGNORE_CASE    0x08
+#define ATTR_SIMPLE              0x00
+#define ATTR_INDEXED             0x02
+#define ATTR_IGNORE_CASE         0x08
+#define ATTR_INDEXED_IGNORE_CASE (ATTR_INDEXED | ATTR_IGNORE_CASE)
+#define IS_ATTR_INDEXED_IGNORE_CASE(attr) ((attr & ATTR_INDEXED_IGNORE_CASE) == ATTR_INDEXED_IGNORE_CASE)
+
 
 GHashTable *queries = 0;
 PyObject *cPickle_loads, *zip;
@@ -137,7 +141,7 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
             } 
             attr->type = PySequence_Fast_GET_ITEM(value, 0);
             attr->flags = PyInt_AsLong(PySequence_Fast_GET_ITEM(value, 1));
-            if (attr->flags & ATTR_IGNORE_CASE || attr->flags == ATTR_SIMPLE)
+            if (IS_ATTR_INDEXED_IGNORE_CASE(attr->flags) || attr->flags == ATTR_SIMPLE)
                 // attribute is set to ignore case, or it's ATTR_SIMPLE, so we
                 // need to look in the pickle for this attribute.
                 attr->pickled = 1;
@@ -342,11 +346,11 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
         return NULL;
     }
 
-    if (!attr->pickled || (attr->flags & ATTR_IGNORE_CASE && attr->index >= 0 && !self->has_pickle)) 
+    if (!attr->pickled || (IS_ATTR_INDEXED_IGNORE_CASE(attr->flags) && attr->index >= 0 && !self->has_pickle)) 
         /* If the attribute isn't pickled, we return the value from the row
-         * tuple.  Also, if the attribute is ATTR_IGNORE_CASE but we don't have
-         * a pickle available, and that attribute exists in the row tuple,
-         * return what we have.
+         * tuple.  Also, if the attribute is ATTR_INDEXED_IGNORE_CASE but we
+         * don't have a pickle available, and that attribute exists in the
+         * row tuple, return what we have.
          */
         return convert(self, attr, PySequence_Fast_GET_ITEM(self->row, attr->index));
 
@@ -355,8 +359,8 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
     if (!self->unpickled && !do_unpickle(self))
         return NULL;
 
-    if (attr->flags & ATTR_IGNORE_CASE) {
-        // ATTR_IGNORE_CASE, these attributes are prefixed with __ in
+    if (IS_ATTR_INDEXED_IGNORE_CASE(attr->flags)) {
+        // ATTR_INDEXED_IGNORE_CASE, these attributes are prefixed with __ in
         // the pickled dict.
         snprintf(skey2, sizeof(skey2)-1, "__%s", skey);
         skey = skey2;

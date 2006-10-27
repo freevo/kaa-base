@@ -60,6 +60,8 @@ def create_logger(level = logging.WARNING):
     log.addHandler(handler)
 
 
+_makeRecord = logging.Logger.makeRecord
+
 def make_record(self, name, level, fn, lno, msg, args, *_args, **_kwargs):
     """
     A special makeRecord class for the logger to convert msg and args into
@@ -75,9 +77,8 @@ def make_record(self, name, level, fn, lno, msg, args, *_args, **_kwargs):
     # convert args to string
     args = tuple([ unicode_to_str(x) for x in args ])
     # call original function
-    return self._makeRecord(name, level, fn, lno, msg, args, *_args, **_kwargs)
+    return _makeRecord(self, name, level, fn, lno, msg, args, *_args, **_kwargs)
 
 # override makeRecord of a logger by our new function that can handle
 # unicode correctly and that will take care of a basic logger.
-logging.Logger._makeRecord = logging.Logger.makeRecord
 logging.Logger.makeRecord = make_record

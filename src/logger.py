@@ -59,7 +59,7 @@ def create_logger(level = logging.WARNING):
     log.addHandler(handler)
 
 
-def make_record(self, name, level, fn, lno, msg, args, exc_info):
+def make_record(self, name, level, fn, lno, msg, args, *_args, **_kwargs):
     """
     A special makeRecord class for the logger to convert msg and args into
     strings using the correct encoding if they are unicode strings. This
@@ -74,7 +74,7 @@ def make_record(self, name, level, fn, lno, msg, args, exc_info):
     # convert args to string
     args = tuple([ unicode_to_str(x) for x in args ])
     # call original LogRecord function
-    return logging.LogRecord(name, level, fn, lno, msg, args, exc_info)
+    return logging.LogRecord(name, level, fn, lno, msg, args, *_args, **_kwargs)
 
 # override makeRecord of a logger by our new function that can handle
 # unicode correctly and that will take care of a basic logger.

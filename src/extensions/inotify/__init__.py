@@ -201,7 +201,7 @@ if _inotify:
             setattr(INotify, attr, getattr(_inotify, attr))
 
     INotify.WATCH_MASK = INotify.MODIFY | INotify.ATTRIB | INotify.DELETE | \
-                         INotify.CREATE | INotify.DELETE_SELF |
+                         INotify.CREATE | INotify.DELETE_SELF | \
                          INotify.UNMOUNT | INotify.MOVE
 
     INotify.CHANGE     = INotify.MODIFY | INotify.ATTRIB

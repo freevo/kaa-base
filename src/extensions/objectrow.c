@@ -1,3 +1,34 @@
+/*
+ * ----------------------------------------------------------------------------
+ * objectrow for pysqlite used in kaa.db
+ * ----------------------------------------------------------------------------
+ * $Id$
+ *
+ * ----------------------------------------------------------------------------
+ * Copyright (C) 2006 Jason Tackaberry
+ *
+ * First Edition: Jason Tackaberry <tack@sault.org>
+ * Maintainer:    Jason Tackaberry <tack@sault.org>
+ *
+ * Please see the file AUTHORS for a complete list of authors.
+ *
+ * This library is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License version
+ * 2.1 as published by the Free Software Foundation.
+ *
+ * This library is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301 USA
+ *
+ * ----------------------------------------------------------------------------
+ */
+
 #include "Python.h"
 #include <glib.h>
 #include "structmember.h"
@@ -17,7 +48,7 @@ typedef struct {
     int refcount,
         pickle_idx,
         parent_type_idx;
-    GHashTable *idxmap, 
+    GHashTable *idxmap,
                 *type_names;  // maps type id to type name
 } QueryInfo;
 
@@ -38,7 +69,7 @@ typedef struct {
              *pickle,       // Dict of pickled attributes.
              *keys,         // Available attribute names
              *parent;       // Tuple (parent_name, parent_id)
-    QueryInfo *query_info; 
+    QueryInfo *query_info;
     int unpickled,
         has_pickle;
 } ObjectRow_PyObject;
@@ -93,7 +124,7 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
 
     self->query_info = g_hash_table_lookup(queries, self->desc);
     if (!self->query_info) {
-        /* This is a row for a query we haven't seen before, so we need to do 
+        /* This is a row for a query we haven't seen before, so we need to do
          * some initial setup.  Most of what we do here is convert data stored
          * in Python objects to more native C types for faster accxess.
          */
@@ -107,7 +138,7 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
         self->query_info->pickle_idx = -1;
         self->query_info->idxmap = g_hash_table_new_full(g_str_hash, g_str_equal, free, free);
 
-        /* Iterate over the columns from the SQL query and keep track of 
+        /* Iterate over the columns from the SQL query and keep track of
          * attribute names and their indexes within the row tuple.  Start at
          * index 1 because index 0 is the object type name literal.
          */
@@ -138,7 +169,7 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
                 attr = (ObjectAttribute *)malloc(sizeof(ObjectAttribute));
                 attr->index = -1;
                 g_hash_table_insert(self->query_info->idxmap, g_strdup(skey), (void *)attr);
-            } 
+            }
             attr->type = PySequence_Fast_GET_ITEM(value, 0);
             attr->flags = PyInt_AsLong(PySequence_Fast_GET_ITEM(value, 1));
             if (IS_ATTR_INDEXED_IGNORE_CASE(attr->flags) || attr->flags == ATTR_SIMPLE)
@@ -160,10 +191,10 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
             g_hash_table_insert(self->query_info->type_names, (void *)PyInt_AsLong(type_id), g_strdup(skey));
         }
         g_hash_table_insert(queries, self->desc, self->query_info);
-    } 
+    }
     Py_DECREF(o_types);
     self->query_info->refcount++;
-    if (self->query_info->pickle_idx >= 0 && 
+    if (self->query_info->pickle_idx >= 0 &&
         PySequence_Fast_GET_ITEM(self->row, self->query_info->pickle_idx) != Py_None)
         self->has_pickle = 1;
 
@@ -237,8 +268,8 @@ convert(ObjectRow_PyObject *self, ObjectAttribute *attr, PyObject *value)
 }
 
 PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
-{   
-    char *skey = 0, 
+{
+    char *skey = 0,
           skey2[80]; // we'll have a problem if attributes are >= 78 chars :)
     ObjectAttribute *attr = 0;
     PyObject *value;
@@ -277,7 +308,7 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
                 PyObject *o_type, *o_id;
                 char *type_name = 0;
 
-                // Lookup the parent_type and parent_id indexes within the 
+                // Lookup the parent_type and parent_id indexes within the
                 // sql row.
                 type_attr = g_hash_table_lookup(self->query_info->idxmap, "parent_type");
                 id_attr = g_hash_table_lookup(self->query_info->idxmap, "parent_id");
@@ -309,7 +340,7 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
         }
 
         attr = g_hash_table_lookup(self->query_info->idxmap, skey);
-    } 
+    }
     // But also support referencing the sql row by index.  (Pickled attributes
     // cannot be accessed this way, though.)
     else if (PyNumber_Check(key)) {
@@ -324,7 +355,7 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
             return NULL;
         }
         return PySequence_GetItem(self->row, index);
-    } 
+    }
 
     //printf("REQUEST: %s attr=%p idx=%d has_pickle=%d pickle_idx=%d\n", skey, attr, attr->index, self->has_pickle, self->query_info->pickle_idx);
 
@@ -346,7 +377,7 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
         return NULL;
     }
 
-    if (!attr->pickled || (IS_ATTR_INDEXED_IGNORE_CASE(attr->flags) && attr->index >= 0 && !self->has_pickle)) 
+    if (!attr->pickled || (IS_ATTR_INDEXED_IGNORE_CASE(attr->flags) && attr->index >= 0 && !self->has_pickle))
         /* If the attribute isn't pickled, we return the value from the row
          * tuple.  Also, if the attribute is ATTR_INDEXED_IGNORE_CASE but we
          * don't have a pickle available, and that attribute exists in the
@@ -365,7 +396,7 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
         snprintf(skey2, sizeof(skey2)-1, "__%s", skey);
         skey = skey2;
     }
-        
+
     value = PyDict_GetItemString(self->pickle, skey);
     if (!value)
         // Attribute isn't stored in pickle, which means it's None.
@@ -580,7 +611,7 @@ void init_objectrow()
 {
     PyObject *m;
     m = Py_InitModule("_objectrow", objectrow_methods);
-    
+
     if (PyType_Ready(&ObjectRow_PyObject_Type) >= 0) {
         Py_INCREF(&ObjectRow_PyObject_Type);
         PyModule_AddObject(m, "ObjectRow", (PyObject *)&ObjectRow_PyObject_Type);

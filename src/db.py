@@ -1,31 +1,70 @@
-import string, os, time, re, math, cPickle, copy_reg
-from strutils import str_to_unicode
+# -*- coding: iso-8859-1 -*-
+# -----------------------------------------------------------------------------
+# db.py - db abstraction module
+# -----------------------------------------------------------------------------
+# $Id$
+#
+# -----------------------------------------------------------------------------
+# Copyright (C) 2006 Dirk Meyer, Jason Tackaberry
+#
+# First Edition: Jason Tackaberry <tack@sault.org>
+# Maintainer:    Jason Tackaberry <tack@sault.org>
+#
+# Please see the file AUTHORS for a complete list of authors.
+#
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
+#
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
+#
+# -----------------------------------------------------------------------------
+
+__all__ = ['Database', 'QExpr', 'ATTR_SIMPLE', 'ATTR_SEARCHABLE',
+           'ATTR_IGNORE_CASE', 'ATTR_INDEXED', 'ATTR_INDEXED_IGNORE_CASE',
+           'ATTR_KEYWORDS']
+
+# python imports
+import os
+import time
+import re
+import math
+import cPickle
+import copy_reg
 import _weakref
 from sets import Set
 from pysqlite2 import dbapi2 as sqlite
-from kaa._objectrow import ObjectRow
 
-__all__ = ['Database', 'QExpr', 'ATTR_SIMPLE', 'ATTR_SEARCHABLE', 'ATTR_IGNORE_CASE',
-           'ATTR_INDEXED', 'ATTR_INDEXED_IGNORE_CASE', 'ATTR_KEYWORDS']
+# kaa base imports
+from strutils import str_to_unicode
+from _objectrow import ObjectRow
 
 if sqlite.version < '2.1.0':
     raise ImportError('pysqlite 2.1.0 or higher required')
 if sqlite.sqlite_version < '3.3.0':
     raise ImportError('sqlite 3.3.0 or higher required')
-    
+
 
 SCHEMA_VERSION = 0.1
 SCHEMA_VERSION_COMPATIBLE = 0.1
 CREATE_SCHEMA = """
     CREATE TABLE meta (
-        attr        TEXT UNIQUE, 
+        attr        TEXT UNIQUE,
         value       TEXT
     );
     INSERT INTO meta VALUES('keywords_objectcount', 0);
     INSERT INTO meta VALUES('version', %s);
 
     CREATE TABLE types (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT, 
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
         name            TEXT UNIQUE,
         attrs_pickle    BLOB,
         idx_pickle      BLOB
@@ -62,8 +101,8 @@ ATTR_IGNORE_CASE         = 0x08      # Store in db as lowercase for searches.
 ATTR_INDEXED_IGNORE_CASE = ATTR_INDEXED | ATTR_IGNORE_CASE
 
 STOP_WORDS = (
-    "about", "and", "are", "but", "com", "for", "from", "how", "not", 
-    "some", "that", "the", "this", "was", "what", "when", "where", "who", 
+    "about", "and", "are", "but", "com", "for", "from", "how", "not",
+    "some", "that", "the", "this", "was", "what", "when", "where", "who",
     "will", "with", "the", "www", "http", "org", "of", "on"
 )
 WORDS_DELIM = re.compile("[\W_\d]+", re.U)
@@ -86,7 +125,7 @@ def _list_to_printable(value):
 
         (42, 'foo', NULL, 'foo''s'' string')
 
-    Single quotes are escaped as ''.  This is suitable for use in SQL 
+    Single quotes are escaped as ''.  This is suitable for use in SQL
     queries.
     """
     fixed_items = []
@@ -299,7 +338,7 @@ class Database:
         create_stmt = "CREATE TABLE %s_tmp ("% table_name
 
         # Iterate through type attributes and append to SQL create statement.
-        sql_types = {int: "INTEGER", float: "FLOAT", buffer: "BLOB", 
+        sql_types = {int: "INTEGER", float: "FLOAT", buffer: "BLOB",
                      unicode: "TEXT", str: "BLOB"}
         for attr_name, (attr_type, attr_flags) in attrs.items():
             assert(attr_name not in RESERVED_ATTRIBUTES)
@@ -320,7 +359,7 @@ class Database:
 
         # Add this type to the types table, including the attributes
         # dictionary.
-        self._db_query("INSERT OR REPLACE INTO types VALUES(?, ?, ?, ?)", 
+        self._db_query("INSERT OR REPLACE INTO types VALUES(?, ?, ?, ?)",
                        (cur_type_id, type_name, buffer(cPickle.dumps(attrs, 2)),
                         buffer(cPickle.dumps(indexes, 2))))
         self._load_object_types()
@@ -332,7 +371,7 @@ class Database:
             # simple->searchable case, the data will stay in the pickle; in
             # the searchable->simple case, the data will be lost.
             columns = filter(lambda x: cur_type_attrs[x][1], cur_type_attrs.keys())
-            columns = string.join(columns, ",")
+            columns = ",".join(columns)
             self._db_query("INSERT INTO %s_tmp (%s) SELECT %s FROM %s" % \
                            (table_name, columns, columns, table_name))
 
@@ -346,7 +385,7 @@ class Database:
         # Create a trigger that reduces meta.keywords_objectcount when a row
         # is deleted.
         if self._type_has_keyword_attr(type_name):
-            self._db_query("CREATE TRIGGER delete_object_%s DELETE ON %s BEGIN " 
+            self._db_query("CREATE TRIGGER delete_object_%s DELETE ON %s BEGIN "
                            "UPDATE meta SET value=value-1 WHERE attr='keywords_objectcount'; END" % \
                            (type_name, table_name))
 
@@ -369,7 +408,7 @@ class Database:
     def _load_object_types(self):
         for id, name, attrs, idx in self._db_query("SELECT * from types"):
             self._object_types[name] = id, cPickle.loads(str(attrs)), cPickle.loads(str(idx))
-            
+
     def _type_has_keyword_attr(self, type_name):
         if type_name not in self._object_types:
             return False
@@ -432,8 +471,8 @@ class Database:
         table_name = "objects_" + type_name
 
         if query_type == "add":
-            columns = string.join(columns, ",")
-            placeholders = string.join(placeholders, ",")
+            columns = ",".join(columns)
+            placeholders = ",".join(placeholders)
             q = "INSERT INTO %s (%s) VALUES(%s)" % (table_name, columns, placeholders)
         else:
             q = "UPDATE %s SET " % table_name
@@ -445,7 +484,7 @@ class Database:
             values.append(attrs["id"])
 
         return q, values
-    
+
 
     def delete_object(self, (object_type, object_id)):
         """
@@ -608,7 +647,7 @@ class Database:
             # Remove existing indexed words for this object.
             self._delete_object_keywords((object_type, object_id))
 
-            # Re-index 
+            # Re-index
             word_parts = []
             for name, (attr_type, flags) in type_attrs.items():
                 if flags & ATTR_KEYWORDS:
@@ -637,7 +676,7 @@ class Database:
            keywords: a string of search terms for keyword search.
                type: only search items of this type (e.g. "images"); if None
                      (or not specified) all types are searched.
-              limit: return only this number of results; if None (or not 
+              limit: return only this number of results; if None (or not
                      specified) all matches are returned.  For better
                      performance it is highly recommended a limit is specified
                      for keyword searches.
@@ -671,10 +710,10 @@ class Database:
             # enforce a limit on the keyword search, otherwise we might miss
             # intersections.
             if len(Set(attrs).difference(("type", "limit", "keywords"))) > 0:
-                limit = None 
-            else: 
-                limit = attrs.get("limit") 
-            kw_results = self._query_keywords(attrs["keywords"], limit, 
+                limit = None
+            else:
+                limit = attrs.get("limit")
+            kw_results = self._query_keywords(attrs["keywords"], limit,
                                               attrs.get("type"))
 
             # No matches to our keyword search, so we're done.
@@ -735,7 +774,7 @@ class Database:
 
         for type_name, (type_id, type_attrs, type_idx) in type_list:
             if kw_results and type_id not in kw_results_by_type:
-                # If we've done a keyword search, don't bother querying 
+                # If we've done a keyword search, don't bother querying
                 # object types for which there were no keyword hits.
                 continue
 
@@ -766,7 +805,7 @@ class Database:
             q = []
             query_values = []
             q.append("SELECT %s '%s'%%s,%s FROM objects_%s" % \
-                (query_type, type_name, string.join(columns, ","), type_name))
+                (query_type, type_name, ",".join(columns), type_name))
 
             if kw_results != None:
                 q[0] %= ",%d+id as computed_id" % (type_id * 10000000)
@@ -821,7 +860,7 @@ class Database:
                 sql, values = value.as_sql(attr)
                 q.append(sql)
                 query_values.extend(values)
-            
+
             if result_limit != None:
                 q.append(" LIMIT %d" % result_limit)
 
@@ -843,7 +882,7 @@ class Database:
                 # No need to try the other types, we're done.
                 break
 
-        # If keyword search was done, sort results to preserve order given in 
+        # If keyword search was done, sort results to preserve order given in
         # kw_results.
         if kw_results:
             # Convert (type,id) tuple to computed id value.
@@ -872,7 +911,7 @@ class Database:
 
         Counts are relative to the given object, not all objects in the
         database.
-        
+
         Returns a dict of words whose values hold the score caclulated as
         above.
         """
@@ -884,7 +923,7 @@ class Database:
                 continue
             if type(text) not in (unicode, str):
                 raise ValueError, "Invalid type (%s) for ATTR_KEYWORDS attribute.  Only unicode or str allowed." % \
-                                  str(type(text)) 
+                                  str(type(text))
             if attr_type == str:
                 text = str_to_unicode(text)
 
@@ -896,7 +935,7 @@ class Database:
                 # Remove the first 2 levels (like /home/user/) and then take
                 # the last two levels that are left.
                 levels = dirname.strip('/').split(os.path.sep)[2:][-2:] + [fname_noext]
-                parsed = WORDS_DELIM.split(string.join(levels)) + [fname_noext]
+                parsed = WORDS_DELIM.split(' '.join(levels)) + [fname_noext]
             else:
                 parsed = WORDS_DELIM.split(text)
 
@@ -914,7 +953,7 @@ class Database:
                     words[word] += coeff
                 total_words += 1
 
-        # Score based on word frequency in document.  (Add weight for 
+        # Score based on word frequency in document.  (Add weight for
         # non-dictionary words?  Or longer words?)
         for word, score in words.items():
             words[word] = math.sqrt(words[word] / total_words)
@@ -942,7 +981,7 @@ class Database:
 
             # Remove all words associated with this object.  A trigger will
             # decrement the count column in the words table for all word_id
-            # that get affected. 
+            # that get affected.
             self._db_query("DELETE FROM words_map WHERE object_type=? AND object_id IN %s" % \
                            _list_to_printable(object_ids), (type_id,))
             count += self._cursor.rowcount
@@ -989,7 +1028,7 @@ class Database:
     def _query_keywords(self, words, limit = 100, object_type = None):
         """
         Queries the database for the keywords supplied in the words strings.
-        (Search terms are delimited by spaces.)  
+        (Search terms are delimited by spaces.)
 
         The search algorithm tries to optimize for the common case.  When
         words are scored (_score_words()), each word is assigned a score that
@@ -997,12 +1036,12 @@ class Database:
         range 0-10, called rank.  (So a word with score 0.35 has a rank 3.)
 
         Multiple passes are made over the words_map table, first starting at
-        the highest rank fetching a certain number of rows, and progressively 
+        the highest rank fetching a certain number of rows, and progressively
         drilling down to lower ranks, trying to find enough results to fill our
         limit that intersects on all supplied words.  If our limit isn't met
-        and all ranks have been searched but there are still more possible 
+        and all ranks have been searched but there are still more possible
         matches (because we use LIMIT on the SQL statement), we expand the
-        LIMIT (currently by an order of 10) and try again, specifying an 
+        LIMIT (currently by an order of 10) and try again, specifying an
         OFFSET in the query.
 
         The worst case scenario is given two search terms, each term matches
@@ -1011,15 +1050,15 @@ class Database:
         only 1 row intersection between all N terms.)   This could be improved
         by avoiding the OFFSET/LIMIT technique as described above, but that
         approach provides a big performance win in more common cases.  This
-        case can be mitigated by caching common word combinations, but it is 
+        case can be mitigated by caching common word combinations, but it is
         an extremely difficult problem to solve.
 
         object_type specifies an type name to search (for example we can
         search type "image" with keywords "2005 vacation"), or if object_type
         is None (default), then all types are searched.
 
-        This function returns a list of (object_type, object_id) tuples 
-        which match the query.  The list is sorted by score (with the 
+        This function returns a list of (object_type, object_id) tuples
+        which match the query.  The list is sorted by score (with the
         highest score first).
         """
         t0=time.time()
@@ -1030,7 +1069,7 @@ class Database:
 
         # Convert words string to a tuple of lower case words.
         words = tuple(str_to_unicode(words).lower().split())
-        # Remove words that aren't indexed (words less than MIN_WORD_LENGTH 
+        # Remove words that aren't indexed (words less than MIN_WORD_LENGTH
         # characters, or and words in the stop list).
         words = filter(lambda x: len(x) >= MIN_WORD_LENGTH and x not in STOP_WORDS, words)
         words_list = _list_to_printable(words)
@@ -1111,7 +1150,7 @@ class Database:
 
                     if id_constraints:
                         # We know about all objects that match one or more of the other
-                        # search words, so we add the constraint that all rows for this 
+                        # search words, so we add the constraint that all rows for this
                         # word match the others as well.  Effectively we push the logic
                         # to generate the intersection into the db.
                         # This can't benefit from the index if object_type is not specified.
@@ -1179,7 +1218,7 @@ class Database:
 
                         if not a_more and not b_more:
                             # There's no intersection between these two search
-                            # terms and neither have more at any rank, so we 
+                            # terms and neither have more at any rank, so we
                             # can stop the whole query.
                             finished = True
                             break
@@ -1222,7 +1261,7 @@ class Database:
             "types": {}
         }
         for name in self._object_types:
-            id, attrs, idx = self._object_types[name]    
+            id, attrs, idx = self._object_types[name]
             info["types"][name] = {
                 "attrs": attrs,
                 "idx": idx

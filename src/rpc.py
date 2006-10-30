@@ -52,26 +52,26 @@
 # to be called when the connection gets lost.
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2006 Dirk Meyer, et al.
+# Copyright (C) 2006 Dirk Meyer, Jason Tackaberry
 #
-# First Version: Dirk Meyer <dmeyer@tzi.de>
-# Maintainer:    Dirk Meyer <dmeyer@tzi.de>
+# First Edition: Dirk Meyer <dischi@freevo.org>
+# Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
 # Please see the file AUTHORS for a complete list of authors.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
 #
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of MER-
-# CHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
-# Public License for more details.
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
 
@@ -285,7 +285,7 @@ class Channel(object):
             if not data:
                 break
             self._read_buffer.append(data)
-                
+
         header_size = struct.calcsize("I4sI")
         # Before we start into the loop, make sure we have enough data for
         # a full packet.  For very large packets (if we just received a huge
@@ -390,7 +390,7 @@ class Channel(object):
         payload = cPickle.dumps(payload, pickle.HIGHEST_PROTOCOL)
         self._send_packet(seq, packet_type, len(payload), payload)
 
-        
+
     def _handle_packet(self, seq, type, payload):
         """
         Handle incoming packet (called from _handle_write).

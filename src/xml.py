@@ -23,26 +23,26 @@
 # whole tree gets invalid. We need to find a way to fix this.
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2006 Dirk Meyer, et al.
+# Copyright (C) 2006 Dirk Meyer, Jason Tackaberry
 #
-# First Version: Dirk Meyer <dmeyer@tzi.de>
-# Maintainer:    Dirk Meyer <dmeyer@tzi.de>
+# First Edition: Dirk Meyer <dischi@freevo.org>
+# Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
 # Please see the file AUTHORS for a complete list of authors.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
 #
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of MER-
-# CHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
-# Public License for more details.
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
 
@@ -91,7 +91,7 @@ class Node(object):
 
 
     # navigation
-    
+
     def get_parent(self):
         ret = libxml2mod.parent(self._o)
         if ret == None:
@@ -106,7 +106,7 @@ class Node(object):
                 ret.append(node)
             node = node.get_next()
         return ret
-    
+
     def get_first(self):
         ret = libxml2mod.children(self._o)
         if ret == None:
@@ -141,7 +141,7 @@ class Node(object):
 
     def __iter__(self):
         return NodeIterator(self)
-    
+
     parent = property(get_parent, None, None, "Parent node")
     children = property(get_children, None, None, "All not text children nodes")
 
@@ -152,7 +152,7 @@ class Node(object):
 
 
     # content
-    
+
     def get_content(self):
         content = unicode(libxml2mod.xmlNodeGetContent(self._o), 'utf-8')
         return _space_subn(u' ', content.strip())[0]
@@ -178,14 +178,14 @@ class Node(object):
     content = property(get_content, set_content, None, "Content of this node")
 
     # name
-    
+
     def get_name(self):
         return libxml2mod.name(self._o)
 
     name = property(get_name, None, None, "Node name")
 
     # type
-    
+
     def get_type(self):
         return libxml2mod.type(self._o)
 
@@ -193,7 +193,7 @@ class Node(object):
 
 
     # attributes
-    
+
     def hasattr(self, name):
         ret = libxml2mod.xmlHasProp(self._o, name)
         if ret is None:
@@ -242,7 +242,7 @@ class Node(object):
             if ret is None:
                 raise TreeError('xmlAddChild() failed')
             return Node(_obj=ret)
-            
+
         if content:
             if isinstance(content, unicode):
                 content = content.encode('utf-8')
@@ -259,7 +259,7 @@ class Node(object):
                 value = str(value)
             libxml2mod.xmlSetProp(ret, key, value)
         return Node(_obj=ret)
-        
+
 
 
 class NodeIterator:
@@ -287,7 +287,8 @@ class Document(Node):
                 # the node named root
                 c = self._doc.get_child(root)
                 if not c:
-                    raise ParserError('%s has no root node %s' % (filename, root))
+                    raise ParserError('%s has no root node %s' % \
+                                      (filename, root))
                 self._o = c._o
                 return
             # no filename given, add root node to doc
@@ -326,7 +327,8 @@ class Document(Node):
 
 
     def __repr__(self):
-        return "<xml.Document (%s) object at 0x%x>" % (self.name, long(id (self)))
+        return "<xml.Document (%s) object at 0x%x>" % \
+               (self.name, long(id (self)))
 
 
     def __del__(self):

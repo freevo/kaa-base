@@ -5,38 +5,40 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2005 Dirk Meyer, Jason Tackaberry
+# Copyright (C) 2005, 2006 Dirk Meyer, Jason Tackaberry
 #
 # First Edition: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
 #
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of MER-
-# CHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
-# Public License for more details.
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
 
+# python imports
 from distutils.core import setup
+import sys
 
 # We have some extensions but kaa.distribution isn't installed yet.  So import
 # it directly from the source tree.  First add src/ to the modules patch ...
-import sys
 sys.path.insert(0, "src")
 # ... and now import it.
 from distribution import Extension
 
-extensions = []
-extensions.append(Extension('kaa.shmmodule', ['src/extensions/shmmodule.c']).convert())
+ext = Extension('kaa.shmmodule', ['src/extensions/shmmodule.c']).convert()
+extensions = [ ext ]
+
 objectrow = Extension('kaa._objectrow', ['src/extensions/objectrow.c'])
 if objectrow.check_library("glib-2.0", "2.4.0"):
     extensions.append(objectrow.convert())
@@ -67,7 +69,7 @@ setup(
     maintainer       = 'The Freevo Project',
     maintainer_email = 'developer@freevo.org',
     url              = 'http://www.freevo.org/kaa',
-    package_dir      = { 'kaa': 'src', 
+    package_dir      = { 'kaa': 'src',
                          'kaa.notifier': 'src/notifier',
                          'kaa.notifier.pynotifier': 'src/notifier/pynotifier',
                          'kaa.input': 'src/input',

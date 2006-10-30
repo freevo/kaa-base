@@ -5,24 +5,26 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2005 Dirk Meyer, Jason Tackaberry
+# Copyright (C) 2006 Dirk Meyer, Jason Tackaberry
 #
 # First Edition: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# Please see the file AUTHORS for a complete list of authors.
 #
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of MER-
-# CHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
-# Public License for more details.
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
 #
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
 
@@ -48,7 +50,7 @@ class Library(object):
         self.libraries = []
         self.valid = False
 
-    
+
     def check(self, minver):
         """
         Check dependencies add add the flags to include_dirs, library_dirs and
@@ -98,7 +100,7 @@ class Library(object):
         if not f:
             print 'failed'
             return False
-        
+
         for i in includes:
             f.write('#include %s\n' % i)
         f.write('int main() { ' + code + '\nreturn 0;\n};')
@@ -114,7 +116,7 @@ class Library(object):
         print 'no'
         return False
 
-        
+
 def check_library(name, *args):
     lib = Library(name)
     if len(args) < 2:
@@ -159,20 +161,20 @@ class Configfile(object):
         else:
             self.append('#define %s %s' % (variable, value))
 
-            
+
     def unlink(self):
         """
         Delete config file.
         """
         os.unlink(self.file)
 
-        
+
 class Extension(object):
     """
     Extension wrapper with additional functions to find libraries and
     support for config files.
     """
-    def __init__(self, output, files, include_dirs=[], library_dirs=[], 
+    def __init__(self, output, files, include_dirs=[], library_dirs=[],
                  libraries=[], extra_compile_args = [], config=None):
         """
         Init the Extention object.
@@ -196,8 +198,8 @@ class Extension(object):
         if not self.configfile:
             raise AttributeError('No config file defined')
         self.configfile.append(line)
-        
-        
+
+
     def add_library(self, name):
         """
         """
@@ -242,7 +244,7 @@ class Extension(object):
             for inc in os.popen(command % "--cflags").read().strip().split(' '):
                 if inc[2:] and not inc[2:] in self.include_dirs:
                     self.include_dirs.append(inc[2:])
-                
+
             for flag in os.popen(command % "--libs").read().strip().split(' '):
                 if flag[:2] == '-L' and not flag[2:] in self.library_dirs:
                     self.library_dirs.append(flag[2:])
@@ -264,12 +266,12 @@ class Extension(object):
         f = os.popen("cc -x c - -o %s %s 2>/dev/null >/dev/null" % (outfile, args), "w")
         if not f:
             return False
-        
+
         for i in includes:
             f.write('#include %s\n' % i)
         f.write('int main() { ' + code + '\nreturn 0;\n};')
         result = f.close()
-        
+
         if os.path.exists(outfile):
             os.unlink(outfile)
 
@@ -308,7 +310,7 @@ class EmptyExtensionsList(list):
     kaa/ directory hierarchy.
 
     On x86_64, this results in some kaa modules being installed in /usr/lib
-    and others installed in /usr/lib64.  The first problem is that 
+    and others installed in /usr/lib64.  The first problem is that
     kaa/__init__.py is provided by kaa.base, so if kaa.base is installed
     in /usr/lib/ then /usr/lib64/python*/site-packages/kaa/__init__.py does
     not exist and therefore we can't import any modules from that.  We could
@@ -323,7 +325,7 @@ class EmptyExtensionsList(list):
     def __nonzero__(self):
         return True
 
-        
+
 
 def setup(**kwargs):
     """
@@ -340,7 +342,7 @@ def setup(**kwargs):
         kwargs['package_dir'][python_dirname] = dirname
         kwargs['packages'].append(python_dirname)
 
-    
+
     if not kwargs.has_key('module'):
         raise AttributeError('\'module\' not defined')
 

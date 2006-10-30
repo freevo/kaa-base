@@ -1,3 +1,8 @@
+# -*- coding: iso-8859-1 -*-
+# -----------------------------------------------------------------------------
+# ipc.py - ipc classes
+# -----------------------------------------------------------------------------
+# $Id$
 #
 # TODO: document me!
 #
@@ -14,15 +19,55 @@
 #       ipc = IPCClient("ipc.socket", auth_secret = "foobar")
 #       foo = ipc.get_object("foo")
 #       print foo.bar()
+#
+# -----------------------------------------------------------------------------
+# Copyright (C) 2006 Dirk Meyer, Jason Tackaberry
+#
+# First Edition: Jason Tackaberry <tack@sault.org>
+# Maintainer:    Jason Tackaberry <tack@sault.org>
+#
+# Please see the file AUTHORS for a complete list of authors.
+#
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
+#
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
+#
+# -----------------------------------------------------------------------------
 
+# python imports
 import logging
-import socket, os, select, time, types, struct, cPickle, thread, sys, sha
-import popen2, errno
-import traceback, string, copy_reg
+import socket
+import os
+import select
+import time
+import types
+import struct
+import cPickle
+import thread
+import sys
+import sha
+import popen2
+import errno
+import traceback
+import string
+import copy_reg
 from new import classobj
+
+# kaa base imports
 import kaa.notifier
 import kaa
 
+# get logging object
 log = logging.getLogger('ipc')
 
 IPC_DEFAULT_TIMEOUT = 5.0
@@ -52,7 +97,7 @@ def _get_proxy_type(name):
 
 def _pickle_proxy(o):
     basename = o.__class__.__name__.replace("IPCProxy_", "")
-    return _unpickle_proxy, (basename, o._ipc_obj, o._ipc_callable, 
+    return _unpickle_proxy, (basename, o._ipc_obj, o._ipc_callable,
                              o._ipc_cache_special_attrs, o._ipc_orig_type)
 
 def _unpickle_proxy(clsname, *args):
@@ -61,7 +106,7 @@ def _unpickle_proxy(clsname, *args):
         if not ismeth:
             continue
         # FIXME: this list is probably not comprehensive.
-        if attr.strip("__") in ("add", "contains", "delitem", "eq", "ge", "getitem", "gt", 
+        if attr.strip("__") in ("add", "contains", "delitem", "eq", "ge", "getitem", "gt",
                                 "hash", "iadd", "imul", "iter", "le", "len",
                                 "lt", "mul", "ne", "nonzero", "rmul", "setitem") or \
            attr in ("next,"):
@@ -116,7 +161,7 @@ class IPCServer:
             if address.find('/') == -1:
                 # create socket in kaa temp dir
                 address = '%s/%s' % (kaa.TEMP, address)
-                
+
             if os.path.exists(address):
                 # maybe a server is already running at this address, test it
                 try:
@@ -136,7 +181,7 @@ class IPCServer:
             self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.address = address
             kaa.signals["shutdown"].connect_weak(self.close)
-            
+
         elif type(address) == tuple:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -148,7 +193,7 @@ class IPCServer:
         self._monitor.register(self.socket.fileno())
         # Remove socket file and close clients on shutdown
         kaa.signals["shutdown"].connect_weak(self.close)
-        
+
         self.clients = {}
         self._registered_objects = {}
 
@@ -204,8 +249,8 @@ class IPCServer:
         self.socket = None
         self._monitor.unregister()
         kaa.signals["shutdown"].disconnect(self.close)
-        
-        
+
+
 class IPCChannel(object):
     def __init__(self, server_or_address, auth_secret = None, sock = None):
         if not sock:
@@ -234,7 +279,7 @@ class IPCChannel(object):
         self.signals = {
             "closed": kaa.notifier.Signal()
         }
-        
+
         self.read_buffer = []
         self.write_buffer = ""
 
@@ -244,7 +289,7 @@ class IPCChannel(object):
         self._default_timeout = IPC_DEFAULT_TIMEOUT
         self._auth_secret = auth_secret
         self._authenticated = False
-        
+
         if not self.server and self._auth_secret != None:
             self._pending_challenge = self._get_rand_value()
             self.request("auth", (self._pending_challenge, "", ""))
@@ -255,7 +300,7 @@ class IPCChannel(object):
     def __del__(self):
         if hasattr(self, "server"):
             self.handle_close()
-        
+
     def set_default_timeout(self, timeout):
         self._default_timeout = timeout
 
@@ -301,7 +346,7 @@ class IPCChannel(object):
         self.read_buffer.append(data)
         # Before we start into the loop, make sure we have enough data for
         # a full packet.  For very large packets (if we just received a huge
-        # pickled object), this saves the string.join() which can be very 
+        # pickled object), this saves the string.join() which can be very
         # expensive.  (This is the reason we use a list for our read buffer.)
         buflen = reduce(lambda x, y: x + len(y), self.read_buffer, 0)
         if buflen < header_size:
@@ -385,14 +430,14 @@ class IPCChannel(object):
     def handle_packet(self, seq, packet_type, payload):
         # Untaint packet_type.
         if len(packet_type) <= 4 or packet_type[:3] not in ("REP", "REQ") or \
-           not packet_type[4:].isalpha(): 
+           not packet_type[4:].isalpha():
             log.warning("Bad request from remote; disconnecting.")
             return self.handle_close()
 
         # packet_type is safe now.  It is <= 20 bytes (assured by struct.unpack
         # in handle_read() and consists of only alpha chars.  seq is guaranteed
         # to be an integer (returned by struct.unpack) but it may not be a
-        # valid sequence number.  payload is tainted and could contain 
+        # valid sequence number.  payload is tainted and could contain
         # something nasty.
 
         prefix = packet_type[:3].lower()
@@ -414,7 +459,7 @@ class IPCChannel(object):
                 return
 
         # If we're here, we're either authenticated or we don't require
-        # authentication, or else the auth has just failed.  In the latter 
+        # authentication, or else the auth has just failed.  In the latter
         # case, 'data' does not contain anything from the remote.
 
         if prefix == "rep":
@@ -476,10 +521,10 @@ class IPCChannel(object):
         Generate a response for the challenge based on the auth secret
         supplied to the constructor.  This hashes twice to prevent against
         certain attacks on the hash function.  If salt is not None, it is
-        the value generated by the remote end that was used in computing 
+        the value generated by the remote end that was used in computing
         their response.  If it is None, a new 20-byte salt is generated
-        and used in computing our response.  
-        
+        and used in computing our response.
+
         """
         if self._auth_secret == None:
             return "", ""
@@ -502,9 +547,9 @@ class IPCChannel(object):
              other than 'auth' commands.
            * prevent unauthenticated connections from causing denial-of-
              service at or above the IPC layer.
-           * prevent third parties from learning the shared secret by 
+           * prevent third parties from learning the shared secret by
              eavesdropping the channel.
-              
+
         Non-goals:
            * provide any level of security whatsoever subsequent to successful
              authentication.
@@ -519,7 +564,7 @@ class IPCChannel(object):
         sides should be assured that they share the same authentication
         secret.  It uses a simple challenge-response scheme.  The party
         responding to a challenge will hash the response with a locally
-        generated salt to prevent chosen plaintext attacks.  The client 
+        generated salt to prevent chosen plaintext attacks.  The client
         initiates authentication.
 
            1. Client sends challenge to server.
@@ -527,7 +572,7 @@ class IPCChannel(object):
               counter-challenge and sends both to the client in reply.
            3. Client receives response to its challenge in step 1 and the
               counter-challenge from server in step 2.  Client validates
-              server's response.  If it fails, client raises 
+              server's response.  If it fails, client raises
               IPCAuthenticationError exception but does not disconnect.
               If it succeeds, client sends response to server's counter-
               challenge.
@@ -543,10 +588,10 @@ class IPCChannel(object):
         the client can invoke arbitrary calls on the server, and vice versa.
 
         Also, individual packets aren't authenticated.  Once each side has
-        sucessfully authenticated, this scheme cannot protect against 
+        sucessfully authenticated, this scheme cannot protect against
         hijacking or denial-of-service attacks.
 
-        One goal is to restrict the code path taken packets sent by 
+        One goal is to restrict the code path taken packets sent by
         unauthenticated connections.  That path is:
 
            handle_read() -> handle_packet() -> _handle_auth_packet()
@@ -557,7 +602,7 @@ class IPCChannel(object):
         assumption is that the underlying python calls made in these methods
         (particularly struct.unpack) aren't susceptible to attack.
         """
-        
+
         if command != "auth":
             # Received a non-auth command while expecting auth.
             if prefix == "req":
@@ -574,7 +619,7 @@ class IPCChannel(object):
             # disconnect unless it's exactly 60 bytes.
             assert(len(payload) == 60)
 
-            # Unpack the auth packet payload into three separate 20 byte 
+            # Unpack the auth packet payload into three separate 20 byte
             # strings: the challenge, response, and salt.  If challenge is
             # not NULL (i.e. '\x00' * 20) then the remote is expecting a
             # a response.  If response is not NULL then salt must also not
@@ -585,7 +630,7 @@ class IPCChannel(object):
             log.warning("Malformed authentication packet from remote; disconnecting.")
             self.handle_close()
             return
-        
+
         # At this point, challenge, response, and salt are 20 byte strings of
         # arbitrary binary data.  They're considered benign.
         if prefix == "req":
@@ -606,7 +651,7 @@ class IPCChannel(object):
         else:
             # Received a reply to an auth request.
             if self._pending_challenge == None:
-                # We've received a reply packet, but we haven't sent a 
+                # We've received a reply packet, but we haven't sent a
                 # challenge.  Something isn't right, so disconnect.
                 self.handle_close()
                 return
@@ -624,7 +669,7 @@ class IPCChannel(object):
                 # Remote failed our challenge.  If we're a server,
                 # disconnect immediately.  The client should already know
                 # the authentication failed because our first reply would
-                # have failed.  If we're a client, simulate an auth 
+                # have failed.  If we're a client, simulate an auth
                 # failure return code so an exception gets raised.
                 if self.server:
                     self.handle_close()
@@ -632,7 +677,7 @@ class IPCChannel(object):
                 else:
                     return ("auth", 1)
 
-            # Challenge response was good, so the remote is considered 
+            # Challenge response was good, so the remote is considered
             # authenticated now.
             self._authenticated = True
 
@@ -665,8 +710,8 @@ class IPCChannel(object):
             timeout = self._default_timeout
         if seq == 0:
             seq = self.last_seq = self.last_seq + 1
-    
-        
+
+
         assert(len(packet_type) <= 20)
         # Normally command data gets pickled, but auth commands are a special
         # case.  We don't use pickling for authentication because it's
@@ -727,7 +772,7 @@ class IPCChannel(object):
                 raise IPCDisconnectedError
             return
 
-        # FIXME: if timeout == 0 and no reply received, wait_queue entry 
+        # FIXME: if timeout == 0 and no reply received, wait_queue entry
         # doesn't get removed until the socket is disconnected.  There should
         # be some expiry on wait queue entries.
         if timeout > 0 and self._wait_queue[seq][1]:
@@ -797,7 +842,7 @@ class IPCChannel(object):
         result = obj(*args, **kwargs)
 
         if _ipc_args.get("oneway"):
-            # This is kinda lame.  Raise this exception we catch in 
+            # This is kinda lame.  Raise this exception we catch in
             # handle_rqeuest_call() to prevent replying.
             raise "NOREPLY"
 
@@ -806,7 +851,7 @@ class IPCChannel(object):
             return result
         else:
             return self._proxy_data(result)
-        
+
 
     def handle_request_callmeth(self, (objid, meth, args, kwargs)):
         args = self._unproxy_data(args)
@@ -815,7 +860,7 @@ class IPCChannel(object):
         result = getattr(obj, meth)(*args, **kwargs)
         return self._proxy_data(result)
 
-        
+
     def handle_request_decref(self, objid):
         if objid not in self._proxied_objects:
             return
@@ -849,7 +894,7 @@ class IPCChannel(object):
         else:
             log.debug("<- Refcount++ on object", objid)
             self.request("INCREF", objid, timeout = 0)
-        
+
 
     def _get_proxied_object(self, objid):
         return self._proxied_objects[objid][0]
@@ -896,7 +941,7 @@ class IPCChannel(object):
                     return self._proxy_object(data)
                 else:
                     return data
-                
+
         elif type(data) in (types.TupleType, ):
             proxied_data = []
             for item in data:
@@ -910,7 +955,7 @@ class IPCChannel(object):
 
     def _unproxy_data(self, data):
         return self._proxy_data(data, unproxy = True)
-    
+
     ############################################################################
 
     def get_object(self, name):
@@ -934,14 +979,14 @@ class IPCClient(IPCChannel):
     def __init__(self, server_or_address, auth_secret = None, sock = None):
         super(IPCClient, self).__init__(server_or_address, auth_secret, sock)
         # IPCChannels that are created by server will be closed on shutdown
-        # by IPCServer.close, but for IPCClients, we need to add our own 
+        # by IPCServer.close, but for IPCClients, we need to add our own
         # handler.
         kaa.signals["shutdown"].connect_weak(self.handle_close)
 
 
 
 class IPCProxy(object):
-    
+
     def __new__(cls, objid = None, orig_object = None):
         if orig_object != None:
             cls = _get_proxy_type(orig_object.__class__.__name__)
@@ -995,7 +1040,7 @@ class IPCProxy(object):
             if self._ipc_client.socket:
                 try:
                     return self._ipc_client.request("GETATTR", (self._ipc_obj, "__ipcstr__"))
-                except KeyError: 
+                except KeyError:
                     return "<unknown>"
                 except:
                     pass
@@ -1033,7 +1078,7 @@ class IPCProxy(object):
             return object.__getattribute__(self, attr)
         elif attr in self._ipc_cache_methods:
             return self._ipc_cache_methods[attr]
-        elif attr.startswith("__") and attr not in self._ipc_cache_special_attrs: 
+        elif attr.startswith("__") and attr not in self._ipc_cache_special_attrs:
             raise AttributeError, "Object has no attribute '%s'" % attr
 
         value = self._ipc_client.request("GETATTR", (self._ipc_obj, attr))
@@ -1062,7 +1107,7 @@ class IPCProxy(object):
                 self._ipc_callable = True
             except AttributeError:
                 self._ipc_callable = False
-        
+
         if "__ipc_copy_result" in kwargs:
             log.warning("DEPRECATION WARNING: use __ipc_noproxy_result instead of __ipc_copy_result")
         if not kwargs.get("__ipc_noproxy_args"):

@@ -5,24 +5,26 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2005 Dirk Meyer, Jason Tackaberry
+# Copyright (C) 2006 Dirk Meyer, Jason Tackaberry
 #
 # First Edition: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# Please see the file AUTHORS for a complete list of authors.
 #
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of MER-
-# CHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
-# Public License for more details.
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
 #
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
 
@@ -64,7 +66,7 @@ def _format(text):
     # This can happen if you use multiple lines and use the python
     # code formating. So there are spaces at each line. Find the maximum
     # number of spaces to delete.
-    
+
     # description with more than one line, format the text
     if not text.startswith(u'\n'):
         # add newline at the beginning for regexp
@@ -257,7 +259,7 @@ class Var(Base):
             self._notify_monitors(oldval)
         return value
 
-        
+
 class Group(Base):
     """
     A config group.
@@ -270,7 +272,7 @@ class Group(Base):
         # 'default' will print all data
         # 'group' will only print the group description
         self._desc_type = desc_type
-        
+
         for data in schema:
             if not data._name:
                 raise AttributeError('no name given')
@@ -456,7 +458,7 @@ class Dict(Base):
         except KeyError:
             return None
 
-        
+
     def __getitem__(self, index):
         """
         Get group or variable with the given index.
@@ -493,8 +495,8 @@ class Dict(Base):
 
     def __repr__(self):
         return repr(self._dict)
-        
-    
+
+
 class List(Dict):
     """
     A config list. A list is only a dict with integers as index.
@@ -695,14 +697,14 @@ class Config(Group):
             self.add_monitor(WeakCallback(self._config_changed_cb))
         elif not autosave and self._autosave:
             self.remove_monitor(WeakCallback(self._config_changed_cb))
-            self._autosave_timer.stop() 
+            self._autosave_timer.stop()
         self._autosave = autosave
 
 
     def _config_changed_cb(self, name, oldval, newval):
         if self._filename:
             # Start/restart the timer to save in 5 seconds.
-            self._autosave_timer.start(5) 
+            self._autosave_timer.start(5)
 
     def watch(self, watch = True):
         """
@@ -728,7 +730,7 @@ class Config(Group):
                     signal = _inotify.watch(self._filename)
                     signal.connect_weak(self._file_changed)
                 except IOError:
-                    # Adding watch falied, use timer to wait for file to 
+                    # Adding watch falied, use timer to wait for file to
                     # appear.
                     self._watch_timer.start(3)
             else:
@@ -745,7 +747,7 @@ class Config(Group):
             return
 
         if _inotify:
-            # Config file is now available, stop this timer and add INotify 
+            # Config file is now available, stop this timer and add INotify
             # watch.
             self.watch(False)
             self.watch()

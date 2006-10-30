@@ -8,37 +8,40 @@
 # be used the same way the real object would be used.
 #
 # -----------------------------------------------------------------------------
-# Freevo - A Home Theater PC framework
-# Copyright (C) 2002-2004 Krister Lagerstrom, Dirk Meyer, et al.
+# Copyright (C) 2006 Dirk Meyer, Jason Tackaberry
 #
-# First Edition: Dirk Meyer <dmeyer@tzi.de>
-# Maintainer:    Dirk Meyer <dmeyer@tzi.de>
+# First Edition: Dirk Meyer <dischi@freevo.org>
+# Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
-# Please see the file freevo/Docs/CREDITS for a complete list of authors.
+# Please see the file AUTHORS for a complete list of authors.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
 #
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of MER-
-# CHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
-# Public License for more details.
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
 
+__all__ = [ 'weakref' ]
+
+# python imports
 from _weakref import ref
 import types
+
 
 class NoneProxy(object):
     def __call__(self):
         return None
-    
+
 class weakref(object):
     """
     This class represents a weak reference based on the python
@@ -76,7 +79,7 @@ class weakref(object):
         if attr == "_ref":
             return object.__getattribute__(self, attr)
         return getattr(self._ref(), attr)
-        
+
     def __setattr__(self, attr, value):
         if attr == "_ref":
             return object.__setattr__(self, attr, value)

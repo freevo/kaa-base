@@ -5,24 +5,26 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2005 Dirk Meyer, Jason Tackaberry
+# Copyright (C) 2006 Dirk Meyer, Jason Tackaberry
 #
 # First Edition: Jason Tackaberry <tack@sault.org>
 # Maintainer:    Jason Tackaberry <tack@sault.org>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# Please see the file AUTHORS for a complete list of authors.
 #
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of MER-
-# CHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
-# Public License for more details.
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
 #
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
 
@@ -82,12 +84,12 @@ class Lock(object):
         os.close(self._read)
         os.close(self._write)
         return int(exitcode)
-    
+
     def ignore(self):
         os.close(self._read)
         os.close(self._write)
 
-            
+
 def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None,
               pidfile=None, exit = True, wait = False):
     """
@@ -101,11 +103,11 @@ def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None,
     lock = 0
     if wait:
         lock = Lock()
-    
+
     # First fork.
-    try: 
-        pid = os.fork() 
-        if pid > 0: 
+    try:
+        pid = os.fork()
+        if pid > 0:
             if wait:
                 exitcode = lock.wait()
                 if exitcode:
@@ -117,30 +119,31 @@ def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None,
             # Wait for child to fork again (otherwise we have a zombie)
             os.waitpid(pid, 0)
             return pid
-    except OSError, e: 
-        log.error("Initial daemonize fork failed: %d, %s\n" % (e.errno, e.strerror))
+    except OSError, e:
+        log.error("Initial daemonize fork failed: %d, %s\n",
+                  e.errno, e.strerror)
         sys.exit(1)
-        
-    os.chdir("/") 
-    os.setsid() 
-    
+
+    os.chdir("/")
+    os.setsid()
+
     # Second fork.
-    try: 
-        pid = os.fork() 
-        if pid > 0: 
+    try:
+        pid = os.fork()
+        if pid > 0:
             # Exit from the second parent.
             sys.exit(0)
-    except OSError, e: 
-        log.error("Second daemonize fork failed: %d, %s\n" % (e.errno, e.strerror))
+    except OSError, e:
+        log.error("Second daemonize fork failed: %d, %s\n", e.errno, e.strerror)
         sys.exit(1)
-    
+
     # Create new standard file descriptors.
-    if not stderr: 
+    if not stderr:
         stderr = stdout
     stdin = file(stdin, 'r')
     stdout = file(stdout, 'a+')
     stderr = file(stderr, 'a+', 0)
-    if pidfile: 
+    if pidfile:
         pidfile = file(pidfile, 'w+')
         pidfile.write("%d\n" % os.getpid())
         pidfile.close()

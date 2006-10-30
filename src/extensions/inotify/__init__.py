@@ -1,11 +1,45 @@
-try:
-    from kaa.inotify import _inotify
-except ImportError:
-    _inotify = None
+# -*- coding: iso-8859-1 -*-
+# -----------------------------------------------------------------------------
+# inotify/__init__.py - Inotify interface
+# -----------------------------------------------------------------------------
+# $Id$
+#
+# -----------------------------------------------------------------------------
+# Copyright (C) 2006 Dirk Meyer
+#
+# First Edition: Jason Tackaberry <tack@sault.org>
+# Maintainer:    Jason Tackaberry <tack@sault.org>
+#
+# Please see the file AUTHORS for a complete list of authors.
+#
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
+#
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
+#
+# -----------------------------------------------------------------------------
 
-import kaa.notifier
+# python imports
 import os
 import struct
+
+# kaa imports
+import kaa.notifier
+
+try:
+    # imports C module
+    import _inotify
+except ImportError:
+    _inotify = None
 
 # TODO: hook in gamin if it is running. See gamin.py
 
@@ -98,12 +132,12 @@ class INotify:
         """
         return self._watches_by_path.keys()
 
-    
+
     def _handle_data(self):
         data = os.read(self._fd, 32768)
         self._read_buffer += data
         is_move = None
-        
+
         while True:
             if len(self._read_buffer) < 16:
                 if is_move:
@@ -167,8 +201,8 @@ if _inotify:
             setattr(INotify, attr, getattr(_inotify, attr))
 
     INotify.WATCH_MASK = INotify.MODIFY | INotify.ATTRIB | INotify.DELETE | \
-                         INotify.CREATE | INotify.DELETE_SELF | INotify.UNMOUNT | \
-                         INotify.MOVE
+                         INotify.CREATE | INotify.DELETE_SELF |
+                         INotify.UNMOUNT | INotify.MOVE
 
     INotify.CHANGE     = INotify.MODIFY | INotify.ATTRIB
-    
+

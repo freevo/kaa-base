@@ -607,7 +607,7 @@ PyMethodDef objectrow_methods[] = {
     {NULL}
 };
 
-void init_objectrow()
+void init_objectrow(void)
 {
     PyObject *m;
     m = Py_InitModule("_objectrow", objectrow_methods);

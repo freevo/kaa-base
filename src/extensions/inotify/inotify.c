@@ -81,7 +81,7 @@ PyMethodDef inotify_methods[] = {
 };
 
 
-void init_inotify()
+void init_inotify(void)
 {
     PyObject *m = Py_InitModule("_inotify", inotify_methods);
     #define add_const(x) PyModule_AddObject(m, #x, PyLong_FromLong(IN_ ## x));

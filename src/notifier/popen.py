@@ -305,8 +305,8 @@ class Process(object):
         self.__dead = True
         self.stopping = False
         # close IO handler and kill timer
-        self.stdout.close()
-        self.stderr.close()
+        self.stdout.flush()
+        self.stderr.flush()
         self.child.tochild.close()
         self.child = None
         if self.__kill_timer:
@@ -353,6 +353,15 @@ class IO_Handler(object):
             self.logger.close()
             self.logger = None
 
+
+    def flush( self ):
+        """
+        Read as much as possible and close socket later.
+        """
+        while self._handle_input( self.fp ):
+            pass
+
+        
     def _handle_input( self, socket ):
         """
         Handle data input from socket.
@@ -365,7 +374,10 @@ class IO_Handler(object):
                 # non-blocking descriptor we'll get this message.
                 return True
             data = None
-
+        except ValueError:
+            # socket already closed
+            return False
+            
         if not data:
             log.info('No data on %s for pid %s.' % ( self.name, os.getpid()))
             notifier.socket_remove( self.fp )

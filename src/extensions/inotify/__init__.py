@@ -43,9 +43,15 @@ except ImportError:
 
 # TODO: hook in gamin if it is running. See gamin.py
 
-class INotify:
+class INotify(object):
+    __instance = None  # Singleton
 
-    # TODO: use singleton design pattern.
+    def __new__(cls):
+        if not INotify.__instance:
+            INotify.__instance = object.__new__(cls)
+
+        return INotify.__instance
+
 
     def __init__(self):
         if not _inotify:

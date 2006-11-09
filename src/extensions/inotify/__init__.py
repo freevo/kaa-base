@@ -66,6 +66,8 @@ class INotify(object):
         self._watches = {}
         self._watches_by_path = {}
         self._read_buffer = ""
+        self._move_state = None  # For MOVED_FROM events
+        self._moved_timer = kaa.notifier.WeakOneShotTimer(self._emit_last_move)
 
         self._fd = _inotify.init()
         if self._fd < 0:
@@ -139,19 +141,31 @@ class INotify(object):
         return self._watches_by_path.keys()
 
 
+    def _emit_last_move(self):
+        """
+        Emits the last move event (MOVED_FROM), if it exists.
+        """
+        if not self._move_state:
+            return
+
+        prev_wd, prev_mask, dummy, prev_path = self._move_state
+        self._watches[prev_wd][0].emit(prev_mask, prev_path)
+        self.signals["event"].emit(prev_mask, prev_path)
+        self._move_state = None
+        self._moved_timer.stop()
+
+
     def _handle_data(self):
         data = os.read(self._fd, 32768)
         self._read_buffer += data
-        is_move = None
 
         while True:
             if len(self._read_buffer) < 16:
-                if is_move:
-                    # We had a MOVED_FROM without MOVED_TO. Too bad, just send
-                    # the MOVED_FROM without target
-                    wd, mask, cookie, path = is_move
-                    self._watches[wd][0].emit(mask, path)
-                    self.signals["event"].emit(mask, path)
+                if self._move_state:
+                    # We received a MOVED_FROM event with no matching 
+                    # MOVED_TO.  If we don't get a matching MOVED_TO in 0.1
+                    # seconds, emit the MOVED_FROM event.
+                    self._moved_timer.start(0.1)
                 break
 
             wd, mask, cookie, size = struct.unpack("LLLL", self._read_buffer[0:16])
@@ -162,34 +176,38 @@ class INotify(object):
 
             self._read_buffer = self._read_buffer[16+size:]
             if wd not in self._watches:
+                # Weird, received an event for an unknown watch.
                 continue
 
             path = self._watches[wd][1]
             if name:
                 path = os.path.join(path, name)
 
+            if self._move_state:
+                # Last event was a MOVED_FROM. So if this is a MOVED_TO and the
+                # cookie matches, emit once specifying both paths. If not, 
+                # emit two signals.
+                if mask & INotify.MOVED_TO and cookie == self._move_state[2]:
+                    # Great, they match. Fire a MOVE signal with both paths.
+                    # Use the all three signals (global, from, to).
+                    mask |= INotify.MOVED_FROM
+                    prev_wd, dummy, dummy, prev_path = self._move_state
+                    self._watches[prev_wd][0].emit(mask, prev_path, path)
+                    self._watches[wd][0].emit(mask, prev_path, path)
+                    self.signals["event"].emit(mask, prev_path, path)
+                    self._move_state = None
+                    self._moved_timer.stop()
+                    continue
+
+                # No match, fire the earlier MOVED_FROM signal now 
+                # with no target.
+                self._emit_last_move()
+
             if mask & INotify.MOVED_FROM:
                 # This is a MOVED_FROM. Don't emit the signals now, let's wait
-                # for a MOVED_TO.
-                is_move = wd, mask, cookie, path
+                # for a MOVED_TO, which we expect to be next.
+                self._move_state = wd, mask, cookie, path
                 continue
-            if is_move:
-                # Last check was a MOVED_FROM. So if this is a MOVED_TO and the
-                # cookie matches, emit both paths. If not, send two signals.
-                if mask & INotify.MOVED_TO and cookie == is_move[2]:
-                    # Great, they match. Fire a MOVE signal with both paths.
-                    # Use the all three signals (global, from, to)
-                    mask |= INotify.MOVED_FROM
-                    self._watches[is_move[0]][0].emit(mask, is_move[3], path)
-                    self._watches[wd][0].emit(mask, is_move[3], path)
-                    self.signals["event"].emit(mask, is_move[3], path)
-                    is_move = None
-                    continue
-                # No match, fire the is_move signal now
-                wd, cookie, path = is_move
-                self._watches[is_move[0]][0].emit(is_move[1], is_move[3])
-                self.signals["event"].emit(is_move[1], is_move[3])
-                is_move = None
 
             self._watches[wd][0].emit(mask, path)
             self.signals["event"].emit(mask, path)

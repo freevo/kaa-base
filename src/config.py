@@ -105,7 +105,6 @@ class Base(object):
         return copy.deepcopy(self)
 
     def add_monitor(self, callback):
-        assert(callable(callback))
         # Wrap the function or method in a class that will ignore deep copies
         # because deepcopy() is unable to copy callables.
         self._monitors.append(Callback(callback))

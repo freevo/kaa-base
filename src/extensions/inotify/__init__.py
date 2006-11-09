@@ -5,7 +5,7 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2006 Dirk Meyer
+# Copyright (C) 2006 Jason Tackaberry, Dirk Meyer
 #
 # First Edition: Jason Tackaberry <tack@sault.org>
 # Maintainer:    Jason Tackaberry <tack@sault.org>

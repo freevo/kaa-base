@@ -86,7 +86,7 @@ class Library(object):
         if len(version) == 0:
             print 'no'
             return False
-        if minver and self.compare_versions(minver, version) >= 0:
+        if minver and self.compare_versions(minver, version) > 0:
             print 'no (%s)' % version
             return False
 

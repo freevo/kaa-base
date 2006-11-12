@@ -51,7 +51,16 @@ class Library(object):
         self.valid = False
 
 
-    def check(self, minver):
+    def versionnum(self, version, numelements):
+        re_elements = re.compile('([0-9]+)')
+        elements = re_elements.findall(version)
+        num = 0
+        for i in range(0,numelements):
+            num = num * 10
+            num = num + (i < len(elements) and int(elements[i]) or 0)
+        return num
+
+    def check(self, minver, numelements=3):
         """
         Check dependencies add add the flags to include_dirs, library_dirs and
         libraries. The basic logic is taken from pygame.
@@ -75,9 +84,12 @@ class Library(object):
         if len(version) == 0:
             print 'no'
             return False
-        if minver and version < minver:
-            print 'no (%s)' % version
-            return False
+        if minver:
+            minnum = self.versionnum(minver, numelements)
+            vernum = self.versionnum(version, numelements)
+            if vernum < minnum:
+                print 'no (%s)' % version
+                return False
 
         for inc in os.popen(command % "--cflags").read().strip().split(' '):
             if inc[2:] and not inc[2:] in self.include_dirs:

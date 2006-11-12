@@ -55,8 +55,8 @@ class Library(object):
         # Get maximum component length in both version.
         maxlen =  max([ len(x) for x in (a + '.' + b).split('.') ])
         # Pad each component of A and B to maxlen
-        a = '.'.join([ x.zfill(maxlen) for x in a.split('.') ])
-        b = '.'.join([ x.zfill(maxlen) for x in b.split('.') ])
+        a = [ x.zfill(maxlen) for x in a.split('.') ]
+        b = [ x.zfill(maxlen) for x in b.split('.') ]
         # TODO: special handling of rc and beta (others?) suffixes, so
         # that 1.0.0 > 1.0.0rc1 
         return cmp(a, b)

@@ -140,7 +140,7 @@ static PyObject *PyShm_Error;
 */
 
 static PyObject *
-PyShm_Err()
+PyShm_Err(void)
 {
     return PyErr_SetFromErrno(PyShm_Error);
 }
@@ -210,8 +210,8 @@ static PyObject *sem_dict = NULL;
    test, you're welcome :-) */
    
 static int
-check_memory_identity(o)
-    PyShmObj *o;
+check_memory_identity(
+    PyShmObj *o)
 {
     int new_shmid;
     int old_shmid = o->shmid;
@@ -255,9 +255,9 @@ check_memory_identity(o)
 /* Attach the shared memory segment to the process address space */
 
 static PyObject *
-PyShmMemory_attach(self, args)
-    PyShmObj *self;
-    PyObject *args;
+PyShmMemory_attach(
+    PyShmObj *self,
+    PyObject *args)
 {
     unsigned long address = 0;
     int mode = 0;    
@@ -295,9 +295,9 @@ PyShmMemory_attach(self, args)
 /* Detach the memory object from the process address space */
 
 static PyObject *
-PyShmMemory_detach(self, args)
-    PyShmObj *self;
-    PyObject *args;
+PyShmMemory_detach(
+    PyShmObj *self,
+    PyObject *args)
 {
     if (!PyArg_NoArgs(args))
 	return NULL;
@@ -318,9 +318,9 @@ PyShmMemory_detach(self, args)
 /* Return a string of n bytes peeked from the shared memory segment */
 
 static PyObject *
-PyShmMemory_read(self, args)
-    PyShmObj *self;
-    PyObject *args;
+PyShmMemory_read(
+    PyShmObj *self,
+    PyObject *args)
 {
     unsigned long n, offset = 0;
     char buf[128];
@@ -348,9 +348,9 @@ PyShmMemory_read(self, args)
 */
 
 static PyObject *
-PyShmMemory_setgid(self, args)
-    PyShmObj *self;
-    PyObject *args;
+PyShmMemory_setgid(
+    PyShmObj *self,
+    PyObject *args)
 {
     long newgid, oldgid;
 
@@ -372,9 +372,9 @@ PyShmMemory_setgid(self, args)
 */
 
 static PyObject *
-PyShmMemory_setperm(self, args)
-    PyShmObj *self;
-    PyObject *args;
+PyShmMemory_setperm(
+    PyShmObj *self,
+    PyObject *args)
 {
     long newmode, oldmode;
 
@@ -398,9 +398,9 @@ PyShmMemory_setperm(self, args)
 */
 
 static PyObject *
-PyShmMemory_setuid(self, args)
-    PyShmObj *self;
-    PyObject *args;
+PyShmMemory_setuid(
+    PyShmObj *self,
+    PyObject *args)
 {
     long newuid, olduid;
 
@@ -424,9 +424,9 @@ PyShmMemory_setuid(self, args)
 /* Write a string to the shared memory segment. */
 
 static PyObject *
-PyShmMemory_write(self, args)
-    PyShmObj *self;
-    PyObject *args;
+PyShmMemory_write(
+    PyShmObj *self,
+    PyObject *args)
 {
     char *data;
     unsigned long offset = 0;
@@ -515,8 +515,8 @@ static struct memberlist memory_memberlist[] = {
 #undef OFF2
 
 static void
-PyShmMemory_dealloc(self)
-    PyShmObj *self;
+PyShmMemory_dealloc(
+    PyShmObj *self)
 {
     /* del shm_dict[key], ignore if it fails */
     if (PyDict_DelItem(shm_dict, PyInt_FromLong(self->shmid)) == -1)
@@ -533,9 +533,9 @@ PyShmMemory_dealloc(self)
 }
 
 static PyObject *
-PyShmMemory_getattr(self, name)
-    PyShmObj *self;
-    char *name;
+PyShmMemory_getattr(
+    PyShmObj *self,
+    char *name)
 {
     PyObject *res;
 
@@ -562,9 +562,9 @@ PyShmMemory_getattr(self, name)
 }
 
 static PyObject *
-PyShmMemory_repr(self, name)
-    PyShmObj *self;
-    char *name;
+PyShmMemory_repr(
+    PyShmObj *self,
+    char *name)
 {
     char buf[100];
     char buf2[20];
@@ -610,8 +610,8 @@ static PyTypeObject PyShmMemory_Type = {
 /* This is to check the validity of a Python semaphore object */
 
 static int
-check_semaphore_identity(o)
-    PyShmSemObj *o;
+check_semaphore_identity(
+    PyShmSemObj *o)
 {
     int new_semid;
     int old_semid = o->semid;
@@ -648,9 +648,9 @@ check_semaphore_identity(o)
 */
 
 static PyObject *
-PyShmSemaphore_P(self, args)
-    PyShmSemObj *self;
-    PyObject *args;
+PyShmSemaphore_P(
+    PyShmSemObj *self,
+    PyObject *args)
 {
     struct sembuf op[1];
     int res;
@@ -674,9 +674,9 @@ PyShmSemaphore_P(self, args)
 */
 
 static PyObject *
-PyShmSemaphore_V(self, args)
-    PyShmSemObj *self;
-    PyObject *args;
+PyShmSemaphore_V(
+    PyShmSemObj *self,
+    PyObject *args)
 {
     struct sembuf op[1];
     int res;
@@ -700,9 +700,9 @@ PyShmSemaphore_V(self, args)
 */
 
 static PyObject *
-PyShmSemaphore_Z(self, args)
-    PyShmSemObj *self;
-    PyObject *args;
+PyShmSemaphore_Z(
+    PyShmSemObj *self,
+    PyObject *args)
 {
     struct sembuf op[1];
     int res;
@@ -726,9 +726,9 @@ PyShmSemaphore_Z(self, args)
 */
 
 static PyObject *
-PyShmSemaphore_setblocking(self, args)
-    PyShmSemObj *self;
-    PyObject *args;
+PyShmSemaphore_setblocking(
+    PyShmSemObj *self,
+    PyObject *args)
 {
     int block;
 
@@ -748,9 +748,9 @@ PyShmSemaphore_setblocking(self, args)
 */
 
 static PyObject *
-PyShmSemaphore_setgid(self, args)
-    PyShmSemObj *self;
-    PyObject *args;
+PyShmSemaphore_setgid(
+    PyShmSemObj *self,
+    PyObject *args)
 {
     long newgid, oldgid;
     semctl_arg arg;
@@ -774,9 +774,9 @@ PyShmSemaphore_setgid(self, args)
 */
 
 static PyObject *
-PyShmSemaphore_setperm(self, args)
-    PyShmSemObj *self;
-    PyObject *args;
+PyShmSemaphore_setperm(
+    PyShmSemObj *self,
+    PyObject *args)
 {
     long newmode, oldmode;
     semctl_arg arg;
@@ -802,9 +802,9 @@ PyShmSemaphore_setperm(self, args)
 */
 
 static PyObject *
-PyShmSemaphore_setuid(self, args)
-    PyShmSemObj *self;
-    PyObject *args;
+PyShmSemaphore_setuid(
+    PyShmSemObj *self,
+    PyObject *args)
 {
     long newuid, olduid;
     semctl_arg arg;
@@ -828,9 +828,9 @@ PyShmSemaphore_setuid(self, args)
 */
 
 static PyObject *
-PyShmSemaphore_setundo(self, args)
-    PyShmSemObj *self;
-    PyObject *args;
+PyShmSemaphore_setundo(
+    PyShmSemObj *self,
+    PyObject *args)
 {
     int undo;
 
@@ -850,9 +850,9 @@ PyShmSemaphore_setundo(self, args)
 */
 
 static PyObject *
-PyShmSemaphore_setval(self, args)
-    PyShmSemObj *self;
-    PyObject *args;
+PyShmSemaphore_setval(
+    PyShmSemObj *self,
+    PyObject *args)
 {
     int value;
     semctl_arg arg;
@@ -924,8 +924,8 @@ static struct memberlist semaphore_memberlist[] = {
 #undef OFF2
 
 static void
-PyShmSemaphore_dealloc(self)
-    PyShmSemObj *self;
+PyShmSemaphore_dealloc(
+    PyShmSemObj *self)
 {
     /* del sem_dict[key], ignore if it fails */
     if (PyDict_DelItem(sem_dict, PyInt_FromLong(self->semid)) == -1)
@@ -934,9 +934,9 @@ PyShmSemaphore_dealloc(self)
 }
 
 static PyObject *
-PyShmSemaphore_getattr(self, name)
-    PyShmSemObj *self;
-    char *name;
+PyShmSemaphore_getattr(
+    PyShmSemObj *self,
+    char *name)
 {
     PyObject *res;
 
@@ -959,9 +959,9 @@ PyShmSemaphore_getattr(self, name)
 }
 
 static PyObject *
-PyShmSemaphore_repr(self, name)
-    PyShmSemObj *self;
-    char *name;
+PyShmSemaphore_repr(
+    PyShmSemObj *self,
+    char *name)
 {
     char buf[100];
 
@@ -1005,9 +1005,9 @@ static PyTypeObject PyShmSemaphore_Type = {
 /* Compute a key by using the system's ftok algorithm */
 
 static PyObject *
-PyShm_ftok(self, args)
-    PyObject *self;
-    PyObject *args;
+PyShm_ftok(
+    PyObject *self,
+    PyObject *args)
 {
     char *path;
     char id;
@@ -1026,9 +1026,9 @@ PyShm_ftok(self, args)
 /* Return a shared memory segment id from a given key */
 
 static PyObject *
-PyShm_getshmid(self, args)
-    PyObject *self;
-    PyObject *args;
+PyShm_getshmid(
+    PyObject *self,
+    PyObject *args)
 {
     long key;
     int shmid;
@@ -1050,9 +1050,9 @@ PyShm_getshmid(self, args)
 /* Check whether there is a shared memory segment with the given key */
 
 static PyObject *
-PyShm_memory_haskey(self, args)
-    PyObject *self;
-    PyObject *args;
+PyShm_memory_haskey(
+    PyObject *self,
+    PyObject *args)
 {
     long key;
     int shmid;
@@ -1070,9 +1070,9 @@ PyShm_memory_haskey(self, args)
 /* Get an existing shared memory segment and return it as a python object. */
 
 static PyObject *
-PyShm_memory(self, args)
-    PyObject *self;
-    PyObject *args;
+PyShm_memory(
+    PyObject *self,
+    PyObject *args)
 {
     int shmid;
     PyShmObj *o;
@@ -1119,9 +1119,9 @@ PyShm_memory(self, args)
 /* Create a new shared memory segment. */
 
 static PyObject *
-PyShm_create_memory(self, args)
-    PyObject *self;
-    PyObject *args;
+PyShm_create_memory(
+    PyObject *self,
+    PyObject *args)
 {
     long key;
     int size, shmid;
@@ -1143,9 +1143,9 @@ PyShm_create_memory(self, args)
 /* Remove an existing shared memory segment. */
 
 static PyObject *
-PyShm_remove_memory(self, args)
-    PyObject *self;
-    PyObject *args;
+PyShm_remove_memory(
+    PyObject *self,
+    PyObject *args)
 {
     int shmid, res;
 
@@ -1165,9 +1165,9 @@ PyShm_remove_memory(self, args)
 /* Return a semaphore id from a given key */
 
 static PyObject *
-PyShm_getsemid(self, args)
-    PyObject *self;
-    PyObject *args;
+PyShm_getsemid(
+    PyObject *self,
+    PyObject *args)
 {
     long key;
     int semid;
@@ -1189,9 +1189,9 @@ PyShm_getsemid(self, args)
 /* Check whether there is a semaphore with the given key */
 
 static PyObject *
-PyShm_semaphore_haskey(self, args)
-    PyObject *self;
-    PyObject *args;
+PyShm_semaphore_haskey(
+    PyObject *self,
+    PyObject *args)
 {
     long key;
     int semid;
@@ -1209,9 +1209,9 @@ PyShm_semaphore_haskey(self, args)
 /* Get an existing semaphore and return it as a python object. */
 
 static PyObject *
-PyShm_semaphore(self, args)
-    PyObject *self;
-    PyObject *args;
+PyShm_semaphore(
+    PyObject *self,
+    PyObject *args)
 {
     int semid;
     PyShmSemObj *o;
@@ -1259,9 +1259,9 @@ PyShm_semaphore(self, args)
 /* Create a new semaphore. */
 
 static PyObject *
-PyShm_create_semaphore(self, args)
-    PyObject *self;
-    PyObject *args;
+PyShm_create_semaphore(
+    PyObject *self,
+    PyObject *args)
 {
     long key;
     int semid;
@@ -1286,9 +1286,9 @@ PyShm_create_semaphore(self, args)
 /* Remove an existing semaphore. */
 
 static PyObject *
-PyShm_remove_semaphore(self, args)
-    PyObject *self;
-    PyObject *args;
+PyShm_remove_semaphore(
+    PyObject *self,
+    PyObject *args)
 {
     int semid, res;
 
@@ -1335,10 +1335,10 @@ static PyMethodDef PyShm_methods[] = {
 /* This is for inserting constants in the module's dictionary */
 
 static void
-insint(d, name, value)
-    PyObject *d;
-    char *name;
-    int value;
+insint(
+    PyObject *d,
+    char *name,
+    int value)
 {
 	PyObject *v = PyInt_FromLong((long) value);
 	if (!v || PyDict_SetItemString(d, name, v))
@@ -1350,10 +1350,10 @@ insint(d, name, value)
 /* This is to set up the type of shared memory/semaphore object members */
 
 static void
-set_member_type(sxm_memberlist, index, typesize)
-    struct memberlist *sxm_memberlist;
-    int index;		/* index in memberlist */
-    int typesize;	/* sizeof(member_type) */
+set_member_type(
+    struct memberlist *sxm_memberlist,
+    int index,		/* index in memberlist */
+    int typesize)	/* sizeof(member_type) */
 {
     int t;
 
@@ -1373,7 +1373,7 @@ set_member_type(sxm_memberlist, index, typesize)
 };
   
 void
-initshm()
+initshm(void)
 {
     PyObject *m, *d;
 

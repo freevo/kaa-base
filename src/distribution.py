@@ -51,16 +51,18 @@ class Library(object):
         self.valid = False
 
 
-    def versionnum(self, version, numelements):
-        re_elements = re.compile('([0-9]+)')
-        elements = re_elements.findall(version)
-        num = 0
-        for i in range(0,numelements):
-            num = num * 10
-            num = num + (i < len(elements) and int(elements[i]) or 0)
-        return num
+    def compare_versions(self, a, b):
+        # Get maximum component length in both version.
+        maxlen =  max([ len(x) for x in (a + '.' + b).split('.') ])
+        # Pad each component of A and B to maxlen
+        a = '.'.join([ x.zfill(2) for x in a.split('.') ])
+        b = '.'.join([ x.zfill(2) for x in b.split('.') ])
+        # TODO: special handling of rc and beta (others?) suffixes, so
+        # that 1.0.0 > 1.0.0rc1 
+        return cmp(a, b)
 
-    def check(self, minver, numelements=3):
+
+    def check(self, minver):
         """
         Check dependencies add add the flags to include_dirs, library_dirs and
         libraries. The basic logic is taken from pygame.
@@ -84,12 +86,9 @@ class Library(object):
         if len(version) == 0:
             print 'no'
             return False
-        if minver:
-            minnum = self.versionnum(minver, numelements)
-            vernum = self.versionnum(version, numelements)
-            if vernum < minnum:
-                print 'no (%s)' % version
-                return False
+        if minver and self.compare_versions(minver, version) >= 0:
+            print 'no (%s)' % version
+            return False
 
         for inc in os.popen(command % "--cflags").read().strip().split(' '):
             if inc[2:] and not inc[2:] in self.include_dirs:

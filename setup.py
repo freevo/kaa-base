@@ -27,21 +27,20 @@
 # -----------------------------------------------------------------------------
 
 # python imports
-from distutils.core import setup
 import sys
 
 # We have some extensions but kaa.distribution isn't installed yet.  So import
 # it directly from the source tree.  First add src/ to the modules patch ...
 sys.path.insert(0, "src")
 # ... and now import it.
-from distribution import Extension
+from distribution import Extension, setup
 
-ext = Extension('kaa.shmmodule', ['src/extensions/shmmodule.c']).convert()
+ext = Extension('kaa.shmmodule', ['src/extensions/shmmodule.c'])
 extensions = [ ext ]
 
 objectrow = Extension('kaa._objectrow', ['src/extensions/objectrow.c'])
 if objectrow.check_library("glib-2.0", "2.4.0"):
-    extensions.append(objectrow.convert())
+    extensions.append(objectrow)
 else:
     print "glib >= 2.4.0 not found; kaa.db will be unavailable"
 
@@ -55,25 +54,15 @@ if not inotify_ext.check_cc(["<sys/inotify.h>"], "inotify_init();"):
     else:
         print "inotify not supported in glibc; using built-in support instead."
         inotify_ext.config("#define USE_FALLBACK")
-        extensions.append(inotify_ext.convert())
+        extensions.append(inotify_ext)
 
 else:
     print "inotify supported by glibc; good."
-    extensions.append(inotify_ext.convert())
+    extensions.append(inotify_ext)
 
 
 # call setup
 setup(
-    name             = 'kaa-base',
+    module           = 'base',
     version          = '0.1',
-    maintainer       = 'The Freevo Project',
-    maintainer_email = 'developer@freevo.org',
-    url              = 'http://www.freevo.org/kaa',
-    package_dir      = { 'kaa': 'src',
-                         'kaa.notifier': 'src/notifier',
-                         'kaa.notifier.pynotifier': 'src/notifier/pynotifier',
-                         'kaa.input': 'src/input',
-                         'kaa.inotify': 'src/extensions/inotify' },
-    packages         = [ 'kaa', 'kaa.notifier', 'kaa.notifier.pynotifier',
-                         'kaa.input', 'kaa.inotify' ],
     ext_modules      = extensions)

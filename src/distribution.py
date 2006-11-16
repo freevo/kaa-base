@@ -338,18 +338,55 @@ class EmptyExtensionsList(list):
 
 
 
+
+class GentooEbuild (distutils.core.Command):
+
+    description = "create gentoo ebuild"
+
+    user_options = [
+        ('prefix=', None,
+         "portage prefix"),
+        ]
+
+    def initialize_options (self):
+        self.prefix = None
+        
+    def finalize_options (self):
+        pass
+        
+    def run (self):
+        if not self.prefix:
+            print 'Please provide overlay portage prefix'
+            return 0
+        name = self.distribution.metadata.name
+        version = self.distribution.metadata.version
+        if not os.path.isfile('%s.ebuild' % name):
+            print 'No ebuild template provided'
+            return 0
+        fd = open('%s.ebuild' % name)
+        edata = fd.readlines()
+        fd.close()
+        ebuild = '%s/dev-python/%s/%s-%s.ebuild' % (self.prefix, name, name, version)
+        if not os.path.isdir(os.path.dirname(ebuild)):
+            os.makedirs(os.path.dirname(ebuild))
+        fd = open(ebuild, 'w')
+        for line in edata:
+            fd.write(line)
+        fd.close()
+        os.system('ebuild %s digest' % ebuild)
+
+        
 def setup(**kwargs):
     """
     A setup script wrapper for kaa modules.
     """
-    def _find_packages(kwargs, dirname, files):
+    def _find_packages((kwargs, prefix), dirname, files):
         """
         Helper function to create 'packages' and 'package_dir'.
         """
         if not '__init__.py' in files:
             return
-        python_dirname = 'kaa.' + kwargs['module'] + \
-                         dirname[3:].replace('/', '.')
+        python_dirname = prefix + dirname[3:].replace('/', '.')
         kwargs['package_dir'][python_dirname] = dirname
         kwargs['packages'].append(python_dirname)
 
@@ -363,10 +400,10 @@ def setup(**kwargs):
     # search for source files and add it package_dir and packages
     kwargs['package_dir'] = {}
     kwargs['packages']    = []
-    os.path.walk('src', _find_packages, kwargs)
-
-    # delete 'module' information, not used by distutils.setup
-    del kwargs['module']
+    if kwargs['module'] == 'base':
+        os.path.walk('src', _find_packages, (kwargs, 'kaa'))
+    else:
+        os.path.walk('src', _find_packages, (kwargs, 'kaa.' + kwargs['module']))
 
     # convert Extensions
     if kwargs.get('ext_modules'):
@@ -382,7 +419,7 @@ def setup(**kwargs):
 
     # check version.py information
     write_version = False
-    if kwargs.has_key('version'):
+    if kwargs.has_key('version') and not kwargs['module'] == 'base':
         write_version = True
         # check if a version.py is there
         if os.path.isfile('src/version.py'):
@@ -394,6 +431,9 @@ def setup(**kwargs):
                         write_version = False
                     break
             f.close()
+
+    # delete 'module' information, not used by distutils.setup
+    del kwargs['module']
 
     if write_version:
         # Write a version.py and add it to the list of files to
@@ -413,5 +453,10 @@ def setup(**kwargs):
     if not kwargs.has_key('url'):
         kwargs['url'] = 'http://freevo.sourceforge.net/kaa'
 
+    # add extra commands
+    if not 'cmdclass' in kwargs:
+        kwargs['cmdclass'] = {}
+    kwargs['cmdclass']['ebuild'] = GentooEbuild
+    
     # run the distutils.setup function
     return distutils.core.setup(**kwargs)

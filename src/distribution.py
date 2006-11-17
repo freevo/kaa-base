@@ -40,7 +40,61 @@ import distutils.core
 # version checking
 from version import Version
 
-_libraries = []
+__all__ = ['compile', 'check_library', 'get_library', 'setup', 'ConfigFile',
+           'Extension', 'Library']
+
+_libraries = {}
+
+def compile(includes, code, args=''):
+    fd, outfile = tempfile.mkstemp()
+    os.close(fd)
+    f = os.popen("cc -x c - -o %s %s 2>/dev/null >/dev/null" % (outfile, args), "w")
+    if not f:
+        return False
+
+    for i in includes:
+        f.write('#include %s\n' % i)
+    f.write('int main() { ' + code + '\nreturn 0;\n};')
+    result = f.close()
+
+    if os.path.exists(outfile):
+        os.unlink(outfile)
+
+    if result == None:
+        return True
+    return False
+
+
+def check_library(name, *args):
+    lib = Library(name)
+    if len(args) < 2:
+        minver = args[0]
+        print 'checking for', name, '>=', minver, '...',
+        sys.__stdout__.flush()
+        found, version = lib.check(minver)
+        if found:
+            print version
+        elif version:
+            print 'no (%s)' % version
+        else:
+            print 'no'
+    else:
+        print 'checking for', name, '...',
+        sys.__stdout__.flush()
+        if lib.compile(*args):
+            print 'ok'
+        else:
+            print 'no'
+    _libraries[name] = lib
+    return lib
+
+
+def get_library(name):
+    lib = _libraries.get(name)
+    if lib and lib.valid:
+        return lib
+    return None
+
 
 class Library(object):
     def __init__(self, name):
@@ -48,6 +102,7 @@ class Library(object):
         self.include_dirs = []
         self.library_dirs = []
         self.libraries = []
+        self.version = None
         self.valid = False
 
 
@@ -62,14 +117,33 @@ class Library(object):
         return cmp(a, b)
 
 
+    def get_numeric_version(self, version = None):
+        """
+        Returns an integer version suitable for numeric comparison.  This
+        returns the version of the library gotten after calling check().  If
+        check() was not called this method will raise an exception.
+
+        This algorithm is pretty naive and won't work at all if the version
+        contains any non-numeric characters.
+        """
+        if version is None:
+            version = self.version
+
+        if version is None:
+            raise ValueError, "Version is not known; call check() first"
+
+        if not version.replace(".", "").isdigit():
+            raise ValueError, "Version cannot have non-numeric characters."
+
+        # Performs: 1.2.3.4 => 4<<0 + 3<<9 + 2<<18 + 1<<27
+        return sum([ int(v) << 9*s for s,v in enumerate(reversed(version.split('.'))) ])
+
+
     def check(self, minver):
         """
         Check dependencies add add the flags to include_dirs, library_dirs and
         libraries. The basic logic is taken from pygame.
         """
-        print 'checking for', self.name, '>=', minver, '...',
-        sys.__stdout__.flush()
-
         if os.system("%s-config --version &>/dev/null" % self.name) == 0:
             # Use foo-config if it exists.
             command = "%s-config %%s 2>/dev/null" % self.name
@@ -79,16 +153,13 @@ class Library(object):
             command = "pkg-config %s %%s 2>/dev/null" % self.name
             version_arg = "--modversion"
         else:
-            print 'no'
-            return False
+            return False, None
 
         version = os.popen(command % version_arg).read().strip()
         if len(version) == 0:
-            print 'no'
-            return False
+            return False, None
         if minver and self.compare_versions(minver, version) > 0:
-            print 'no (%s)' % version
-            return False
+            return False, version
 
         for inc in os.popen(command % "--cflags").read().strip().split(' '):
             if inc[2:] and not inc[2:] in self.include_dirs:
@@ -99,52 +170,22 @@ class Library(object):
                 self.library_dirs.append(flag[2:])
             if flag[:2] == '-l' and not flag[2:] in self.libraries:
                 self.libraries.append(flag[2:])
-        print version
+
+        self.version = version
         self.valid = True
-        return True
+        return True, version
+
 
     def compile(self, includes, code, args=''):
-        print 'checking for', self.name, '...',
-        fd, outfile = tempfile.mkstemp()
-        os.close(fd)
-        f = os.popen("cc -x c - -o %s %s 2>/dev/null >/dev/null" % (outfile, args), "w")
-        if not f:
-            print 'failed'
-            return False
-
-        for i in includes:
-            f.write('#include %s\n' % i)
-        f.write('int main() { ' + code + '\nreturn 0;\n};')
-        result = f.close()
-
-        if os.path.exists(outfile):
-            os.unlink(outfile)
-
-        if result == None:
-            print 'ok'
+        if compile(includes, code, args):
             self.valid = True
             return True
-        print 'no'
+
         return False
 
 
-def check_library(name, *args):
-    lib = Library(name)
-    if len(args) < 2:
-        lib.check(args[0])
-    else:
-        lib.compile(*args)
-    _libraries.append(lib)
-    return lib
 
-
-def get_library(name):
-    for l in _libraries:
-        if l.name == name and l.valid:
-            return l
-    return None
-
-class Configfile(object):
+class ConfigFile(object):
     """
     Config file for the build process.
     """
@@ -195,9 +236,10 @@ class Extension(object):
         self.include_dirs = include_dirs[:]
         self.library_dirs = library_dirs[:]
         self.libraries = libraries[:]
+        self.library_objects = []
         self.extra_compile_args = ["-Wall"] + extra_compile_args
         if config:
-            self.configfile = Configfile(config)
+            self.configfile = ConfigFile(config)
         else:
             self.configfile = None
 
@@ -214,14 +256,16 @@ class Extension(object):
     def add_library(self, name):
         """
         """
-        for l in _libraries:
-            if l.name == name and l.valid:
-                for attr in ('include_dirs', 'library_dirs', 'libraries'):
-                    for val in getattr(l, attr):
-                        if not val in getattr(self, attr):
-                            getattr(self, attr).append(val)
-                return True
+        lib = get_library(name)
+        if lib:
+            self.library_objects.append(lib)
         return False
+
+
+    def get_library(self, name):
+        for lib in self.library_objects:
+            if lib.name == name:
+                return lib
 
 
     def check_library(self, name, minver):
@@ -230,41 +274,19 @@ class Extension(object):
         libraries. The basic logic is taken from pygame.
         """
         try:
-            if os.system("pkg-config %s --exists &>/dev/null" % name) == 0:
-                # Use pkg-config (it also wraps foo-config)
-                command = "pkg-config %s %%s 2>/dev/null" % name
-                if minver:
-                    if not os.system(command % '--atleast-version %s' % minver) == 0:
-                        err= 'requires %s version %s' % (name, minver)
-                        raise ValueError, err
-            elif os.system("%s-config --version &>/dev/null" % name) == 0:
-                # Use foo-config if it exists.
-                command = "%s-config %%s 2>/dev/null" % name
-                version = os.popen(command % '--version').read().strip()
-                if len(version) == 0:
-                    raise ValueError, 'command not found'
-                # this check may be wrong, but it works if wrapped with
-                # pkg-config. Maybe always use pkg-config?
-                if minver and version < minver:
-                    err= 'requires %s version %s (%s found)' % \
-                         (name, minver, version)
-                    raise ValueError, err
-            else:
-                raise ValueError, "%s is not installed" % name
-
-            for inc in os.popen(command % "--cflags").read().strip().split(' '):
-                if inc[2:] and not inc[2:] in self.include_dirs:
-                    self.include_dirs.append(inc[2:])
-
-            for flag in os.popen(command % "--libs").read().strip().split(' '):
-                if flag[:2] == '-L' and not flag[2:] in self.library_dirs:
-                    self.library_dirs.append(flag[2:])
-                if flag[:2] == '-l' and not flag[2:] in self.libraries:
-                    self.libraries.append(flag[2:])
+            lib = Library(name)
+            found, version = lib.check(minver)
+            if not found:
+                if not version:
+                    version = 'none'
+                raise ValueError, 'requires %s version %s (none found)' % \
+                                  (name, minver, version)
+            self.library_objects.append(lib)
             return True
         except Exception, e:
             self.error = e
-            return False
+
+        return False
 
 
     def check_cc(self, includes, code, args=''):
@@ -272,31 +294,25 @@ class Extension(object):
         Check the given code with the linker. The optional parameter args
         can contain additional command line options like -l.
         """
-        fd, outfile = tempfile.mkstemp()
-        os.close(fd)
-        f = os.popen("cc -x c - -o %s %s 2>/dev/null >/dev/null" % (outfile, args), "w")
-        if not f:
-            return False
-
-        for i in includes:
-            f.write('#include %s\n' % i)
-        f.write('int main() { ' + code + '\nreturn 0;\n};')
-        result = f.close()
-
-        if os.path.exists(outfile):
-            os.unlink(outfile)
-
-        return result == None
+        return compile(includes, code, args)
 
 
     def convert(self):
         """
         Convert Extension into a distutils.core.Extension.
         """
+        library_dirs = self.library_dirs[:]
+        include_dirs = self.include_dirs[:]
+        libraries = self.libraries[:]
+        for lib in self.library_objects:
+            library_dirs.extend(lib.library_dirs)
+            include_dirs.extend(lib.include_dirs)
+            libraries.extend(lib.libraries)
+
         return distutils.core.Extension(self.output, self.files,
-                                        library_dirs=self.library_dirs,
-                                        include_dirs=self.include_dirs,
-                                        libraries=self.libraries,
+                                        library_dirs=library_dirs,
+                                        include_dirs=include_dirs,
+                                        libraries=libraries,
                                         extra_compile_args=self.extra_compile_args)
 
     def __del__(self):

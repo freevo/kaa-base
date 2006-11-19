@@ -133,7 +133,7 @@ def step( sleep = True, external = True ):
     for i, timer in _copy.items():
 	timestamp = timer[ TIMESTAMP ]
         if not timestamp:
-            # prevert recursion, ignore this timer
+            # prevent recursion, ignore this timer
             continue
 	now = int( time() * 1000 )
 	if timestamp <= now:
@@ -197,6 +197,10 @@ def step( sleep = True, external = True ):
     except ( ValueError, select_error ):
         log.exception( 'error in select' )
 	sys.exit( 1 )
+    except ( KeyboardInterrupt, SystemExit ), e:
+        __step_depth -= 1
+        __in_step = False
+        raise e
 
     for sl in ( ( r, IO_READ ), ( w, IO_WRITE ), ( e, IO_EXCEPT ) ):
         sockets, condition = sl

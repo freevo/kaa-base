@@ -403,6 +403,9 @@ def setup(**kwargs):
         if not '__init__.py' in files:
             return
         python_dirname = prefix + dirname[3:].replace('/', '.')
+        # Anything under module/src/extensions/foo gets translated to 
+        # kaa.module.foo.
+        python_dirname = python_dirname.replace(".extensions.", ".")
         kwargs['package_dir'][python_dirname] = dirname
         kwargs['packages'].append(python_dirname)
 

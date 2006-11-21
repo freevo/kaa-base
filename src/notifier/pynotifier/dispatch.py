@@ -52,6 +52,7 @@ def dispatcher_remove( method ):
         __dispatchers.remove( method )
 
 def dispatcher_run():
+    global __dispatchers
     for disp in copy( __dispatchers ):
         if not disp():
             dispatcher_remove( disp )

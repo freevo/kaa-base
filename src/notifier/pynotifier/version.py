@@ -5,10 +5,8 @@
 #
 # version information
 #
-# $Id: version.py 101 2006-08-02 20:03:22Z crunchy $
-#
 # Copyright (C) 2004, 2005, 2006
-#	Andreas Büsching <crunchy@bitkipper.net>
+#		Andreas Büsching <crunchy@bitkipper.net>
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version
@@ -26,8 +24,8 @@
 
 major_number    = 0
 minor_number    = 5
-revision_number = 1
+revision_number = 7
 extension       = ''
 
 VERSION = "%d.%d.%d%s" % ( major_number, minor_number,
-                           revision_number, extension )
+						   revision_number, extension )

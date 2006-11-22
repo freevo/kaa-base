@@ -144,11 +144,11 @@ class Library(object):
         Check dependencies add add the flags to include_dirs, library_dirs and
         libraries. The basic logic is taken from pygame.
         """
-        if os.system("%s-config --version &>/dev/null" % self.name) == 0:
+        if os.system("%s-config --version >/dev/null 2>/dev/null" % self.name) == 0:
             # Use foo-config if it exists.
             command = "%s-config %%s 2>/dev/null" % self.name
             version_arg = "--version"
-        elif os.system("pkg-config %s --exists &>/dev/null" % self.name) == 0:
+        elif os.system("pkg-config %s --exists >/dev/null 2>/dev/null" % self.name) == 0:
             # Otherwise try pkg-config foo.
             command = "pkg-config %s %%s 2>/dev/null" % self.name
             version_arg = "--modversion"

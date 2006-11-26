@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -* -coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
 # rpc.py - Simple RPC InterProcessCommunication
 # -----------------------------------------------------------------------------
@@ -158,7 +158,7 @@ class Server(object):
         client = Channel(socket = client_sock, auth_secret = self._auth_secret)
         for obj in self.objects:
             client.connect(obj)
-        client._request_auth_packet()
+        client._send_auth_challenge()
         self.signals["client_connected"].emit(client)
 
 
@@ -207,7 +207,12 @@ class Channel(object):
         """
         Connect an object to be exposed to the rpc.
         """
-        for func in [ getattr(obj, func) for func in dir(obj) ]:
+        if type(obj) == types.FunctionType:
+            callables = [obj]
+        else:
+            callables = [ getattr(obj, func) for func in dir(obj) ]
+
+        for func in callables:
             if callable(func) and hasattr(func, '_kaa_rpc'):
                 self._callbacks[func._kaa_rpc] = func
 
@@ -222,7 +227,7 @@ class Channel(object):
         self._next_seq += 1
         packet_type = 'CALL'
         payload = cPickle.dumps((cmd, args, kwargs), pickle.HIGHEST_PROTOCOL)
-        self._send_packet(seq, packet_type, len(payload), payload)
+        self._send_packet(seq, packet_type, payload)
         # create InProgress object and return
         callback = kaa.notifier.InProgress()
         # callback with error handler
@@ -295,6 +300,13 @@ class Channel(object):
         if buflen < header_size:
             return
 
+        if buflen > 512 and self._auth_secret != None and self._authenticated == False:
+            # 512 bytes is plenty for authentication handshake.  Any more than
+            # that and something isn't right.
+            log.warning("Too much data received from remote end before authentication; disconnecting")
+            self._handle_close()
+            return
+
         # Ensure the first block in the read buffer is big enough for a full
         # packet header.  If it isn't, then we must have more than 1 block in
         # the buffer, so keep merging blocks until we have a block big enough
@@ -335,13 +347,13 @@ class Channel(object):
             self._handle_packet(seq, packet_type, payload)
 
 
-    def _send_packet(self, seq, packet_type, length, payload):
+    def _send_packet(self, seq, packet_type, payload):
         """
         Send a packet (header + payload) to the other side.
         """
         if not self._socket:
             return
-        header = struct.pack("I4sI", seq, packet_type, length)
+        header = struct.pack("I4sI", seq, packet_type, len(payload))
         if not self._authenticated:
             if packet_type in ('RESP', 'AUTH'):
                 self._write_buffer = header + payload + self._write_buffer
@@ -388,7 +400,7 @@ class Channel(object):
         Send delayed answer when callback returns InProgress.
         """
         payload = cPickle.dumps(payload, pickle.HIGHEST_PROTOCOL)
-        self._send_packet(seq, packet_type, len(payload), payload)
+        self._send_packet(seq, packet_type, payload)
 
 
     def _handle_packet(self, seq, type, payload):
@@ -396,30 +408,7 @@ class Channel(object):
         Handle incoming packet (called from _handle_write).
         """
         if not self._authenticated:
-            # Not authenticated, only AUTH and RESP are allowed.
-            if type == 'AUTH':
-                response, salt = self._get_challenge_response(payload)
-                payload = struct.pack("20s20s20s", payload, response, salt)
-                self._send_packet(seq, 'RESP', len(payload), payload)
-                self._authenticated = True
-                if not self._wmon.active() and self._write_buffer:
-                    # send delayed stuff now
-                    self._wmon.register(self._socket.fileno(), kaa.notifier.IO_WRITE)
-                return True
-
-            if type == 'RESP':
-                challenge, response, salt = struct.unpack("20s20s20s", payload)
-                if response == self._get_challenge_response(challenge, salt)[0] \
-                   and challenge == self._pending_challenge:
-                    self._authenticated = True
-                    if not self._wmon.active() and self._write_buffer:
-                        # send delayed stuff now
-                        self._wmon.register(self._socket.fileno(), kaa.notifier.IO_WRITE)
-                    return True
-                log.error('authentication error')
-                return True
-
-            log.error('got %s before challenge response is complete', type)
+            self._handle_auth_packet(seq, type, payload)
             return True
 
         if type == 'CALL':
@@ -442,7 +431,7 @@ class Channel(object):
                 packet_type = 'EXCP'
                 payload = e
             payload = cPickle.dumps(payload, pickle.HIGHEST_PROTOCOL)
-            self._send_packet(seq, packet_type, len(payload), payload)
+            self._send_packet(seq, packet_type, payload)
             return True
 
         if type == 'RETN':
@@ -469,13 +458,186 @@ class Channel(object):
         return True
 
 
-    def _request_auth_packet(self):
+    def _handle_auth_packet(self, seq, type, payload):
         """
-        Request an auth packet response for initial setup.
+        This function handles any packet received by the remote end while we
+        are waiting for authentication.  It responds to AUTH or RESP packets
+        (auth packets) while closing the connection on all other packets (non-
+        auth packets).
+
+        Design goals of authentication:
+           * prevent unauthenticated connections from executing RPC commands
+             other than 'auth' commands.
+           * prevent unauthenticated connections from causing denial-of-
+             service at or above the RPC layer.
+           * prevent third parties from learning the shared secret by
+             eavesdropping the channel.
+
+        Non-goals:
+           * provide any level of security whatsoever subsequent to successful
+             authentication.
+           * detect in-transit tampering of authentication by third parties
+             (and thus preventing successful authentication).
+
+        The parameters 'seq' and 'type' are untainted and safe.  The parameter
+        payload is potentially dangerous and this function must handle any
+        possible malformed payload gracefully.
+
+        Authentication is a 4 step process and once it has succeeded, both
+        sides should be assured that they share the same authentication
+        secret.  It uses a simple challenge-response scheme.  The party
+        responding to a challenge will hash the response with a locally
+        generated salt to prevent chosen plaintext attacks.  The server
+        initiates authentication.
+
+           1. Server sends challenge to client (AUTH packet)
+           2. Client receives challenge, computes response, generates a
+              counter-challenge and sends both to the server in reply (RESP
+              packet with non-null challenge).
+           3. Server receives response to its challenge in step 1 and the
+              counter-challenge from server in step 2.  Server validates
+              client's response.  If it fails, server logs the error and
+              disconnects.  If it succeeds, server sends response to client's
+              counter-challenge (RESP packet with null challenge).  At this
+              point server considers client authenticated and allows it to send
+              non-auth packets.
+           4. Client receives server's response and validates it.  If it fails,
+              it disconnects immediately.  If it succeeds, it allows the server
+              to send non-auth packets.
+
+        Step 1 happens when a new connection is initiated.  Steps 2-4 happen in
+        this function.  3 packets are sent in this handshake (steps 1-3).
+
+        WARNING: once authentication succeeds, there is implicit full trust.
+        There is no security after that point, and it should be assumed that
+        the client can invoke arbitrary calls on the server, and vice versa,
+        because no effort is made to validate the data on the channel.
+
+        Also, individual packets aren't authenticated.  Once each side has
+        sucessfully authenticated, this scheme cannot protect against
+        hijacking or denial-of-service attacks.
+
+        One goal is to restrict the code path taken packets sent by
+        unauthenticated connections.  That path is:
+
+           _handle_read() -> _handle_packet() -> _handle_auth_packet()
+
+        Therefore these functions must be able to handle malformed and/or
+        potentially malicious data on the channel, and as a result they are
+        highly paranoid.  When these methods calls other functions, it must do
+        so only with untainted data.  Obviously one assumption is that the
+        underlying python calls made in these methods (particularly
+        struct.unpack) aren't susceptible to attack.
+        """
+        if type not in ('AUTH', 'RESP'):
+            # Received a non-auth command while expecting auth.
+            log.error('got %s before authentication is complete; closing socket.' % type)
+            # Hang up.
+            self._handle_close()
+            return
+
+        try:
+            # Payload could safely be longer than 20+20+20 bytes, but if it
+            # is, something isn't quite right.  We'll be paranoid and
+            # disconnect unless it's exactly 60 bytes.
+            assert(len(payload) == 60)
+
+            # Unpack the auth packet payload into three separate 20 byte
+            # strings: the challenge, response, and salt.  If challenge is
+            # not NULL (i.e. '\x00' * 20) then the remote is expecting a
+            # a response.  If response is not NULL then salt must also not
+            # be NULL, and the salt is used along with the previously sent
+            # challenge to validate the response.
+            challenge, response, salt = struct.unpack("20s20s20s", payload)
+        except:
+            log.warning("Malformed authentication packet from remote; disconnecting.")
+            self._handle_close()
+            return
+
+        # At this point, challenge, response, and salt are 20 byte strings of
+        # arbitrary binary data.  They're considered benign.
+
+        if type == 'AUTH':
+            # Step 2: We've received a challenge.  If we've already sent a
+            # challenge (which is the case if _pending_challenge is not None),
+            # then something isn't right.  This could be a DoS so we'll
+            # disconnect immediately.
+            if self._pending_challenge:
+                self._pending_challenge = None
+                self._handle_close()
+                return
+
+            # Otherwise send the response, plus a challenge of our own.
+            response, salt = self._get_challenge_response(challenge)
+            self._pending_challenge = self._get_rand_value()
+            payload = struct.pack("20s20s20s", self._pending_challenge, response, salt)
+            self._send_packet(seq, 'RESP', payload)
+            return
+
+        elif type == 'RESP':
+            # We've received a reply to an auth request.
+
+            if self._pending_challenge == None:
+                # We've received a response packet to auth, but we haven't
+                # sent a challenge.  Something isn't right, so disconnect.
+                self._handle_close()
+                return
+
+            # Step 3/4: We are expecting a response to our previous challenge
+            # (either the challenge from step 1, or the counter-challenge from
+            # step 2).  First compute the response we expect to have received
+            # based on the challenge sent earlier, our shared secret, and the
+            # salt that was generated by the remote end.
+
+            expected_response = self._get_challenge_response(self._pending_challenge, salt)[0]
+            # We have our response, so clear the pending challenge.
+            self._pending_challenge = None
+            # Now check to see if we were sent what we expected.
+            if response != expected_response:
+                log.error('authentication error')
+                self._handle_close()
+                return
+
+            # Challenge response was good, so the remote is considered
+            # authenticated now.
+            self._authenticated = True
+
+            # If remote has issued a counter-challenge along with their
+            # response (step 2), we'll respond.  Unless something fishy is
+            # going on, this should always succeed on the remote end, because
+            # at this point our auth secrets must match.  A challenge is
+            # considered issued if it is not NULL ('\x00' * 20).  If no
+            # counter-challenge was received as expected from step 2, then
+            # authentication is only one-sided (we trust the remote, but the
+            # remote won't trust us).  In this case, things won't work
+            # properly, but there are no negative security implications.
+            if len(challenge.strip("\x00")) != 0:
+                response, salt = self._get_challenge_response(challenge)
+                payload = struct.pack("20s20s20s", '', response, salt)
+                self._send_packet(seq, 'RESP', payload)
+
+            if not self._wmon.active() and self._write_buffer:
+                # send delayed stuff now
+                self._wmon.register(self._socket.fileno(), kaa.notifier.IO_WRITE)
+
+
+    def _get_rand_value(self):
+        """
+        Returns a 20 byte value which is computed as a SHA hash of the
+        current time concatenated with 64 bytes from /dev/urandom.  This
+        value is not by design a nonce, but in practice it probably is.
         """
         rbytes = file("/dev/urandom").read(64)
-        self._pending_challenge = sha.sha(str(time.time()) + rbytes).digest()
-        self._send_packet(0, 'AUTH', 20, self._pending_challenge)
+        return sha.sha(str(time.time()) + rbytes).digest()
+
+
+    def _send_auth_challenge(self):
+        """
+        Send challenge to remote end to initiate authentication handshake.
+        """
+        self._pending_challenge = self._get_rand_value()
+        payload = struct.pack("20s20s20s", self._pending_challenge, '', '')
+        self._send_packet(0, 'AUTH', payload)
 
 
     def _get_challenge_response(self, challenge, salt = None):
@@ -488,16 +650,15 @@ class Channel(object):
         and used in computing our response.
         """
         if salt == None:
-            rbytes = file("/dev/urandom").read(64)
-            salt = sha.sha(str(time.time()) + rbytes).digest()
+            salt = self._get_rand_value()
         m = challenge + self._auth_secret + salt
         return sha.sha(sha.sha(m).digest() + m).digest(), salt
 
 
     def __repr__(self):
         if not self._socket:
-            return '<kaa.rpc.server.channel - disconnected'
-        return '<kaa.rpc.server.channel %s' % self._socket.fileno()
+            return '<kaa.rpc.Channel (server) - disconnected>'
+        return '<kaa.rpc.Channel (server) %s>' % self._socket.fileno()
 
 
 class Client(Channel):
@@ -520,8 +681,8 @@ class Client(Channel):
 
     def __repr__(self):
         if not self._socket:
-            return '<kaa.rpc.client.channel - disconnected'
-        return '<kaa.rpc.client.channel %s' % self._socket.fileno()
+            return '<kaa.rpc.Channel (client) - disconnected>'
+        return '<kaa.rpc.Channel (client) %s>' % self._socket.fileno()
 
 
 

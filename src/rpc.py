@@ -276,7 +276,10 @@ class Channel(object):
             data = None
 
         if not data:
-            log.info('no data received')
+            if not self._authenticated:
+                # Remote end closed connection during authentication; this 
+                # almost certainly means auth secret mismatch.
+                log.error('Authentication failed')
             self._handle_close()
             # Return False to cause notifier to remove fd handler.
             return False

@@ -63,6 +63,7 @@ else:
 
 # call setup
 setup(
-    module           = 'base',
-    version          = '0.1',
-    ext_modules      = extensions)
+    module       = 'base',
+    version      = '0.1',
+    license      = 'LGPL',
+    ext_modules  = extensions)

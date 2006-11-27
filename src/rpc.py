@@ -300,7 +300,7 @@ class Channel(object):
         if buflen < header_size:
             return
 
-        if buflen > 512 and self._authenticated == False:
+        if buflen > 512 and not self._authenticated:
             # 512 bytes is plenty for authentication handshake.  Any more than
             # that and something isn't right.
             log.warning("Too much data received from remote end before authentication; disconnecting")
@@ -344,7 +344,10 @@ class Channel(object):
             # next packet.
             payload = strbuf[header_size:header_size + payload_len]
             strbuf = buffer(strbuf, header_size + payload_len)
-            self._handle_packet(seq, packet_type, payload)
+            if not self._authenticated:
+                self._handle_packet_before_auth(seq, packet_type, payload)
+            else:
+                self._handle_packet_after_auth(seq, packet_type, payload)
 
 
     def _send_packet(self, seq, packet_type, payload):
@@ -403,14 +406,11 @@ class Channel(object):
         self._send_packet(seq, packet_type, payload)
 
 
-    def _handle_packet(self, seq, type, payload):
+    def _handle_packet_after_auth(self, seq, type, payload):
         """
-        Handle incoming packet (called from _handle_write).
+        Handle incoming packet (called from _handle_write) after 
+        authentication has been completed.
         """
-        if not self._authenticated:
-            self._handle_auth_packet(seq, type, payload)
-            return True
-
         if type == 'CALL':
             # Remote function call, send answer
             payload = cPickle.loads(payload)
@@ -458,7 +458,7 @@ class Channel(object):
         return True
 
 
-    def _handle_auth_packet(self, seq, type, payload):
+    def _handle_packet_before_auth(self, seq, type, payload):
         """
         This function handles any packet received by the remote end while we
         are waiting for authentication.  It responds to AUTH or RESP packets
@@ -521,7 +521,7 @@ class Channel(object):
         One goal is to restrict the code path taken packets sent by
         unauthenticated connections.  That path is:
 
-           _handle_read() -> _handle_packet() -> _handle_auth_packet()
+           _handle_read() -> _handle_packet_before_auth()
 
         Therefore these functions must be able to handle malformed and/or
         potentially malicious data on the channel, and as a result they are

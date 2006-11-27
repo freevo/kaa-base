@@ -673,10 +673,16 @@ class Channel(object):
         return H(xor(K, 0x5c) + H(xor(K, 0x36) + challenge)), salt
 
 
+    def _get_channel_type(self):
+        return 'server'
+
+
     def __repr__(self):
+        tp = self._get_channel_type()
         if not self._socket:
-            return '<kaa.rpc.Channel (server) - disconnected>'
-        return '<kaa.rpc.Channel (server) %s>' % self._socket.fileno()
+            return '<kaa.rpc.Channel (%s) - disconnected>' % tp
+        return '<kaa.rpc.Channel (%s) %s>' % (tp, self._socket.fileno())
+
 
 
 class Client(Channel):
@@ -697,11 +703,8 @@ class Client(Channel):
         Channel.__init__(self, fd, auth_secret)
 
 
-    def __repr__(self):
-        if not self._socket:
-            return '<kaa.rpc.Channel (client) - disconnected>'
-        return '<kaa.rpc.Channel (client) %s>' % self._socket.fileno()
-
+    def _get_channel_type(self):
+        return 'client'
 
 
 def expose(command):

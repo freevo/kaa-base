@@ -283,7 +283,7 @@ class Channel(object):
 
         self._read_buffer.append(data)
         # read as much data as we have
-        while True:
+        while self._authenticated:
             try:
                 data = self._socket.recv(1024*1024)
             except socket.error, (err, msg):

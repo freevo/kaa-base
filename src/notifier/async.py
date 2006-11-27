@@ -80,7 +80,7 @@ class InProgress(Signal):
         This function should be called when the creating function is
         done because it raised an exception.
         """
-        if not self.exception_handler._callbacks:
+        if self.exception_handler.count() == 0:
             log.error('InProgress exception: %s', e)
         # store result
         self.is_finished = True

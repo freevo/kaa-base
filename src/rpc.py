@@ -192,6 +192,7 @@ class Channel(object):
         self._wmon = kaa.notifier.SocketDispatcher(self._handle_write)
         self._authenticated = False
         self._write_buffer = ''
+        self._write_buffer_delayed = ''
         self._read_buffer = []
         self._callbacks = {}
         self._next_seq = 1
@@ -344,6 +345,7 @@ class Channel(object):
             # next packet.
             payload = strbuf[header_size:header_size + payload_len]
             strbuf = buffer(strbuf, header_size + payload_len)
+            #log.debug("Got packet %s", packet_type)
             if not self._authenticated:
                 self._handle_packet_before_auth(seq, packet_type, payload)
             else:
@@ -357,20 +359,21 @@ class Channel(object):
         if not self._socket:
             return
         header = struct.pack("I4sI", seq, packet_type, len(payload))
-        if not self._authenticated:
-            if packet_type in ('RESP', 'AUTH'):
-                self._write_buffer = header + payload + self._write_buffer
-                self._handle_write(close_on_error=False)
-                if not self._wmon.active() and self._write_buffer:
-                    self._wmon.register(self._socket.fileno(),
-                                        kaa.notifier.IO_WRITE)
-                return True
+        if not self._authenticated and packet_type not in ('RESP', 'AUTH'):
             log.info('delay packet %s', packet_type)
+            self._write_buffer_delayed += header + payload
+        else:
             self._write_buffer += header + payload
-            return True
 
-        self._write_buffer += header + payload
         self._handle_write(close_on_error=False)
+        self._flush()
+
+
+    def _flush(self):
+        """
+        If there is data pending in the write buffer, ensure that it is
+        written next notifier loop.
+        """
         if not self._wmon.active() and self._write_buffer:
             self._wmon.register(self._socket.fileno(), kaa.notifier.IO_WRITE)
 
@@ -573,6 +576,7 @@ class Channel(object):
             self._pending_challenge = self._get_rand_value()
             payload = struct.pack("20s20s20s", self._pending_challenge, response, salt)
             self._send_packet(seq, 'RESP', payload)
+            log.info('Got initial challenge from server, sending response.')
             return
 
         elif type == 'RESP':
@@ -602,6 +606,7 @@ class Channel(object):
             # Challenge response was good, so the remote is considered
             # authenticated now.
             self._authenticated = True
+            log.info('Valid response received, remote authenticated.')
 
             # If remote has issued a counter-challenge along with their
             # response (step 2), we'll respond.  Unless something fishy is
@@ -616,10 +621,11 @@ class Channel(object):
                 response, salt = self._get_challenge_response(challenge)
                 payload = struct.pack("20s20s20s", '', response, salt)
                 self._send_packet(seq, 'RESP', payload)
+                log.info('Sent response to challenge from client.')
 
-            if not self._wmon.active() and self._write_buffer:
-                # send delayed stuff now
-                self._wmon.register(self._socket.fileno(), kaa.notifier.IO_WRITE)
+            self._write_buffer += self._write_buffer_delayed
+            self._write_buffer_delayed = ''
+            self._flush()
 
 
     def _get_rand_value(self):

@@ -37,8 +37,9 @@ import re
 import tempfile
 import distutils.core
 
-# version checking
+# internal imports
 from version import Version
+from build_py import build_py
 
 __all__ = ['compile', 'check_library', 'get_library', 'setup', 'ConfigFile',
            'Extension', 'Library']
@@ -475,6 +476,7 @@ def setup(**kwargs):
     # add extra commands
     if not 'cmdclass' in kwargs:
         kwargs['cmdclass'] = {}
+    kwargs['cmdclass']['build_py'] = build_py
     kwargs['cmdclass']['ebuild'] = GentooEbuild
     
     # run the distutils.setup function

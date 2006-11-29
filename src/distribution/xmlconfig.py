@@ -1,0 +1,155 @@
+# -*- coding: iso-8859-1 -*-
+# -----------------------------------------------------------------------------
+# xmlconfig.py - xml config to python converter
+# -----------------------------------------------------------------------------
+# $Id$
+#
+# -----------------------------------------------------------------------------
+# Copyright (C) 2006 Dirk Meyer, Jason Tackaberry
+#
+# First Edition: Dirk Meyer <dmeyer@tzi.de>
+# Maintainer:    Dirk Meyer <dmeyer@tzi.de>
+#
+# Please see the file AUTHORS for a complete list of authors.
+#
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
+#
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
+#
+# -----------------------------------------------------------------------------
+
+__all__ = [ 'convert' ]
+
+# python imports
+import sys
+import pprint
+
+
+def get_value(value, type):
+    if value is None:
+        return eval('%s()' % type)
+    if type is not None:
+        return type(value)
+    if value.lower() == 'true':
+        return True
+    if value.lower() == 'false':
+        return False
+    if value.isdigit():
+        return int(value)
+    return str(value)
+
+
+def format_content(node):
+    s = node.get_rawcontent().replace('\t', '        ')
+    spaces = ''
+    while s:
+        if s[0] == ' ':
+            spaces += ' '
+            s = s[1:]
+            continue
+        if s[0] == '\n':
+            spaces = ''
+            s = s[1:]
+            continue
+        break
+    return s.replace('\n' + spaces, '\n').strip()
+
+    
+def parse_basic(node, fd, type, deep):
+    fd.write('%s(' % type)
+    first = True
+    if node.getattr('name'):
+        fd.write('name=\'%s\'' % node.getattr('name'))
+        first = False
+    for child in node:
+        if child.name != 'desc':
+            continue
+        if not first:
+            fd.write(', ')
+        first = False
+        desc = format_content(child)
+        if desc.find('\n') > 0:
+            desc = deep + desc.replace('\n', '\n' + deep)
+            fd.write('desc=\'\'\'\n%s\n%s\'\'\'' % (desc, deep))
+        else:
+            fd.write('desc=\'%s\'' % desc)
+    return first
+    
+
+def parse_var(node, fd, deep):
+    first = parse_basic(node, fd, 'Var', deep)
+    default = node.getattr('default')
+    deftype = node.getattr('type')
+    if default or deftype:
+        if not first:
+            fd.write(', ')
+        first = False
+        default = get_value(default, deftype)
+        fd.write('default=%s' % pprint.pformat(default).strip())
+        
+    for child in node:
+        if child.name not in ('values'):
+            continue
+        if not first:
+            fd.write(', ')
+        first = False
+        values = []
+        for value in child.children:
+            values.append(get_value(value.content, value.getattr('type')))
+        fd.write('type=%s' % pprint.pformat(tuple(values)).strip())
+        break
+    fd.write(')')
+
+    
+def parse_group(node, fd, deep='', type='Group'):
+    first = parse_basic(node, fd, type, deep)
+    for child in node:
+        if child.name not in ('schema',):
+            continue
+        if not first:
+            fd.write(', ')
+        first = False
+        if child.name == 'schema':
+            deep = deep + '  '
+            fd.write('schema=[\n\n' + deep)
+            for schema in child.children:
+                if schema.name == 'group':
+                    parse_group(schema, fd, deep)
+                    fd.write(',\n\n' + deep)
+                if schema.name == 'var':
+                    parse_var(schema, fd, deep)
+                    fd.write(',\n\n' + deep)
+            deep = deep[:-2]
+            fd.write(']\n' + deep)
+    fd.write(')')
+
+
+def convert(xml, python):
+    # import here and not before or kaa.base install itself
+    # will fail because there is no kaa.base at that time.
+    import kaa.xml
+
+    tree = kaa.xml.Document(xml, 'config')
+    # out = sys.__stdout__
+    out = open(python, 'w')
+    
+    out.write('# auto generated file based on %s\n\n' % xml)
+    out.write('from kaa.config import Var, Group, Dict, List, Config\n\n')
+    out.write('config = ')
+
+    parse_group(tree, out, type='Config')
+    out.write('\n\n')
+    for child in tree:
+        if child.name != 'code':
+            continue
+        out.write(format_content(child) + '\n\n')

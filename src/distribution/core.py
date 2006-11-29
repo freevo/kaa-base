@@ -1,6 +1,6 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# distribution.py - distutils functions for kaa packages
+# core.py - distribution core functions for kaa packages
 # -----------------------------------------------------------------------------
 # $Id$
 #
@@ -391,7 +391,7 @@ class GentooEbuild (distutils.core.Command):
         fd.close()
         os.system('ebuild %s digest' % ebuild)
 
-        
+
 def setup(**kwargs):
     """
     A setup script wrapper for kaa modules.

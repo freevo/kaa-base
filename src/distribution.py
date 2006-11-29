@@ -54,7 +54,7 @@ def compile(includes, code, args=''):
 
     for i in includes:
         f.write('#include %s\n' % i)
-    f.write('int main() { ' + code + '\nreturn 0;\n};')
+    f.write('int main() { ' + code + '\nreturn 0;\n};\n')
     result = f.close()
 
     if os.path.exists(outfile):

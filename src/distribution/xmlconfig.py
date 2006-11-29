@@ -36,10 +36,11 @@ import pprint
 
 
 def get_value(value, type):
+    print 'get', value, type
     if value is None:
         return eval('%s()' % type)
     if type is not None:
-        return type(value)
+        return eval(type)(value)
     if value.lower() == 'true':
         return True
     if value.lower() == 'false':
@@ -64,74 +65,101 @@ def format_content(node):
         break
     return s.replace('\n' + spaces, '\n').strip()
 
-    
-def parse_basic(node, fd, type, deep):
-    fd.write('%s(' % type)
-    first = True
-    if node.getattr('name'):
-        fd.write('name=\'%s\'' % node.getattr('name'))
-        first = False
-    for child in node:
-        if child.name != 'desc':
-            continue
-        if not first:
-            fd.write(', ')
-        first = False
-        desc = format_content(child)
-        if desc.find('\n') > 0:
-            desc = deep + desc.replace('\n', '\n' + deep)
-            fd.write('desc=\'\'\'\n%s\n%s\'\'\'' % (desc, deep))
-        else:
-            fd.write('desc=\'%s\'' % desc)
-    return first
+
+class Parser(object):
+
+    def parse(self, node, fd, deep=''):
+        fd.write('%s(' % node.name.capitalize())
+        first = True
+        if node.getattr('name'):
+            fd.write('name=\'%s\'' % node.getattr('name'))
+            first = False
+        for child in node:
+            if child.name != 'desc':
+                continue
+            if not first:
+                fd.write(', ')
+            first = False
+            desc = format_content(child)
+            if desc.find('\n') > 0:
+                desc = deep + desc.replace('\n', '\n' + deep)
+                fd.write('desc=\'\'\'\n%s\n%s\'\'\'' % (desc, deep))
+            else:
+                fd.write('desc=\'%s\'' % desc)
+        getattr(self, '_parse_%s' % node.name.lower())(node, fd, deep, first)
     
 
-def parse_var(node, fd, deep):
-    first = parse_basic(node, fd, 'Var', deep)
-    default = node.getattr('default')
-    deftype = node.getattr('type')
-    if default or deftype:
-        if not first:
-            fd.write(', ')
-        first = False
-        default = get_value(default, deftype)
-        fd.write('default=%s' % pprint.pformat(default).strip())
+    def _parse_var(self, node, fd, deep, first):
+        default = node.getattr('default')
+        deftype = node.getattr('type')
+        if default or deftype:
+            if not first:
+                fd.write(', ')
+            first = False
+            default = get_value(default, deftype)
+            fd.write('default=%s' % pprint.pformat(default).strip())
+
+        for child in node:
+            if child.name not in ('values'):
+                continue
+            if not first:
+                fd.write(', ')
+            first = False
+            values = []
+            for value in child.children:
+                values.append(get_value(value.content, value.getattr('type')))
+            fd.write('type=%s' % pprint.pformat(tuple(values)).strip())
+            break
+        fd.write(')')
+
+    
+    def _parse_config(self, node, fd, deep, first):
+        self._parse_group(node, fd, deep, first)
         
-    for child in node:
-        if child.name not in ('values'):
-            continue
-        if not first:
-            fd.write(', ')
-        first = False
-        values = []
-        for value in child.children:
-            values.append(get_value(value.content, value.getattr('type')))
-        fd.write('type=%s' % pprint.pformat(tuple(values)).strip())
-        break
-    fd.write(')')
 
+    def _parse_group(self, node, fd, deep, first):
+        for child in node:
+            if child.name not in ('schema',):
+                continue
+            if not first:
+                fd.write(', ')
+            first = False
+            if child.name == 'schema':
+                deep = deep + '  '
+                fd.write('schema=[\n\n' + deep)
+                for schema in child.children:
+                    self.parse(schema, fd, deep)
+                    fd.write(',\n\n' + deep)
+                deep = deep[:-2]
+                fd.write(']\n' + deep)
+        fd.write(')')
     
-def parse_group(node, fd, deep='', type='Group'):
-    first = parse_basic(node, fd, type, deep)
-    for child in node:
-        if child.name not in ('schema',):
-            continue
-        if not first:
-            fd.write(', ')
-        first = False
-        if child.name == 'schema':
-            deep = deep + '  '
-            fd.write('schema=[\n\n' + deep)
-            for schema in child.children:
-                if schema.name == 'group':
-                    parse_group(schema, fd, deep)
-                    fd.write(',\n\n' + deep)
-                if schema.name == 'var':
-                    parse_var(schema, fd, deep)
-                    fd.write(',\n\n' + deep)
-            deep = deep[:-2]
-            fd.write(']\n' + deep)
-    fd.write(')')
+    
+    def _parse_list(self, node, fd, deep, first):
+        for child in node:
+            if child.name not in ('schema',):
+                continue
+            if not first:
+                fd.write(', ')
+            first = False
+            if child.name == 'schema':
+                fd.write('schema=')
+                if len(child.children) > 1:
+                    deep = deep + '  '
+                    fd.write('[\n\n' + deep)
+                for schema in child.children:
+                    self.parse(schema, fd, deep)
+                    if len(child.children) > 1:
+                        fd.write(',\n\n' + deep)
+                if len(child.children) > 1:
+                    deep = deep[:-2]
+                    fd.write(']\n' + deep)
+        fd.write(')')
+
+
+    def _parse_dict(self, node, fd, deep, first):
+        self._parse_list(node, fd, deep, first)
+        
 
 
 def convert(xml, python):
@@ -143,11 +171,11 @@ def convert(xml, python):
     # out = sys.__stdout__
     out = open(python, 'w')
     
-    out.write('# auto generated file based on %s\n\n' % xml)
+    out.write('# auto generated file\n\n')
     out.write('from kaa.config import Var, Group, Dict, List, Config\n\n')
     out.write('config = ')
 
-    parse_group(tree, out, type='Config')
+    Parser().parse(tree, out)
     out.write('\n\n')
     for child in tree:
         if child.name != 'code':

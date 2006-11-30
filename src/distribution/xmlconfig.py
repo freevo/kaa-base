@@ -36,7 +36,6 @@ import pprint
 
 
 def get_value(value, type):
-    print 'get', value, type
     if value is None:
         return eval('%s()' % type)
     if type is not None:
@@ -68,6 +67,14 @@ def format_content(node):
 
 class Parser(object):
 
+    def _get_schema(self, node):
+        schema = []
+        for child in node:
+            if hasattr(self, '_parse_%s' % child.name):
+                schema.append(child)
+        return schema
+
+    
     def parse(self, node, fd, deep=''):
         fd.write('%s(' % node.name.capitalize())
         first = True
@@ -118,42 +125,33 @@ class Parser(object):
         
 
     def _parse_group(self, node, fd, deep, first):
-        for child in node:
-            if child.name not in ('schema',):
-                continue
-            if not first:
-                fd.write(', ')
-            first = False
-            if child.name == 'schema':
-                deep = deep + '  '
-                fd.write('schema=[\n\n' + deep)
-                for schema in child.children:
-                    self.parse(schema, fd, deep)
-                    fd.write(',\n\n' + deep)
-                deep = deep[:-2]
-                fd.write(']\n' + deep)
+        if not first:
+            fd.write(', ')
+        deep = deep + '  '
+        fd.write('schema=[\n\n' + deep)
+        for s in self._get_schema(node):
+            self.parse(s, fd, deep)
+            fd.write(',\n\n' + deep)
+        deep = deep[:-2]
+        fd.write(']\n' + deep)
         fd.write(')')
     
     
     def _parse_list(self, node, fd, deep, first):
-        for child in node:
-            if child.name not in ('schema',):
-                continue
-            if not first:
-                fd.write(', ')
-            first = False
-            if child.name == 'schema':
-                fd.write('schema=')
-                if len(child.children) > 1:
-                    deep = deep + '  '
-                    fd.write('[\n\n' + deep)
-                for schema in child.children:
-                    self.parse(schema, fd, deep)
-                    if len(child.children) > 1:
-                        fd.write(',\n\n' + deep)
-                if len(child.children) > 1:
-                    deep = deep[:-2]
-                    fd.write(']\n' + deep)
+        if not first:
+            fd.write(', ')
+        schema = self._get_schema(node)
+        fd.write('schema=')
+        if len(schema) > 1:
+            deep = deep + '  '
+            fd.write('[\n\n' + deep)
+        for s in schema:
+            self.parse(s, fd, deep)
+            if len(schema) > 1:
+                fd.write(',\n\n' + deep)
+        if len(schema) > 1:
+            deep = deep[:-2]
+            fd.write(']\n' + deep)
         fd.write(')')
 
 

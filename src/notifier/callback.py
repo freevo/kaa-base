@@ -354,9 +354,9 @@ class Signal(object):
         if len(self._callbacks) > 40:
             # It's a common problem (for me :)) that callbacks get added
             # inside another callback.  This is a simple sanity check.
-            print "Signal callbacks exceeds 40.  Something's wrong!"
-            print callback, args
-            raise Exception
+            log.error("Signal callbacks exceeds 40.  Something's wrong!")
+            log.error("%s: %s", callback, args)
+            raise Exception("Signal callbacks exceeds 40")
 
         if weak:
             callback = WeakCallback(callback)

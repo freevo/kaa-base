@@ -230,7 +230,7 @@ class Extension(object):
     def __init__(self, output, files, include_dirs=[], library_dirs=[],
                  libraries=[], extra_compile_args = [], config=None):
         """
-        Init the Extention object.
+        Init the Extension object.
         """
         self.output = output
         self.files = files

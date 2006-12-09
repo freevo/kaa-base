@@ -261,7 +261,8 @@ class Channel(object):
         Read from the socket (callback from notifier).
         """
         try:
-            data = self._socket.recv(1024*1024)
+            # If not authenticated, read at most 1k.
+            data = self._socket.recv((1024, 1024*1024)[self._authenticated])
         except socket.error, (err, msg):
             if err == errno.EAGAIN:
                 # Resource temporarily unavailable -- we are trying to read
@@ -304,17 +305,13 @@ class Channel(object):
         if buflen < header_size:
             return
 
-        # FIXME: why do we need this check? It does not for with kaa.beacon
-        # when we have too much media mounted. Beacon sends all known media
-        # information on connect, so the client receives authentication data
-        # and more on startup.
-        #
-        # if buflen > 512 and not self._authenticated:
-        #     # 512 bytes is plenty for authentication handshake.  Any more than
-        #     # that and something isn't right.
-        #     log.warning("Too much data received from remote end before authentication; disconnecting")
-        #     self._handle_close()
-        #     return
+        if buflen > 1024 and not self._authenticated:
+            # Because we are not authenticated, we shouldn't have more than 1k
+            # in the buffer.  If we do it's because the remote has sent a
+            # large amount of data before completing authentication.
+            log.warning("Too much data received from remote end before authentication; disconnecting")
+            self._handle_close()
+            return
 
         # Ensure the first block in the read buffer is big enough for a full
         # packet header.  If it isn't, then we must have more than 1 block in

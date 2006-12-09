@@ -304,12 +304,17 @@ class Channel(object):
         if buflen < header_size:
             return
 
-        if buflen > 512 and not self._authenticated:
-            # 512 bytes is plenty for authentication handshake.  Any more than
-            # that and something isn't right.
-            log.warning("Too much data received from remote end before authentication; disconnecting")
-            self._handle_close()
-            return
+        # FIXME: why do we need this check? It does not for with kaa.beacon
+        # when we have too much media mounted. Beacon sends all known media
+        # information on connect, so the client receives authentication data
+        # and more on startup.
+        #
+        # if buflen > 512 and not self._authenticated:
+        #     # 512 bytes is plenty for authentication handshake.  Any more than
+        #     # that and something isn't right.
+        #     log.warning("Too much data received from remote end before authentication; disconnecting")
+        #     self._handle_close()
+        #     return
 
         # Ensure the first block in the read buffer is big enough for a full
         # packet header.  If it isn't, then we must have more than 1 block in

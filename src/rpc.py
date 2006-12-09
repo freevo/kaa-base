@@ -305,7 +305,7 @@ class Channel(object):
         if buflen < header_size:
             return
 
-        if buflen > 1024 and not self._authenticated:
+        if not self._authenticated and buflen > 1024:
             # Because we are not authenticated, we shouldn't have more than 1k
             # in the buffer.  If we do it's because the remote has sent a
             # large amount of data before completing authentication.

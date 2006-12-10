@@ -49,7 +49,9 @@ _libraries = {}
 def compile(includes, code, args=''):
     fd, outfile = tempfile.mkstemp()
     os.close(fd)
-    f = os.popen("cc -x c - -o %s %s 2>/dev/null >/dev/null" % (outfile, args), "w")
+    args += ' %s %s' % (os.getenv('CFLAGS', ''), os.getenv('LDFLAGS', ''))
+    cc = os.getenv('CC', 'cc')
+    f = os.popen("%s -x c - -o %s %s 2>/dev/null >/dev/null" % (cc, outfile, args), "w")
     if not f:
         return False
 

@@ -192,7 +192,7 @@ class Socket(object):
         while len(result_holder) == 0:
             notifier.step()
 
-        if isinstance(result_holder[0], Exception):
+        if isinstance(result_holder[0], (Exception, socket.error)):
             raise result_holder[0]
 
 

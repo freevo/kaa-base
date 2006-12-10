@@ -46,7 +46,7 @@ __all__ = ['compile', 'check_library', 'get_library', 'setup', 'ConfigFile',
 
 _libraries = {}
 
-def compile(includes, code, args=''):
+def compile(includes, code='', args=''):
     fd, outfile = tempfile.mkstemp()
     os.close(fd)
     args += ' %s %s' % (os.getenv('CFLAGS', ''), os.getenv('LDFLAGS', ''))
@@ -179,7 +179,7 @@ class Library(object):
         return True, version
 
 
-    def compile(self, includes, code, args=''):
+    def compile(self, includes, code='', args=''):
         if compile(includes, code, args):
             self.valid = True
             return True
@@ -260,7 +260,7 @@ class Extension(object):
         """
         """
         lib = get_library(name)
-        if lib:
+        if lib and lib not in self.library_objects:
             self.library_objects.append(lib)
         return False
 
@@ -292,11 +292,18 @@ class Extension(object):
         return False
 
 
-    def check_cc(self, includes, code, args=''):
+    def check_cc(self, includes, code='', args=''):
         """
         Check the given code with the linker. The optional parameter args
         can contain additional command line options like -l.
         """
+        ext_args = []
+        for lib in self.library_objects:
+            for dir in lib.library_dirs:
+                ext_args.append("-L%s" % dir)
+            for dir in lib.include_dirs:
+                ext_args.append("-I%s" % dir)
+        args += ' %s' % ' '.join(ext_args)
         return compile(includes, code, args)
 
 

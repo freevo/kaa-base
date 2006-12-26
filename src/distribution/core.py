@@ -180,7 +180,9 @@ class Library(object):
 
 
     def compile(self, includes, code='', args=''):
-        if compile(includes, code, args):
+        ext_args = [ "-L%s" % x for x in self.library_dirs ]
+        ext_args += [ "-I%s" % x for x in self.include_dirs ]
+        if compile(includes, code, args + ' %s' % ' '.join(ext_args)):
             self.valid = True
             return True
 

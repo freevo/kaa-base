@@ -36,6 +36,7 @@ import stat
 import re
 import tempfile
 import distutils.core
+import distutils.sysconfig
 
 # internal imports
 from version import Version
@@ -443,6 +444,12 @@ def setup(**kwargs):
         for ext in kaa_ext_modules:
             ext_modules.append(ext.convert())
         kwargs['ext_modules'] = ext_modules
+        # We need to compile an extension, so first do a naive check to ensure
+        # Python headers are available.
+        if not os.path.exists(os.path.join(distutils.sysconfig.get_python_inc(), 'Python.h')):
+            print "- Python headers not found; please install python development package."
+            sys.exit(1)
+
     else:
         # No extensions, but trick distutils into thinking we do have, so
         # the module gets installed in the platform-specific libdir.

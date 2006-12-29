@@ -52,7 +52,7 @@ if not inotify_ext.check_cc(["<sys/inotify.h>"], "inotify_init();"):
     if not inotify_ext.check_cc(["<sys/syscall.h>"], "syscall(0);"):
         print "inotify not enabled: doesn't look like a Linux system."
     else:
-        print "inotify not supported in glibc; using built-in support instead."
+        print "inotify not supported in glibc; no problem, using built-in support instead."
         inotify_ext.config("#define USE_FALLBACK")
         extensions.append(inotify_ext)
 

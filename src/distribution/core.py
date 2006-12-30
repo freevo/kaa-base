@@ -392,16 +392,11 @@ class GentooEbuild (distutils.core.Command):
         if not os.path.isfile('%s.ebuild' % name):
             print 'No ebuild template provided'
             return 0
-        fd = open('%s.ebuild' % name)
-        edata = fd.readlines()
-        fd.close()
+        edata = open('%s.ebuild' % name).read()
         ebuild = '%s/dev-python/%s/%s-%s.ebuild' % (self.prefix, name, name, version)
         if not os.path.isdir(os.path.dirname(ebuild)):
             os.makedirs(os.path.dirname(ebuild))
-        fd = open(ebuild, 'w')
-        for line in edata:
-            fd.write(line)
-        fd.close()
+        open(ebuild, 'w').write(edata)
         os.system('ebuild %s digest' % ebuild)
 
 

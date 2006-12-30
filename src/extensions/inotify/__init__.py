@@ -31,6 +31,8 @@
 # python imports
 import os
 import struct
+import logging
+import fcntl
 
 # kaa imports
 import kaa.notifier
@@ -40,6 +42,9 @@ try:
     import _inotify
 except ImportError:
     _inotify = None
+
+# get logging object
+log = logging.getLogger('inotify')
 
 # TODO: hook in gamin if it is running. See gamin.py
 
@@ -54,6 +59,11 @@ class INotify(object):
 
 
     def __init__(self):
+        if hasattr(self, '_fd'):
+            # Constructor already called.  (We may be called again implicitly
+            # due to singleton behaviour in __new__
+            return
+
         if not _inotify:
             self._fd = -1
             raise SystemError, "INotify support not compiled."
@@ -70,6 +80,8 @@ class INotify(object):
         self._moved_timer = kaa.notifier.WeakOneShotTimer(self._emit_last_move)
 
         self._fd = _inotify.init()
+        fcntl.fcntl(self._fd, fcntl.F_SETFL, os.O_NONBLOCK)
+
         if self._fd < 0:
             raise SystemError, "INotify support not detected on this system."
 
@@ -156,7 +168,16 @@ class INotify(object):
 
 
     def _handle_data(self):
-        data = os.read(self._fd, 32768)
+        try:
+            data = os.read(self._fd, 32768)
+        except socket.error, (err, msg):
+            if err == errno.EAGAIN:
+                # Resource temporarily unavailable -- we are trying to read
+                # data on a socket when none is avilable.  This should not
+                # happen under normal circumstances, so log an error.
+                log.error("INotify data handler called but no data available.")
+            return
+
         self._read_buffer += data
 
         while True:
@@ -176,7 +197,10 @@ class INotify(object):
 
             self._read_buffer = self._read_buffer[16+size:]
             if wd not in self._watches:
-                # Weird, received an event for an unknown watch.
+                # Weird, received an event for an unknown watch; this
+                # shouldn't happen under sane circumstances, so log this as
+                # an error.
+                log.error("INotify received event for unknown watch.")
                 continue
 
             path = self._watches[wd][1]

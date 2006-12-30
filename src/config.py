@@ -49,13 +49,6 @@ log = logging.getLogger('config')
 # align regexp
 align = re.compile(u'\n( *)[^\n]', re.MULTILINE)
 
-try:
-    _inotify = INotify()
-    #raise SystemError  # Debug, disable inotify.
-except SystemError:
-    _inotify = None
-
-
 def _format(text):
     """
     Format a description with multiple lines.
@@ -532,6 +525,7 @@ class Config(Group):
         self._watching = False
         self._watch_mtime = 0
         self._watch_timer = WeakTimer(self._check_file_changed)
+        self._inotify = None
 
 
     def copy(self):
@@ -545,6 +539,7 @@ class Config(Group):
         copy._watch_timer = WeakTimer(copy._check_file_changed)
         copy._autosave_timer = WeakOneShotTimer(copy.save)
         return copy
+
 
     def save(self, filename=None):
         """
@@ -713,20 +708,26 @@ class Config(Group):
 
         If argument is False, disable any watches.
         """
+        if not watch and not self._inotify:
+            try:
+                self._inotify = INotify()
+            except SystemError:
+                pass
+            
         assert(self._filename)
         if self._watch_mtime == 0:
             self.load()
 
         if not watch and self._watching:
-            if _inotify:
-                _inotify.ignore(self._filename)
+            if self._inotify:
+                self._inotify.ignore(self._filename)
             self._watch_timer.stop()
             self._watching = False
 
         elif watch and not self._watching:
-            if _inotify:
+            if self._inotify:
                 try:
-                    signal = _inotify.watch(self._filename)
+                    signal = self._inotify.watch(self._filename, INotify.MODIFY)
                     signal.connect_weak(self._file_changed)
                 except IOError:
                     # Adding watch falied, use timer to wait for file to
@@ -745,7 +746,7 @@ class Config(Group):
             # Config file not available.
             return
 
-        if _inotify:
+        if self._inotify:
             # Config file is now available, stop this timer and add INotify
             # watch.
             self.watch(False)

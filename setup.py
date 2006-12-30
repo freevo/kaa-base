@@ -60,10 +60,14 @@ else:
     print "inotify supported by glibc; good."
     extensions.append(inotify_ext)
 
-
 # call setup
 setup(
     module       = 'base',
-    version      = '0.1.1',
+    version      = '0.1.2',
     license      = 'LGPL',
+    summary      = 'Base module for all Kaa modules.',
+    rpminfo      = {
+        'requires':       'glib2 >= 2.6.0, python-sqlite2 >= 2.3.0, libxml2-python >= 2.6.0',
+        'build_requires': 'glib2-devel >= 2.6.0, python-devel >= 2.4.0'
+    },
     ext_modules  = extensions)

@@ -35,6 +35,7 @@ import math
 import stat
 import re
 import tempfile
+import time
 import distutils.core
 import distutils.sysconfig
 
@@ -418,7 +419,7 @@ def setup(**kwargs):
         kwargs['packages'].append(python_dirname)
 
 
-    if not kwargs.has_key('module'):
+    if 'module' not in kwargs:
         raise AttributeError('\'module\' not defined')
 
     # create name
@@ -452,7 +453,7 @@ def setup(**kwargs):
 
     # check version.py information
     write_version = False
-    if kwargs.has_key('version') and not kwargs['module'] == 'base':
+    if 'version' in kwargs and not kwargs['module'] == 'base':
         write_version = True
         # check if a version.py is there
         if os.path.isfile('src/version.py'):
@@ -479,18 +480,70 @@ def setup(**kwargs):
         f.close()
 
     # add some missing keywords
-    if not kwargs.has_key('author'):
+    if 'author' not in kwargs:
         kwargs['author'] = 'Freevo Development Team'
-    if not kwargs.has_key('author_email'):
+    if 'author_email' not in kwargs:
         kwargs['author_email'] = 'freevo-devel@lists.sourceforge.net'
-    if not kwargs.has_key('url'):
+    if 'url' not in kwargs:
         kwargs['url'] = 'http://freevo.sourceforge.net/kaa'
+
+    # We use summary and description as keywords that map to distutils
+    # description and long_description
+    if 'description' in kwargs:
+        kwargs['long_description'] = kwargs['description']
+        del kwargs['description']
+    if 'summary' in kwargs:
+        kwargs['description'] = kwargs['summary']
+        if 'long_description' not in kwargs:
+            kwargs['long_description'] = kwargs['summary']
+        del kwargs['summary']
 
     # add extra commands
     if not 'cmdclass' in kwargs:
         kwargs['cmdclass'] = {}
     kwargs['cmdclass']['build_py'] = build_py
     kwargs['cmdclass']['ebuild'] = GentooEbuild
-    
+
+    if sys.argv[1] == 'bdist_rpm':
+        dist = None
+        release = "1"
+        if '--dist' in sys.argv:
+            # TODO: determine this automatically
+            idx = sys.argv.index('--dist')
+            sys.argv.pop(idx)
+            dist = sys.argv.pop(idx)
+
+        if '--release' in sys.argv:
+            idx = sys.argv.index('--release')
+            sys.argv.pop(idx)
+            release = sys.argv.pop(idx)
+
+        if '--snapshot' in sys.argv:
+            # If --snapshot is specified on the command line, set the release
+            # to contain today's date, for bundling svn snapshots.
+            release = "0.%s" % time.strftime("%Y%m%d")
+            sys.argv.remove('--snapshot')
+
+        if dist:
+            release += "." + dist
+
+        sys.argv.append('--release=%s' % release)
+
+        if 'rpminfo' in kwargs:
+            # Grab rpm metadata from setup kwargs and expose as cmdline 
+            # parameters to distutils.
+            rpminfo = kwargs['rpminfo']
+            if dist in rpminfo:
+                # dist-specific parameters take precedence
+                for key, value in rpminfo[dist].items():
+                    rpminfo[key] = value
+            for param in ('requires', 'build_requires', 'conflicts', 'obsoletes', 'provides'):
+                if param in rpminfo:
+                    sys.argv.append("--%s=%s" % (param.replace('_', '-'), rpminfo[param]))
+
+
+    if 'rpminfo' in kwargs:
+        del kwargs['rpminfo']
+
     # run the distutils.setup function
     return distutils.core.setup(**kwargs)

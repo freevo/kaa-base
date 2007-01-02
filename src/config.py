@@ -54,7 +54,7 @@ def _format(text):
     Format a description with multiple lines.
     """
     if text.find('\n') == -1:
-        return text
+        return text.strip()
 
     # This can happen if you use multiple lines and use the python
     # code formating. So there are spaces at each line. Find the maximum
@@ -68,7 +68,7 @@ def _format(text):
     strip = 100
     for m in align.findall(text, re.MULTILINE):
         strip = min(len(m), strip)
-    if strip == 100 or strip < 2:
+    if strip == 100 or strip < 1:
         # nothing found
         return text
 
@@ -301,16 +301,21 @@ class Group(Base):
             prefix = prefix + self._name + '.'
         print_var_desc = print_desc
         if prefix and not prefix.endswith('].') and print_desc:
-            # print description for 'stand alone' groups
-            if self._desc_type == 'default':
-                ret.append('#\n# %s\n# %s\n#\n' % (prefix[:-1], desc))
-            else:
-                ret.append('#\n# %s\n#\n' % desc)
+            if not desc:
+                desc = 'group %s settings' % prefix[:-1]
+            ret.append('#\n# %s\n#\n' % desc)
+            if not self._desc_type == 'default':
                 print_var_desc = False
 
         for name in self._vars:
             var = self._dict[name]
-            ret.append(var._cfg_string(unicode_to_str(prefix), print_var_desc))
+            if not isinstance(var, Var) or var._desc:
+                break
+        else:
+            print_var_desc = False
+        for name in self._vars:
+            var = self._dict[name]
+            ret.append(var._cfg_string(prefix, print_var_desc))
         if print_desc and not print_var_desc:
             ret.append('')
         return '\n'.join(ret)

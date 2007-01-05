@@ -54,8 +54,8 @@ _dispatcher = None
 
 # make sure we have the lirc signal, no matter
 # if lirc is working or not
-kaa.notifier.signals["lirc"] = kaa.notifier.Signal()
-
+signal = kaa.notifier.Signal()
+kaa.notifier.signals["lirc"] = signal
 
 def _handle_lirc_input():
     """
@@ -94,7 +94,7 @@ def _handle_lirc_input():
 
     _last_key_time = now
     for code in codes:
-        kaa.notifier.signals["lirc"].emit(code)
+        signal.emit(code)
         _last_code = code
 
     return True
@@ -158,5 +158,5 @@ if __name__ == "__main__":
     init()
     def cb(code):
         print "CODE", code
-    kaa.notifier.signals["lirc"].connect(cb)
+    signal.connect(cb)
     kaa.notifier.loop()

@@ -152,6 +152,15 @@ class Parser(object):
         if len(schema) > 1:
             deep = deep[:-2]
             fd.write(']\n' + deep)
+        defaults = {}
+        for var in node:
+            if var.name != 'set':
+                continue
+            value = get_value(var.getattr('value'), None)
+            defaults[var.getattr('key')] = value
+        if defaults:
+            fd.write(', defaults=%s' % pprint.pformat(defaults).strip())
+            
         fd.write(')')
 
 

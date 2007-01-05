@@ -199,23 +199,17 @@ class Var(Base):
         """
         Convert object into a string to write into a config file.
         """
-        if not prefix.endswith(']'):
-            # add name if the prefix is not a dict
-            prefix = prefix + self._name
-
         # create description
-        desc = newline = ''
+        desc = newline = comment = ''
         if print_desc:
             if self._desc:
                 desc = '# %s\n' % unicode_to_str(self._desc).replace('\n', '\n# ')
             newline = '\n'
-        # convert value to string
-        value = unicode_to_str(self._value)
         if self._value == self._default:
-            # print default value
-            return '%s# %s = %s%s' % (desc, prefix, value, newline)
-        # print current value
-        return '%s%s = %s%s' % (desc, unicode_to_str(prefix), value, newline)
+            comment = '# '
+        value = unicode_to_str(self._value)
+        prefix += self._name
+        return '%s%s%s = %s%s' % (desc, comment, prefix, value, newline)
 
 
     def _cfg_set(self, value, default=False):
@@ -359,7 +353,7 @@ class Dict(Base):
     """
     A config dict.
     """
-    def __init__(self, schema, desc=u'', name='', type=unicode):
+    def __init__(self, schema, desc=u'', name='', type=unicode, defaults={}):
         super(Dict, self).__init__(name, desc)
         self._schema = schema
         self._dict = {}
@@ -367,6 +361,12 @@ class Dict(Base):
         # the value of a dict is the dict itself
         self._value = self
         schema._parent = self
+        for key, value in defaults.items():
+            # FIXME: how to handle complex dict defaults with a dict in
+            # dict or group in dict?
+            var = self._cfg_get(key)
+            var._default = var._value = value
+            
 
 
     def keys(self):
@@ -400,21 +400,11 @@ class Dict(Base):
         prefix = prefix + self._name
         if type(self._schema) == Var and print_desc:
             # TODO: more detailed comments, show full spec of var and some examples.
-            ret.append('#\n# %s\n# %s\n#\n' % (prefix, unicode_to_str(self._desc).replace('\n', '\n# ')))
+            d = unicode_to_str(self._desc).replace('\n', '\n# ')
+            ret.append('#\n# %s\n# %s\n#\n' % (prefix, d))
             print_desc = False
-
         for key in self.keys():
-            # get the var before we might change the key to string
-            var = self._dict[key]
-            # convert key to string
-            if isinstance(key, unicode):
-                key = unicode_to_str(key)
-            # create new prefix. The prefix is the old one + [key] and
-            # if the next item is not a Var, add a '.' if we are not a list.
-            new_prefix = prefix
-            if not isinstance(self._schema, Var) and not isinstance(self, List):
-                new_prefix += '.'
-            ret.append(var._cfg_string(new_prefix, print_desc))
+            ret.append(self._dict[key]._cfg_string(prefix, print_desc))
         if not print_desc:
             ret.append('')
         return '\n'.join(ret)
@@ -498,8 +488,11 @@ class List(Dict):
     """
     A config list. A list is only a dict with integers as index.
     """
-    def __init__(self, schema, desc=u'', name=''):
-        Dict.__init__(self, schema, desc, name, int)
+    def __init__(self, schema, desc=u'', name='', defaults=[]):
+        defaults_dict = {}
+        for key, value in enumerate(defaults):
+            defaults_dict[key] = value
+        Dict.__init__(self, schema, desc, name, int, defaults_dict)
 
 
     def __iter__(self):

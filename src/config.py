@@ -320,6 +320,8 @@ class Group(Base):
         Get variable, subgroup, dict or list object (as object not value).
         """
         if not key in self._dict:
+            if key.replace('_', '-') in self._dict:
+                return self._dict[key.replace('_', '-')]
             raise AttributeError('No attribute %s' % key)
         return self._dict[key]
 

@@ -80,11 +80,11 @@ class INotify(object):
         self._moved_timer = kaa.notifier.WeakOneShotTimer(self._emit_last_move)
 
         self._fd = _inotify.init()
-        fcntl.fcntl(self._fd, fcntl.F_SETFL, os.O_NONBLOCK)
 
         if self._fd < 0:
             raise SystemError, "INotify support not detected on this system."
 
+        fcntl.fcntl(self._fd, fcntl.F_SETFL, os.O_NONBLOCK)
         self._mon = kaa.notifier.WeakSocketDispatcher(self._handle_data)
         self._mon.register(self._fd)
 

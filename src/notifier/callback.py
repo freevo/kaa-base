@@ -509,12 +509,12 @@ class Signals(dict):
         """
         if attr.startswith('_') or not hasattr(Signal, attr):
             return dict.__getattr__(self, attr)
-        callback = Callback(self.__callattr__, attr)
+        callback = Callback(self._callattr, attr)
         callback.set_user_args_first(True)
         return callback
 
     
-    def __callattr__(self, attr, signal, *args, **kwargs):
+    def _callattr(self, attr, signal, *args, **kwargs):
         """
         Call attribute function from Signal().
         """

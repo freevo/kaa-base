@@ -427,7 +427,7 @@ class Dict(Base):
         if not index in self._dict and create:
             newitem = self._dict[index] = self._schema.copy()
             newitem._parent = self
-            newitem._name = u"[%s]" % unicode(index)
+            newitem._name = '[%s]' % unicode_to_str(index)
             if isinstance(newitem, Group):
                 for item in newitem._schema:
                     item._parent = newitem

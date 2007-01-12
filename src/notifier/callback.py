@@ -30,7 +30,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Callback', 'WeakCallback', 'Signal' ]
+__all__ = [ 'Callback', 'WeakCallback', 'Signal', 'Signals' ]
 
 # Python imports
 import _weakref
@@ -483,6 +483,42 @@ class Signal(object):
 
     def count(self):
         return len(self._callbacks)
+
+
+class Signals(dict):
+    """
+    Dict of Signal object.
+    """
+    def __init__(self, *signals):
+        dict.__init__(self)
+        for s in signals:
+            if isinstance(s, dict):
+                # parameter is a dict/Signals object
+                self.update(s)
+            elif isinstance(s, str):
+                # parameter is a string
+                self[s] = Signal()
+            else:
+                # parameter is something else, bad
+                raise AttributeError('signal key must be string')
+
+            
+    def __getattr__(self, attr):
+        """
+        Get attribute function from Signal().
+        """
+        if attr.startswith('_') or not hasattr(Signal, attr):
+            return dict.__getattr__(self, attr)
+        callback = Callback(self.__callattr__, attr)
+        callback.set_user_args_first(True)
+        return callback
+
+    
+    def __callattr__(self, attr, signal, *args, **kwargs):
+        """
+        Call attribute function from Signal().
+        """
+        return getattr(self[signal], attr)(*args, **kwargs)
 
 
 def _shutdown_weakref_destroyed():

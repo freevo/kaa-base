@@ -154,3 +154,32 @@ def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None,
     os.dup2(stderr.fileno(), sys.stderr.fileno())
 
     return lock
+
+
+def is_running(name):
+    """
+    Check if the program with the given name is running. The program
+    must have called set_running itself. Returns the pid or 0.
+    """
+    if not os.path.isfile(kaa.tempfile('run/' + name)):
+        return 0
+    run = open(kaa.tempfile('run/' + name))
+    pid = run.readline().strip()
+    cmdline = run.readline()
+    run.close()
+    if not os.path.exists('/proc/%s/cmdline' % pid):
+        return 0
+    if open('/proc/%s/cmdline' % pid).readline() == cmdline:
+        return int(pid)
+    return 0
+
+
+def set_running(name):
+    """
+    Set this program as running with the given name.
+    """
+    cmdline = open('/proc/%s/cmdline' % os.getpid()).readline()
+    run = open(kaa.tempfile('run/' + name), 'w')
+    run.write(str(os.getpid()) + '\n')
+    run.write(cmdline)
+    run.close()

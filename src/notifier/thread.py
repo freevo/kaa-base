@@ -56,6 +56,7 @@ import threading
 import logging
 import fcntl
 import socket
+import errno
 
 # notifier imports
 import nf_wrapper as notifier
@@ -192,8 +193,8 @@ def _create_thread_notifier_pipe():
     log.info('create thread notifier pipe')
     _thread_notifier_pipe = os.pipe()
 
-    fcntl.fcntl(_thread_notifier_pipe[0] , fcntl.F_SETFL, os.O_NONBLOCK )
-    fcntl.fcntl(_thread_notifier_pipe[1] , fcntl.F_SETFL, os.O_NONBLOCK )
+    fcntl.fcntl(_thread_notifier_pipe[0], fcntl.F_SETFL, os.O_NONBLOCK)
+    fcntl.fcntl(_thread_notifier_pipe[1], fcntl.F_SETFL, os.O_NONBLOCK)
 
     notifier.socket_add(_thread_notifier_pipe[0], _thread_notifier_run_queue)
 
@@ -216,6 +217,12 @@ def _thread_notifier_run_queue(fd):
     global _thread_notifier_queue
     try:
         os.read(_thread_notifier_pipe[0], 1000)
+    except socket.error, (err, msg):
+        if err == errno.EAGAIN:
+            # Resource temporarily unavailable -- we are trying to read
+            # data on a socket when none is avilable.  This should not
+            # happen under normal circumstances, so log an error.
+            log.error("Thread notifier pipe woke but no data available.")
     except OSError:
         pass
 

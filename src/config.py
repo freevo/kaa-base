@@ -550,6 +550,7 @@ class Config(Group):
                 raise ValueError, "Filename not specified and no default filename set."
             filename = self._filename
 
+        filename = os.path.expanduser(filename)
         if os.path.dirname(filename) and not os.path.isdir(os.path.dirname(filename)):
             os.makedirs(os.path.dirname(filename))
 
@@ -581,11 +582,14 @@ class Config(Group):
         f.close()
 
 
-    def load(self, filename = None, remember = True):
+    def load(self, filename = None, remember = True, create = False):
         """
-        Load config from a config file.
+        Load config from a config file.  If create kwarg is True, the config
+        file will be written immediately if it doesn't exist.  Useful for
+        initializing new config files.
         """
         local_encoding = get_encoding()
+        filename = os.path.expanduser(filename)
         if not filename:
             if not self._filename:
                 raise ValueError, "Filename not specified and no default filename set."
@@ -597,6 +601,8 @@ class Config(Group):
 
         if not os.path.isfile(filename):
             # filename not found
+            if create:
+                self.save(filename)
             return False
 
         # Disable autosaving while we load the config file.

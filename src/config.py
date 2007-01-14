@@ -36,6 +36,7 @@ import re
 import copy
 import logging
 import stat
+import md5
 from new import classobj
 
 # kaa.base modules
@@ -90,6 +91,14 @@ class Base(object):
         self._default = default
         self._value = default
         self._monitors = []
+
+
+    def _hash(self):
+        """
+        Returns a hash of the config item.
+        """
+        return md5.new(repr(self._name) + repr(self._desc) + repr(self._default)).hexdigest()
+
 
     def copy(self):
         """
@@ -195,6 +204,13 @@ class Var(Base):
         self._type = type
 
 
+    def _hash(self):
+        """
+        Returns a hash of the config item.
+        """
+        return md5.new(super(Var, self)._hash() + repr(self._type)).hexdigest()
+
+
     def _cfg_string(self, prefix, print_desc=True):
         """
         Convert object into a string to write into a config file.
@@ -282,6 +298,16 @@ class Group(Base):
         value._parent = self
         self._dict[name] = value
         self._vars.append(name)
+
+
+    def _hash(self):
+        """
+        Returns a hash of the config item.
+        """
+        hash = md5.new(super(Group, self)._hash())
+        for name in self._vars:
+            hash.update(self._dict[name]._hash())
+        return hash.hexdigest()
 
 
     def _cfg_string(self, prefix, print_desc=True):
@@ -392,6 +418,16 @@ class Dict(Base):
         Return value list (sorted by key name)
         """
         return [ self._dict[key]._value for key in self.keys() ]
+
+
+    def _hash(self):
+        """
+        Returns a hash of the config item.
+        """
+        hash = md5.new(super(Dict, self)._hash())
+        for key in self.keys():
+            hash.update(self._dict[key]._hash())
+        return hash.hexdigest()
 
 
     def _cfg_string(self, prefix, print_desc=True):
@@ -515,6 +551,7 @@ class Config(Group):
         Group.__init__(self, schema, desc, name)
         self._filename = None
         self._bad_lines = []
+        self._loaded_hash = None
 
         # Whether or not to autosave config file when options have changed
         self._autosave = None
@@ -526,6 +563,13 @@ class Config(Group):
         self._watch_mtime = 0
         self._watch_timer = WeakTimer(self._check_file_changed)
         self._inotify = None
+
+
+    def _hash(self):
+        """
+        Returns a hash of the config item.
+        """
+        return md5.new(super(Config, self)._hash() + repr(self._bad_lines)).hexdigest()
 
 
     def copy(self):
@@ -541,10 +585,17 @@ class Config(Group):
         return copy
 
 
-    def save(self, filename=None):
+    def save(self, filename = None, force = False):
         """
         Save file. If filename is not given use filename from last load.
+        If force is True, the config file will be saved even if there were
+        no schema changes from the previously loaded file.
         """
+        hash = self._hash()
+        if not force and hash == self._loaded_hash:
+            # Hash hasn't changed, so we don't need to write the file.
+            return
+
         if not filename:
             if not self._filename:
                 raise ValueError, "Filename not specified and no default filename set."
@@ -556,37 +607,41 @@ class Config(Group):
 
         self._autosave_timer.stop()
         f = open(filename, 'w')
-        f.write('# -*- coding: %s -*-\n' % get_encoding().lower())
-        f.write('# *************************************************************\n')
-        f.write('# This file is auto-generated\n#\n')
-        f.write('# The possible variables are commented out with the default\n')
-        f.write('# values. Removing lines has no effect, they will be added\n')
-        f.write('# again when this file is saved again. Changing the order of\n')
-        f.write('# the items will also be changed back on the next write.\n')
-        # FIXME: custom comments lost, would be nice if they were kept.  Might
-        # be tricky to fix.
-        f.write('# Any custom comments will also be removed.\n')
+        f.write('# -*- coding: %s -*-\n' % get_encoding().lower() + \
+                '# -*- hash: %s -*-\n' % self._hash() + \
+                '# *************************************************************\n' + \
+                '# WARNING: This file is auto-generated.  You are free to edit\n' + \
+                '# this file to change config values, but any other changes\n' + \
+                # FIXME: custom comments lost, would be nice if they were kept.  Might
+                # be tricky to fix.
+                '# (including removing or rearranging lines,  or adding custom\n' + \
+                '# comments) will be lost.\n' + \
+                '#\n' + \
+                '# The available settings are commented out with their default\n' + \
+                '# values.\n')
         if self._bad_lines:
-            f.write('#\n# See the end of the file for bad lines ignored when the file\n')
-            f.write('# was last saved.\n')
+            f.write('#\n' + \
+                    '# CAUTION: This file contains syntax errors or unsupported\n' + \
+                    '# config settings, which were ignored.  Refer to the end of\n' + \
+                    '# this file for the relevant lines.\n')
         f.write('# *************************************************************\n\n')
         f.write(self._cfg_string(''))
         if self._bad_lines:
-            f.write('\n\n\n')
-            f.write('# *************************************************************\n')
-            f.write('# The following lines caused some errors and were ignored\n')
-            f.write('# Possible reasons are removed variables or bad configuration\n')
-            f.write('# *************************************************************\n\n')
-            for error in self._bad_lines:
-                f.write('# %s\n%s\n\n' % error)
+            f.write('\n\n\n' + \
+                    '# *************************************************************\n' + \
+                    '# The following lines caused errors and were ignored.  Possible\n' + \
+                    '# reasons are removed variables or bad configuration.\n' + \
+                    '# *************************************************************\n\n')
+            for error, line in self._bad_lines:
+                f.write('# %s\n%s\n\n' % (error, line))
         f.close()
 
 
     def load(self, filename = None, remember = True, create = False):
         """
         Load config from a config file.  If create kwarg is True, the config
-        file will be written immediately if it doesn't exist.  Useful for
-        initializing new config files.
+        file will be written immediately if it doesn't exist or if the schema
+        has changed since last write.
         """
         local_encoding = get_encoding()
         filename = os.path.expanduser(filename)
@@ -621,6 +676,9 @@ class Config(Group):
                 except:
                     # bad encoding, ignore it
                     pass
+            elif line.startswith('# -*- hash:'):
+                self._loaded_hash = line[12:].split()[0]
+
             # convert lines based on local encoding
             line = unicode(line, local_encoding)
             if line.find('#') >= 0:
@@ -665,6 +723,9 @@ class Config(Group):
         f.close()
         self.set_autosave(autosave_orig)
         self._watch_mtime = os.stat(filename)[stat.ST_MTIME]
+        if create:
+            # Write config file if schema is different.
+            self.save(filename)
         return len(self._bad_lines) == 0
 
 

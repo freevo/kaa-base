@@ -181,9 +181,18 @@ class Library(object):
         return True, version
 
 
-    def compile(self, includes, code='', args=''):
+    def compile(self, includes, code='', args='', extra_libraries = []):
         ext_args = [ "-L%s" % x for x in self.library_dirs ]
         ext_args += [ "-I%s" % x for x in self.include_dirs ]
+
+        for lib in extra_libraries:
+            if isinstance(lib, basestring):
+                lib = get_library(lib)
+            for dir in lib.library_dirs:
+                ext_args.append("-L%s" % dir)
+            for dir in lib.include_dirs:
+                ext_args.append("-I%s" % dir)
+
         if compile(includes, code, args + ' %s' % ' '.join(ext_args)):
             self.valid = True
             return True
@@ -296,13 +305,13 @@ class Extension(object):
         return False
 
 
-    def check_cc(self, includes, code='', args=''):
+    def check_cc(self, includes, code='', args='', extra_libraries = []):
         """
         Check the given code with the linker. The optional parameter args
         can contain additional command line options like -l.
         """
         ext_args = []
-        for lib in self.library_objects:
+        for lib in self.library_objects + extra_libraries:
             for dir in lib.library_dirs:
                 ext_args.append("-L%s" % dir)
             for dir in lib.include_dirs:
@@ -504,7 +513,7 @@ def setup(**kwargs):
     kwargs['cmdclass']['build_py'] = build_py
     kwargs['cmdclass']['ebuild'] = GentooEbuild
 
-    if sys.argv[1] == 'bdist_rpm':
+    if len(sys.argv) > 1 and sys.argv[1] == 'bdist_rpm':
         dist = None
         release = "1"
         if '--dist' in sys.argv:

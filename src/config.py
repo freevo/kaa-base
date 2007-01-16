@@ -644,7 +644,8 @@ class Config(Group):
         has changed since last write.
         """
         local_encoding = get_encoding()
-        filename = os.path.expanduser(filename)
+        if filename: 
+            filename = os.path.expanduser(filename)
         if not filename:
             if not self._filename:
                 raise ValueError, "Filename not specified and no default filename set."

@@ -529,7 +529,7 @@ PyShmMemory_dealloc(
 	shmdt(self->addr);
     }
     */
-    PyMem_DEL(self);
+    PyObject_DEL(self);
 }
 
 static PyObject *
@@ -930,7 +930,7 @@ PyShmSemaphore_dealloc(
     /* del sem_dict[key], ignore if it fails */
     if (PyDict_DelItem(sem_dict, PyInt_FromLong(self->semid)) == -1)
 	PyErr_Clear();
-    PyMem_DEL(self);
+    PyObject_DEL(self);
 }
 
 static PyObject *

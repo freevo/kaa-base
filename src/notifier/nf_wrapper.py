@@ -77,6 +77,10 @@ def init( module = None, **options ):
     if not isinstance(loop, _Wrapper):
         raise RuntimeError('notifier loop already running')
 
+    if not 'recursive_depth' in options:
+        # default value of 2 is not enough when using async yield stuff
+        options['recursive_depth'] = 5
+        
     try:
         import notifier
     except ImportError:

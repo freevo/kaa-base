@@ -201,6 +201,8 @@ class YieldFunction(InProgress):
             result = self._yield__function()
         except (SystemExit, KeyboardInterrupt):
             sys.exit(0)
+        except StopIteration:
+            result = None
         except Exception, e:
             log.exception('YieldFunction')
             self.exception(e)

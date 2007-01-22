@@ -53,9 +53,14 @@ def cb_func2(*args, **kwargs):
 cb = WeakCallback(cb_func)
 test( cb(42), ((42,), {}) )
 
+# Lambdas are not weakref'd
+cb = WeakCallback(lambda arg: arg)
+test( cb(42), 42)
+
+# Functions are weakref'd
 cb = WeakCallback(cb_func2)
 del cb_func2
-test( cb(42), ((42,), {}) )
+test( cb(42), None )
 
 cb_meth = Cls().meth
 cb = WeakCallback(cb_meth)
@@ -170,7 +175,6 @@ test(result, [42])
 
 test(sig.count(), 1)
 del cb
-# XXX: with the new code this will fail until emit() is called.
 test(sig.count(), 0)
 sig.emit()
 test(sig.count(), 0)
@@ -179,7 +183,6 @@ result = []
 sig.emit()
 test(result, [])
 
-# XXX: with the new code this will fail until emit() is called.
 cb = Cls().meth
 sig.connect_weak(cb, Cls())
 test(sig.count(), 0)

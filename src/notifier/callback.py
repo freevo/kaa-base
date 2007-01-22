@@ -130,18 +130,25 @@ class Callback(object):
     def set_user_args_first(self, flag = True):
         self._user_args_first = flag
 
+
+    def get_user_args(self):
+        return self._args, self._kwargs
+
+
     def _get_callback(self):
         return self._callback
 
+
     def _merge_args(self, args, kwargs):
+        user_args, user_kwargs = self.get_user_args()
         if self._ignore_caller_args:
-            cb_args, cb_kwargs = self._args, self._kwargs
+            cb_args, cb_kwargs = user_args, user_kwargs
         else:
             if self._user_args_first:
-                cb_args, cb_kwargs = self._args + args, kwargs
-                cb_kwargs.update(self._kwargs)
+                cb_args, cb_kwargs = user_args + args, kwargs
+                cb_kwargs.update(user_kwargs)
             else:
-                cb_args, cb_kwargs = args + self._args, self._kwargs
+                cb_args, cb_kwargs = args + user_args, user_kwargs
                 cb_kwargs.update(kwargs)
 
         return cb_args, cb_kwargs
@@ -176,11 +183,11 @@ class Callback(object):
         """
         return None
 
-    def __cmp__(self, func):
+    def __eq__(self, func):
         """
         Compares the given function with the callback function we're wrapping.
         """
-        return cmp(id(self), id(func)) or cmp(self._get_callback(), func)
+        return id(self) == id(func) or self._get_callback() == func
 
 
 class NotifierCallback(Callback):
@@ -244,8 +251,10 @@ class WeakCallback(Callback):
             self._instance = _weakref.ref(callback.im_self, self._weakref_destroyed)
             self._callback = callback.im_func.func_name
         else:
-            # No need to weakref functions.  (If we do, we can't use closures.)
             self._instance = None
+            # Don't weakref lambdas.
+            if not hasattr(callback, 'func_name') or callback.func_name != '<lambda>':
+                self._callback = _weakref.ref(callback, self._weakref_destroyed)
 
         self._args = weakref_data(args, self._weakref_destroyed)
         self._kwargs = weakref_data(kwargs, self._weakref_destroyed)
@@ -263,26 +272,20 @@ class WeakCallback(Callback):
         if self._instance:
             if self._instance() != None:
                 return getattr(self._instance(), self._callback)
+        elif isinstance(self._callback, _weakref.ReferenceType):
+            return self._callback()
         else:
             return self._callback
 
+    def get_user_args(self):
+        return unweakref_data(self._args), unweakref_data(self._kwargs)
 
     def __call__(self, *args, **kwargs):
         if _python_shutting_down != False:
             # Shutdown
             return False
 
-        save_args, save_kwargs = self._args, self._kwargs
-
-        # Remove weakrefs from user data before invoking the callback.
-        self._args = unweakref_data(self._args)
-        self._kwargs = unweakref_data(self._kwargs)
-
-        result = super(WeakCallback, self).__call__(*args, **kwargs)
-
-        self._args, self._kwargs = save_args, save_kwargs
-
-        return result
+        return super(WeakCallback, self).__call__(*args, **kwargs)
 
 
     def set_weakref_destroyed_cb(self, callback):
@@ -322,15 +325,15 @@ class Signal(object):
 
     def __iter__(self):
         for cb in self._callbacks:
-            cb_callback, cb_args, cb_kwargs, cb_once, cb_weak = cb
-            if cb_weak:
-                cb_callback = cb_callback._get_callback()
-
-            yield cb_callback
+            yield cb
 
 
     def __len__(self):
         return len(self._callbacks)
+
+
+    def __nonzero__(self):
+        return True
 
 
     def __contains__(self, key):
@@ -338,16 +341,21 @@ class Signal(object):
             return False
 
         for cb in self._callbacks:
-            cb_callback, cb_args, cb_kwargs, cb_once, cb_weak = cb
-            if cb_weak:
-                cb_callback = cb_callback._get_callback()
-            if cb_callback == key:
+            if cb == key:
                 return True
 
         return False
 
-    def _connect(self, callback, args = (), kwargs = {}, once = False,
-                 weak = False, pos = -1):
+    def _connect(self, callback, args = (), kwargs = {}, once = False, weak = False, pos = -1):
+        """
+        Connects a new callback to the signal.  args and kwargs will be bound
+        to the callback and merged with the args and kwargs passed during 
+        emit().  If weak is True, a WeakCallback will be created.  If once is
+        True, the callback will be automatically disconnected after the next
+        emit().
+
+        This method returns the Callback (or WeakCallback) object created.
+        """
 
         assert(callable(callback))
 
@@ -359,26 +367,23 @@ class Signal(object):
             raise Exception("Signal callbacks exceeds 40")
 
         if weak:
-            callback = WeakCallback(callback)
-
+            callback = WeakCallback(callback, *args, **kwargs)
             # We create a callback for weakref destruction for both the
-            # signal callback as well as signal data.  The destroy callback
-            # has the signal callback passed as the first parameter (because
-            # set_user_args_first() is called), and WeakCallback will pass
-            # the weakref object itself as the second parameter.
+            # signal callback as well as signal data.
             destroy_cb = Callback(self._weakref_destroyed, callback)
-            destroy_cb.set_user_args_first()
             callback.set_weakref_destroyed_cb(destroy_cb)
+        else:
+            callback = Callback(callback, *args, **kwargs)
 
-            args = weakref_data(args, destroy_cb)
-            kwargs = weakref_data(kwargs, destroy_cb)
+        callback._signal_once = once
+
         if pos == -1:
             pos = len(self._callbacks)
 
-        self._callbacks.insert(pos, (callback, args, kwargs, once, weak))
+        self._callbacks.insert(pos, callback)
         if self._changed_cb:
             self._changed_cb(self, Signal.SIGNAL_CONNECTED)
-        return True
+        return callback
 
 
     def connect(self, callback, *args, **kwargs):
@@ -403,26 +408,15 @@ class Signal(object):
         assert(callable(callback))
         new_callbacks = []
         for cb in self._callbacks[:]:
-            cb_callback, cb_args, cb_kwargs, cb_once, cb_weak = cb
-            if cb_weak:
-                cb_callback_u = cb_callback._get_callback()
-                cb_args_u, cb_kwargs_u = unweakref_data((cb_args, cb_kwargs))
-            else:
-                cb_callback_u = cb_args_u = cb_kwargs_u = None
-
-            if (callback in (cb_callback, cb_callback_u) and len(args) == 0) or \
-               (cb_callback, cb_args, cb_kwargs) == (callback, args, kwargs) or \
-               (cb_callback_u, cb_args_u, cb_kwargs_u) == (callback, args, kwargs):
+            if cb == callback and (len(args) == len(kwargs) == 0 or (args, kwargs) == cb.get_user_args()):
                 # This matches what we want to disconnect.
                 continue
-
             new_callbacks.append(cb)
 
         if len(new_callbacks) != len(self._callbacks):
             self._callbacks = new_callbacks
             if self._changed_cb:
                 self._changed_cb(self, Signal.SIGNAL_DISCONNECTED)
-
             return True
 
         return False
@@ -438,6 +432,7 @@ class Signal(object):
         if self._changed_cb and count > 0:
             self._changed_cb(self, Signal.SIGNAL_DISCONNECTED)
 
+
     def emit(self, *args, **kwargs):
         """
         Emits the signal, passing the args and kwargs to each signal handler.
@@ -448,26 +443,12 @@ class Signal(object):
             return True
 
         retval = True
-        for cb_callback, cb_args, cb_kwargs, cb_once, cb_weak in self._callbacks[:]:
-            if cb_weak:
-                cb_callback_u = cb_callback._get_callback()
-                if cb_callback_u == None:
-                    # A reference died while we were in the process of
-                    # emitting this signal.  This callback should already be
-                    # disconnected, but since we're working on a copy we will
-                    # encounter it.
-                    continue
+        for cb in self._callbacks[:]:
+            if cb._signal_once:
+                self.disconnect(cb)
 
-                cb_callback = cb_callback_u
-                cb_args, cb_kwargs = unweakref_data((cb_args, cb_kwargs))
-            else:
-                cb_kwargs = cb_kwargs.copy()
-
-            if cb_once:
-                self.disconnect(cb_callback, *cb_args, **cb_kwargs)
-            cb_kwargs.update(kwargs)
             try:
-                if cb_callback(*(args + cb_args), **cb_kwargs) == False:
+                if cb(*args, **kwargs) == False:
                     retval = False
             except (KeyboardInterrupt, SystemExit):
                 raise SystemExit
@@ -476,10 +457,9 @@ class Signal(object):
         return retval
 
 
-    def _weakref_destroyed(self, callback, weakref):
+    def _weakref_destroyed(self, weakref, callback):
         if _python_shutting_down == False:
-            self._disconnect(callback, (), None)
-
+            self._disconnect(callback, (), {})
 
     def count(self):
         return len(self._callbacks)

@@ -62,6 +62,7 @@ __all__ = [ 'YieldContinue', 'YieldCallback', 'yield_execution',
 import sys
 import logging
 
+from callback import Signal
 from timer import Timer
 from async import InProgress
 
@@ -75,11 +76,19 @@ class YieldCallback(object):
     async. Return this object using 'yield' and use the memeber function
     'get' later to get the result.
     """
+    def __init__(self, func=None):
+        if func is not None:
+            if isinstance(func, Signal):
+                func = func.connect_once
+            func(self)
+
+
     def __call__(self, *args, **kwargs):
         self._args = args
         self._kwargs = kwargs
         self._callback()
         self._callback = None
+        return False
 
 
     def _connect(self, callback):

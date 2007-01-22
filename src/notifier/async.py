@@ -103,3 +103,12 @@ class InProgress(Signal):
         if self._exception:
             raise self._exception
         return self._result
+
+
+    def _connect(self, callback, args = (), kwargs = {}, once = False,
+                 weak = False, pos = -1):
+        """
+        Internal connect function. Always set once to True because InProgress
+        will be emited only once.
+        """
+        return Signal._connect(self, callback, args, kwargs, True, weak, pos)

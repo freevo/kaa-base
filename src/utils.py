@@ -190,7 +190,7 @@ class Singleton(object):
     Create Singleton object from classref on demand.
     """
 
-    class Memberfunction(object):
+    class MemberFunction(object):
         def __init__(self, singleton, name):
             self._singleton = singleton
             self._name = name
@@ -210,5 +210,5 @@ class Singleton(object):
 
     def __getattr__(self, attr):
         if self._singleton is None:
-            return Singleton.Memberfunction(self, attr)
+            return Singleton.MemberFunction(self, attr)
         return getattr(self, _singleton, attr)

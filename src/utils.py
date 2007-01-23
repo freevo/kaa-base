@@ -183,3 +183,32 @@ def set_running(name):
     run.write(str(os.getpid()) + '\n')
     run.write(cmdline)
     run.close()
+
+
+class Singleton(object):
+    """
+    Create Singleton object from classref on demand.
+    """
+
+    class Memberfunction(object):
+        def __init__(self, singleton, name):
+            self._singleton = singleton
+            self._name = name
+
+        def __call__(self, *args, **kwargs):
+            return getattr(self._singleton(), self._name)(*args, **kwargs)
+        
+
+    def __init__(self, classref):
+        self._singleton = None
+        self._class = classref
+
+    def __call__(self):
+        if self._singleton is None:
+            self._singleton = self._class()
+        return self._singleton
+
+    def __getattr__(self, attr):
+        if self._singleton is None:
+            return Singleton.Memberfunction(self, attr)
+        return getattr(self, _singleton, attr)

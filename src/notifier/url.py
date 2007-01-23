@@ -67,8 +67,8 @@ class URL(object):
         """
         t = Thread(self._fetch_thread, length)
         signal = self.signals['completed']
-        t.signals['completed'].connect_once(signal.emit)
-        t.signals['exception'].connect_once(signal.exception_handler.emit)
+        t.signals['completed'].connect_once(signal.finished)
+        t.signals['exception'].connect_once(signal.exception)
         t.start()
         # FIXME: Thread should return this by default and not the two
         # independed signals

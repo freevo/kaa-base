@@ -652,8 +652,8 @@ class Config(Group):
             filename = self._filename
         elif remember:
             self._filename = filename
-        line_regexp = re.compile('^([a-zA-Z0-9_]+|\[.*?\]|\.)+ *= *(.*)')
-        key_regexp = re.compile('(([a-zA-Z0-9_]+)|(\[.*?\]))')
+        line_regexp = re.compile('^([a-zA-Z0-9_-]+|\[.*?\]|\.)+ *= *(.*)')
+        key_regexp = re.compile('(([a-zA-Z0-9_-]+)|(\[.*?\]))')
 
         if not os.path.isfile(filename):
             # filename not found

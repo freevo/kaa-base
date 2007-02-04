@@ -377,6 +377,10 @@ class Group(Base):
         return repr(self._dict)
 
 
+    def __iter__(self):
+        return self._dict.__iter__()
+
+    
 class Dict(Base):
     """
     A config dict.

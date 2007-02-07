@@ -378,7 +378,7 @@ class Group(Base):
 
 
     def __iter__(self):
-        return self._dict.__iter__()
+        return self._vars.__iter__()
 
     
 class Dict(Base):
@@ -387,6 +387,8 @@ class Dict(Base):
     """
     def __init__(self, schema, desc=u'', name='', type=unicode, defaults={}):
         super(Dict, self).__init__(name, desc)
+        if isinstance(schema, (list, tuple)):
+            schema = Group(schema=schema, desc=desc, name=name)
         self._schema = schema
         self._dict = {}
         self._type = type
@@ -440,7 +442,7 @@ class Dict(Base):
         """
         ret = []
         prefix = prefix + self._name
-        if type(self._schema) == Var and print_desc:
+        if (type(self._schema) == Var and print_desc) or not self.keys():
             # TODO: more detailed comments, show full spec of var and some examples.
             d = unicode_to_str(self._desc).replace('\n', '\n# ')
             ret.append('#\n# %s\n# %s\n#\n' % (prefix, d))
@@ -618,7 +620,7 @@ class Config(Group):
                 '# this file to change config values, but any other changes\n' + \
                 # FIXME: custom comments lost, would be nice if they were kept.  Might
                 # be tricky to fix.
-                '# (including removing or rearranging lines,  or adding custom\n' + \
+                '# (including removing or rearranging lines, or adding custom\n' + \
                 '# comments) will be lost.\n' + \
                 '#\n' + \
                 '# The available settings are commented out with their default\n' + \

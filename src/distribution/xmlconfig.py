@@ -87,7 +87,7 @@ class Parser(object):
             if not first:
                 fd.write(', ')
             first = False
-            desc = format_content(child)
+            desc = format_content(child).replace('\'', '\\\'')
             if desc.find('\n') > 0:
                 desc = deep + desc.replace('\n', '\n' + deep)
                 fd.write('desc=\'\'\'\n%s\n%s\'\'\'' % (desc, deep))

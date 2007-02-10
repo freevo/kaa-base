@@ -152,6 +152,9 @@ class Parser(object):
         if len(schema) > 1:
             deep = deep[:-2]
             fd.write(']\n' + deep)
+        type = node.getattr('type')
+        if type and node.name == 'dict':
+            fd.write(', type=%s' % type)
         defaults = {}
         for var in node:
             if var.name != 'set':

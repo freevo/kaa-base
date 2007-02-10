@@ -260,6 +260,8 @@ class Node(object):
             libxml2mod.xmlSetProp(ret, key, value)
         return Node(_obj=ret)
 
+    def unlink(self):
+        libxml2mod.xmlUnlinkNode(self._o)
 
 
 class NodeIterator:

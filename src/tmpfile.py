@@ -5,15 +5,17 @@ import tempfile
 __all__ = [ 'tempfile' ]
 
 TEMP = '/tmp/kaa-%s' % os.getuid()
+if os.environ.get('TMPDIR'):
+    TEMP = os.path.join(os.environ['TMPDIR'], 'kaa-%s' % os.getuid())
 
 if os.path.isdir(TEMP):
     # temp dir is already there, check permissions
     if os.path.islink(TEMP):
-        raise IOError('Security Error: %s is a link, aborted')
-    if stat.S_IMODE(os.stat(TEMP)[stat.ST_MODE]) != 0700:
-        raise IOError('Security Error: %s has wrong permissions, aborted')
+        raise IOError('Security Error: %s is a link, aborted' % TEMP)
+    if stat.S_IMODE(os.stat(TEMP)[stat.ST_MODE]) % 01000 != 0700:
+        raise IOError('Security Error: %s has wrong permissions, aborted' % TEMP)
     if os.stat(TEMP)[stat.ST_UID] != os.getuid():
-        raise IOError('Security Error: %s does not belong to you, aborted')
+        raise IOError('Security Error: %s does not belong to you, aborted' % TEMP)
 else:
     os.mkdir(TEMP, 0700)
 

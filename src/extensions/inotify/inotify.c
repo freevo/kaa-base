@@ -46,7 +46,7 @@ PyObject *init(PyObject *self, PyObject *args)
     int fd = inotify_init();
     if (fd == -1)
 	perror("inotify_init");
-    return Py_BuildValue("l", fd);
+    return Py_BuildValue("i", fd);
 }
 
 PyObject *add_watch(PyObject *self, PyObject *args)
@@ -58,7 +58,7 @@ PyObject *add_watch(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "isi", &fd, &name, &mask))
         return NULL;
 
-    return Py_BuildValue("l", inotify_add_watch(fd, name, mask));
+    return Py_BuildValue("i", inotify_add_watch(fd, name, mask));
 }
 
 PyObject *rm_watch(PyObject *self, PyObject *args)
@@ -69,7 +69,7 @@ PyObject *rm_watch(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "ii", &fd, &wd))
         return NULL;
 
-    return Py_BuildValue("l", inotify_rm_watch(fd, wd));
+    return Py_BuildValue("i", inotify_rm_watch(fd, wd));
 }
 
 

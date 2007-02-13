@@ -58,6 +58,7 @@ import logging
 import nf_wrapper as notifier
 from callback import Signal, Callback
 from thread import MainThreadCallback, is_mainthread
+from async import InProgress
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -79,7 +80,6 @@ class Process(object):
         self.signals = {
             "stderr": Signal(),
             "stdout": Signal(),
-            "completed": Signal(),
         }
 
         self._cmd = self._normalize_cmd(cmd)
@@ -89,6 +89,7 @@ class Process(object):
         self.stopping = False
         self.__kill_timer = None
         self.child = None
+        self.in_progress = None
 
 
     def _normalize_cmd(self, cmd):
@@ -163,6 +164,8 @@ class Process(object):
             MainThreadCallback(_watcher.append, self, self.__child_died )
         else:
             _watcher.append( self, self.__child_died )
+        self.in_progress = InProgress()
+        return self.in_progress
 
 
     def write( self, line ):
@@ -311,7 +314,8 @@ class Process(object):
         self.child = None
         if self.__kill_timer:
             notifier.timer_remove( self.__kill_timer )
-        self.signals["completed"].emit(status >> 8)
+        self.in_progress.finished(status >> 8)
+        self.in_progress = None
 
 
 

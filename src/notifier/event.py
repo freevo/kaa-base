@@ -6,7 +6,7 @@
 #
 # -----------------------------------------------------------------------------
 # kaa.notifier - Mainloop and callbacks
-# Copyright (C) 2005, 2006 Dirk Meyer, Jason Tackaberry, et al.
+# Copyright (C) 2005-2007 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
@@ -36,7 +36,7 @@ import copy
 import logging
 
 # kaa.notifier imports
-from callback import NotifierCallback, WeakNotifierCallback
+from nf_wrapper import NotifierCallback, WeakNotifierCallback
 from thread import MainThreadCallback, is_mainthread
 from timer import OneShotTimer
 

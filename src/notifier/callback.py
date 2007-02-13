@@ -6,7 +6,7 @@
 #
 # -----------------------------------------------------------------------------
 # kaa.notifier - Mainloop and callbacks
-# Copyright (C) 2005, 2006 Dirk Meyer, Jason Tackaberry, et al.
+# Copyright (C) 2005-2007 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
@@ -190,58 +190,6 @@ class Callback(object):
         return id(self) == id(func) or self._get_callback() == func
 
 
-class NotifierCallback(Callback):
-
-    def __init__(self, callback, *args, **kwargs):
-        super(NotifierCallback, self).__init__(callback, *args, **kwargs)
-        self._id = None
-
-        self.signals = {
-            "exception": Signal(),
-            "unregistered": Signal()
-        }
-
-
-    def active(self):
-        # callback is active if id is not None and python is not shutting down
-        # if python is in shutdown, notifier unregister could crash
-        return self._id != None and _python_shutting_down == False
-
-
-    def unregister(self):
-        # Unregister callback with notifier.  Must be implemented by subclasses.
-        self.signals["unregistered"].emit()
-        self._id = None
-
-
-    def __call__(self, *args, **kwargs):
-        if not self._get_callback():
-            if self.active():
-                self.unregister()
-            return False
-
-        # If there are exception handlers for this notifier callback, we
-        # catch the exception and pass it to the handler, giving it the
-        # opportunity to abort the unregistering.  If no handlers are
-        # attached and an exception is raised, it will be propagated up to
-        # our caller.
-        if self.signals["exception"].count() > 0:
-            try:
-                ret = super(NotifierCallback, self).__call__(*args, **kwargs)
-            except:
-                # If any of the exception handlers return True, then the
-                # object is not unregistered from the Notifier.  Otherwise
-                # ret = False and it will unregister.
-                ret = self.signals["exception"].emit(sys.exc_info()[1])
-        else:
-            ret = super(NotifierCallback, self).__call__(*args, **kwargs)
-        # If Notifier callbacks return False, they get unregistered.
-        if ret == False:
-            self.unregister()
-            return False
-        return True
-
-
 class WeakCallback(Callback):
 
     def __init__(self, callback, *args, **kwargs):
@@ -302,14 +250,6 @@ class WeakCallback(Callback):
         except:
             log.exception("Exception raised during weakref destroyed callback")
 
-
-
-class WeakNotifierCallback(WeakCallback, NotifierCallback):
-
-    def _weakref_destroyed(self, object):
-        if _python_shutting_down == False:
-            super(WeakNotifierCallback, self)._weakref_destroyed(object)
-            self.unregister()
 
 
 class Signal(object):

@@ -6,7 +6,7 @@
 #
 # -----------------------------------------------------------------------------
 # kaa.notifier - Mainloop and callbacks
-# Copyright (C) 2005, 2006 Dirk Meyer, Jason Tackaberry, et al.
+# Copyright (C) 2005-2007 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
@@ -37,7 +37,7 @@ import socket
 import logging
 
 import nf_wrapper as notifier
-from callback import NotifierCallback, WeakNotifierCallback, Callback, Signal
+from callback import Callback, Signal
 from thread import MainThreadCallback, Thread, is_mainthread
 
 # get logging object
@@ -46,7 +46,7 @@ log = logging.getLogger('notifier')
 IO_READ   = 0
 IO_WRITE  = 1
 
-class SocketDispatcher(NotifierCallback):
+class SocketDispatcher(notifier.NotifierCallback):
 
     def __init__(self, callback, *args, **kwargs):
         super(SocketDispatcher, self).__init__(callback, *args, **kwargs)
@@ -73,7 +73,7 @@ class SocketDispatcher(NotifierCallback):
 
 
 
-class WeakSocketDispatcher(WeakNotifierCallback, SocketDispatcher):
+class WeakSocketDispatcher(notifier.WeakNotifierCallback, SocketDispatcher):
     pass
 
 

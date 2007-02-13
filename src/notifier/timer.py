@@ -6,7 +6,7 @@
 #
 # -----------------------------------------------------------------------------
 # kaa.notifier - Mainloop and callbacks
-# Copyright (C) 2005, 2006 Dirk Meyer, Jason Tackaberry, et al.
+# Copyright (C) 2005-2007 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
@@ -35,13 +35,12 @@ __all__ = [ 'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer' ]
 import logging
 
 import nf_wrapper as notifier
-from callback import NotifierCallback, WeakNotifierCallback
 from thread import MainThreadCallback, is_mainthread
 
 # get logging object
 log = logging.getLogger('notifier')
 
-class Timer(NotifierCallback):
+class Timer(notifier.NotifierCallback):
 
     def __init__(self, callback, *args, **kwargs):
         super(Timer, self).__init__(callback, *args, **kwargs)
@@ -103,9 +102,9 @@ class OneShotTimer(Timer):
 
 
 
-class WeakTimer(WeakNotifierCallback, Timer):
+class WeakTimer(notifier.WeakNotifierCallback, Timer):
     pass
 
-class WeakOneShotTimer(WeakNotifierCallback, OneShotTimer):
+class WeakOneShotTimer(notifier.WeakNotifierCallback, OneShotTimer):
     pass
 

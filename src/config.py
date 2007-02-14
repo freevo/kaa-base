@@ -28,7 +28,8 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ "Var", "Group", "Dict", "List", "Config" ]
+__all__ = [ "Var", "Group", "Dict", "List", "Config", "set_default",
+            "get_description" ]
 
 # Python imports
 import os
@@ -839,3 +840,16 @@ class Config(Group):
             # Add a slower timer in case it doesn't reappear right away.
             self._watch_timer.start(3)
 
+
+def set_default(group, var, value):
+    """
+    Set default value for var in group.
+    """
+    group._cfg_get(var)._cfg_set(value, default=True)
+
+
+def get_description(group, var):
+    """
+    Get the description for var in group.
+    """
+    return group._cfg_get(var)._desc

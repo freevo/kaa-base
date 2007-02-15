@@ -211,4 +211,4 @@ class Singleton(object):
     def __getattr__(self, attr):
         if self._singleton is None:
             return Singleton.MemberFunction(self, attr)
-        return getattr(self, _singleton, attr)
+        return getattr(self._singleton, attr)

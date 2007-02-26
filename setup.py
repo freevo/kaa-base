@@ -31,7 +31,7 @@ import sys
 
 # We have some extensions but kaa.distribution isn't installed yet.  So import
 # it directly from the source tree.  First add src/ to the modules patch ...
-sys.path.insert(0, "src")
+sys.path.append("src")
 # ... and now import it.
 from distribution import Extension, setup
 

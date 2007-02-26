@@ -34,11 +34,15 @@ __all__ = [ 'convert' ]
 import sys
 import pprint
 
+# use minidom because it is part of the python distribution.
+# pyxml replaces the parser but everything used here should
+# work even without it.
+from xml.dom import minidom
 
 def get_value(value, type):
-    if value is None:
+    if not value:
         return eval('%s()' % type)
-    if type is not None:
+    if type:
         return eval(type)(value)
     if value.lower() == 'true':
         return True
@@ -50,7 +54,7 @@ def get_value(value, type):
 
 
 def format_content(node):
-    s = node.get_rawcontent().replace('\t', '        ')
+    s = node.childNodes[0].data.replace('\t', '        ')
     spaces = ''
     while s:
         if s[0] == ' ':
@@ -65,25 +69,27 @@ def format_content(node):
     return s.replace('\n' + spaces, '\n').strip()
 
 
+def nodefilter(node, *names):
+    return [ n for n in node.childNodes if n.nodeName in names ]
+
+
 class Parser(object):
 
     def _get_schema(self, node):
         schema = []
-        for child in node:
-            if hasattr(self, '_parse_%s' % child.name):
+        for child in node.childNodes:
+            if hasattr(self, '_parse_%s' % child.nodeName):
                 schema.append(child)
         return schema
 
     
     def parse(self, node, fd, deep=''):
-        fd.write('%s(' % node.name.capitalize())
+        fd.write('%s(' % node.nodeName.capitalize())
         first = True
-        if node.getattr('name'):
-            fd.write('name=\'%s\'' % node.getattr('name'))
+        if node.getAttribute('name'):
+            fd.write('name=\'%s\'' % node.getAttribute('name'))
             first = False
-        for child in node:
-            if child.name != 'desc':
-                continue
+        for child in nodefilter(node, 'desc'):
             if not first:
                 fd.write(', ')
             first = False
@@ -93,12 +99,12 @@ class Parser(object):
                 fd.write('desc=\'\'\'\n%s\n%s\'\'\'' % (desc, deep))
             else:
                 fd.write('desc=\'%s\'' % desc)
-        getattr(self, '_parse_%s' % node.name.lower())(node, fd, deep, first)
+        getattr(self, '_parse_%s' % node.nodeName.lower())(node, fd, deep, first)
     
 
     def _parse_var(self, node, fd, deep, first):
-        default = node.getattr('default')
-        deftype = node.getattr('type')
+        default = node.getAttribute('default')
+        deftype = node.getAttribute('type')
         if default or deftype:
             if not first:
                 fd.write(', ')
@@ -106,15 +112,14 @@ class Parser(object):
             default = get_value(default, deftype)
             fd.write('default=%s' % pprint.pformat(default).strip())
 
-        for child in node:
-            if child.name not in ('values'):
-                continue
+        for child in nodefilter(node, 'values'):
             if not first:
                 fd.write(', ')
             first = False
             values = []
-            for value in child.children:
-                values.append(get_value(value.content, value.getattr('type')))
+            for value in nodefilter(child, 'value'):
+                content = value.childNodes[0].data
+                values.append(get_value(content, value.getAttribute('type')))
             fd.write('type=%s' % pprint.pformat(tuple(values)).strip())
             break
         fd.write(')')
@@ -152,15 +157,13 @@ class Parser(object):
         if len(schema) > 1:
             deep = deep[:-2]
             fd.write(']\n' + deep)
-        type = node.getattr('type')
-        if type and node.name == 'dict':
+        type = node.getAttribute('type')
+        if type and node.nodeName == 'dict':
             fd.write(', type=%s' % type)
         defaults = {}
-        for var in node:
-            if var.name != 'set':
-                continue
-            value = get_value(var.getattr('value'), None)
-            defaults[var.getattr('key')] = value
+        for var in nodefilter(node, 'set'):
+            value = get_value(var.getAttribute('value'), None)
+            defaults[var.getAttribute('key')] = value
         if defaults:
             fd.write(', defaults=%s' % pprint.pformat(defaults).strip())
             
@@ -173,11 +176,10 @@ class Parser(object):
 
 
 def convert(xml, python):
-    # import here and not before or kaa.base install itself
-    # will fail because there is no kaa.base at that time.
-    import kaa.xml
-
-    tree = kaa.xml.Document(xml, 'config')
+    tree = minidom.parse(xml).firstChild
+    if tree.nodeName != 'config':
+        raise RuntimeError('%s is no valid cxml file' % xml)
+    
     # out = sys.__stdout__
     out = open(python, 'w')
     
@@ -187,7 +189,7 @@ def convert(xml, python):
 
     Parser().parse(tree, out)
     out.write('\n\n')
-    for child in tree:
-        if child.name != 'code':
+    for child in tree.childNodes:
+        if child.nodeName != 'code':
             continue
         out.write(format_content(child) + '\n\n')

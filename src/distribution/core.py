@@ -515,6 +515,7 @@ def setup(**kwargs):
 
     if len(sys.argv) > 1 and sys.argv[1] == 'bdist_rpm':
         dist = None
+        kwargs['name'] = 'python-' + kwargs['name']
         release = "1"
         if '--dist' in sys.argv:
             # TODO: determine this automatically

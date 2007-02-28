@@ -128,7 +128,11 @@ def yield_execution(interval=0):
 
         def newfunc(*args, **kwargs):
             function = func(*args, **kwargs).next
-            result = function()
+            try:
+                result = function()
+            except StopIteration:
+                # no return with yield, but done, return None
+                return None
             if not (result == YieldContinue or \
                     isinstance(result, (YieldCallback, InProgress))):
                 # everything went fine, return result

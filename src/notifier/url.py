@@ -79,7 +79,11 @@ class URL(object):
         """
         The real urllib2 calls in a thread.
         """
-        fd = urllib2.urlopen(*self._args)
+        try:
+            fd = urllib2.urlopen(*self._args)
+        except urllib2.HTTPError, e:
+            # FIXME: how to handle this.
+            return e.code
         self.signals['header'].emit(fd.info())
         if not len(self.signals['data']) and not len(self.signals['completed']):
             # no callback connected, no need to read

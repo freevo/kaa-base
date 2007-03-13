@@ -39,10 +39,11 @@
 #define ATTR_INDEXED_IGNORE_CASE (ATTR_INDEXED | ATTR_IGNORE_CASE)
 #define IS_ATTR_INDEXED_IGNORE_CASE(attr) ((attr & ATTR_INDEXED_IGNORE_CASE) == ATTR_INDEXED_IGNORE_CASE)
 
-#if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
+#if PY_VERSION_HEX < 0x02050000
 typedef int Py_ssize_t;
 #define PY_SSIZE_T_MAX INT_MAX
 #define PY_SSIZE_T_MIN INT_MIN
+typedef Py_ssize_t (*lenfunc)(PyObject *);
 #endif
 
 GHashTable *queries = 0;
@@ -545,7 +546,7 @@ PyObject *ObjectRow_PyObject__has_key(ObjectRow_PyObject *self, PyObject *args, 
 
 
 PyMappingMethods row_as_mapping = {
-    /* mp_length        */ (inquiry)ObjectRow_PyObject__length,
+    /* mp_length        */ (lenfunc)ObjectRow_PyObject__length,
     /* mp_subscript     */ (binaryfunc)ObjectRow_PyObject__subscript,
     /* mp_ass_subscript */ (objobjargproc)0,
 };

@@ -574,7 +574,7 @@ PyShmMemory_repr(
 	sprintf(buf2, "None");
     else
 	sprintf(buf2, "0x%p", self->addr);
-    sprintf(buf, "<%s shared memory object, id=%d, size=%u, addr=%s>",
+    sprintf(buf, "<%s shared memory object, id=%d, size=%zd, addr=%s>",
 	    (self->addr == NULL) ? "detached" : (self->mode & SHM_RDONLY) ?
 	    "attached RO" : "attached R/W",
 	    self->shmid,

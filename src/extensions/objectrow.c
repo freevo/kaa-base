@@ -39,6 +39,11 @@
 #define ATTR_INDEXED_IGNORE_CASE (ATTR_INDEXED | ATTR_IGNORE_CASE)
 #define IS_ATTR_INDEXED_IGNORE_CASE(attr) ((attr & ATTR_INDEXED_IGNORE_CASE) == ATTR_INDEXED_IGNORE_CASE)
 
+#if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
+typedef int Py_ssize_t;
+#define PY_SSIZE_T_MAX INT_MAX
+#define PY_SSIZE_T_MIN INT_MIN
+#endif
 
 GHashTable *queries = 0;
 PyObject *cPickle_loads, *zip;
@@ -126,12 +131,13 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
     if (!self->query_info) {
         /* This is a row for a query we haven't seen before, so we need to do
          * some initial setup.  Most of what we do here is convert data stored
-         * in Python objects to more native C types for faster accxess.
+         * in Python objects to more native C types for faster access.
          */
 
         PyObject **desc_tuple = PySequence_Fast_ITEMS(self->desc);
         PyObject *key, *value;
-        int i, pos = 0;
+        int i = 0;
+        Py_ssize_t pos = 0;
 
         self->query_info = (QueryInfo *)malloc(sizeof(QueryInfo));
         self->query_info->refcount = 0;
@@ -417,7 +423,7 @@ PyObject *ObjectRow_PyObject__str(ObjectRow_PyObject *self)
     return str;
 }
 
-int ObjectRow_PyObject__length(ObjectRow_PyObject *self)
+Py_ssize_t ObjectRow_PyObject__length(ObjectRow_PyObject *self)
 {
     PyObject *keys = ObjectRow_PyObject__keys(self, NULL, NULL);
     Py_DECREF(keys);

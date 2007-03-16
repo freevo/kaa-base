@@ -34,9 +34,9 @@
 import sys
 import logging
 import os
-import traceback
 import time
 import signal
+import threading
 import atexit
 
 # kaa.notifier imports
@@ -159,15 +159,7 @@ def step(*args, **kwargs):
         raise SystemExit
 
 
-# set signal handler to catch term signal for
-# clean shutdown
-def _signal_handler(signum, frame):
-    shutdown()
-
-# catch SIGTERM
-signal.signal(signal.SIGTERM, _signal_handler)
-
-def _shutdown_check():
+def _shutdown_check(*args):
     # Helper function to shutdown kaa on system exit
     # The problem is that pytgtk just exits python and
     # does not simply return from the main loop and kaa
@@ -184,5 +176,11 @@ def _shutdown_check():
             running = False
         shutdown()
 
+# # catch SIGTERM if possible for a clean shutdown
+if threading.enumerate()[0] == threading.currentThread():
+    signal.signal(signal.SIGTERM, _shutdown_check)
+else:
+    log.info('kaa imported from thread, disable SIGTERM handler')
+    
 # check to make sure we really call our shutdown function
 atexit.register(_shutdown_check)

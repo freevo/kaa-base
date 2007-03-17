@@ -28,4 +28,9 @@
 #
 # -----------------------------------------------------------------------------
 
+import sys
+# We require python 2.4 or later, so complain if that isn't satisfied.
+if sys.version.split()[0] < '2.4':
+    raise SystemError, "Python 2.4 or later required."
+
 from core import *

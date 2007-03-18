@@ -33,7 +33,7 @@
 #
 # -----------------------------------------------------------------------------
 # kaa.notifier - Mainloop and callbacks
-# Copyright (C) 2006 Dirk Meyer, Jason Tackaberry, et al.
+# Copyright (C) 2006-2007 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
@@ -118,16 +118,19 @@ class YieldCallback(object):
         return None
 
 
-def yield_execution(interval=0):
+def yield_execution(interval=0, lock=False):
     """
     Functions with this decorator uses yield to break and to return the
     results. Special yield values for break are YieldContinue or
-    YieldCallback or InProgress objects.
+    YieldCallback or InProgress objects. In lock is True the function will
+    be locked against parallel calls. If locked the call will delayed.
     """
     def decorator(func):
 
         def newfunc(*args, **kwargs):
             function = func(*args, **kwargs).next
+            if lock and func._lock is not None and not func._lock.is_finished:
+                return YieldLock(func, function, interval)
             try:
                 result = function()
             except StopIteration:
@@ -138,8 +141,12 @@ def yield_execution(interval=0):
                 # everything went fine, return result
                 return result
             # we need a step callback to finish this later
-            return YieldFunction(function, interval, result)
+            progress = YieldFunction(function, interval, result)
+            if lock:
+                func._lock = progress
+            return progress
 
+        func._lock = None
         newfunc.func_name = func.func_name
         return newfunc
 
@@ -241,3 +248,24 @@ class YieldFunction(InProgress):
             self._timer.stop()
         self._timer = None
         self._yield__function = None
+
+
+class YieldLock(YieldFunction):
+    """
+    YieldFunction for handling locked yield_execution functions.
+    """
+    def __init__(self, original_function, function, interval):
+        YieldFunction.__init__(self, function, interval)
+        self._func = original_function
+        status = YieldInProgress(self._func._lock)
+        status._connect(self._try_again)
+
+
+    def _try_again(self, result):
+        if not self._func._lock.is_finished:
+            # still locked by a new call, wait again
+            status = YieldInProgress(self._func._lock)
+            status._connect(self._try_again)
+            return
+        self._func._lock = self
+        self._continue()

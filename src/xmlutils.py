@@ -52,7 +52,7 @@ class SaxTreeHandler(xml.sax.ContentHandler):
             self.content = ''
 
         def getattr(self, attr):
-            if self.attr.haskey(attr):
+            if self.attr.has_key(attr):
                 return self.attr.get(attr)
             nodes = [ n for n in self.children if n.name == attr ]
             if len(nodes) == 1:

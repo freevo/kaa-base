@@ -42,6 +42,7 @@ import distutils.sysconfig
 # internal imports
 from version import Version
 from build_py import build_py
+from svn2log import svn2log
 
 __all__ = ['compile', 'check_library', 'get_library', 'setup', 'ConfigFile',
            'Extension', 'Library']
@@ -475,6 +476,13 @@ def setup(**kwargs):
                     break
             f.close()
 
+    if len(sys.argv) > 1 and sys.argv[1] in ('bdist_rpm', 'sdist') and \
+           os.path.isfile('ChangeLog.in'):
+        # FIXME: find a better way to detect if we need to create a
+        # ChangeLog file or not.
+        print 'generate ChangeLog'
+        svn2log(kwargs['module'])
+        
     # delete 'module' information, not used by distutils.setup
     del kwargs['module']
 

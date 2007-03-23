@@ -1,4 +1,4 @@
 0.1.3, not yet released
 
 * support for Python 2.5
-* remove libxml2 dependency
+* remove libxml2 dependency and kaa.xml wrapper

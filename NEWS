@@ -2,3 +2,5 @@
 
 * support for Python 2.5
 * remove libxml2 dependency and kaa.xml wrapper
+* add xmlutils
+* add svn2log ChangeLog generator

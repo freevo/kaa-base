@@ -58,7 +58,7 @@ class Entry(object):
             for line in files:
                 writer.write('\n\t* %s' % line)
             writer.write(':\n')
-            for delimiter in ('o ', '- '):
+            for delimiter in ('o ', '- ', '-'):
                 found = 0
                 for l in msg.split('\n'):
                     if l.startswith(delimiter):
@@ -150,7 +150,10 @@ def svn2log(module):
             users[login] = name
         if line.startswith('aka'):
             prefix.append(line[4:].strip())
-
+    # make sure that module2 is higher in the last than module itself
+    prefix.sort()
+    prefix.reverse()
+    
     # Create a parser
     parser = xml.sax.make_parser()
 

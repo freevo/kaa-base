@@ -35,10 +35,11 @@ import xml.sax
 
 class SaxTreeHandler(xml.sax.ContentHandler):
     """
-    Handler for the SAX parser. The memeber function 'handle' will
+    Handler for the SAX parser. The member function 'handle' will
     be called everytime an element given on init is closed. The parameter
     is the tree with this element as root. A node can either have children
-    or text content.
+    or text content. The SaxTreeHandler is usefull for simple xml files
+    found in config files and information like epg data.
     """
     class Node(object):
         """
@@ -51,7 +52,12 @@ class SaxTreeHandler(xml.sax.ContentHandler):
             self.content = ''
 
         def getattr(self, attr):
-            return self.attr.get(attr)
+            if self.attr.haskey(attr):
+                return self.attr.get(attr)
+            nodes = [ n for n in self.children if n.name = attr ]
+            if len(nodes) == 1:
+                return nodes[0]
+            return None
 
         def __repr__(self):
             return '<Node %s>' % self.name

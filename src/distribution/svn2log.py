@@ -140,7 +140,7 @@ class LogParser(SaxTreeHandler):
 
 
 def svn2log(module):
-    if not os.path.isfile('ChangeLog.in'):
+    if not os.path.isfile('ChangeLog.in') or not os.path.isdir('.svn'):
         return
     prefix = [ module ]
     users = {}

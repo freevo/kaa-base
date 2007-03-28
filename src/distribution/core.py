@@ -379,38 +379,6 @@ class EmptyExtensionsList(list):
 
 
 
-class GentooEbuild (distutils.core.Command):
-
-    description = "create gentoo ebuild"
-
-    user_options = [
-        ('prefix=', None,
-         "portage prefix"),
-        ]
-
-    def initialize_options (self):
-        self.prefix = None
-        
-    def finalize_options (self):
-        pass
-        
-    def run (self):
-        if not self.prefix:
-            print 'Please provide overlay portage prefix'
-            return 0
-        name = self.distribution.metadata.name
-        version = self.distribution.metadata.version
-        if not os.path.isfile('%s.ebuild' % name):
-            print 'No ebuild template provided'
-            return 0
-        edata = open('%s.ebuild' % name).read()
-        ebuild = '%s/dev-python/%s/%s-%s.ebuild' % (self.prefix, name, name, version)
-        if not os.path.isdir(os.path.dirname(ebuild)):
-            os.makedirs(os.path.dirname(ebuild))
-        open(ebuild, 'w').write(edata)
-        os.system('ebuild %s digest' % ebuild)
-
-
 def setup(**kwargs):
     """
     A setup script wrapper for kaa modules.
@@ -519,7 +487,6 @@ def setup(**kwargs):
     if not 'cmdclass' in kwargs:
         kwargs['cmdclass'] = {}
     kwargs['cmdclass']['build_py'] = build_py
-    kwargs['cmdclass']['ebuild'] = GentooEbuild
 
     if len(sys.argv) > 1 and sys.argv[1] == 'bdist_rpm':
         dist = None

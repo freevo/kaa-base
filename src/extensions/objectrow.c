@@ -7,8 +7,8 @@
  * ----------------------------------------------------------------------------
  * Copyright (C) 2006 Jason Tackaberry
  *
- * First Edition: Jason Tackaberry <tack@sault.org>
- * Maintainer:    Jason Tackaberry <tack@sault.org>
+ * First Edition: Jason Tackaberry <tack@urandom.ca>
+ * Maintainer:    Jason Tackaberry <tack@urandom.ca>
  *
  * Please see the file AUTHORS for a complete list of authors.
  *

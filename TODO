@@ -1,6 +1,3 @@
-Remove unix signal handling code, it does not work right. Maybe auto
-catch SIG15 and send the normal sys.exit at this point.
-
 Check all files for the use of type(). It may not work with the config
 code, use isinstance instead. Also check the files for exception
 handling. Do not catch all exceptions and do something, add special

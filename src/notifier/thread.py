@@ -26,7 +26,7 @@
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
-#                Jason Tackaberry <tack@sault.org>
+#                Jason Tackaberry <tack@urandom.ca>
 #
 # Please see the file AUTHORS for a complete list of authors.
 #

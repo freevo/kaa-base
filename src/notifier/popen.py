@@ -80,6 +80,7 @@ class Process(object):
         self.signals = {
             "stderr": Signal(),
             "stdout": Signal(),
+            "completed": Signal(),
         }
 
         self._cmd = self._normalize_cmd(cmd)
@@ -316,6 +317,7 @@ class Process(object):
             notifier.timer_remove( self.__kill_timer )
         self.in_progress.finished(status >> 8)
         self.in_progress = None
+        self.signals['completed'].emit(status >> 8)
 
 
 

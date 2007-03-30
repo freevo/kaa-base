@@ -31,7 +31,16 @@
 __all__ = [ 'SaxTreeHandler' ]
 
 # python xml import
-import xml.sax
+try:
+    import xml.sax
+except ImportError, e:
+    # Small hack before the next release. FIXME: this should be
+    # removed for future versions again.
+    print 'Error: detected files from previous kaa.base version!'
+    print 'Please reinstall kaa by deleting all \'build\' subdirs'
+    print 'for all kaa source modules and delete the kaa directory'
+    print 'in the site-package directory'
+    raise e
 
 class SaxTreeHandler(xml.sax.ContentHandler):
     """

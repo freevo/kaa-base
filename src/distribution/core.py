@@ -41,8 +41,17 @@ import distutils.sysconfig
 
 # internal imports
 from version import Version
-from build_py import build_py
-from svn2log import svn2log
+try:
+    from build_py import build_py
+    from svn2log import svn2log
+except ImportError, e:
+    # Small hack before the next release. FIXME: this should be
+    # removed for future versions again.
+    print 'Error: detected files from previous kaa.base version!'
+    print 'Please reinstall kaa by deleting all \'build\' subdirs'
+    print 'for all kaa source modules and delete the kaa directory'
+    print 'in the site-package directory'
+    raise e
 
 __all__ = ['compile', 'check_library', 'get_library', 'setup', 'ConfigFile',
            'Extension', 'Library']

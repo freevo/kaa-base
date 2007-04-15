@@ -33,6 +33,7 @@ import os
 import struct
 import logging
 import fcntl
+import select
 
 # kaa imports
 import kaa.notifier
@@ -75,6 +76,11 @@ class INotify(object):
 
         self._watches = {}
         self._watches_by_path = {}
+        # We keep track of recently removed watches so we don't get confused
+        # if an event callback removes a watch while we're currently
+        # processing a batch of events and we receive an event for a watch
+        # we just removed.
+        self._watches_recently_removed = []
         self._read_buffer = ""
         self._move_state = None  # For MOVED_FROM events
         self._moved_timer = kaa.notifier.WeakOneShotTimer(self._emit_last_move)
@@ -134,6 +140,7 @@ class INotify(object):
         _inotify.rm_watch(self._fd, wd)
         del self._watches[wd]
         del self._watches_by_path[path]
+        self._watches_recently_removed.append(wd)
         return True
 
 
@@ -197,10 +204,11 @@ class INotify(object):
 
             self._read_buffer = self._read_buffer[16+size:]
             if wd not in self._watches:
-                # Weird, received an event for an unknown watch; this
-                # shouldn't happen under sane circumstances, so log this as
-                # an error.
-                log.error("INotify received event for unknown watch.")
+                if wd not in self._watches_recently_removed:
+                    # Weird, received an event for an unknown watch; this
+                    # shouldn't happen under sane circumstances, so log this as
+                    # an error.
+                    log.error("INotify received event for unknown watch.")
                 continue
 
             path = self._watches[wd][1]
@@ -236,10 +244,17 @@ class INotify(object):
             self._watches[wd][0].emit(mask, path)
             self.signals["event"].emit(mask, path)
 
-            if mask & INotify.IGNORED:
+            if mask & (INotify.IGNORED | INotify.DELETE_SELF):
                 # Self got deleted, so remove the watch data.
                 del self._watches[wd]
                 del self._watches_by_path[path]
+                self._watches_recent_removed.append(wd)
+
+        if not self._read_buffer and len(self._watches_recently_removed) and \
+           not select.select([self._fd], [], [], 0)[0]:
+            # We've processed all pending inotify events.  We can reset the
+            # recently removed watches list.
+            self._watches_recently_removed = []
 
 
 if _inotify:
@@ -250,7 +265,8 @@ if _inotify:
 
     INotify.WATCH_MASK = INotify.MODIFY | INotify.ATTRIB | INotify.DELETE | \
                          INotify.CREATE | INotify.DELETE_SELF | \
-                         INotify.UNMOUNT | INotify.MOVE
+                         INotify.UNMOUNT | INotify.MOVE | INotify.MOVE_SELF | \
+                         INotify.MOVED_FROM | INotify.MOVED_TO
 
     INotify.CHANGE     = INotify.MODIFY | INotify.ATTRIB
 

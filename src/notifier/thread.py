@@ -240,5 +240,6 @@ def _thread_notifier_run_queue(fd):
         except Exception, e:
             log.exception('mainthread callback')
             # set exception in callback
+            e._exc_info = sys.exc_info()
             callback._set_exception(e)
     return True

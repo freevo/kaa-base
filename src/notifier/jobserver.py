@@ -177,8 +177,9 @@ class _Thread(threading.Thread):
             job._server = None
             try:
                 MainThreadCallback(job.finished, job._callback())()
-            except:
-                MainThreadCallback(job.exception, sys.exc_info()[1])()
+            except Exception, e:
+                e._exc_info = sys.exc_info()
+                MainThreadCallback(job.exception, e)()
         # server stopped
         log.debug('stop thread %s' % self.name)
 

@@ -225,6 +225,7 @@ class YieldFunction(InProgress):
             result = None
         except Exception, e:
             log.exception('YieldFunction')
+            e._exc_info = sys.exc_info()
             self.exception(e)
             return False
         if result == YieldContinue:

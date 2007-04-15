@@ -244,11 +244,11 @@ class INotify(object):
             self._watches[wd][0].emit(mask, path)
             self.signals["event"].emit(mask, path)
 
-            if mask & (INotify.IGNORED | INotify.DELETE_SELF):
+            if mask & INotify.IGNORED:
                 # Self got deleted, so remove the watch data.
                 del self._watches[wd]
                 del self._watches_by_path[path]
-                self._watches_recent_removed.append(wd)
+                self._watches_recently_removed.append(wd)
 
         if not self._read_buffer and len(self._watches_recently_removed) and \
            not select.select([self._fd], [], [], 0)[0]:

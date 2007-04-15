@@ -34,7 +34,6 @@ __all__ = [ 'InProgress' ]
 # python imports
 import logging
 import traceback
-import sys
 
 # kaa.notifier imports
 from callback import Signal

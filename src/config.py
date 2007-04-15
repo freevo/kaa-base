@@ -732,7 +732,11 @@ class Config(Group):
                 key = keylist[0]
                 value = value.strip()
                 if isinstance(object, (Dict, List)):
-                    object[key[1:-1]] = value
+                    key = key[1:-1]
+                    if not key and isinstance(object, List):
+                        # Implicit indexing for Lists.
+                        key = len(object)
+                    object[key] = value
                 else:
                     setattr(object, key, value)
             except Exception, e:

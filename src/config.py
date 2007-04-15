@@ -86,6 +86,7 @@ class Base(object):
     """
 
     def __init__(self, name='', desc=u'', default=None):
+        super(Base, self).__init__()
         self._parent = None
         self._name = name
         self._desc = _format(str_to_unicode(desc))
@@ -154,29 +155,40 @@ class VarProxy(Base):
     value (int, str, unicode, etc.) and offers add_monitor and remove_monitor
     methods to manage the monitor list of the original Var object.
     """
-    def __new__(cls, value = None, monitors = [], parent = None):
-        clstype = realclass = type(value)
+    def __new__(cls, item):
+        clstype = realclass = type(item._value)
         if clstype == bool:
             # You can't subclass a boolean, so use int instead.  In practice,
             # this isn't a problem, since __class__ will end up being bool,
             # thanks to __getattribute__, so isinstance(o, bool) will be True.
             clstype = int
+
         newclass = classobj("VarProxy", (clstype, cls), {
             "__getattribute__": cls.__getattribute__,
             "__str__": cls.__str__,
         })
-        if value:
-            self = newclass(value)
+
+        if item._value:
+            self = newclass(item._value)
         else:
             self = newclass()
+
         self._class = realclass
         return self
 
 
-    def __init__(self, value = None, monitors = [], parent = None):
-        super(Base, self).__init__(default = value)
-        self._monitors = monitors
-        self._parent = parent
+    def __init__(self, value = None):
+        if not isinstance(value, Var):
+            # Called inside __new__ when we pass the intrinsic value for this
+            # config variable
+            super(VarProxy, self).__init__(default = value)
+        else:
+            # Called implicitly after returning from __new__, here value will
+            # be a kaa.config.Var
+            self._monitors = value._monitors
+            self._parent = value._parent
+            self._item = value
+
 
     def __getattribute__(self, attr):
         if attr == "__class__":
@@ -370,7 +382,7 @@ class Group(Base):
             return object.__getattribute__(self, key)
         item = self._cfg_get(key)
         if isinstance(item, Var):
-            return VarProxy(item._value, item._monitors, item._parent)
+            return VarProxy(item)
 
         return item
 
@@ -783,7 +795,7 @@ class Config(Group):
 
         If argument is False, disable any watches.
         """
-        if not watch and not self._inotify:
+        if watch and not self._inotify:
             try:
                 self._inotify = INotify()
             except SystemError:
@@ -802,11 +814,10 @@ class Config(Group):
         elif watch and not self._watching:
             if self._inotify:
                 try:
-                    signal = self._inotify.watch(self._filename, INotify.MODIFY)
+                    signal = self._inotify.watch(self._filename)
                     signal.connect_weak(self._file_changed)
                 except IOError:
-                    # Adding watch falied, use timer to wait for file to
-                    # appear.
+                    # Adding watch failed, use timer to wait for file to appear.
                     self._watch_timer.start(3)
             else:
                 self._watch_timer.start(3)
@@ -834,22 +845,22 @@ class Config(Group):
     def _file_changed(self, mask, path):
         if mask & (INotify.MODIFY | INotify.ATTRIB):
             self.load()
-        elif mask & INotify.DELETE_SELF:
-            # Edited with vim?  Check immediately.
+        elif mask & (INotify.IGNORED | INotify.MOVE_SELF):
+            # File may have been replaced, check mtime now.
             WeakOneShotTimer(self._check_file_changed).start(0.1)
             # Add a slower timer in case it doesn't reappear right away.
             self._watch_timer.start(3)
 
 
-def set_default(group, var, value):
+def set_default(var, value):
     """
-    Set default value for var in group.
+    Set default value for the given config variable.
     """
-    group._cfg_get(var)._cfg_set(value, default=True)
+    var._item._cfg_set(value, default = True)
 
 
-def get_description(group, var):
+def get_description(var):
     """
-    Get the description for var in group.
+    Get the description for the given config variable.
     """
-    return group._cfg_get(var)._desc
+    return var._item._desc

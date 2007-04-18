@@ -82,7 +82,8 @@ class InProgress(Signal):
         done because it raised an exception.
         """
         if self.exception_handler.count() == 0:
-            log.error('InProgress exception: %s', ''.join(traceback.format_exception(*e._exc_info)))
+            trace = ''.join(traceback.format_exception(*e._exc_info))
+            log.error('*** InProgress exception not handled ***\n%s', trace)
         # store result
         self.is_finished = True
         self._exception = e

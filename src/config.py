@@ -332,7 +332,7 @@ class Group(Base):
         Convert object into a string to write into a config file.
         """
         ret  = []
-        desc = unicode_to_str(self._desc).replace('\n', '\n# ')
+        desc = unicode_to_str(self._desc.strip('\n')).replace('\n', '\n# ')
         if self._name:
             sections = [ x.capitalize() for x in prefix[:-1].split('.') + [self._name] ]
             breadcrumb = ' | '.join(filter(len, sections))

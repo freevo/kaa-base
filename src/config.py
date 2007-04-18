@@ -864,7 +864,8 @@ class Config(Group):
             cb = Callback(lambda *args: changed_names.append(args[0]))
             self.add_monitor(cb)
             self.load()
-            log.info('Config file %s modified; %d values changed.' % (self._filename, len(changed_names)))
+            log.info('Config file %s modified; %d settings changed.' % (self._filename, len(changed_names)))
+            log.debug('What changed: %s', ', '.join(changed_names) or 'nothing')
             self.remove_monitor(cb)
         elif mask & (INotify.IGNORED | INotify.MOVE_SELF):
             # File may have been replaced, check mtime now.

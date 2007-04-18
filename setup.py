@@ -63,7 +63,7 @@ else:
 # call setup
 setup(
     module       = 'base',
-    version      = '0.1.3',
+    version      = '0.1.4',
     license      = 'LGPL',
     summary      = 'Base module for all Kaa modules.',
     rpminfo      = {

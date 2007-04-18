@@ -1,6 +1,9 @@
 Release Notes, see ChangeLog for a detailed list of changes.
 
-0.1.3, not yet released
+0.1.4, not yet released
+
+
+0.1.3, 2007-04-18
 
 * support for Python 2.5
 * remove libxml2 dependency and kaa.xml wrapper

@@ -55,8 +55,7 @@ def create_logger(level = logging.WARNING):
         # there is already a logger, skipping
         return
 
-    formatter = logging.Formatter('%(levelname)s %(module)s'+ \
-                                  '(%(lineno)s): %(message)s')
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(module)s(%(lineno)s): %(message)s')
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
     log.addHandler(handler)

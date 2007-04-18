@@ -858,7 +858,14 @@ class Config(Group):
 
     def _file_changed(self, mask, path):
         if mask & (INotify.MODIFY | INotify.ATTRIB):
+            # Config file changed.  Attach a monitor so we can keep track of
+            # any values that actually changed.
+            changed_names = []
+            cb = Callback(lambda *args: changed_names.append(args[0]))
+            self.add_monitor(cb)
             self.load()
+            log.info('Config file %s modified; %d values changed.' % (self._filename, len(changed_names)))
+            self.remove_monitor(cb)
         elif mask & (INotify.IGNORED | INotify.MOVE_SELF):
             # File may have been replaced, check mtime now.
             WeakOneShotTimer(self._check_file_changed).start(0.1)

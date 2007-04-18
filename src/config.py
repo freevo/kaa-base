@@ -233,9 +233,12 @@ class Var(Base):
         if print_desc:
             if self._desc:
                 desc = '# %s\n' % unicode_to_str(self._desc).replace('\n', '\n# ')
+                if isinstance(self._type, (tuple, list)):
+                    # Show list of allowed values for this tuple variable.
+                    allowed = [ str(x) for x in self._type ]
+                    desc += '# Allowed values: ' + ', '.join(allowed) + '\n'
+                desc += '# Default: ' + str(self._default) + '\n'
             newline = '\n'
-        if self._value == self._default:
-            comment = '# '
         value = unicode_to_str(self._value)
         prefix += self._name
         return '%s%s%s = %s%s' % (desc, comment, prefix, value, newline)
@@ -252,7 +255,8 @@ class Var(Base):
                 # This could crash, but that is ok
                 value = self._type[0].__class__(value)
             if not value in self._type:
-                raise AttributeError('Variable must be one of %s' % str(self._type))
+                allowed = [ str(x) for x in self._type ]
+                raise AttributeError('Variable must be one of %s' % ', '.join(allowed))
         elif not isinstance(value, self._type):
             if self._type == str:
                 value = unicode_to_str(value)
@@ -330,15 +334,18 @@ class Group(Base):
         ret  = []
         desc = unicode_to_str(self._desc).replace('\n', '\n# ')
         if self._name:
+            sections = [ x.capitalize() for x in prefix[:-1].split('.') + [self._name] ]
+            breadcrumb = ' | '.join(filter(len, sections))
+            ret.append('#\n# Begin Group: %s\n#' % breadcrumb)
             # add self._name to prefix and add a '.'
             prefix = prefix + self._name + '.'
         print_var_desc = print_desc
-        if prefix and not prefix.endswith('].') and print_desc:
-            if not desc:
-                desc = 'group %s settings' % prefix[:-1]
-            ret.append('#\n# %s\n#\n' % desc)
-            if not self._desc_type == 'default':
+        if prefix and desc and not prefix.endswith('].') and print_desc:
+            ret.append('# %s\n#' % desc)
+            if self._desc_type != 'default':
                 print_var_desc = False
+
+        ret.append('')
 
         for name in self._vars:
             var = self._dict[name]
@@ -351,6 +358,9 @@ class Group(Base):
             ret.append(var._cfg_string(prefix, print_var_desc))
         if print_desc and not print_var_desc:
             ret.append('')
+
+        if self._name:
+            ret.append('#\n# End Group: %s\n#\n' % breadcrumb)
         return '\n'.join(ret)
 
 

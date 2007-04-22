@@ -29,11 +29,16 @@
 # python imports
 import sys
 
+# We require python 2.4 or later, so complain if that isn't satisfied.
+if sys.version.split()[0] < '2.4':
+    print "Python 2.4 or later required."
+    sys.exit(1)
+
 # We have some extensions but kaa.distribution isn't installed yet.  So import
 # it directly from the source tree.  First add src/ to the modules patch ...
 sys.path.append("src")
 # ... and now import it.
-from distribution import Extension, setup
+from distribution.core import Extension, setup
 
 ext = Extension('kaa.shmmodule', ['src/extensions/shmmodule.c'])
 extensions = [ ext ]

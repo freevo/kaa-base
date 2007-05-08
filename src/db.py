@@ -250,6 +250,7 @@ class Database:
             os.unlink(self._dbfile)
         except:
             pass
+        # FIXME: system may not have sqlite3 binary installed.
         f = os.popen("sqlite3 %s" % self._dbfile, "w")
         f.write(CREATE_SCHEMA % SCHEMA_VERSION)
         f.close()

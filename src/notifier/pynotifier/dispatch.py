@@ -56,3 +56,6 @@ def dispatcher_run():
     for disp in copy( __dispatchers ):
         if not disp():
             dispatcher_remove( disp )
+
+def dispatcher_count():
+    return len(__dispatchers)

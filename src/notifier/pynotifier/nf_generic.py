@@ -189,7 +189,12 @@ def step( sleep = True, external = True ):
 					else:
 						timeout = 0
 						break
-			if timeout == None: timeout = dispatch.MIN_TIMER
+			if timeout == None:
+				if dispatch.dispatcher_count():
+					timeout = dispatch.MIN_TIMER
+				else:
+					# No timers and no dispatchers, timeout could be infinity.
+					timeout = 30000
 			if __min_timer and __min_timer < timeout: timeout = __min_timer
 
 		r = w = e = ()

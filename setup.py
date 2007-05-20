@@ -28,6 +28,9 @@
 
 # python imports
 import sys
+import os
+import time
+import distutils.sysconfig
 
 # We require python 2.4 or later, so complain if that isn't satisfied.
 if sys.version.split()[0] < '2.4':
@@ -65,6 +68,14 @@ else:
     print "inotify supported by glibc; good."
     extensions.append(inotify_ext)
 
+if not os.path.exists(os.path.join(distutils.sysconfig.get_python_inc(), 'Python.h')):
+    print "---------------------------------------------------------------------"
+    print "Python headers not found; please install python development package."
+    print "kaa.db and inotify support will be unavailable"
+    print "---------------------------------------------------------------------"
+    time.sleep(2)
+    extensions = []
+    
 # call setup
 setup(
     module       = 'base',

@@ -330,6 +330,13 @@ class Extension(object):
         return compile(includes, code, args)
 
 
+    def has_python_h(self):
+        """
+        Return True if Python.h is found in the system. If not compiling
+        the extention will fail in most cases.
+        """
+        return os.path.exists(os.path.join(distutils.sysconfig.get_python_inc(), 'Python.h'))
+        
     def convert(self):
         """
         Convert Extension into a distutils.core.Extension.

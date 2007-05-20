@@ -28,9 +28,7 @@
 
 # python imports
 import sys
-import os
 import time
-import distutils.sysconfig
 
 # We require python 2.4 or later, so complain if that isn't satisfied.
 if sys.version.split()[0] < '2.4':
@@ -44,38 +42,39 @@ sys.path.append("src")
 from distribution.core import Extension, setup
 
 ext = Extension('kaa.shmmodule', ['src/extensions/shmmodule.c'])
-extensions = [ ext ]
-
-objectrow = Extension('kaa._objectrow', ['src/extensions/objectrow.c'])
-if objectrow.check_library("glib-2.0", "2.4.0"):
-    extensions.append(objectrow)
-else:
-    print "glib >= 2.4.0 not found; kaa.db will be unavailable"
-
-inotify_ext = Extension("kaa.inotify._inotify",
-                        ["src/extensions/inotify/inotify.c"],
-                        config='src/extensions/inotify/config.h')
-
-if not inotify_ext.check_cc(["<sys/inotify.h>"], "inotify_init();"):
-    if not inotify_ext.check_cc(["<sys/syscall.h>"], "syscall(0);"):
-        print "inotify not enabled: doesn't look like a Linux system."
-    else:
-        print "inotify not supported in glibc; no problem, using built-in support instead."
-        inotify_ext.config("#define USE_FALLBACK")
-        extensions.append(inotify_ext)
-
-else:
-    print "inotify supported by glibc; good."
-    extensions.append(inotify_ext)
-
-if not os.path.exists(os.path.join(distutils.sysconfig.get_python_inc(), 'Python.h')):
+if not ext.has_python_h():
     print "---------------------------------------------------------------------"
     print "Python headers not found; please install python development package."
-    print "kaa.db and inotify support will be unavailable"
+    print "kaa.db, shm and inotify support will be unavailable"
     print "---------------------------------------------------------------------"
     time.sleep(2)
-    extensions = []
-    
+    extensions = [ ]
+
+else:
+    extensions = [ ext ]
+
+    objectrow = Extension('kaa._objectrow', ['src/extensions/objectrow.c'])
+    if objectrow.check_library("glib-2.0", "2.4.0"):
+        extensions.append(objectrow)
+    else:
+        print "glib >= 2.4.0 not found; kaa.db will be unavailable"
+
+    inotify_ext = Extension("kaa.inotify._inotify",
+                            ["src/extensions/inotify/inotify.c"],
+                            config='src/extensions/inotify/config.h')
+
+    if not inotify_ext.check_cc(["<sys/inotify.h>"], "inotify_init();"):
+        if not inotify_ext.check_cc(["<sys/syscall.h>"], "syscall(0);"):
+            print "inotify not enabled: doesn't look like a Linux system."
+        else:
+            print "inotify not supported in glibc; no problem, using built-in support instead."
+            inotify_ext.config("#define USE_FALLBACK")
+            extensions.append(inotify_ext)
+
+    else:
+        print "inotify supported by glibc; good."
+        extensions.append(inotify_ext)
+
 # call setup
 setup(
     module       = 'base',

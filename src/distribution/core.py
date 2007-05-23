@@ -80,9 +80,9 @@ def compile(includes, code='', args=''):
     return False
 
 
-def check_library(name, *args):
+def check_library(name, *args, **kwargs):
     lib = Library(name)
-    if len(args) < 2:
+    if len(args) < 2 and not kwargs:
         minver = args[0]
         print 'checking for', name, '>=', minver, '...',
         sys.__stdout__.flush()
@@ -94,9 +94,12 @@ def check_library(name, *args):
         else:
             print 'no'
     else:
+        for var in ('include_dirs', 'library_dirs', 'libraries'):
+            if var in kwargs:
+                setattr(lib, var, kwargs.pop(var))
         print 'checking for', name, '...',
         sys.__stdout__.flush()
-        if lib.compile(*args):
+        if lib.compile(*args, **kwargs):
             print 'ok'
         else:
             print 'no'
@@ -203,6 +206,8 @@ class Library(object):
             for dir in lib.include_dirs:
                 ext_args.append("-I%s" % dir)
 
+        # FIXME: we do not check if the lib is installed, we only
+        # check the header files.
         if compile(includes, code, args + ' %s' % ' '.join(ext_args)):
             self.valid = True
             return True
@@ -336,6 +341,7 @@ class Extension(object):
         the extention will fail in most cases.
         """
         return os.path.exists(os.path.join(distutils.sysconfig.get_python_inc(), 'Python.h'))
+
         
     def convert(self):
         """

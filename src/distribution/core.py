@@ -91,8 +91,10 @@ def check_library(name, *args, **kwargs):
             print version
         elif version:
             print 'no (%s)' % version
+            return
         else:
             print 'no'
+            return
     else:
         for var in ('include_dirs', 'library_dirs', 'libraries'):
             if var in kwargs:
@@ -103,6 +105,7 @@ def check_library(name, *args, **kwargs):
             print 'ok'
         else:
             print 'no'
+            return
     _libraries[name] = lib
     return lib
 

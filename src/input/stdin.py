@@ -69,6 +69,7 @@ _keycode_names = {
     "\x1b\x4f\x46": "end",
     "\x1b\x4f\x48": "home",
     "\x1b\x1b": "esc",
+    "\x09": "tab",
     "\x0a": "enter",
     "\x20": "space",
     "\x7f": "backspace"

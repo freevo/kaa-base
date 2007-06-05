@@ -636,7 +636,8 @@ class Config(Group):
 
         self._autosave_timer.stop()
         f = open(filename, 'w')
-        f.write('# -*- coding: %s -*-\n' % get_encoding().lower() + \
+        encoding = get_encoding().lower().replace('iso8859', 'iso-8859')
+        f.write('# -*- coding: %s -*-\n' % encoding + \
                 '# -*- hash: %s -*-\n' % self._hash() + \
                 '# *************************************************************\n' + \
                 '# WARNING: This file is auto-generated.  You are free to edit\n' + \

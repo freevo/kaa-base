@@ -379,7 +379,7 @@ class Group(Base):
             var = self._dict[name]
             var_is_group = isinstance(var, (Group, Dict))
             cfgstr = var._cfg_string(prefix, print_var_desc)
-            space_vars = space_vars or '\n' in cfgstr
+            space_vars = space_vars or (not var_is_group and '\n' in cfgstr)
             var_strings.append((cfgstr, var_is_group))
 
         for (cfgstr, var_is_group) in var_strings:

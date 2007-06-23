@@ -505,7 +505,7 @@ class Dict(Base):
         """
         ret = []
         sections = [ x.capitalize() for x in prefix.rstrip('.').split('.') + [self._name] ]
-        breadcrumb = ' | '.join(filter(len, sections))
+        breadcrumb = ' > '.join(filter(len, sections))
         ret.append('#\n# Begin %s: %s\n#' % (self.__class__.__name__, breadcrumb))
         prefix = prefix + self._name
         if (type(self._schema) == Var and print_desc) or not self.keys():

@@ -38,6 +38,7 @@ import copy
 import logging
 import stat
 import md5
+import textwrap
 from new import classobj
 
 # kaa.base modules
@@ -229,19 +230,39 @@ class Var(Base):
         Convert object into a string to write into a config file.
         """
         # create description
-        desc = newline = comment = ''
+        desc = suffix = comment = ''
         if print_desc:
             if self._desc:
-                desc = '# %s\n' % unicode_to_str(self._desc).replace('\n', '\n# ')
+                desc = '# | %s\n' % unicode_to_str(self._desc).replace('\n', '\n# | ')
                 if isinstance(self._type, (tuple, list)):
                     # Show list of allowed values for this tuple variable.
-                    allowed = [ str(x) for x in self._type ]
-                    desc += '# Allowed values: ' + ', '.join(allowed) + '\n'
-                desc += '# Default: ' + str(self._default) + '\n'
-            newline = '\n'
+                    if type(self._type[0]) == type(self._type[-1]) == int and \
+                       self._type == range(self._type[0], self._type[-1]):
+                        # Type is a range
+                        allowed = '%d-%d' % (self._type[0], self._type[-1])
+                    else:
+                        allowed = ', '.join([ str(x) for x in self._type ])
+                    allowed = textwrap.wrap(allowed, 78, 
+                                          initial_indent = '# | Allowed values: ',
+                                          subsequent_indent = '# |' + 17 * ' ')
+                    desc += '\n'.join(allowed) + '\n'
+
+                if self._value != self._default:
+                    # User value is different than default, so include default
+                    # in comments for reference.
+                    desc += '# | Default: ' + str(self._default) + '\n'
+                # Description for this variable was outputted, so pad it
+                # with an extra '#' line to space it out to improve 
+                # readability
+                #suffix = '\n#'
+
+        if self._value == self._default:
+            # Value is set to default, so comment it out in config file.
+            comment = '# '
+
         value = unicode_to_str(self._value)
         prefix += self._name
-        return '%s%s%s = %s%s' % (desc, comment, prefix, value, newline)
+        return '%s%s%s = %s%s' % (desc, comment, prefix, value, suffix)
 
 
     def _cfg_set(self, value, default=False):
@@ -332,35 +353,54 @@ class Group(Base):
         Convert object into a string to write into a config file.
         """
         ret  = []
-        desc = unicode_to_str(self._desc.strip('\n')).replace('\n', '\n# ')
-        if self._name:
-            sections = [ x.capitalize() for x in prefix[:-1].split('.') + [self._name] ]
-            breadcrumb = ' | '.join(filter(len, sections))
+        desc = unicode_to_str(self._desc.strip('\n')).replace('\n', '\n# | ')
+        is_anonymous = self._name.endswith(']')
+
+        if print_desc and self._name and not is_anonymous:
+            sections = [ x.capitalize() for x in prefix.rstrip('.').split('.') + [self._name] ]
+            breadcrumb = ' > '.join(filter(len, sections))
             ret.append('#\n# Begin Group: %s\n#' % breadcrumb)
-            # add self._name to prefix and add a '.'
-            prefix = prefix + self._name + '.'
+
+        if self._name:
+            prefix = '%s%s.' % (prefix, self._name)
         print_var_desc = print_desc
-        if prefix and desc and not prefix.endswith('].') and print_desc:
-            ret.append('# %s\n#' % desc)
+
+        if prefix and desc and not is_anonymous and print_desc:
+            ret.append('# | %s\n#' % desc)
             if self._desc_type != 'default':
                 print_var_desc = False
 
-        ret.append('')
-
+        # Iterate over group vars and fetch their cfg strings, also
+        # deterining if we need to space them (by separating with a
+        # blank commented line), which we do if
+        var_strings = []
+        space_vars = False
         for name in self._vars:
             var = self._dict[name]
-            if not isinstance(var, Var) or var._desc:
-                break
-        else:
-            print_var_desc = False
-        for name in self._vars:
-            var = self._dict[name]
-            ret.append(var._cfg_string(prefix, print_var_desc))
-        if print_desc and not print_var_desc:
-            ret.append('')
+            var_is_group = isinstance(var, (Group, Dict))
+            cfgstr = var._cfg_string(prefix, print_var_desc)
+            space_vars = space_vars or '\n' in cfgstr
+            var_strings.append((cfgstr, var_is_group))
 
-        if self._name:
-            ret.append('#\n# End Group: %s\n#\n' % breadcrumb)
+        for (cfgstr, var_is_group) in var_strings:
+            if var_is_group and ret[-1][-1] != '\n':
+                # Config item is a group or list, space it down with a blank
+                # line for readability.
+                ret.append('')
+            ret.append(cfgstr)
+            if not var_is_group and space_vars:
+                # We need to space variables (see above), so add the empty
+                # commented line.
+                ret.append('#')
+
+        if print_desc and self._name and not is_anonymous:
+            if True in [ '# End ' in x for x in ret ]:
+                # One of our variables is a group/dict, so add another
+                # empty line to separate the stanza.
+                ret.append('\n#')
+            elif not space_vars:
+                ret.append('#')
+            ret.append('# End Group: %s\n#\n' % breadcrumb)
         return '\n'.join(ret)
 
 
@@ -464,16 +504,30 @@ class Dict(Base):
         Convert object into a string to write into a config file.
         """
         ret = []
+        sections = [ x.capitalize() for x in prefix.rstrip('.').split('.') + [self._name] ]
+        breadcrumb = ' | '.join(filter(len, sections))
+        ret.append('#\n# Begin %s: %s\n#' % (self.__class__.__name__, breadcrumb))
         prefix = prefix + self._name
         if (type(self._schema) == Var and print_desc) or not self.keys():
             # TODO: more detailed comments, show full spec of var and some examples.
-            d = unicode_to_str(self._desc).replace('\n', '\n# ')
-            ret.append('#\n# %s\n# %s\n#\n' % (prefix, d))
+            ret.append('# | %s' % prefix)
+            if self._desc:
+                desc = unicode_to_str(self._desc).replace('\n', '\n# | ')
+                ret.append('# |\n# | %s' % desc)
             print_desc = False
+
         for key in self.keys():
-            ret.append(self._dict[key]._cfg_string(prefix, print_desc))
-        if not print_desc:
-            ret.append('')
+            cfgstr = self._dict[key]._cfg_string(prefix, False)
+            if '# Begin' in cfgstr and ret[-1][-1] != '\n':
+                # Config item is a group or list, space it down with a blank
+                # line for readability.
+                ret.append('')
+            ret.append(cfgstr)
+            if '\n' in cfgstr:
+                # Separate multi-line subgroups with newline. 
+                ret.append('#')
+
+        ret.append('#\n# End %s: %s\n#' % (self.__class__.__name__, breadcrumb))
         return '\n'.join(ret)
 
 
@@ -576,11 +630,12 @@ class Config(Group):
     """
     A config object. This is a group with functions to load and save a file.
     """
-    def __init__(self, schema, desc=u'', name=''):
+    def __init__(self, schema, desc=u'', name='', module = None):
         Group.__init__(self, schema, desc, name)
         self._filename = None
         self._bad_lines = []
         self._loaded_hash = None
+        self._module = module
 
         # Whether or not to autosave config file when options have changed
         self._autosave = None
@@ -638,8 +693,10 @@ class Config(Group):
         f = open(filename, 'w')
         encoding = get_encoding().lower().replace('iso8859', 'iso-8859')
         f.write('# -*- coding: %s -*-\n' % encoding + \
-                '# -*- hash: %s -*-\n' % self._hash() + \
-                '# *************************************************************\n' + \
+                '# -*- hash: %s -*-\n' % self._hash())
+        if self._module:
+            f.write('# -*- module: %s -*-\n' % self._module)
+        f.write('# *************************************************************\n' + \
                 '# WARNING: This file is auto-generated.  You are free to edit\n' + \
                 '# this file to change config values, but any other changes\n' + \
                 # FIXME: custom comments lost, would be nice if they were kept.  Might

@@ -75,6 +75,9 @@ def nodefilter(node, *names):
 
 class Parser(object):
 
+    def __init__(self, package):
+        self._package = package
+
     def _get_schema(self, node):
         schema = []
         for child in node.childNodes:
@@ -139,6 +142,8 @@ class Parser(object):
             fd.write(',\n\n' + deep)
         deep = deep[:-2]
         fd.write(']\n' + deep)
+        if node.nodeName == 'config':
+            fd.write(", module='%s.config'" % self._package)
         fd.write(')')
     
     
@@ -175,7 +180,7 @@ class Parser(object):
         
 
 
-def convert(xml, python):
+def convert(xml, python, package):
     tree = minidom.parse(xml).firstChild
     if tree.nodeName != 'config':
         raise RuntimeError('%s is no valid cxml file' % xml)
@@ -187,7 +192,7 @@ def convert(xml, python):
     out.write('from kaa.config import Var, Group, Dict, List, Config\n\n')
     out.write('config = ')
 
-    Parser().parse(tree, out)
+    Parser(package).parse(tree, out)
     out.write('\n\n')
     for child in tree.childNodes:
         if child.nodeName != 'code':

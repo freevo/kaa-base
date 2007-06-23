@@ -28,7 +28,7 @@ class build_py(distutils.command.build_py.build_py):
             return
         self.copy_file(module_file, tmpfile, preserve_mode=0)
         print 'convert %s -> %s' % (tmpfile, tmpfile[:-len(ttype)] + 'py')
-        self.kaa_compiler[ttype](tmpfile, tmpfile[:-len(ttype)] + 'py')
+        self.kaa_compiler[ttype](tmpfile, tmpfile[:-len(ttype)] + 'py', '.'.join(package))
         os.unlink(tmpfile)
 
         

@@ -121,3 +121,10 @@ class SaxTreeHandler(xml.sax.ContentHandler):
         SaxTreeHandler callback at the end of parsing.
         """
         pass
+
+
+    def parse(self, f):
+        parser = xml.sax.make_parser()
+        parser.setFeature(xml.sax.handler.feature_external_ges, False)
+        parser.setContentHandler(self)
+        parser.parse(f)

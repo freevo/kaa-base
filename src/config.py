@@ -375,11 +375,14 @@ class Group(Base):
         # blank commented line), which we do if
         var_strings = []
         space_vars = False
+        n_nongroup = 0
         for name in self._vars:
             var = self._dict[name]
             var_is_group = isinstance(var, (Group, Dict))
             cfgstr = var._cfg_string(prefix, print_var_desc)
-            space_vars = space_vars or (not var_is_group and '\n' in cfgstr)
+            if not var_is_group:
+                n_nongroup += 1
+                space_vars = space_vars or '\n' in cfgstr
             var_strings.append((cfgstr, var_is_group))
 
         for (cfgstr, var_is_group) in var_strings:
@@ -388,17 +391,17 @@ class Group(Base):
                 # line for readability.
                 ret.append('')
             ret.append(cfgstr)
-            if not var_is_group and space_vars:
+            if not var_is_group and space_vars and n_nongroup > 1:
                 # We need to space variables (see above), so add the empty
                 # commented line.
                 ret.append('#')
 
         if print_desc and self._name and not is_anonymous:
-            if True in [ '# End ' in x for x in ret ]:
+            if n_nongroup != len(self._vars) and ret[-1][-1] != '\n':
                 # One of our variables is a group/dict, so add another
                 # empty line to separate the stanza.
                 ret.append('\n#')
-            elif not space_vars:
+            elif not space_vars or n_nongroup <= 1:
                 ret.append('#')
             ret.append('# End Group: %s\n#\n' % breadcrumb)
         return '\n'.join(ret)
@@ -504,30 +507,40 @@ class Dict(Base):
         Convert object into a string to write into a config file.
         """
         ret = []
-        sections = [ x.capitalize() for x in prefix.rstrip('.').split('.') + [self._name] ]
-        breadcrumb = ' > '.join(filter(len, sections))
-        ret.append('#\n# Begin %s: %s\n#' % (self.__class__.__name__, breadcrumb))
+        if print_desc:
+            sections = [ x.capitalize() for x in prefix.rstrip('.').split('.') + [self._name] ]
+            breadcrumb = ' > '.join(filter(len, sections))
+            ret.append('#\n# Begin %s: %s\n#' % (self.__class__.__name__, breadcrumb))
+
         prefix = prefix + self._name
-        if (type(self._schema) == Var and print_desc) or not self.keys():
+
+        if print_desc: #(type(self._schema) == Var and print_desc) or not self.keys():
             # TODO: more detailed comments, show full spec of var and some examples.
             ret.append('# | %s' % prefix)
             if self._desc:
                 desc = unicode_to_str(self._desc).replace('\n', '\n# | ')
                 ret.append('# |\n# | %s' % desc)
-            print_desc = False
 
+        var_strings = []
+        space_vars = False
         for key in self.keys():
             cfgstr = self._dict[key]._cfg_string(prefix, False)
+            var_strings.append(cfgstr)
+            if '\n' in cfgstr:
+                space_vars = True
+
+        for cfgstr in var_strings:
             if '# Begin' in cfgstr and ret[-1][-1] != '\n':
                 # Config item is a group or list, space it down with a blank
                 # line for readability.
                 ret.append('')
             ret.append(cfgstr)
-            if '\n' in cfgstr:
+            if space_vars:
                 # Separate multi-line subgroups with newline. 
-                ret.append('#')
+                ret.append('')
 
-        ret.append('#\n# End %s: %s\n#' % (self.__class__.__name__, breadcrumb))
+        if print_desc:
+            ret.append('#\n# End %s: %s\n#' % (self.__class__.__name__, breadcrumb))
         return '\n'.join(ret)
 
 

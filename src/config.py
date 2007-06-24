@@ -28,8 +28,8 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ "Var", "Group", "Dict", "List", "Config", "set_default",
-            "get_description" ]
+__all__ = [ 'Var', 'Group', 'Dict', 'List', 'Config', 'set_default',
+            'get_description', 'get_config' ]
 
 # Python imports
 import os
@@ -230,7 +230,7 @@ class Var(Base):
         Convert object into a string to write into a config file.
         """
         # create description
-        desc = suffix = comment = ''
+        desc = comment = ''
         if print_desc:
             if self._desc:
                 desc = '# | %s\n' % unicode_to_str(self._desc).replace('\n', '\n# | ')
@@ -251,10 +251,6 @@ class Var(Base):
                     # User value is different than default, so include default
                     # in comments for reference.
                     desc += '# | Default: ' + str(self._default) + '\n'
-                # Description for this variable was outputted, so pad it
-                # with an extra '#' line to space it out to improve 
-                # readability
-                #suffix = '\n#'
 
         if self._value == self._default:
             # Value is set to default, so comment it out in config file.
@@ -262,7 +258,7 @@ class Var(Base):
 
         value = unicode_to_str(self._value)
         prefix += self._name
-        return '%s%s%s = %s%s' % (desc, comment, prefix, value, suffix)
+        return '%s%s%s = %s' % (desc, comment, prefix, value)
 
 
     def _cfg_set(self, value, default=False):
@@ -957,3 +953,37 @@ def get_description(var):
     Get the description for the given config variable.
     """
     return var._item._desc
+
+
+def get_config(filename, module = None):
+    """
+    Returns a Config object representing the config file provided in
+    'filenane'.  If module is None, the specified config file must have the
+    module specified (in the "-*- module: ... -*-" metadata), otherwise the
+    supplied module (string) is used.  The module must be importable.  If the
+    config module cannot be imported, will raise ImportError.  Otherwise will
+    return the Config object.
+    """
+    filename = os.path.expanduser(filename)
+
+    if not module:
+        # No module specified, check the config file.
+        metadata = file(filename).read(256)
+        m = re.search(r'^# -\*- module: (\S+) -\*-$', metadata, re.M)
+        if m:
+            module = m.group(1)
+        else:
+            raise ImportError, 'No module specified in config file'
+
+    try:
+        exec('import %s as config' % module)
+    except:
+        raise ImportError, 'Could not import config module %s' % module
+
+    if config._filename and os.path.realpath(config._filename) != os.path.realpath(filename):
+        # Existing config object represents a different config file,
+        # so must copy.
+        config = config.copy()
+
+    config.load(filename)
+    return config

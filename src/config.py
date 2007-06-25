@@ -952,7 +952,7 @@ def set_default(var, value):
     """
     Set default value for the given config variable (proxy).
     """
-    if isintance(var, VarProxy):
+    if isinstance(var, VarProxy):
         var._item._cfg_set(value, default = True)
 
 
@@ -1005,7 +1005,8 @@ def get_config(filename, module = None):
     module = '.'.join(components)
     try:
         exec('import %s as module' % module)
-    except:
+    except Exception, e:
+        log.exception('config loader')
         raise ImportError, 'Could not import config module %s' % module
 
     config = getattr(module, attr)

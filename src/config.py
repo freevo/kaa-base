@@ -100,7 +100,7 @@ class Base(object):
         """
         Returns a hash of the config item.
         """
-        return md5.new(repr(self._name) + repr(self._desc) + repr(self._default)).hexdigest()
+        return md5.new(repr(self._name) + repr(self._desc) + repr(self._default) + repr(self._value)).hexdigest()
 
 
     def copy(self):
@@ -685,17 +685,10 @@ class Config(Group):
         return copy
 
 
-    def save(self, filename = None, force = False):
+    def save(self, filename = None):
         """
         Save file. If filename is not given use filename from last load.
-        If force is True, the config file will be saved even if there were
-        no schema changes from the previously loaded file.
         """
-        hash = self._hash()
-        if not force and hash == self._loaded_hash:
-            # Hash hasn't changed, so we don't need to write the file.
-            return
-
         if not filename:
             if not self._filename:
                 raise ValueError, "Filename not specified and no default filename set."
@@ -833,7 +826,10 @@ class Config(Group):
         self._watch_mtime = os.stat(filename)[stat.ST_MTIME]
         if create:
             # Write config file if schema is different.
-            self.save(filename)
+            hash = self._hash()
+            if hash != self._loaded_hash:
+                self.save(filename)
+
         return len(self._bad_lines) == 0
 
 
@@ -931,7 +927,7 @@ class Config(Group):
 
 
     def _file_changed(self, mask, path):
-        if mask & (INotify.MODIFY | INotify.ATTRIB):
+        if mask & INotify.MODIFY:
             # Config file changed.  Attach a monitor so we can keep track of
             # any values that actually changed.
             changed_names = []
@@ -985,9 +981,11 @@ def get_config(filename, module = None):
     Returns a Config object representing the config file provided in
     'filenane'.  If module is None, the specified config file must have the
     module specified (in the "-*- module: ... -*-" metadata), otherwise the
-    supplied module (string) is used.  The module must be importable.  If the
-    config module cannot be imported, will raise ImportError.  Otherwise will
-    return the Config object.
+    supplied module (string) is used.  The module must be importable.  
+    
+    If the config module cannot be determined and one is not specified,
+    will raise ValueError.  If import fails, will raise ImportError.
+    Otherwise will return the Config object.
     """
     filename = os.path.expanduser(filename)
 
@@ -998,7 +996,7 @@ def get_config(filename, module = None):
         if m:
             module = m.group(1)
         else:
-            raise ImportError, 'No module specified in config file'
+            raise ValueError, 'No module specified in config file'
 
     components = module.split('.')
     attr = components.pop()

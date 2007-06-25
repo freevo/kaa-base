@@ -14,18 +14,16 @@
 import os
 import sys
 
-# GTK import. It is important to import gtk before kaa so that
-# kaa can detect it and switch to the gtk notifier wrapper from
-# pynotifier
-
 import pygtk
 pygtk.require('2.0')
 import gtk
 import gtk.glade
 import gobject
 
-import kaa, kaa.config
+import kaa, kaa.config, kaa.notifier
 
+# use gtk main loop
+kaa.notifier.init('gtk')
 
 class ProxyCellRenderer(gtk.CellRenderer):
 

@@ -334,6 +334,13 @@ class Group(Base):
         self._vars.append(name)
 
 
+    def get_variables(self):
+        """
+        Returns a list of variables for this group.
+        """
+        return self._vars
+
+
     def _hash(self):
         """
         Returns a hash of the config item.
@@ -943,17 +950,35 @@ class Config(Group):
 
 def set_default(var, value):
     """
-    Set default value for the given config variable.
+    Set default value for the given config variable (proxy).
     """
-    var._item._cfg_set(value, default = True)
+    if isintance(var, VarProxy):
+        var._item._cfg_set(value, default = True)
 
+
+def get_default(var):
+    if isinstance(var, VarProxy):
+        return var._item._default
+    
 
 def get_description(var):
     """
-    Get the description for the given config variable.
+    Get the description for the given config variable or group.
     """
-    return var._item._desc
+    if isinstance(var, (Group, Dict)):
+        return var._desc
+    elif isinstance(var, VarProxy):
+        return var._item._desc
 
+
+def get_type(var):
+    """
+    Returns the type of the given config variable.
+    """
+    if isinstance(var, VarProxy):
+        return var._item._type
+    return type(var)
+    
 
 def get_config(filename, module = None):
     """
@@ -975,11 +1000,15 @@ def get_config(filename, module = None):
         else:
             raise ImportError, 'No module specified in config file'
 
+    components = module.split('.')
+    attr = components.pop()
+    module = '.'.join(components)
     try:
-        exec('import %s as config' % module)
+        exec('import %s as module' % module)
     except:
         raise ImportError, 'Could not import config module %s' % module
 
+    config = getattr(module, attr)
     if config._filename and os.path.realpath(config._filename) != os.path.realpath(filename):
         # Existing config object represents a different config file,
         # so must copy.

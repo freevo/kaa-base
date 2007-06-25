@@ -389,7 +389,7 @@ class Group(Base):
             var_strings.append((cfgstr, var_is_group))
 
         for (cfgstr, var_is_group) in var_strings:
-            if var_is_group and ret[-1][-1] != '\n':
+            if var_is_group and (not ret or not ret[-1].endswith('\n')):
                 # Config item is a group or list, space it down with a blank
                 # line for readability.
                 ret.append('')
@@ -400,7 +400,7 @@ class Group(Base):
                 ret.append('#')
 
         if print_desc and self._name and not is_anonymous:
-            if n_nongroup != len(self._vars) and ret[-1][-1] != '\n':
+            if n_nongroup != len(self._vars) and (not ret or not ret[-1].endswith('\n')):
                 # One of our variables is a group/dict, so add another
                 # empty line to separate the stanza.
                 ret.append('\n#')
@@ -533,7 +533,7 @@ class Dict(Base):
                 space_vars = True
 
         for cfgstr in var_strings:
-            if '# Begin' in cfgstr and ret[-1][-1] != '\n':
+            if '# Begin' in cfgstr and (not ret or not ret[-1].endswith('\n')):
                 # Config item is a group or list, space it down with a blank
                 # line for readability.
                 ret.append('')

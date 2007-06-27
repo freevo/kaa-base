@@ -212,13 +212,12 @@ class Database:
         self._qcursor = self._db.cursor(Cursor)
 
         if not self.check_table_exists("meta"):
-            self._db.close()
-            self._create_db()
-        else:
-            row = self._db_query_row("SELECT value FROM meta WHERE attr='version'")
-            if float(row[0]) < SCHEMA_VERSION_COMPATIBLE:
-                raise SystemError, "Database '%s' has schema version %s; required %s" % \
-                                   (self._dbfile, row[0], SCHEMA_VERSION_COMPATIBLE)
+            self._db.executescript(CREATE_SCHEMA % SCHEMA_VERSION)
+
+        row = self._db_query_row("SELECT value FROM meta WHERE attr='version'")
+        if float(row[0]) < SCHEMA_VERSION_COMPATIBLE:
+            raise SystemError, "Database '%s' has schema version %s; required %s" % \
+                               (self._dbfile, row[0], SCHEMA_VERSION_COMPATIBLE)
 
         self._load_object_types()
 
@@ -243,18 +242,6 @@ class Database:
         res = self._db_query_row("SELECT name FROM sqlite_master where " \
                                  "name=? and type='table'", (table,))
         return res != None
-
-
-    def _create_db(self):
-        try:
-            os.unlink(self._dbfile)
-        except:
-            pass
-        # FIXME: system may not have sqlite3 binary installed.
-        f = os.popen("sqlite3 %s" % self._dbfile, "w")
-        f.write(CREATE_SCHEMA % SCHEMA_VERSION)
-        f.close()
-        self._open_db()
 
 
     def _register_check_indexes(self, indexes, attrs):

@@ -107,6 +107,15 @@ class InProgress(Signal):
         return self._result
 
 
+    def get_result(self):
+        """
+        Get the results when finished.
+        The function will either return the result or raise the exception
+        provided to the exception function.
+        """
+        return self()
+
+    
     def _connect(self, callback, args = (), kwargs = {}, once = False,
                  weak = False, pos = -1):
         """

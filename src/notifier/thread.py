@@ -156,6 +156,25 @@ class Thread(threading.Thread):
             self.join()
 
 
+    def start(self):
+        """
+        Start the thread and return an InProgress object.
+        """
+        if not _thread_notifier_pipe:
+            # Make sure the pipe is created in the mainloop _before_ we
+            # start the thread. If we do not do that it could be possible
+            # that the thread needs to create this and it will add the
+            # socket to an already blocking select() which will never
+            # wake up on that new socket.
+            _create_thread_notifier_pipe()
+
+        r = InProgress()
+        self.signals['completed'].connect_once(r.finished)
+        self.signals['exception'].connect_once(r.exception)
+        super(Thread, self).start()
+        return r
+
+    
     def run(self):
         """
         Call the function and store the result

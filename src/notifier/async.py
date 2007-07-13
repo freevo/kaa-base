@@ -53,6 +53,27 @@ class InProgress(Signal):
         Signal.__init__(self)
         self.exception_handler = Signal()
         self.is_finished = False
+        self.status = None
+
+
+    def set_status(self, s):
+        """
+        Connect a status object to the InProgress object. The status object
+        has to be updated by the creator of that object. The status should
+        be a Signal so the monitoring function can connect to it to get
+        notified on updates.
+        """
+        self.status = s
+
+
+    def get_status(self):
+        """
+        Return status object if connected or return True if the function is
+        still in progress or False if not.
+        """
+        if self.status is not None:
+            return self.status
+        return not is_finished
 
 
     def finished(self, result):
@@ -121,7 +142,7 @@ class InProgress(Signal):
         """
         return self()
 
-    
+
     def _connect(self, callback, args = (), kwargs = {}, once = False,
                  weak = False, pos = -1):
         """

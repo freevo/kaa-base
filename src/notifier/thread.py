@@ -146,6 +146,14 @@ class Thread(threading.Thread):
             "exception": Signal()
         }
 
+
+    def wait_on_exit(self, wait=False):
+        """
+        Wait for the thread on application exit. Default is True.
+        """
+        self.setDaemon(not wait)
+
+
     def _emit_and_join(self, signal, arg):
         """
         Run callback signals and join dead thread.

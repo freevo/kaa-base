@@ -151,7 +151,7 @@ class QExpr(object):
     """
     def __init__(self, operator, operand):
         operator = operator.lower()
-        assert(operator in ("=", "!=", "<", "<=", ">", ">=", "in", "not in", "range", "like"))
+        assert(operator in ("=", "!=", "<", "<=", ">", ">=", "in", "not in", "range", "like", "regexp"))
         if operator in ("in", "not in", "range"):
             assert(isinstance(operand, (list, tuple)))
             if operator == "range":
@@ -182,6 +182,9 @@ def _unpickle_ObjectRow(items):
 
 copy_reg.pickle(ObjectRow, _pickle_ObjectRow, _unpickle_ObjectRow)
 
+def _regexp(expr, item):
+    r = re.compile(unicode(expr))
+    return r.match(item) is not None
 
 class Database:
     def __init__(self, dbfile = None):
@@ -199,6 +202,10 @@ class Database:
 
     def _open_db(self):
         self._db = sqlite.connect(self._dbfile)
+
+        # Create the function "regexp" for the REGEXP operator of SQLite
+        self._db.create_function("regexp", 2, _regexp)
+
         self._cursor = self._db.cursor()
         self._cursor.execute("PRAGMA synchronous=OFF")
         #self._cursor.execute("PRAGMA temp_store=MEMORY")

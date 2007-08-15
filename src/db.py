@@ -182,10 +182,24 @@ def _unpickle_ObjectRow(items):
 
 copy_reg.pickle(ObjectRow, _pickle_ObjectRow, _unpickle_ObjectRow)
 
-def _regexp(expr, item):
-    r = re.compile(unicode(expr))
-    return r.match(item) is not None
-
+class RegexpCache(object):
+    def __init__(self):
+        self.last_item = None
+        self.last_expr = None
+        self.re = None
+        
+    def __call__(self, expr, item):
+        if item is None:
+            return 0
+        if not self.last_expr == expr:
+            self.re = re.compile(unicode(expr))
+        if self.last_item == item and self.last_item:
+            return self.last_result
+        self.last_item = item
+        # FIXME: bad conversion to unicode!
+        self.last_result = self.re.match(unicode(item)) is not None
+        return self.last_result
+    
 class Database:
     def __init__(self, dbfile = None):
         if not dbfile:
@@ -204,7 +218,7 @@ class Database:
         self._db = sqlite.connect(self._dbfile)
 
         # Create the function "regexp" for the REGEXP operator of SQLite
-        self._db.create_function("regexp", 2, _regexp)
+        self._db.create_function("regexp", 2, RegexpCache())
 
         self._cursor = self._db.cursor()
         self._cursor.execute("PRAGMA synchronous=OFF")

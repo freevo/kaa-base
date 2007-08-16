@@ -41,6 +41,7 @@ import sys
 from callback import Signal, Callback
 from async import InProgress
 from thread import MainThreadCallback
+import thread
 
 # internal list of named threads
 _threads = {}
@@ -124,6 +125,8 @@ class _Thread(threading.Thread):
         self.stopped = False
         self.jobs = []
         self.name = name
+        if not thread._thread_notifier_pipe:
+            thread._create_thread_notifier_pipe()
         self.start()
 
 

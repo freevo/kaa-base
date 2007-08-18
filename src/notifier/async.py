@@ -73,7 +73,7 @@ class InProgress(Signal):
         """
         if self.status is not None:
             return self.status
-        return not is_finished
+        return not self.is_finished
 
 
     def finished(self, result):

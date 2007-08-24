@@ -1284,6 +1284,7 @@ class Database:
 
         row = self._db_query_row("SELECT COUNT(*) FROM words")
         info["wordcount"] = int(row[0])
+        info["file"] = self._dbfile
         return info
 
 

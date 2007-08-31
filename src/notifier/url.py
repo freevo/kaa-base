@@ -6,7 +6,7 @@
 #
 # Usage:
 # request = urllib2.Request('http://www.freevo.org/')
-# url = URL(request)
+# url = URLOpener(request)
 # url.signals['header'].connect(callback)
 # url.signals['data'].connect(callback)
 # url.signals['completed'].connect(callback)
@@ -37,15 +37,19 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'URL' ]
+__all__ = [ 'URLOpener', 'fetch' ]
 
 # python imports
+import os
+import stat
+import urllib
 import urllib2
 
 # kaa.notifier imports
-from kaa.notifier import Thread, Signals, InProgress
+from kaa.notifier import Thread, Signals, InProgress, Progress
 
-class URL(object):
+
+class URLOpener(object):
     """
     Thread based urlopen2.urlopen function.
     Note: if special opener (see urlib2) are used, they are executed inside
@@ -100,6 +104,54 @@ class URL(object):
             if not data:
                 # no data (done)
                 return True
-            if not len(self.signals['data']) and not len(self.signals['completed']):
+            if not len(self.signals['data']) and not \
+                   len(self.signals['completed']):
                 # no callback listening anymore
                 return False
+
+
+def _fetch_HTTP(url, filename, tmpname):
+    """
+    Fetch HTTP URL.
+    """
+    def download(url, filename, tmpname, status):
+        src = urllib2.urlopen(url)
+        if not tmpname:
+            tmpname = filename
+        dst = open(tmpname, 'w')
+        status.set(0, length)
+        while True:
+            data = src.read(1024)
+            if len(data) == 0:
+                src.close()
+                dst.close()
+                if length and os.stat(tmpname)[stat.ST_SIZE] != length:
+                    # something went wrong
+                    os.unlink(tmpname)
+                    raise IOError('download %s failed' % url)
+                if tmpname != filename:
+                    os.rename(tmpname, filename)
+                return True
+            status.update(len(data))
+            dst.write(data)
+
+    if url.find(' ') > 0:
+        # stupid url encoding in url
+        url = url[:8+url[8:].find('/')] + \
+              urllib.quote(url[8+url[8:].find('/'):])
+    s = Progress()
+    t = Thread(download, url, filename, tmpname, s)
+    t.wait_on_exit(False)
+    async = t.start()
+    async.set_status(s)
+    return async
+
+
+def fetch(url, filename, tmpname=None):
+    """
+    Generic fetch function. If tmpname is given download to this filename
+    first and move the file if the download is finished.
+    """
+    if url.startswith('http://') or url.startswith('https://'):
+        return _fetch_HTTP(url, filename, tmpname)
+    raise RuntimeError('unable to fetch %s' % url)

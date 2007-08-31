@@ -29,7 +29,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'InProgress' ]
+__all__ = [ 'Progress', 'InProgress' ]
 
 # python imports
 import logging
@@ -40,6 +40,54 @@ from callback import Signal
 
 # get logging object
 log = logging.getLogger('notifier.async')
+
+
+class Progress(Signal):
+    """
+    Generic progress status object for InProgress. This object can be connected
+    to an InProgress object with set_status and the caller can monitor the
+    progress. The caller can read the current position (pos) of the maximum
+    (max) or the percentage of both (percentage).
+    """
+    def __init__(self):
+        super(Progress, self).__init__()
+        self.percentage = 0
+        self.pos = 0
+        self.max = 0
+
+
+    def set(self, pos, max=None):
+        """
+        Set new status. The new status is pos of max.
+        """
+        if max is not None:
+            self.max = max
+        self.pos = pos
+        if pos > self.max:
+            self.max = pos
+        if self.max:
+            self.percentage = (self.pos * 100) / self.max
+        else:
+            self.percentage = 0
+        self.emit()
+
+
+    def update(self, diff):
+        """
+        Update position by the given difference.
+        """
+        self.set(self.pos + diff)
+
+
+    def get_progressbar(self, width=70):
+        """
+        Return a small ASCII art progressbar.
+        """
+        n = 0
+        if self.max:
+            n = int((self.pos / float(self.max)) * (width-3))
+        s = '|%%%ss|' % (width-2)
+        return s % ("="*n + ">").ljust(width-2)
 
 
 class InProgress(Signal):

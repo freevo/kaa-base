@@ -53,7 +53,7 @@ from event import *
 from yieldfunc import *
 from jobserver import ThreadCallback, execute_in_thread
 from jobserver import killall as kill_jobserver
-from async import InProgress
+from async import Progress, InProgress
 
 from decorators import execute_in_timer, execute_in_mainloop
 

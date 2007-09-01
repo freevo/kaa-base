@@ -50,7 +50,7 @@ _threads = {}
 log = logging.getLogger('notifier.thread')
 
 
-def execute_in_thread(name, priority=0):
+def execute_in_thread(name=None, priority=0):
     """
     The decorator makes sure the function is always called in the thread
     with the given name. The function will return an InProgress object.
@@ -58,9 +58,13 @@ def execute_in_thread(name, priority=0):
     def decorator(func):
 
         def newfunc(*args, **kwargs):
-            t = ThreadCallback(func, *args, **kwargs)
-            t.register(name, priority)
-            return t
+            if name:
+                t = ThreadCallback(func, *args, **kwargs)
+                t.register(name, priority)
+                return t
+            t = thread.Thread(func, *args, **kwargs)
+            t.wait_on_exit(False)
+            return t.start()
 
         try:
             newfunc.func_name = func.func_name

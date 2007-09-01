@@ -37,7 +37,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'URLOpener', 'fetch' ]
+__all__ = [ 'URLOpener', 'fetch', 'add_password' ]
 
 # python imports
 import os
@@ -48,6 +48,12 @@ import urllib2
 # kaa.notifier imports
 from kaa.notifier import Thread, Signals, InProgress, Progress
 
+# add password manager to urllib
+pm = urllib2.HTTPPasswordMgrWithDefaultRealm()
+urllib2.install_opener(urllib2.build_opener(urllib2.HTTPBasicAuthHandler(pm)))
+
+# expose add_password function from HTTPPasswordMgrWithDefaultRealm
+add_password = pm.add_password
 
 class URLOpener(object):
     """
@@ -116,6 +122,7 @@ def _fetch_HTTP(url, filename, tmpname):
     """
     def download(url, filename, tmpname, status):
         src = urllib2.urlopen(url)
+        length = int(src.info().get('Content-Length', 0))
         if not tmpname:
             tmpname = filename
         dst = open(tmpname, 'w')

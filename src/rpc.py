@@ -210,9 +210,12 @@ class Channel(object):
         """
         if type(obj) == types.FunctionType:
             callables = [obj]
+        elif type(obj) == types.ModuleType:
+            callables = [ getattr(obj, func) for func in dir(obj) \
+                          if not func.startswith('_')]
         else:
             callables = [ getattr(obj, func) for func in dir(obj) ]
-
+            
         for func in callables:
             if callable(func) and hasattr(func, '_kaa_rpc'):
                 self._callbacks[func._kaa_rpc] = func
@@ -424,6 +427,8 @@ class Channel(object):
             payload = cPickle.loads(payload)
             function, args, kwargs = payload
             try:
+                if self._callbacks[function]._kaa_rpc_param[0]:
+                    args = [ self ] + list(args)
                 payload = self._callbacks[function](*args, **kwargs)
                 if isinstance(payload, kaa.notifier.InProgress):
                     payload.connect(self._send_delayed_answer, seq, 'RETN')
@@ -722,11 +727,13 @@ class Client(Channel):
         return 'client'
 
 
-def expose(command):
+def expose(command, add_client=False):
     """
-    Decorator to expose a function.
+    Decorator to expose a function. If add_client is True, the client
+    object will be added to the command list as first argument.
     """
     def decorator(func):
         func._kaa_rpc = command
+        func._kaa_rpc_param = ( add_client, )
         return func
     return decorator

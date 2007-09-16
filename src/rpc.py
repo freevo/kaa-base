@@ -417,6 +417,17 @@ class Channel(object):
         self._send_packet(seq, packet_type, payload)
 
 
+    def _send_delayed_exception(self, payload, seq, packet_type):
+        """
+        Send delayed exception when callback returns InProgress.
+        """
+        try:
+            payload = cPickle.dumps(payload, pickle.HIGHEST_PROTOCOL)
+        except cPickle.UnpickleableError:
+            payload = cPickle.dumps(Exception(str(payload)))
+        self._send_packet(seq, packet_type, payload)
+
+
     def _handle_packet_after_auth(self, seq, type, payload):
         """
         Handle incoming packet (called from _handle_write) after 
@@ -432,7 +443,7 @@ class Channel(object):
                 payload = self._callbacks[function](*args, **kwargs)
                 if isinstance(payload, kaa.notifier.InProgress):
                     payload.connect(self._send_delayed_answer, seq, 'RETN')
-                    payload.exception_handler.connect(self._send_delayed_answer, seq, 'EXCP')
+                    payload.exception_handler.connect(self._send_delayed_exception, seq, 'EXCP')
                     return True
                 packet_type = 'RETN'
             except (SystemExit, KeyboardInterrupt):

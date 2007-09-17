@@ -1582,7 +1582,7 @@ class Database:
         return all_results
 
 
-    def get_inverted_index_terms(self, ivtidx, associated = None):
+    def get_inverted_index_terms(self, ivtidx, associated = None, prefix = None):
         """
         Obtains terms for the given inverted index name.  If associated is
         None, all terms for the inverted index are returned.  The return
@@ -1600,15 +1600,29 @@ class Database:
         ['vacation', 'spain'] and the associated list passed is ['vacation'],
         the return value will be [('spain', 2), ('hawaii', 1)].
 
+        If prefix is not None, only those terms that begin with the specified
+        prefix will be returned.  This is useful, for example, for
+        auto-completion while a user is typing a query.
+
         The returned lists are sorted with the highest counts appearing
         first.
         """
         if ivtidx not in self._inverted_indexes:
             raise ValueError, "'%s' is not a registered inverted index." % ivtidx
 
+        if prefix:
+            where_clause = 'WHERE terms.term >= ? AND terms.term <= ?'
+            where_values = (prefix, prefix + 'z')
+        else:
+            where_clause = ''
+            where_values = ()
+
         if not associated:
-            rows = self._db_query('SELECT term, count FROM ivtidx_%s_terms ORDER BY count DESC' % ivtidx)
-            return rows
+            return self._db_query('''SELECT term, count 
+                                      FROM ivtidx_%s_terms AS terms
+                                        %s
+                                  ORDER BY count DESC''' % (ivtidx, where_clause), where_values)
+
 
         rows = self._db_query('SELECT id FROM ivtidx_%s_terms WHERE term IN %s ORDER BY count' % \
                               (ivtidx, _list_to_printable(associated)))
@@ -1627,10 +1641,11 @@ class Database:
         query += ''' JOIN ivtidx_%s_terms AS terms
                        ON t0.term_id = terms.id AND
                           t0.term_id NOT IN %s
+                       %s
                  GROUP BY t0.term_id
                  ORDER BY total DESC ''' % \
-                 (ivtidx, _list_to_printable(term_ids))
-        return self._db_query(query)
+                 (ivtidx, _list_to_printable(term_ids), where_clause)
+        return self._db_query(query, where_values)
         
 
     def get_db_info(self):
@@ -1659,7 +1674,6 @@ class Database:
             info['count'][name] = row[0]
             total += row[0]
 
-        row = self._db_query_row("SELECT value FROM meta WHERE attr='keywords_objectcount'")
         info['total'] = total
 
         info['termcounts'] = {}
@@ -1675,6 +1689,7 @@ class Database:
         # We need to do this eventually, but there's no index on count, so
         # this could potentially be slow.  It doesn't hurt to leave rows
         # with count=0, so this could be done intermittently.
-        self._db_query("DELETE FROM words WHERE count=0")
+        for ivtidx in self._inverted_indexes:
+            self._db_query('DELETE FROM ivtidx_%s_terms WHERE count=0' % ivtidx)
         self._db_query("VACUUM")
 

@@ -1,11 +1,10 @@
-# -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
 # db.py - db abstraction module
 # -----------------------------------------------------------------------------
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2006 Dirk Meyer, Jason Tackaberry
+# Copyright (C) 2006-2007 Dirk Meyer, Jason Tackaberry
 #
 # First Edition: Jason Tackaberry <tack@urandom.ca>
 # Maintainer:    Jason Tackaberry <tack@urandom.ca>
@@ -28,19 +27,20 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = ['Database', 'QExpr', 'ATTR_SIMPLE', 'ATTR_SEARCHABLE',
+__all__ = ['Database', 'QExpr', 'split_path', 'ATTR_SIMPLE', 'ATTR_SEARCHABLE',
            'ATTR_IGNORE_CASE', 'ATTR_INDEXED', 'ATTR_INDEXED_IGNORE_CASE',
-           'ATTR_KEYWORDS']
+           'ATTR_INVERTED_INDEX' ]
 
 # python imports
 import os
 import time
 import re
+import logging
 import math
 import cPickle
 import copy_reg
 import _weakref
-from sets import Set
+#from sets import Set
 from pysqlite2 import dbapi2 as sqlite
 
 # kaa base imports
@@ -52,15 +52,16 @@ if sqlite.version < '2.1.0':
 if sqlite.sqlite_version < '3.3.0':
     raise ImportError('sqlite 3.3.0 or higher required')
 
+# get logging object
+log = logging.getLogger('db')
 
-SCHEMA_VERSION = 0.1
-SCHEMA_VERSION_COMPATIBLE = 0.1
+SCHEMA_VERSION = 0.2
+SCHEMA_VERSION_COMPATIBLE = 0.2
 CREATE_SCHEMA = """
     CREATE TABLE meta (
         attr        TEXT UNIQUE,
         value       TEXT
     );
-    INSERT INTO meta VALUES('keywords_objectcount', 0);
     INSERT INTO meta VALUES('version', %s);
 
     CREATE TABLE types (
@@ -70,51 +71,70 @@ CREATE_SCHEMA = """
         idx_pickle      BLOB
     );
 
-    CREATE TABLE words (
+    CREATE TABLE inverted_indexes (
+        name            TEXT,
+        attr            TEXT,
+        value           TEXT
+    );
+
+    CREATE UNIQUE INDEX inverted_indexes_idx on inverted_indexes (name, attr);
+"""
+
+CREATE_IVTIDX_TEMPLATE = """
+    CREATE TABLE ivtidx_%IDXNAME%_terms (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        word            TEXT,
+        term            TEXT,
         count           INTEGER
     );
-    CREATE UNIQUE INDEX words_idx on WORDS (word);
+    CREATE UNIQUE INDEX ivtidx_%IDXNAME%_terms_idx on ivtidx_%IDXNAME%_terms (term);
 
-    CREATE TABLE words_map (
+    CREATE TABLE ivtidx_%IDXNAME%_terms_map (
         rank            INTEGER,
-        word_id         INTEGER,
+        term_id         INTEGER,
         object_type     INTEGER,
         object_id       INTEGER,
         frequency       FLOAT
     );
-    CREATE INDEX words_map_word_idx ON words_map (word_id, rank, object_type, object_id);
-    CREATE INDEX words_map_object_idx ON words_map (object_id, object_type);
-    CREATE TRIGGER delete_words_map DELETE ON words_map
+    CREATE INDEX ivtidx_%IDXNAME%_terms_map_idx ON ivtidx_%IDXNAME%_terms_map (term_id, rank, object_type, object_id);
+    CREATE INDEX ivtidx_%IDXNAME%_terms_map_object_idx ON ivtidx_%IDXNAME%_terms_map (object_id, object_type);
+    CREATE TRIGGER ivtidx_%IDXNAME%_delete_terms_map DELETE ON ivtidx_%IDXNAME%_terms_map
     BEGIN
-        UPDATE words SET count=count-1 WHERE id=old.word_id;
+        UPDATE ivtidx_%IDXNAME%_terms SET count=count-1 WHERE id=old.term_id;
     END;
 """
 
 
-ATTR_SIMPLE              = 0x00
-ATTR_SEARCHABLE          = 0x01      # Is a SQL column, not a pickled field
-ATTR_INDEXED             = 0x02      # Will have an SQL index
-ATTR_KEYWORDS            = 0x04      # Indexed for keyword queries
+ATTR_SIMPLE              = 0x01
+ATTR_SEARCHABLE          = 0x02      # Is a SQL column, not a pickled field
+ATTR_INDEXED             = 0x04      # Will have an SQL index
 ATTR_IGNORE_CASE         = 0x08      # Store in db as lowercase for searches.
+ATTR_INVERTED_INDEX      = 0x10      # Attribute associated with an inverted idx
 ATTR_INDEXED_IGNORE_CASE = ATTR_INDEXED | ATTR_IGNORE_CASE
+
+# These are special attributes for querying.  Attributes with
+# these names cannot be registered.
+RESERVED_ATTRIBUTES = ('id', 'parent', 'object', 'type', 'limit', 'attrs', 'distinct')
 
 STOP_WORDS = (
     "about", "and", "are", "but", "com", "for", "from", "how", "not",
     "some", "that", "the", "this", "was", "what", "when", "where", "who",
     "will", "with", "the", "www", "http", "org", "of", "on"
 )
-WORDS_DELIM = re.compile("[\W_\d]+", re.U)
 
-# Word length limits for keyword indexing
-MIN_WORD_LENGTH = 2
-MAX_WORD_LENGTH = 30
 
-# These are special attributes for querying.  Attributes with
-# these names cannot be registered.
-RESERVED_ATTRIBUTES = ("parent", "object", "keywords", "type", "limit",
-                       "attrs", "distinct")
+PATH_SPLIT = re.compile("[\W_\d]+", re.U | re.X)
+def split_path(s):
+    """
+    Convenience split function for inverted index attributes.  Useful for
+    attributes that contain filenames.  Splits the given string s into
+    components parts (directories, filename), discarding the extension and all
+    but the last two directories.  What's remaining is split into words and the
+    result is returned.
+    """
+    dirname, filename = os.path.split(s)
+    fname_noext, ext = os.path.splitext(filename)
+    levels = dirname.strip('/').split(os.path.sep)[2:][-2:]
+    return PATH_SPLIT.split(' '.join(levels + [fname_noext])) 
 
 
 def _list_to_printable(value):
@@ -151,10 +171,10 @@ class QExpr(object):
     """
     def __init__(self, operator, operand):
         operator = operator.lower()
-        assert(operator in ("=", "!=", "<", "<=", ">", ">=", "in", "not in", "range", "like", "regexp"))
-        if operator in ("in", "not in", "range"):
+        assert(operator in ('=', '!=', '<', '<=', '>', '>=', 'in', 'not in', 'range', 'like', 'regexp'))
+        if operator in ('in', 'not in', 'range'):
             assert(isinstance(operand, (list, tuple)))
-            if operator == "range":
+            if operator == 'range':
                 assert(len(operand) == 2)
 
         self._operator = operator
@@ -186,27 +206,47 @@ class RegexpCache(object):
     def __init__(self):
         self.last_item = None
         self.last_expr = None
-        self.re = None
         
     def __call__(self, expr, item):
         if item is None:
             return 0
-        if not self.last_expr == expr:
-            self.re = re.compile(unicode(expr))
-        if self.last_item == item and self.last_item:
+
+        if self.last_item == item and self.last_item is not None and self.last_expr == expr:
             return self.last_result
+        if self.last_expr != expr:
+            self.last_expr = re.compile(unicode(expr), re.U)
+
         self.last_item = item
         # FIXME: bad conversion to unicode!
-        self.last_result = self.re.match(unicode(item)) is not None
+        self.last_result = self.last_expr.match(unicode(item)) is not None
         return self.last_result
-    
-class Database:
-    def __init__(self, dbfile = None):
-        if not dbfile:
-            dbfile = "kaa.db.sqlite"
 
+
+class Database:
+    def __init__(self, dbfile):
+        # _object_types dict is keyed on type name, where value is a 3-
+        # tuple (id, attrs, idx), where:
+        #   - id is a unique numeric database id for the type,
+        #   - attrs is a dict containing registered attributes for the type,
+        #     keyed on attribute name, where value is a 3-tuple of (type, flags,
+        #     ivtidx), where type is a python datatype, flags is a bitmask of
+        #     ATTR_*, ivtidx is the name of the associated inverted index (used
+        #     if flags has ATTR_INVERTED_INDEX, otherwise None)
+        #   - idx is a list of n-tuples, where each n-tuple defines two or more
+        #     (non-ATTR_SIMPLE) attributes on which to create a multi-column
+        #     sql index.
         self._object_types = {}
-        self._dbfile = dbfile
+
+        # _inverted_indexes dict is keyed on index name, where value is
+        # a dict keyed on:
+        #   - min: minimum length of terms
+        #   - max: maximum length of terms
+        #   - ignore: list of terms to ignore
+        #   - split: function or regular expression used to split string ATTR_INVERTED_INDEX
+        #            attributes.
+        self._inverted_indexes = {}
+
+        self._dbfile = os.path.realpath(dbfile)
         self._open_db()
 
 
@@ -240,15 +280,16 @@ class Database:
             raise SystemError, "Database '%s' has schema version %s; required %s" % \
                                (self._dbfile, row[0], SCHEMA_VERSION_COMPATIBLE)
 
+        self._load_inverted_indexes()
         self._load_object_types()
 
 
     def _db_query(self, statement, args = (), cursor = None):
         if not cursor:
             cursor = self._cursor
+        #print "QUERY: %s" % statement, args
         cursor.execute(statement, args)
         rows = cursor.fetchall()
-        #print "QUERY (%d): %s" % (len(rows), statement)
         return rows
 
 
@@ -284,24 +325,130 @@ class Database:
 
 
     def register_object_type_attrs(self, type_name, indexes = [], **attrs):
+        """
+        Registers one or more object attributes and/or multi-column indexes for
+        the given type name.  This function modifies the database as needed to
+        accommodate new indexes and attributes, either by creating the object's
+        tables (in the case of a new object type) or by altering the object's
+        tables to add new columns or indexes.
+
+        Previously registered attributes may be updated in limited ways (e.g.
+        by adding an index to the attribute).  If the attributes and indexes
+        specified have not changed from previous invocations, no changes will
+        be made to the database.
+
+        Note: currently indexes and attributes can only be added, not removed.
+        That is, once an attribute or indexes is added, it lives forever.
+        
+        type_name is the name of the type the attributes and indexes apply to
+        (e.g. 'dir' or 'image'). 
+
+        indexes is a list of tuples, where each tuple contains 2 or more strings,
+        where each string references a registered attribute.  This is used for
+        creating a multi-column index on these attributes, which is useful for
+        speeding up queries involving these attributes.
+
+        Attributes are supplied as keyword arguments, where each keyword value
+        is a tuple of 2 to 4 items in length and in the form (name, flags, ivtidx,
+        split):
+                name: The name of the attribute; cannot conflict with any of the
+                      values in RESERVED_ATTRIBUTES.
+               flags: A bitmask of ATTR_* flags.
+              ivtidx: Name of the previously registered inverted index used for
+                      this attribute, only if flags contains ATTR_INVERTED_INDEX.
+               split: Function or regular expression used to split string-based
+                      values for this attributes into separate terms for indexing.
+        """
         if len(indexes) == len(attrs) == 0:
             raise ValueError, "Must specify indexes or attributes for object type"
 
         table_name = "objects_%s" % type_name
+
+        # First pass over the attributes kwargs, sanity-checking provided values.
+        for attr_name, attr_defn in attrs.items():
+            # We allow attribute definition to be either a 2- to 4-tuple (last two
+            # are optional), so pad the tuple with None if a 2- or 3-tuple was specified.
+            attrs[attr_name] = attr_defn = tuple(attr_defn) + (None,) * (4-len(attr_defn))
+            if len(attr_defn) != 4:
+                raise ValueError, "Definition for attribute '%s' is not a 2- to 4-tuple." % attr_name
+
+            # Verify the attribute flags contain either ATTR_SEARCHABLE or ATTR_SIMPLE;
+            # it can't contain both as that doesn't make sense.
+            if attr_defn[1] & (ATTR_SIMPLE | ATTR_SEARCHABLE) not in (ATTR_SIMPLE, ATTR_SEARCHABLE):
+                raise ValueError, "Flags for attribute '%s' must contain exactly one " \
+                                  "of ATTR_SIMPLE or ATTR_SEARCHABLE" % attr_name
+
+            # Attribute name can't conflict with reserved names.
+            if attr_name in RESERVED_ATTRIBUTES:
+                raise ValueError, "Attribute name '%s' is reserved." % attr_name
+            elif attr_name in self._inverted_indexes:
+                if not attr_defn[1] & ATTR_INVERTED_INDEX or attr_defn[2] != attr_name:
+                    # Attributes can be named after inverted indexes, but only if
+                    # ATTR_INVERTED_INDEX is specified and the attribute name is the
+                    # same as its ivtidx name.
+                    raise ValueError, "Attribute '%s' conflicts with inverted index of same name, " \
+                                      "but ATTR_INVERTED_INDEX not specified in flags." % attr_name
+
+            if attr_defn[1] & ATTR_INVERTED_INDEX:
+                # Attributes with ATTR_INVERTED_INDEX can only be certain types.
+                if attr_defn[0] not in (str, unicode, tuple, list, set):
+                    raise TypeError, "Type for attribute '%s' must be string, unicode, list, tuple, or set " \
+                                     "because it is ATTR_INVERTED_INDEX" % attr_name
+
+                # Make sure inverted index name is valid.
+                if attr_defn[2] is None:
+                    raise ValueError, "Attribute '%s' flags specify inverted index, " \
+                                      "but no inverted index name supplied." % attr_name
+                elif attr_defn[2] not in self._inverted_indexes:
+                    raise ValueError, "Attribute '%s' specifies undefined interverted index '%s'" % \
+                                      (attr_name, attr_defn[2])
+
+            # Compile split regexp if it was given.
+            if attr_defn[3] is not None and not callable(attr_defn[3]):
+                attrs[attr_name] = attr_defn[:3] + (re.compile(attr_defn[3]),)
+
+
         if type_name in self._object_types:
             # This type already exists.  Compare given attributes with
-            # existing attributes for this type.
+            # existing attributes for this type to see what needs to be done
+            # (if anything).
             cur_type_id, cur_type_attrs, cur_type_idx = self._object_types[type_name]
             new_attrs = {}
             table_needs_rebuild = False
             changed = False
-            for attr_name, (attr_type, attr_flags) in attrs.items():
-                if attr_name not in cur_type_attrs or cur_type_attrs[attr_name] != (attr_type, attr_flags):
-                    new_attrs[attr_name] = attr_type, attr_flags
+            for attr_name, attr_defn in attrs.items():
+                attr_type, attr_flags, attr_ivtidx, attr_split = attr_defn
+                # TODO: converting an attribute from SIMPLE to SEARCHABLE or vice
+                # versa isn't supported yet.  Raise exception here to prevent
+                # potential data loss.
+                if attr_name in cur_type_attrs and attr_flags & (ATTR_SEARCHABLE | ATTR_SIMPLE) != \
+                   cur_type_attrs[attr_name][1] & (ATTR_SEARCHABLE | ATTR_SIMPLE):
+                   raise ValueError, "Unsupported attempt to convert attribute '%s' " \
+                                     "between ATTR_SIMPLE and ATTR_SEARCHABLE" % attr_name
+                    
+                if attr_name not in cur_type_attrs or cur_type_attrs[attr_name] != attr_defn:
+                    # There is a new attribute specified for this type, or an 
+                    # existing one has changed.
+                    new_attrs[attr_name] = attr_defn
                     changed = True
-                    if attr_flags:
+                    if attr_flags & ATTR_SEARCHABLE:
                         # New attribute isn't simple, needs to alter table.
                         table_needs_rebuild = True
+                    elif attr_flags & ATTR_INVERTED_INDEX:
+                        # TODO: there is no need to rebuild the table when adding/modifying
+                        # an ATTR_SIMPLE | ATTR_INVERTED_INDEX attribute, we just need to
+                        # recreate the delete trigger (and remove any rows from the
+                        # inverted index's map for this object type if we're removing
+                        # an association with that ivtidx).  For now we will force a
+                        # rebuild since I'm too lazy to implement the proper way.
+                        table_needs_rebuild = True
+
+                        if attr_name in cur_type_attrs and not cur_type_attrs[attr_name][1] & ATTR_INVERTED_INDEX:
+                            # FIXME: if we add an inverted index to an existing attribute, we'd
+                            # need to reparse that attribute in all rows to populate the inverted
+                            # map.  Right now just log a warning.
+                            log.warning("Adding inverted index '%s' to existing attribute '%s' not fully " \
+                                        "implemented; index may be out of sync.", attr_ivtidx, attr_name)
 
             if not changed:
                 return
@@ -309,8 +456,8 @@ class Database:
             # Update the attr list to merge both existing and new attributes.
             attrs = cur_type_attrs.copy()
             attrs.update(new_attrs)
-            new_indexes = Set(indexes).difference(cur_type_idx)
-            indexes = Set(indexes).union(cur_type_idx)
+            new_indexes = set(indexes).difference(cur_type_idx)
+            indexes = set(indexes).union(cur_type_idx)
             self._register_check_indexes(indexes, attrs)
 
             if not table_needs_rebuild:
@@ -333,70 +480,73 @@ class Database:
             # We need to update the database now ...
 
         else:
-            # New type definition.
+            # New type definition.  Populate attrs with required internal
+            # attributes so they get created with the table.
+
             new_attrs = cur_type_id = None
             # Merge standard attributes with user attributes for this new type.
             attrs.update({
-                "id": (int, ATTR_SEARCHABLE),
-                "parent_type": (int, ATTR_SEARCHABLE),
-                "parent_id": (int, ATTR_SEARCHABLE),
-                "pickle": (buffer, ATTR_SEARCHABLE)
+                'id': (int, ATTR_SEARCHABLE, None, None),
+                'parent_type': (int, ATTR_SEARCHABLE, None, None),
+                'parent_id': (int, ATTR_SEARCHABLE, None, None),
+                'pickle': (buffer, ATTR_SEARCHABLE, None, None)
             })
             self._register_check_indexes(indexes, attrs)
 
-        create_stmt = "CREATE TABLE %s_tmp ("% table_name
+        create_stmt = 'CREATE TABLE %s_tmp (' % table_name
 
         # Iterate through type attributes and append to SQL create statement.
-        sql_types = {int: "INTEGER", float: "FLOAT", buffer: "BLOB",
-                     unicode: "TEXT", str: "BLOB"}
-        for attr_name, (attr_type, attr_flags) in attrs.items():
-            assert(attr_name not in RESERVED_ATTRIBUTES)
-            # If flags is non-zero it means this attribute needs to be a
-            # column in the table, not a pickled value.
-            if attr_flags:
+        sql_types = {int: 'INTEGER', float: 'FLOAT', buffer: 'BLOB',
+                     unicode: 'TEXT', str: 'BLOB', bool: 'INTEGER'}
+        for attr_name, (attr_type, attr_flags, attr_ivtidx, attr_split) in attrs.items():
+            if attr_flags & ATTR_SEARCHABLE:
+                # Attribute needs to be a column in the table, not a pickled value.
                 if attr_type not in sql_types:
                     raise ValueError, "Type '%s' not supported" % str(attr_type)
-                create_stmt += "%s %s" % (attr_name, sql_types[attr_type])
-                if attr_name == "id":
+                create_stmt += '%s %s' % (attr_name, sql_types[attr_type])
+                if attr_name == 'id':
                     # Special case, these are auto-incrementing primary keys
-                    create_stmt += " PRIMARY KEY AUTOINCREMENT"
-                create_stmt += ","
+                    create_stmt += ' PRIMARY KEY AUTOINCREMENT'
+                create_stmt += ','
 
-        create_stmt = create_stmt.rstrip(",") + ")"
+        create_stmt = create_stmt.rstrip(',') + ')'
         self._db_query(create_stmt)
 
 
         # Add this type to the types table, including the attributes
         # dictionary.
-        self._db_query("INSERT OR REPLACE INTO types VALUES(?, ?, ?, ?)",
+        self._db_query('INSERT OR REPLACE INTO types VALUES(?, ?, ?, ?)',
                        (cur_type_id, type_name, buffer(cPickle.dumps(attrs, 2)),
                         buffer(cPickle.dumps(indexes, 2))))
+
+        # Sync self._object_types with the object type definition we just
+        # stored to the db.
         self._load_object_types()
 
         if new_attrs:
-            # Migrate rows from old table to new one.
-            # FIXME: this does not migrate data in the case of an attribute
-            # being changed from simple to searchable or vice versa.  In the
-            # simple->searchable case, the data will stay in the pickle; in
-            # the searchable->simple case, the data will be lost.
-            columns = filter(lambda x: cur_type_attrs[x][1], cur_type_attrs.keys())
-            columns = ",".join(columns)
-            self._db_query("INSERT INTO %s_tmp (%s) SELECT %s FROM %s" % \
+            # Migrate rows from old table to new temporary one.  Here we copy only 
+            # ATTR_SEARCHABLE columns that exist in both old and new definitions.
+            columns = filter(lambda x: cur_type_attrs[x][1] & ATTR_SEARCHABLE and \
+                                       x in attrs and attrs[x][1] & ATTR_SEARCHABLE, cur_type_attrs.keys())
+            columns = ','.join(columns)
+            self._db_query('INSERT INTO %s_tmp (%s) SELECT %s FROM %s' % \
                            (table_name, columns, columns, table_name))
 
             # Delete old table.
-            self._db_query("DROP TABLE %s" % table_name)
+            self._db_query('DROP TABLE %s' % table_name)
 
         # Rename temporary table.
-        self._db_query("ALTER TABLE %s_tmp RENAME TO %s" % \
-                       (table_name, table_name))
+        self._db_query('ALTER TABLE %s_tmp RENAME TO %s' % (table_name, table_name))
 
-        # Create a trigger that reduces meta.keywords_objectcount when a row
-        # is deleted.
-        if self._type_has_keyword_attr(type_name):
-            self._db_query("CREATE TRIGGER delete_object_%s DELETE ON %s BEGIN "
-                           "UPDATE meta SET value=value-1 WHERE attr='keywords_objectcount'; END" % \
-                           (type_name, table_name))
+        # Create a trigger that reduces the objectcount for each applicable 
+        # inverted index when a row is deleted.
+        inverted_indexes = self._get_type_inverted_indexes(type_name)
+        if inverted_indexes:
+            sql = 'CREATE TRIGGER delete_object_%s DELETE ON %s BEGIN ' % (type_name, table_name)
+            for idx_name in inverted_indexes:
+                sql += "UPDATE inverted_indexes SET value=value-1 WHERE name='%s' AND attr='objectcount';" % idx_name
+            sql += 'END'
+            self._db_query(sql)
 
         # Create index for locating all objects under a given parent.
         self._db_query("CREATE INDEX %s_parent_idx on %s (parent_id, "\
@@ -404,7 +554,7 @@ class Database:
 
         # If any of these attributes need to be indexed, create the index
         # for that column.
-        for attr_name, (attr_type, attr_flags) in attrs.items():
+        for attr_name, (attr_type, attr_flags, attr_ivtidx, attr_split) in attrs.items():
             if attr_flags & ATTR_INDEXED:
                 self._db_query("CREATE INDEX %s_%s_idx ON %s (%s)" % \
                                (table_name, attr_name, table_name, attr_name))
@@ -414,18 +564,72 @@ class Database:
         self.commit()
 
 
+    def register_inverted_index(self, name, min = None, max = None, split = None, ignore = None):
+        # Verify specified name doesn't already exist as some object attribute.
+        for object_name, object_type in self._object_types.items():
+            if name in object_type[1] and name != object_type[1][name][2]:
+                raise ValueError, "Inverted index name '%s' conflicts with registered attribute in object '%s'" % \
+                                  (name, object_name)
+
+        if split is None:
+            # Default split regexp is to split words on 
+            # alphanumeric/digits/underscore boundaries.
+            split = re.compile("[\W_\d]+", re.U)
+        elif isinstance(split, basestring):
+            split = re.compile(split, re.U)
+
+        if name not in self._inverted_indexes:
+            self._db_query('INSERT INTO inverted_indexes VALUES(?, "objectcount", 0)', (name,))
+            # Create the tables needed by the inverted index.
+            self._db.executescript(CREATE_IVTIDX_TEMPLATE.replace('%IDXNAME%', name))
+        else:
+            defn = self._inverted_indexes[name]
+            if min == defn['min'] and max == defn['max'] and split == defn['split'] and \
+               ignore == defn['ignore']:
+               # Definition unchanged, nothing to do.
+               return
+
+        defn = {
+            'min': min,
+            'max': max,
+            'split': split,
+            'ignore': ignore,
+        }
+
+        self._db_query("INSERT OR REPLACE INTO inverted_indexes VALUES(?, 'definition', ?)", 
+                       (name, buffer(cPickle.dumps(defn, 2))))
+
+        defn['objectcount'] = 0
+        self._inverted_indexes[name] = defn
+        
+
+    def _load_inverted_indexes(self):
+        for name, attr, value in self._db_query("SELECT * from inverted_indexes"):
+            if name not in self._inverted_indexes:
+                self._inverted_indexes[name] = {}
+            if attr == 'objectcount':
+                self._inverted_indexes[name][attr] = int(value)
+            elif attr == 'definition':
+                self._inverted_indexes[name].update(cPickle.loads(str(value)))
+
+
     def _load_object_types(self):
         for id, name, attrs, idx in self._db_query("SELECT * from types"):
             self._object_types[name] = id, cPickle.loads(str(attrs)), cPickle.loads(str(idx))
 
-    def _type_has_keyword_attr(self, type_name):
+
+    def _get_type_inverted_indexes(self, type_name):
         if type_name not in self._object_types:
-            return False
+            return []
+
+        indexed_attrs = set()
         type_attrs = self._object_types[type_name][1]
-        for name, (attr_type, flags) in type_attrs.items():
-            if flags & ATTR_KEYWORDS:
-                return True
-        return False
+        for name, (attr_type, flags, attr_ivtidx, attr_split) in type_attrs.items():
+            if flags & ATTR_INVERTED_INDEX:
+                indexed_attrs.add(attr_ivtidx)
+
+        return list(indexed_attrs)
+
 
     def _get_type_attrs(self, type_name):
         return self._object_types[type_name][1]
@@ -445,8 +649,8 @@ class Database:
             if attrs[key] == None:
                 del attrs[key]
         attrs_copy = attrs.copy()
-        for name, (attr_type, flags) in type_attrs.items():
-            if flags != ATTR_SIMPLE and name in attrs:
+        for name, (attr_type, flags, attr_ivtidx, attr_split) in type_attrs.items():
+            if flags & ATTR_SEARCHABLE and name in attrs:
                 columns.append(name)
                 placeholders.append("?")
                 value = attrs[name]
@@ -473,6 +677,15 @@ class Database:
                 del attrs_copy[name]
 
         if len(attrs_copy) > 0:
+            # From the remaining attributes, remove those named after inverted
+            # indexes that aren't explicitly registered as attributes in the
+            # object type.  Here is where we keep our cached copy of inverted
+            # index terms.
+            for attr in attrs_copy.keys():
+                if attr in self._inverted_indexes and attr not in type_attrs:
+                    del attrs_copy[attr]
+
+            # What's left gets put into the pickle.
             columns.append("pickle")
             values.append(buffer(cPickle.dumps(attrs_copy, 2)))
             placeholders.append("?")
@@ -480,9 +693,15 @@ class Database:
         table_name = "objects_" + type_name
 
         if query_type == "add":
-            columns = ",".join(columns)
-            placeholders = ",".join(placeholders)
-            q = "INSERT INTO %s (%s) VALUES(%s)" % (table_name, columns, placeholders)
+            if columns:
+                columns = ",".join(columns)
+                placeholders = ",".join(placeholders)
+                q = "INSERT INTO %s (%s) VALUES(%s)" % (table_name, columns, placeholders)
+            else:
+                # Insert empty row (need to specify at least one column to make valid
+                # SQL, so just specify id of null, which will assume next value in
+                # sequence.
+                q = 'INSERT INTO %s (id) VALUES(null)' % table_name
         else:
             q = "UPDATE %s SET " % table_name
             for col, ph in zip(columns, placeholders):
@@ -523,10 +742,11 @@ class Database:
 
 
     def _delete_multiple_objects(self, objects):
-        self._delete_multiple_objects_keywords(objects)
         child_objects = {}
         count = 0
         for object_type, object_ids in objects.items():
+            ivtidxes = self._get_type_inverted_indexes(object_type)
+            self._delete_multiple_objects_inverted_index_terms({object_type: (ivtidxes, object_ids)})
             object_type_id = self._get_type_id(object_type)
             if len(object_ids) == 0:
                 continue
@@ -568,6 +788,37 @@ class Database:
             attrs["parent_type"] = self._get_type_id(parent[0])
             attrs["parent_id"] = parent[1]
 
+        # Increment objectcount for the applicable inverted indexes.
+        inverted_indexes = self._get_type_inverted_indexes(object_type)
+        if inverted_indexes:
+            self._db_query("UPDATE inverted_indexes SET value=value+1 WHERE attr='objectcount' AND name IN %s" % \
+                           _list_to_printable(inverted_indexes))
+
+        
+        # Process inverted index maps for this row
+        ivtidx_terms = []
+        for ivtidx in inverted_indexes:
+            # Sync cached objectcount with the DB (that we just updated above)
+            self._inverted_indexes[ivtidx]['objectcount'] += 1
+            terms_list = []
+            split = self._inverted_indexes[ivtidx]['split']
+            for name, (attr_type, flags, attr_ivtidx, attr_split) in type_attrs.items():
+                if attr_ivtidx == ivtidx and name in attrs:
+                    terms_list.append((attrs[name], 1.0, attr_split or split, ivtidx))
+
+            if ivtidx in attrs and ivtidx not in type_attrs:
+                # Attribute named after an inverted index is given, but
+                # that ivtidx is not a named attribute (which would be handled
+                # in the for loop just above).
+                terms_list.append((attrs[ivtidx], 1.0, split, ivtidx))
+
+            terms = self._score_terms(terms_list)
+            ivtidx_terms.append((ivtidx, terms))
+            if ivtidx in type_attrs:
+                # Registered attribute named after ivtidx; store ivtidx
+                # terms in object.
+                attrs[ivtidx] = terms.keys()
+
         query, values = self._make_query_from_attrs("add", attrs, object_type)
         self._db_query(query, values)
 
@@ -575,97 +826,123 @@ class Database:
         attrs["id"] = self._cursor.lastrowid
         attrs["type"] = object_type
 
-        # Index keyword attributes
-        word_parts = []
-        for name, (attr_type, flags) in type_attrs.items():
-            if name in attrs and flags & ATTR_KEYWORDS:
-                word_parts.append((attrs[name], 1.0, attr_type, flags))
-        words = self._score_words(word_parts)
-        self._add_object_keywords((object_type, attrs["id"]), words)
-
-        if self._type_has_keyword_attr(object_type):
-            self._db_query("UPDATE meta SET value=value+1 WHERE attr='keywords_objectcount'")
+        for ivtidx, terms in ivtidx_terms:
+            self._add_object_inverted_index_terms((object_type, attrs['id']), ivtidx, terms)
+            
 
         class DummyCursor:
             _db = _weakref.ref(self)
             # List of non ATTR_SIMPLE attributes for this object type.
-            description = [None] + [ (x[0],) for x in type_attrs.items() if x[1][1] != 0 ]
+            description = [None, None] + [ (x[0],) for x in type_attrs.items() if x[1][1] & ATTR_SEARCHABLE ]
 
         # Create a row that matches the description order.
-        row = [object_type] + [ attrs.pop(x[0], None) for x in DummyCursor.description[1:] ]
+        row = [object_type, self._get_type_id(object_type)] + \
+              [ attrs.pop(x[0], None) for x in DummyCursor.description[2:] ]
         # Return the ObjectRow for this object.
         return ObjectRow(DummyCursor(), row, attrs)
 
 
-    def update_object(self, (object_type, object_id), parent = None, **attrs):
+    def update_object(self, obj, parent_obj = None, **attrs):
         """
         Update an object in the database.  For updating, object is identified
-        by a (type, id) tuple.  Parent is a (type, id) tuple which refers to
-        the object's parent.  If specified, the object is reparented,
-        otherwise the parent remains the same as when it was added with
-        add_object().  attrs kwargs will vary based on object type.  If a
-        ATTR_SIMPLE attribute is set to None, it will be removed from the
-        pickled dictionary.
+        by a (type, id) tuple or an ObjectRow instance.  Parent is a (type, id)
+        tuple or ObjectRow instance, which refers to the object's parent.  If
+        specified, the object is reparented, otherwise the parent remains the
+        same as when it was added with add_object().  attrs kwargs will vary
+        based on object type.  If a ATTR_SIMPLE attribute is set to None, it
+        will be removed from the pickled dictionary.
         """
-        type_attrs = self._get_type_attrs(object_type)
-
-        # Figure out whether we need to reindex keywords (i.e. ATTR_KEYWORDS
-        # attribute is specified in the kwargs), and what ATTR_KEYWORDS
-        # attributes exist for this object.
-        needs_keyword_reindex = False
-        keyword_columns = []
-        for name, (attr_type, flags) in type_attrs.items():
-            if flags & ATTR_KEYWORDS:
-                if name in attrs:
-                    needs_keyword_reindex = True
-                keyword_columns.append(name)
-
-        # Get the pickle for this object, as well as all keyword attributes
-        # if we need a keyword reindex.  First construct the query.
-        # FIXME: we don't need to get the pickle if no ATTR_SIMPLE attrs
-        # are being updated.
-        q = "SELECT pickle%%s FROM objects_%s WHERE id=?" % object_type
-        if needs_keyword_reindex:
-            q %= "," + ",".join(keyword_columns)
+        if isinstance(obj, ObjectRow):
+            object_type, object_id = obj['type'], obj['id']
         else:
-            q %= ""
-        # Now get the row.
-        row = self._db_query_row(q, (object_id,))
-        # TODO: raise a more useful exception here.
-        assert(row)
-        if row[0]:
-            row_attrs = cPickle.loads(str(row[0]))
-            row_attrs.update(attrs)
-            attrs = row_attrs
-        if parent:
-            attrs["parent_type"] = self._get_type_id(parent[0])
-            attrs["parent_id"] = parent[1]
-        attrs["id"] = object_id
-        query, values = self._make_query_from_attrs("update", attrs, object_type)
-        self._db_query(query, values)
+            object_type, object_id = obj
 
-        if needs_keyword_reindex:
-            # We've modified a ATTR_KEYWORD column, so we need to reindex all
-            # all keyword attributes for this row.
+        type_attrs = self._get_type_attrs(object_type)
+        get_pickle = False
 
-            # Merge the other keyword columns into attrs dict.
-            for n, name in zip(range(len(keyword_columns)), keyword_columns):
-                if name not in attrs:
-                    attrs[name] = row[n + 1]
+        # Determine which inverted indexes need to be regenerated for this
+        # object.  Builds a dictionary of ivtidxes with a dirty flag and
+        # a list of sql columns needed for reindexing.
+        ivtidx_columns = {}
+        for name, (attr_type, flags, attr_ivtidx, attr_split) in type_attrs.items():
+            if flags & ATTR_INVERTED_INDEX:
+                if attr_ivtidx not in ivtidx_columns:
+                    ivtidx_columns[attr_ivtidx] = [ False, [] ]
+                if flags & ATTR_SEARCHABLE:
+                    ivtidx_columns[attr_ivtidx][1].append(name)
+                else:
+                    get_pickle = True
+                if name in attrs:
+                    ivtidx_columns[attr_ivtidx][0] = True
 
+            if flags & ATTR_SIMPLE and name in attrs:
+                # Simple attribute needs pickle
+                get_pickle = True
+        
+        # TODO: if ObjectRow is supplied, don't need to fetch columns
+        # that are available in the ObjectRow.  (Of course this assumes
+        # the object wasn't changed via elsewhere during the life of the
+        # ObjectRow object, so maybe we don't want to do that.)
+        reqd_columns = ([], ['pickle'])[get_pickle]
+        for dirty, searchable_attrs in ivtidx_columns.values():
+            if dirty:
+                reqd_columns.extend(searchable_attrs)
+
+        if reqd_columns:
+            q = 'SELECT %s FROM objects_%s WHERE id=?' % (','.join(reqd_columns), object_type)
+            row = self._db_query_row(q, (object_id,))
+            if not row:
+                raise ValueError, "Can't update unknown object (%s, %d)" % (object_type, object_id)
+            if reqd_columns[0] == 'pickle' and row[0]:
+                # Update stored pickle data with new ATTR_SIMPLE attribute values
+                row_attrs = cPickle.loads(str(row[0]))
+                row_attrs.update(attrs)
+                attrs = row_attrs
+
+        if isinstance(parent_obj, ObjectRow):
+            attrs['parent_type'], attrs['parent_id'] = parent_obj['type'], parent_obj['id']
+        elif parent_obj:
+            attrs['parent_type'], attrs['parent_id'] = self._get_type_id(parent_obj[0]), parent_obj[1]
+
+        attrs['id'] = object_id
+        # Make copy of attrs for later query, since we're now about to mess with it.
+        orig_attrs = attrs.copy()
+
+        # Merge the ivtidx columns we grabbed above into attrs dict.
+        for n, name in enumerate(reqd_columns):
+            if name not in attrs and name != 'pickle':
+                attrs[name] = row[n]
+
+        for ivtidx, (dirty, searchable_attrs) in ivtidx_columns.items():
+            if not dirty:
+                # No attribute for this ivtidx changed.
+                continue
+            split = self._inverted_indexes[ivtidx]['split']
             # Remove existing indexed words for this object.
-            self._delete_object_keywords((object_type, object_id))
+            self._delete_object_inverted_index_terms((object_type, object_id), ivtidx)
 
-            # Re-index
-            word_parts = []
-            for name, (attr_type, flags) in type_attrs.items():
-                if flags & ATTR_KEYWORDS:
-                    if attr_type == str and type(attrs[name]) == buffer:
-                        # _score_words wants only string or unicode values.
-                        attrs[name] = str(attrs[name])
-                    word_parts.append((attrs[name], 1.0, attr_type, flags))
-            words = self._score_words(word_parts)
-            self._add_object_keywords((object_type, object_id), words)
+            # FIXME: code duplication from add_object
+            # Need to reindex all columns in this object using this ivtidx.
+            terms_list = []
+            for name, (attr_type, flags, attr_ivtidx, attr_split) in type_attrs.items():
+                if attr_ivtidx == ivtidx and name in attrs:
+                    terms_list.append((attrs[name], 1.0, attr_split or split, ivtidx))
+
+            if ivtidx in attrs and ivtidx not in type_attrs:
+                # Attribute named after an inverted index is given, but
+                # that ivtidx is not a named attribute (which would be handled
+                # in the for loop just above).
+                terms_list.append((attrs[ivtidx], 1.0, split, ivtidx))
+
+            terms = self._score_terms(terms_list)
+            self._add_object_inverted_index_terms((object_type, object_id), ivtidx, terms)
+            if ivtidx in type_attrs:
+                # Registered attribute named after ivtidx; store ivtidx
+                # terms in object.
+                orig_attrs[ivtidx] = terms.keys()
+
+        query, values = self._make_query_from_attrs("update", orig_attrs, object_type)
+        self._db_query(query, values)
 
 
     def commit(self):
@@ -682,13 +959,12 @@ class Database:
                      of the parent, or a QExpr.   parent may also be a tuple
                      of (type, id) tuples.
              object: (type, id) tuple referring to the object itself.
-           keywords: a string of search terms for keyword search.
                type: only search items of this type (e.g. "images"); if None
                      (or not specified) all types are searched.
               limit: return only this number of results; if None (or not
                      specified) all matches are returned.  For better
                      performance it is highly recommended a limit is specified
-                     for keyword searches.
+                     for searches on inverted indexes.
               attrs: A list of attributes to be returned.  If not specified,
                      all possible attributes.
            distinct: If True, selects only distinct rows.  When distinct is
@@ -710,35 +986,44 @@ class Database:
             attrs["type"], attrs["id"] = attrs["object"]
             del attrs["object"]
 
-        if "keywords" in attrs:
-            # TODO: Possible optimization: do keyword search after the query
+        ivtidx_results = ivtidx_results_by_type = None
+        for ivtidx in self._inverted_indexes:
+            # TODO: Possible optimization: do ivtidx search after the query
             # below only on types that have results iff all queried columns are
             # indexed.
+            # TODO: could be smarter about the order in which we do ivtidx
+            # searches (do least populated first)
+            if ivtidx in attrs:
+                # If search criteria other than this inverted index are specified,
+                # we can't enforce a limit on the search, otherwise we
+                # might miss intersections.
+                if len(set(attrs).difference(('type', 'limit', ivtidx))) > 0:
+                    limit = None
+                else:
+                    limit = attrs.get('limit')
 
-            # If search criteria other than keywords are specified, we can't
-            # enforce a limit on the keyword search, otherwise we might miss
-            # intersections.
-            if len(Set(attrs).difference(("type", "limit", "keywords"))) > 0:
-                limit = None
-            else:
-                limit = attrs.get("limit")
-            kw_results = self._query_keywords(attrs["keywords"], limit,
-                                              attrs.get("type"))
+                r = self._query_inverted_index(ivtidx, attrs[ivtidx], limit, attrs.get('type'))
+                if ivtidx_results is None:
+                    ivtidx_results = r
+                else:
+                    for o in ivtidx_results.keys():
+                        if o not in r:
+                            del ivtidx_results[o]
+                        else:
+                            ivtidx_results[o] *= r[o]
 
-            # No matches to our keyword search, so we're done.
-            if not kw_results:
-                return []
+                if not ivtidx_results:
+                    # No matches, so we're done.
+                    return []
 
-            kw_results_by_type = {}
-            for tp, id in kw_results:
-                if tp not in kw_results_by_type:
-                    kw_results_by_type[tp] = []
-                kw_results_by_type[tp].append(id)
+                del attrs[ivtidx]
 
-            del attrs["keywords"]
-        else:
-            kw_results = kw_results_by_type = None
-
+        if ivtidx_results:
+            ivtidx_results_by_type = {}
+            for tp, id in ivtidx_results.keys():
+                if tp not in ivtidx_results_by_type:
+                    ivtidx_results_by_type[tp] = []
+                ivtidx_results_by_type[tp].append(id)
 
         if "type" in attrs:
             if attrs["type"] not in self._object_types:
@@ -782,46 +1067,55 @@ class Database:
 
 
         for type_name, (type_id, type_attrs, type_idx) in type_list:
-            if kw_results and type_id not in kw_results_by_type:
-                # If we've done a keyword search, don't bother querying
-                # object types for which there were no keyword hits.
+            if ivtidx_results and type_id not in ivtidx_results_by_type:
+                # If we've done a ivtidx search, don't bother querying
+                # object types for which there were no hits.
                 continue
 
-            # Select only sql columns (i.e. attrs that aren't ATTR_SIMPLE)
-            all_columns = filter(lambda x: type_attrs[x][1] != ATTR_SIMPLE, type_attrs.keys())
+            # Select only sql columns (i.e. attrs that aren't ATTR_SIMPLE).
+            all_columns = [ x for x in type_attrs if type_attrs[x][1] & ATTR_SEARCHABLE ]
             if requested_columns:
                 columns = requested_columns
                 # Ensure that all the requested columns exist for this type
-                missing = tuple(Set(columns).difference(type_attrs.keys()))
+                missing = tuple(set(columns).difference(type_attrs.keys()))
                 if missing:
                     raise ValueError, "One or more requested attributes %s are not available for type '%s'" % \
                                       (str(missing), type_name)
-                # Ensure that no requested attrs are ATTR_SIMPLE
-                simple = [ x for x in columns if type_attrs[x][1] == ATTR_SIMPLE ]
+                # Ensure that no requested attrs are ATTR_SIMPLE.  TODO: implement support for this.
+                simple = [ x for x in columns if type_attrs[x][1] & ATTR_SIMPLE ]
                 if simple:
-                    raise ValueError, "ATTR_SIMPLE attributes cannot yet be specified in attrs kwarg %s" % \
-                                      str(tuple(simple))
+                    # One or more ATTR_SIMPLE attributes requested in attrs list,
+                    # so we need to grab the pickle column.
+                    if 'pickle' not in columns:
+                        columns.append('pickle')
+                    # Remove the list of simple attributes so we don't try to
+                    # request them as sql columns.
+                    columns = list(set(columns).difference(simple))
             else:
                 columns = all_columns
 
-            # Construct a query based on the supplied attributes for this
-            # object type.  If any of the attribute names aren't valid for
-            # this type, then we don't bother matching, since this an AND
-            # query and there aren't be any matches.
-            if len(Set(attrs).difference(all_columns)) > 0:
+            # Now construct a query based on the supplied attributes for this
+            # object type.  
+            
+            # If any of the attribute names aren't valid for this type, then we
+            # don't bother matching, since this an AND query and there won't be
+            # any matches.
+            missing = set(attrs).difference(all_columns)
+            if missing:
+                # Raise exception if user attempts to search on a simple attr.
+                simple = [ x for x in missing if x in type_attrs and type_attrs[x][1] & ATTR_SIMPLE ]
+                if simple:
+                    raise ValueError, "Querying on non-searchable attribute '%s'" % simple[0]
                 continue
 
             q = []
             query_values = []
-            q.append("SELECT %s '%s'%%s,%s FROM objects_%s" % \
-                (query_type, type_name, ",".join(columns), type_name))
+            q.append("SELECT %s '%s',%d,id,%s FROM objects_%s" % \
+                (query_type, type_name, type_id, ",".join(columns), type_name))
 
-            if kw_results != None:
-                q[0] %= ",%d+id as computed_id" % (type_id * 10000000)
+            if ivtidx_results != None:
                 q.append("WHERE")
-                q.append("id IN %s" % _list_to_printable(kw_results_by_type[type_id]))
-            else:
-                q[0] %= ""
+                q.append("id IN %s" % _list_to_printable(ivtidx_results_by_type[type_id]))
 
             if len(parents):
                 q.append(("WHERE", "AND")["WHERE" in q])
@@ -833,7 +1127,7 @@ class Database:
                 q.append("(%s)" % " OR ".join(expr))
 
             for attr, value in attrs.items():
-                attr_type = type_attrs[attr][0]
+                attr_type, attr_flags = type_attrs[attr][:2]
                 if type(value) != QExpr:
                     value = QExpr("=", value)
 
@@ -846,10 +1140,10 @@ class Database:
                 # Verify expression operand type is correct for this attribute.
                 if value._operator not in ("range", "in", "not in") and \
                    type(value._operand) != attr_type:
-                    raise ValueError, "Type mismatch in query: '%s' (%s) is not a %s" % \
+                    raise TypeError, "Type mismatch in query: '%s' (%s) is not a %s" % \
                                           (str(value._operand), str(type(value._operand)), str(attr_type))
 
-                # Queries on string columns are case-insensitive.
+                # Queries on ATTR_IGNORE_CASE string columns are case-insensitive.
                 if isinstance(value._operand, basestring) and type_attrs[attr][1] & ATTR_IGNORE_CASE:
                     value._operand = value._operand.lower()
                     if not (type_attrs[attr][1] & ATTR_INDEXED):
@@ -881,235 +1175,241 @@ class Database:
             else:
                 results.extend(rows)
 
-            if kw_results:
-                query_info["columns"][type_name] = ["type", "computed_id"] + columns
-            else:
-                query_info["columns"][type_name] = ["type"] + columns
+            query_info["columns"][type_name] = ["type"] + columns
             query_info["attrs"][type_name] = type_attrs
 
             if result_limit != None and len(rows) == result_limit:
                 # No need to try the other types, we're done.
                 break
 
-        # If keyword search was done, sort results to preserve order given in
-        # kw_results.
-        if kw_results:
-            # Convert (type,id) tuple to computed id value.
-            kw_results = map(lambda (type, id): type*10000000+id, kw_results)
-            # Create a dict mapping each computed id value to its position.
-            kw_results_order = dict(zip(kw_results, range(len(kw_results))))
-            # Now sort based on the order dict.  The second item in each row
-            # will be the computed id for that row.
-            results.sort(lambda a, b: cmp(kw_results_order[a[1]], kw_results_order[b[1]]))
+        # If ivtidx search was done, sort results based on score (highest
+        # score first). 
+        if ivtidx_results:
+            results.sort(lambda a, b: cmp(ivtidx_results[(b[1], b[2])], ivtidx_results[(a[1], a[2])]))
 
         return results
 
 
 
-    def _score_words(self, text_parts):
+    def _score_terms(self, terms_list):
         """
-        Scores the words given in text_parts, which is a list of tuples
-        (text, coeff, type), where text is the string of words
-        to be scored, coeff is the weight to give each word in this part
-        (1.0 is normal), and type is one of ATTR_KEYWORDS_*.  Text parts are
-        either unicode objects or strings.  If they are strings, they are
-        given to str_to_unicode() to try to decode them intelligently.
+        Scores the terms given in terms_list, which is a list of tuples (terms,
+        coeff, split, ivtidx), where terms is the string or sequence of
+        terms to be scored, coeff is the weight to give each term in this part
+        (1.0 is normal), split is the functionh or regular expression used to
+        split terms (only used if a string is given for terms), and ivtidx is
+        the name of inverted index we're scoring for.
+        
+        
+        Terms are either unicode objects or strings, or sequences of unicode or
+        string objects.  In the case of strings, they are passed through
+        str_to_unicode() to try to decode them intelligently.
 
-        Each word W is given the score:
-             sqrt( (W coeff * W count) / total word count )
+        Each term T is given the score:
+             sqrt( (T coeff * T count) / total term count )
 
         Counts are relative to the given object, not all objects in the
         database.
 
-        Returns a dict of words whose values hold the score caclulated as
+        Returns a dict of terms whose values hold the score caclulated as
         above.
         """
-        words = {}
-        total_words = 0
+        terms_scores = {}
+        total_terms = 0
 
-        for text, coeff, attr_type, flags in text_parts:
-            if not text:
+        for terms, coeff, split, ivtidx in terms_list:
+            if not terms:
                 continue
-            if type(text) not in (unicode, str):
-                raise ValueError, "Invalid type (%s) for ATTR_KEYWORDS attribute.  Only unicode or str allowed." % \
-                                  str(type(text))
-            if attr_type == str:
-                text = str_to_unicode(text)
+            # Swap ivtidx name for inverted index definition dict
+            ivtidx = self._inverted_indexes[ivtidx]
+            if not isinstance(terms, (basestring, list, tuple)):
+                raise ValueError, "Invalid type (%s) for ATTR_INVERTED_INDEX attribute. " \
+                                  "Only sequence, unicode or str allowed." % str(type(terms))
 
-            # FIXME: don't hardcode path length; is there a PATH_MAX in python?
-            if len(text) < 255 and re.search("\.\w{2,5}$", text):
-                # Treat input as filename since it looks like it ends with an extension.
-                dirname, filename = os.path.split(text)
-                fname_noext, ext = os.path.splitext(filename)
-                # Remove the first 2 levels (like /home/user/) and then take
-                # the last two levels that are left.
-                levels = dirname.strip('/').split(os.path.sep)[2:][-2:] + [fname_noext]
-                parsed = WORDS_DELIM.split(' '.join(levels)) + [fname_noext]
+            if isinstance(terms, (list, tuple)):
+                parsed = terms
             else:
-                parsed = WORDS_DELIM.split(text)
-
-            for word in parsed:
-                if not word or len(word) > MAX_WORD_LENGTH:
-                    # Probably not a word.
-                    continue
-                word = word.lower()
-
-                if len(word) < MIN_WORD_LENGTH or word in STOP_WORDS:
-                    continue
-                if word not in words:
-                    words[word] = coeff
+                if callable(split):
+                    parsed = split(terms)
                 else:
-                    words[word] += coeff
-                total_words += 1
+                    parsed = split.split(terms)
 
-        # Score based on word frequency in document.  (Add weight for
-        # non-dictionary words?  Or longer words?)
-        for word, score in words.items():
-            words[word] = math.sqrt(words[word] / total_words)
-        return words
+            for term in parsed:
+                if not term or (ivtidx['max'] and len(term) > ivtidx['max']) or \
+                   (ivtidx['min'] and len(term) < ivtidx['min']):
+                    continue
+                term = str_to_unicode(term).lower()
+
+                if ivtidx['ignore'] and term in ivtidx['ignore']:
+                    continue
+                if term not in terms_scores:
+                    terms_scores[term] = coeff
+                else:
+                    terms_scores[term] += coeff
+                total_terms += 1
+
+        # Score based on term frequency in document.  (Add weight for
+        # non-dictionary terms?  Or longer terms?)
+        for term, score in terms_scores.items():
+            terms_scores[term] = math.sqrt(terms_scores[term] / total_terms)
+        return terms_scores
 
 
-    def _delete_object_keywords(self, (object_type, object_id)):
+    def _delete_object_inverted_index_terms(self, (object_type, object_id), ivtidx):
         """
-        Removes all indexed keywords for the given object.  This function
-        must be called when an object is removed from the database, or when
-        an object is being updated (and therefore its keywords must be
+        Removes all indexed terms under the specified inverted index for the
+        given object.  This function must be called when an object is removed
+        from the database, or when an ATTR_INVERTED_INDEX attribute of an
+        object is being updated (and therefore that inverted index must be
         re-indexed).
         """
-        self._delete_multiple_objects_keywords({object_type: (object_id,)})
+        self._delete_multiple_objects_inverted_index_terms({object_type: ((ivtidx,), (object_id,))})
 
 
-    def _delete_multiple_objects_keywords(self, objects):
+    def _delete_multiple_objects_inverted_index_terms(self, objects):
         """
-        objects = dict type_name -> ids tuple
+        objects = dict type_name -> (ivtidx tuple, ids tuple)
         """
-        count = 0
-        for type_name, object_ids in objects.items():
+        for type_name, (ivtidxes, object_ids) in objects.items():
             # Resolve object type name to id
             type_id = self._get_type_id(type_name)
 
-            # Remove all words associated with this object.  A trigger will
-            # decrement the count column in the words table for all word_id
-            # that get affected.
-            self._db_query("DELETE FROM words_map WHERE object_type=? AND object_id IN %s" % \
-                           _list_to_printable(object_ids), (type_id,))
-            count += self._cursor.rowcount
+            for ivtidx in ivtidxes:
+                # Remove all terms for the inverted index associated with this
+                # object.  A trigger will decrement the count column in the
+                # terms table for all term_id that get affected.
+                self._db_query("DELETE FROM ivtidx_%s_terms_map WHERE object_type=? AND object_id IN %s" % \
+                               (ivtidx, _list_to_printable(object_ids)), (type_id,))
+                self._inverted_indexes[ivtidx]['objectcount'] -= len(object_ids)
 
 
-
-    def _add_object_keywords(self, (object_type, object_id), words):
+    def _add_object_inverted_index_terms(self, (object_type, object_id), ivtidx, terms):
         """
-        Adds the dictionary of words (as computed by _score_words()) to the
-        database for the given object.
+        Adds the dictionary of terms (as computed by _score_terms()) to the
+        specified inverted index database for the given object.
         """
+        if not terms:
+            return
+
         # Resolve object type name to id
         object_type = self._get_type_id(object_type)
 
-        # Holds any of the given words that already exist in the database
+        # Holds any of the given terms that already exist in the database
         # with their id and count.
-        db_words_count = {}
+        db_terms_count = {}
 
-        words_list = _list_to_printable(words.keys())
-        q = "SELECT id,word,count FROM words WHERE word IN %s" % words_list
+        terms_list = _list_to_printable(terms.keys())
+        q = "SELECT id,term,count FROM ivtidx_%s_terms WHERE term IN %s" % (ivtidx, terms_list)
         rows = self._db_query(q)
         for row in rows:
-            db_words_count[row[1]] = row[0], row[2]
+            db_terms_count[row[1]] = row[0], row[2]
 
         # For executemany queries later.
         update_list, map_list = [], []
 
-        for word, score in words.items():
-            if word not in db_words_count:
-                # New word, so insert it now.
-                self._db_query("INSERT OR REPLACE INTO words VALUES(NULL, ?, 1)", (word,))
+        for term, score in terms.items():
+            if term not in db_terms_count:
+                # New term, so insert it now.
+                self._db_query('INSERT OR REPLACE INTO ivtidx_%s_terms VALUES(NULL, ?, 1)' % ivtidx, (term,))
                 db_id, db_count = self._cursor.lastrowid, 1
-                db_words_count[word] = db_id, db_count
+                db_terms_count[term] = db_id, db_count
             else:
-                db_id, db_count = db_words_count[word]
+                db_id, db_count = db_terms_count[term]
                 update_list.append((db_count + 1, db_id))
 
             map_list.append((int(score*10), db_id, object_type, object_id, score))
 
-        self._cursor.executemany("UPDATE words SET count=? WHERE id=?", update_list)
-        self._cursor.executemany("INSERT INTO words_map VALUES(?, ?, ?, ?, ?)", map_list)
+        self._cursor.executemany('UPDATE ivtidx_%s_terms SET count=? WHERE id=?' % ivtidx, update_list)
+        self._cursor.executemany('INSERT INTO ivtidx_%s_terms_map VALUES(?, ?, ?, ?, ?)' % ivtidx, map_list)
 
 
-    def _query_keywords(self, words, limit = 100, object_type = None):
+    def _query_inverted_index(self, ivtidx, terms, limit = 100, object_type = None):
         """
-        Queries the database for the keywords supplied in the words strings.
-        (Search terms are delimited by spaces.)
+        Queries the inverted index ivtidx for the terms supplied in the terms
+        argument.  If terms is a string, it is parsed into individual terms
+        based on the split for the given ivtidx.  The terms argument may
+        also be a list or tuple, in which case no parsing is done.
 
         The search algorithm tries to optimize for the common case.  When
-        words are scored (_score_words()), each word is assigned a score that
+        terms are scored (_score_terms()), each term is assigned a score that
         is stored in the database (as a float) and also as an integer in the
-        range 0-10, called rank.  (So a word with score 0.35 has a rank 3.)
+        range 0-10, called rank.  (So a term with score 0.35 has a rank 3.)
 
-        Multiple passes are made over the words_map table, first starting at
-        the highest rank fetching a certain number of rows, and progressively
-        drilling down to lower ranks, trying to find enough results to fill our
-        limit that intersects on all supplied words.  If our limit isn't met
-        and all ranks have been searched but there are still more possible
-        matches (because we use LIMIT on the SQL statement), we expand the
-        LIMIT (currently by an order of 10) and try again, specifying an
-        OFFSET in the query.
+        Multiple passes are made over the terms map table for the given ivtidx,
+        first starting at the highest rank fetching a certain number of rows,
+        and progressively drilling down to lower ranks, trying to find enough
+        results to fill our limit that intersects on all supplied terms.  If
+        our limit isn't met and all ranks have been searched but there are
+        still more possible matches (because we use LIMIT on the SQL
+        statement), we expand the LIMIT (currently by an order of 10) and try
+        again, specifying an OFFSET in the query.
 
         The worst case scenario is given two search terms, each term matches
-        50% of all rows but there is only one intersection row.  (Or, more
+        50% of all rows but there is only one intersecting row.  (Or, more
         generally, given N terms, each term matches (1/N)*100 percent rows with
         only 1 row intersection between all N terms.)   This could be improved
         by avoiding the OFFSET/LIMIT technique as described above, but that
         approach provides a big performance win in more common cases.  This
-        case can be mitigated by caching common word combinations, but it is
+        case can be mitigated by caching common term combinations, but it is
         an extremely difficult problem to solve.
 
         object_type specifies an type name to search (for example we can
         search type "image" with keywords "2005 vacation"), or if object_type
         is None (default), then all types are searched.
 
-        This function returns a list of (object_type, object_id) tuples
-        which match the query.  The list is sorted by score (with the
-        highest score first).
+        This function returns a dictionary (object_type, object_id) -> score
+        which match the query.
         """
-        t0=time.time()
-        # Fetch number of files that are keyword indexed.  (Used in score
+        t0 = time.time()
+        # Fetch number of files the inverted index applies to.  (Used in score
         # calculations.)
-        row = self._db_query_row("SELECT value FROM meta WHERE attr='keywords_objectcount'")
-        objectcount = int(float(row[0]))
+        objectcount = self._inverted_indexes[ivtidx]['objectcount']
 
-        # Convert words string to a tuple of lower case words.
-        words = tuple(str_to_unicode(words).lower().split())
-        # Remove words that aren't indexed (words less than MIN_WORD_LENGTH
-        # characters, or and words in the stop list).
-        words = filter(lambda x: len(x) >= MIN_WORD_LENGTH and x not in STOP_WORDS, words)
-        words_list = _list_to_printable(words)
-        nwords = len(words)
+        if not isinstance(terms, (list, tuple)):
+            split = self._inverted_indexes[ivtidx]['split']
+            if callable(split):
+                terms = split(str_to_unicode(terms).lower())
+            else:
+                terms = split.split(str_to_unicode(terms).lower())
+        else:
+            terms = [ str_to_unicode(x).lower() for x in terms ]
 
-        if nwords == 0:
+        # Remove terms that aren't indexed (words less than minimum length
+        # or and terms in the ignore list for this ivtidx).
+        if self._inverted_indexes[ivtidx]['min']:
+            terms = [ x for x in terms if len(x) >= self._inverted_indexes[ivtidx]['min'] ]
+        if self._inverted_indexes[ivtidx]['ignore']:
+            terms = [ x for x in terms if x not in self._inverted_indexes[ivtidx]['ignore'] ]
+
+        terms_list = _list_to_printable(terms)
+        nterms = len(terms)
+
+        if nterms == 0:
             return []
 
-        # Find word ids and order by least popular to most popular.
-        rows = self._db_query("SELECT id,word,count FROM words WHERE word IN %s ORDER BY count" % words_list)
-        save = map(lambda x: x.lower(), words)
-        words = {}
+        # Find term ids and order by least popular to most popular.
+        rows = self._db_query('SELECT id,term,count FROM ivtidx_%s_terms WHERE ' \
+                              'term IN %s ORDER BY count' % (ivtidx, terms_list))
+        save = map(lambda x: x.lower(), terms)
+        terms = {}
         ids = []
         for row in rows:
             if row[2] == 0:
                 return []
 
-            # Give words weight according to their order
+            # Give terms weight according to their order
             order_weight = 1 + len(save) - list(save).index(row[1])
-            words[row[0]] = {
-                "word": row[1],
-                "count": row[2],
-                "idf_t": math.log(objectcount / row[2] + 1) + order_weight,
-                "ids": {}
+            terms[row[0]] = {
+                'term': row[1],
+                'count': row[2],
+                'idf_t': math.log(objectcount / row[2] + 1) + order_weight,
+                'ids': {}
             }
             ids.append(row[0])
-            # print "WORD: %s (%d), freq=%d/%d, idf_t=%f" % (row[1], row[0], row[2], objectcount, words[row[0]]["idf_t"])
 
-        # Not all the words we requested are in the database, so we return
+        # Not all the terms we requested are in the database, so we return
         # 0 results.
-        if len(ids) < nwords:
+        if len(ids) < nterms:
             return []
 
         if object_type:
@@ -1120,78 +1420,83 @@ class Database:
         for id in ids:
             results[id] = {}
             state[id] = {
-                "offset": [0]*11,
-                "more": [True]*11,
-                "count": 0,
-                "done": False
+                'offset': [0]*11,
+                'more': [True]*11,
+                'count': 0,
+                'done': False
             }
 
         all_results = {}
         if limit == None:
             limit = objectcount
 
+        if limit <= 0 or objectcount <= 0:
+            return {}
+
         sql_limit = min(limit*3, 200)
         finished = False
         nqueries = 0
 
         # Keep a dict keyed on object_id that we can use to narrow queries
-        # once we have a full list of all objects that match a given word.
+        # once we have a full list of all objects that match a given term.
         id_constraints = None
+        t1 = time.time()
         while not finished:
             for rank in range(10, -1, -1):
                 for id in ids:
-                    if not state[id]["more"][rank] or state[id]["done"]:
+                    if not state[id]['more'][rank] or state[id]['done']:
                         # If there's no more results at this rank, or we know
-                        # we've already seen all the results for this word, we
+                        # we've already seen all the results for this term, we
                         # don't bother with the query.
                         continue
 
-                    q = "SELECT object_type,object_id,frequency FROM " \
-                        "words_map WHERE word_id=? AND rank=? %s %%s" \
-                        "LIMIT ? OFFSET ?"
+                    q = 'SELECT object_type,object_id,frequency FROM ivtidx_%s_terms_map ' % ivtidx + \
+                        'WHERE term_id=? AND rank=? %s %%s LIMIT ? OFFSET ?'
 
                     if object_type == None:
-                        q %= ""
+                        q %= ''
                         v = (id, rank, sql_limit, state[id]["offset"][rank])
                     else:
-                        q %= "AND object_type=?"
+                        q %= 'AND object_type=?'
                         v = (id, rank, object_type, sql_limit, state[id]["offset"][rank])
 
                     if id_constraints:
                         # We know about all objects that match one or more of the other
-                        # search words, so we add the constraint that all rows for this
-                        # word match the others as well.  Effectively we push the logic
+                        # search terms, so we add the constraint that all rows for this
+                        # term match the others as well.  Effectively we push the logic
                         # to generate the intersection into the db.
-                        # This can't benefit from the index if object_type is not specified.
-                        q %= " AND object_id IN %s" % _list_to_printable(tuple(id_constraints))
+                        # XXX: This can't benefit from the index if object_type
+                        # is not specified.
+                        q %= ' AND object_id IN %s' % _list_to_printable(tuple(id_constraints))
                     else:
-                        q %= ""
+                        q %= ''
 
                     rows = self._db_query(q, v)
                     nqueries += 1
-                    state[id]["more"][rank] = len(rows) == sql_limit
-                    state[id]["count"] += len(rows)
+                    state[id]['more'][rank] = len(rows) == sql_limit
+                    state[id]['count'] += len(rows)
 
                     for row in rows:
-                        results[id][row[0], row[1]] = row[2] * words[id]["idf_t"]
-                        words[id]["ids"][row[1]] = 1
+                        results[id][row[0], row[1]] = row[2] * terms[id]['idf_t']
+                        terms[id]['ids'][row[1]] = 1
 
-                    if state[id]["count"] >= words[id]["count"] or \
+                    if state[id]['count'] >= terms[id]['count'] or \
                        (id_constraints and len(rows) == len(id_constraints)):
-                        # If we've now retrieved all objects for this word, or if
+                        # If we've now retrieved all objects for this term, or if
                         # all the results we just got now intersect with our
-                        # constraints set, we're done this word and don't bother
+                        # constraints set, we're done this term and don't bother
                         # querying it at other ranks.
-                        #print "Done word '%s' at rank %d" % (words[id]["word"], rank)
-                        state[id]["done"] = True
+                        #print 'Done term '%s' at rank %d' % (terms[id]['term'], rank)
+                        state[id]['done'] = True
                         if id_constraints is not None:
-                            id_constraints = id_constraints.intersection(words[id]["ids"])
+                            id_constraints = id_constraints.intersection(terms[id]['ids'])
                         else:
-                            id_constraints = Set(words[id]["ids"])
+                            id_constraints = set(terms[id]['ids'])
+                #
+                # end loop over terms
 
-
-                # end loop over words
-                for r in reduce(lambda a, b: Set(a).intersection(Set(b)), results.values()):
+                
+                for r in reduce(lambda a, b: set(a).intersection(b), results.values()):
                     all_results[r] = 0
                     for id in ids:
                         if r in results[id]:
@@ -1203,8 +1508,9 @@ class Database:
                     finished = True
                     #print "Breaking at rank:", rank
                     break
-
+            #
             # end loop over ranks
+
             if finished:
                 break
 
@@ -1216,14 +1522,14 @@ class Database:
                     last_id = ids[index-1]
                     a = results[last_id]
                     b = results[id]
-                    intersect = Set(a).intersection(b)
+                    intersect = set(a).intersection(b)
 
                     if len(intersect) == 0:
                         # Is there any more at any rank?
                         a_more = b_more = False
                         for rank in range(11):
-                            a_more = a_more or state[last_id]["more"][rank]
-                            b_more = b_more or state[id]["more"][rank]
+                            a_more = a_more or state[last_id]['more'][rank]
+                            b_more = b_more or state[id]['more'][rank]
 
                         if not a_more and not b_more:
                             # There's no intersection between these two search
@@ -1236,8 +1542,8 @@ class Database:
                 # see if more exists at any rank, increasing offset and
                 # unsetting finished flag so we iterate again.
                 for rank in range(10, -1, -1):
-                    if state[id]["more"][rank] and not state[id]["done"]:
-                        state[id]["offset"][rank] += sql_limit
+                    if state[id]['more'][rank] and not state[id]['done']:
+                        state[id]['offset'][rank] += sql_limit
                         finished = False
 
             # If we haven't found enough results after this pass, grow our
@@ -1246,45 +1552,97 @@ class Database:
             sql_limit *= 10
 
         # end loop while not finished
-        keys = all_results.keys()
-        keys.sort(lambda a, b: cmp(all_results[b], all_results[a]))
-        if limit > 0:
-            keys = keys[:limit]
+        log.info('%d results, did %d subqueries, %.04f seconds (%.04f overhead)', 
+                 len(all_results), nqueries, time.time()-t0, t1-t0)
+        return all_results
 
-        #print "* Did %d subqueries" % (nqueries), time.time()-t0, len(keys)
-        return keys
-        #return [ (all_results[file], file) for file in keys ]
+
+    def get_inverted_index_terms(self, ivtidx, associated = None):
+        """
+        Obtains terms for the given inverted index name.  If associated is
+        None, all terms for the inverted index are returned.  The return
+        value is a list of 2-tuples, where each tuple is (term, count). 
+        Count is the total number of objects that term is mapped to.
+
+        Otherwise, associated is a specified list of terms, and only those
+        terms which are mapped to objects in addition to the given associated
+        terms will be returned.  The return value is as above, except that
+        count reflects the number of objects which have that term plus all
+        of the given associated terms.
+        
+        For example, given an otherwise empty database, if you have an object
+        with terms ['vacation', 'hawaii'] and two other object with terms
+        ['vacation', 'spain'] and the associated list passed is ['vacation'],
+        the return value will be [('spain', 2), ('hawaii', 1)].
+
+        The returned lists are sorted with the highest counts appearing
+        first.
+        """
+        if ivtidx not in self._inverted_indexes:
+            raise ValueError, "'%s' is not a registered inverted index." % ivtidx
+
+        if not associated:
+            rows = self._db_query('SELECT term, count FROM ivtidx_%s_terms ORDER BY count DESC' % ivtidx)
+            return rows
+
+        rows = self._db_query('SELECT id FROM ivtidx_%s_terms WHERE term IN %s ORDER BY count' % \
+                              (ivtidx, _list_to_printable(associated)))
+        term_ids = [ x[0] for x in rows ]
+        if len(term_ids) < len(associated):
+            return []
+
+        query = '''SELECT term, COUNT(*) AS total 
+                     FROM ivtidx_%s_terms_map AS t0''' % ivtidx
+        for n, term_id in enumerate(term_ids):
+            query += ''' JOIN ivtidx_%s_terms_map t%d
+                           ON t%d.object_type = t%d.object_type AND
+                              t%d.object_id = t%d.object_id AND
+                              t%d.term_id = %d''' % \
+                     (ivtidx, n + 1, n, n + 1, n, n + 1, n + 1, term_id)
+        query += ''' JOIN ivtidx_%s_terms AS terms
+                       ON t0.term_id = terms.id AND
+                          t0.term_id NOT IN %s
+                 GROUP BY t0.term_id
+                 ORDER BY total DESC ''' % \
+                 (ivtidx, _list_to_printable(term_ids))
+        return self._db_query(query)
+        
 
     def get_db_info(self):
         """
         Returns a dict of information on the database:
-            count: dict of object types holding their counts
-            total: total number of objects in db
-            types: dict keyed on object type holding a dict:
+                count: dict of object types holding their counts
+                total: total number of objects in db
+                types: dict keyed on object type holding a dict:
                 attrs: dict of attributes
-                idx: list of multi-column indices
-            wordcount: number of words in the keyword index
+                  idx: list of multi-column indices
+           termcounts: Dictionary of number of index terms for each inverted index.
+                 file: full path to DB file
         """
+        total = 0
         info = {
-            "count": {},
-            "types": {}
+            'count': {},
+            'types': {}
         }
         for name in self._object_types:
             id, attrs, idx = self._object_types[name]
-            info["types"][name] = {
-                "attrs": attrs,
-                "idx": idx
+            info['types'][name] = {
+                'attrs': attrs,
+                'idx': idx
             }
-            row = self._db_query_row("SELECT COUNT(*) FROM objects_%s" % name)
-            info["count"][name] = row[0]
-
+            row = self._db_query_row('SELECT COUNT(*) FROM objects_%s' % name)
+            info['count'][name] = row[0]
+            total += row[0]
 
         row = self._db_query_row("SELECT value FROM meta WHERE attr='keywords_objectcount'")
-        info["total"] = int(row[0])
+        info['total'] = total
 
-        row = self._db_query_row("SELECT COUNT(*) FROM words")
-        info["wordcount"] = int(row[0])
-        info["file"] = self._dbfile
+        info['termcounts'] = {}
+        for ivtidx in self._inverted_indexes:
+            row = self._db_query_row('SELECT COUNT(*) FROM ivtidx_%s_terms' % ivtidx)
+            info['termcounts'][ivtidx] = int(row[0])
+
+        info['file'] = self._dbfile
         return info
 
 

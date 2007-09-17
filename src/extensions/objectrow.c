@@ -33,8 +33,8 @@
 #include <glib.h>
 #include "structmember.h"
 
-#define ATTR_SIMPLE              0x00
-#define ATTR_INDEXED             0x02
+#define ATTR_SIMPLE              0x01
+#define ATTR_INDEXED             0x04
 #define ATTR_IGNORE_CASE         0x08
 #define ATTR_INDEXED_IGNORE_CASE (ATTR_INDEXED | ATTR_IGNORE_CASE)
 #define IS_ATTR_INDEXED_IGNORE_CASE(attr) ((attr & ATTR_INDEXED_IGNORE_CASE) == ATTR_INDEXED_IGNORE_CASE)
@@ -105,9 +105,7 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
     }
 
     self->row = row;
-    self->pickle = Py_None;
     Py_INCREF(self->row);
-    Py_INCREF(self->pickle);
 
     self->desc = PyObject_GetAttrString(cursor, "description"); // new ref
     self->db = PyObject_GetAttrString(cursor, "_db"); // new ref
@@ -147,9 +145,10 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
 
         /* Iterate over the columns from the SQL query and keep track of
          * attribute names and their indexes within the row tuple.  Start at
-         * index 1 because index 0 is the object type name literal.
+         * index 2 because index 0 and 1 are internal (the object type name
+         * literal and type id).
          */
-        for (i = 1; i < PySequence_Length(self->desc); i++) {
+        for (i = 2; i < PySequence_Length(self->desc); i++) {
             PyObject **desc_col = PySequence_Fast_ITEMS(desc_tuple[i]);
             char *skey = PyString_AsString(desc_col[0]);
             ObjectAttribute *attr = (ObjectAttribute *)malloc(sizeof(ObjectAttribute));
@@ -179,7 +178,7 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
             }
             attr->type = PySequence_Fast_GET_ITEM(value, 0);
             attr->flags = PyInt_AsLong(PySequence_Fast_GET_ITEM(value, 1));
-            if (IS_ATTR_INDEXED_IGNORE_CASE(attr->flags) || attr->flags == ATTR_SIMPLE)
+            if (IS_ATTR_INDEXED_IGNORE_CASE(attr->flags) || attr->flags & ATTR_SIMPLE)
                 // attribute is set to ignore case, or it's ATTR_SIMPLE, so we
                 // need to look in the pickle for this attribute.
                 attr->pickled = 1;
@@ -201,9 +200,17 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
     }
     Py_DECREF(o_types);
     self->query_info->refcount++;
-    if (self->query_info->pickle_idx >= 0 &&
-        PySequence_Fast_GET_ITEM(self->row, self->query_info->pickle_idx) != Py_None)
-        self->has_pickle = 1;
+    if (self->query_info->pickle_idx >= 0) {
+        // Pickle column included in row.  Set _pickle member to True which
+        // indicates the pickle data was fetched, but just hasn't yet been 
+        // unpickled.
+        if (PySequence_Fast_GET_ITEM(self->row, self->query_info->pickle_idx) != Py_None)
+            self->has_pickle = 1;
+        self->pickle = Py_True;
+    } else
+        self->pickle = Py_False;
+
+    Py_INCREF(self->pickle);
 
     if (pickle_dict && pickle_dict != Py_None) {
         Py_DECREF(self->pickle);
@@ -392,7 +399,6 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
          */
         return convert(self, attr, PySequence_Fast_GET_ITEM(self->row, attr->index));
 
-
     // If we need to check the pickle but haven't unpickled, do so now.
     if (!self->unpickled && !do_unpickle(self))
         return NULL;
@@ -433,7 +439,7 @@ Py_ssize_t ObjectRow_PyObject__length(ObjectRow_PyObject *self)
 
 void attrs_iter(gpointer key, ObjectAttribute *attr, ObjectRow_PyObject *self)
 {
-    if (attr->index >= 0 || (self->has_pickle && attr->pickled)) {
+    if (attr->index >= 0 || (attr->pickled && self->query_info->pickle_idx >= 0)) {
         PyObject *o;
 
         if (!strcmp(key, "pickle"))

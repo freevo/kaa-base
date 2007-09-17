@@ -565,6 +565,31 @@ class Database:
 
 
     def register_inverted_index(self, name, min = None, max = None, split = None, ignore = None):
+        """
+        Registers a new inverted index with the database.  An inverted index
+        maps arbitrary terms to objects and allows you to query based on one
+        or more terms.  If the inverted index already exists with the given
+        parameters, no action is performed.
+
+        name is the name of the inverted index and must be alphanumeric.  min
+        and max specify the minimum and maximum length of terms to index.  Any
+        terms of length smaller than min or larger than max will not be
+        indexed.  If neither is specified, terms of all sizes will be indexed.
+        
+        split is either a callable or a regular expression (or a string in
+        which case it is compiled as a regexp) and is used to parse
+        string-based attributes using this inverted index into individual
+        terms.  If split is not specified, the default is to split words at
+        non-alphanumeric/underscore/digit boundaries.  If split is a callable,
+        it will receive a string of text and must return a sequence, each
+        each item in the sequence will be indexed as an individual term.
+
+        ignore is a list of terms that will not be indexed.  If it is
+        specified, each indexed term for this inverted index will first be
+        checked against this list.  If it exists, the term is discarded.  This
+        is useful to ignore typical 'stop' words, such as 'the', 'at', 'to',
+        etc.
+        """
         # Verify specified name doesn't already exist as some object attribute.
         for object_name, object_type in self._object_types.items():
             if name in object_type[1] and name != object_type[1][name][2]:

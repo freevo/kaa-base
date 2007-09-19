@@ -52,8 +52,7 @@ PyObject *cPickle_loads, *zip;
 
 typedef struct {
     int refcount,
-        pickle_idx,
-        parent_type_idx;
+        pickle_idx;
     GHashTable *idxmap,
                 *type_names;  // maps type id to type name
 } QueryInfo;
@@ -156,8 +155,6 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
             attr->pickled = 0;
             attr->index = i;
             if (!strcmp(skey, "pickle"))
-                self->query_info->pickle_idx = i;
-            else if (!strcmp(skey, "parent_id"))
                 self->query_info->pickle_idx = i;
 
             g_hash_table_insert(self->query_info->idxmap, g_strdup(skey), (void *)attr);

@@ -120,7 +120,7 @@ class Server(object):
                 except socket.error, (err, msg):
                     if err == errno.ECONNREFUSED:
                         # not running, everything is fine
-                        log.info('remove socket from dead server')
+                        log.debug('remove socket from dead server')
                     else:
                         # some error we do not expect
                         raise socket.error(err, msg)
@@ -154,7 +154,7 @@ class Server(object):
         """
         client_sock = self.socket.accept()[0]
         client_sock.setblocking(False)
-        log.info("New connection %s", client_sock)
+        log.debug("New connection %s", client_sock)
         client = Channel(socket = client_sock, auth_secret = self._auth_secret)
         for obj in self.objects:
             client.connect(obj)
@@ -246,7 +246,7 @@ class Channel(object):
         if not self._wmon:
             # already closed (no idea why this happens)
             return False
-        log.info('close socket for %s', self)
+        log.debug('close socket for %s', self)
         self._socket.close()
         self._socket = None
         if self._wmon.active():
@@ -368,7 +368,7 @@ class Channel(object):
             return
         header = struct.pack("I4sI", seq, packet_type, len(payload))
         if not self._authenticated and packet_type not in ('RESP', 'AUTH'):
-            log.info('delay packet %s', packet_type)
+            log.debug('delay packet %s', packet_type)
             self._write_buffer_delayed += header + payload
         else:
             self._write_buffer += header + payload
@@ -597,7 +597,7 @@ class Channel(object):
             self._pending_challenge = self._get_rand_value()
             payload = struct.pack("20s20s20s", self._pending_challenge, response, salt)
             self._send_packet(seq, 'RESP', payload)
-            log.info('Got initial challenge from server, sending response.')
+            log.debug('Got initial challenge from server, sending response.')
             return
 
         elif type == 'RESP':
@@ -627,7 +627,7 @@ class Channel(object):
             # Challenge response was good, so the remote is considered
             # authenticated now.
             self._authenticated = True
-            log.info('Valid response received, remote authenticated.')
+            log.debug('Valid response received, remote authenticated.')
 
             # If remote has issued a counter-challenge along with their
             # response (step 2), we'll respond.  Unless something fishy is
@@ -642,7 +642,7 @@ class Channel(object):
                 response, salt = self._get_challenge_response(challenge)
                 payload = struct.pack("20s20s20s", '', response, salt)
                 self._send_packet(seq, 'RESP', payload)
-                log.info('Sent response to challenge from client.')
+                log.debug('Sent response to challenge from client.')
 
             self._write_buffer += self._write_buffer_delayed
             self._write_buffer_delayed = ''

@@ -1115,8 +1115,9 @@ class Database:
                     raise ValueError, "One or more requested attributes %s are not available for type '%s'" % \
                                       (str(missing), type_name)
                 # If any of the requested attributes are ATTR_SIMPLE or 
-                # ATTR_IGNORE_CASE then we need the pickle.
-                pickled = [ x for x in columns if type_attrs[x][1] & (ATTR_SIMPLE | ATTR_IGNORE_CASE) ]
+                # ATTR_INDEXED_IGNORE_CASE then we need the pickle.
+                pickled = [ x for x in columns if type_attrs[x][1] & (ATTR_SIMPLE | ATTR_INDEXED_IGNORE_CASE) in 
+                                                                     (ATTR_SIMPLE, ATTR_INDEXED_IGNORE_CASE)]
                 if pickled:
                     # One or more attributes from pickle are requested in attrs list,
                     # so we need to grab the pickle column.

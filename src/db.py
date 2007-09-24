@@ -261,16 +261,19 @@ class Database:
         self._db.create_function("regexp", 2, RegexpCache())
 
         self._cursor = self._db.cursor()
-        self._cursor.execute("PRAGMA synchronous=OFF")
-        #self._cursor.execute("PRAGMA temp_store=MEMORY")
-        self._cursor.execute("PRAGMA count_changes=OFF")
-        self._cursor.execute("PRAGMA cache_size=50000")
 
         class Cursor(sqlite.Cursor):
             _db = _weakref.ref(self)
         self._db.row_factory = ObjectRow
         # Queries done through this cursor will use the ObjectRow row factory.
         self._qcursor = self._db.cursor(Cursor)
+
+        for cursor in self._cursor, self._qcursor:
+            cursor.execute("PRAGMA synchronous=OFF")
+            cursor.execute("PRAGMA temp_store=MEMORY")
+            cursor.execute("PRAGMA count_changes=OFF")
+            cursor.execute("PRAGMA cache_size=50000")
+            cursor.execute("PRAGMA page_size=8192")
 
         if not self.check_table_exists("meta"):
             self._db.executescript(CREATE_SCHEMA % SCHEMA_VERSION)
@@ -284,12 +287,17 @@ class Database:
         self._load_object_types()
 
 
-    def _db_query(self, statement, args = (), cursor = None):
+    def _db_query(self, statement, args = (), cursor = None, many = False):
+        #t0=time.time()
         if not cursor:
             cursor = self._cursor
-        #print "QUERY: %s" % statement, args
-        cursor.execute(statement, args)
+        if many:
+            cursor.executemany(statement, args)
+        else:
+            cursor.execute(statement, args)
         rows = cursor.fetchall()
+        #t1=time.time()
+        #print "QUERY [%.04f%s]: %s" % (t1-t0, ('', ' (many)')[many], statement), args
         return rows
 
 
@@ -1189,6 +1197,9 @@ class Database:
                 q.append(sql)
                 query_values.extend(values)
 
+            if query_type == 'DISTINCT':
+                q.append(' GROUP BY %s' % ','.join(requested_columns))
+
             if result_limit != None:
                 q.append(" LIMIT %d" % result_limit)
 
@@ -1344,8 +1355,8 @@ class Database:
 
             map_list.append((int(score*10), db_id, object_type, object_id, score))
 
-        self._cursor.executemany('UPDATE ivtidx_%s_terms SET count=? WHERE id=?' % ivtidx, update_list)
-        self._cursor.executemany('INSERT INTO ivtidx_%s_terms_map VALUES(?, ?, ?, ?, ?)' % ivtidx, map_list)
+        self._db_query('UPDATE ivtidx_%s_terms SET count=? WHERE id=?' % ivtidx, update_list, many = True)
+        self._db_query('INSERT INTO ivtidx_%s_terms_map VALUES(?, ?, ?, ?, ?)' % ivtidx, map_list, many = True)
 
 
     def _query_inverted_index(self, ivtidx, terms, limit = 100, object_type = None):

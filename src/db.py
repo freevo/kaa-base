@@ -1108,22 +1108,23 @@ class Database:
             # Select only sql columns (i.e. attrs that aren't ATTR_SIMPLE).
             all_columns = [ x for x in type_attrs if type_attrs[x][1] & ATTR_SEARCHABLE ]
             if requested_columns:
-                columns = requested_columns
+                columns = requested_columns[:]
                 # Ensure that all the requested columns exist for this type
                 missing = tuple(set(columns).difference(type_attrs.keys()))
                 if missing:
                     raise ValueError, "One or more requested attributes %s are not available for type '%s'" % \
                                       (str(missing), type_name)
-                # Ensure that no requested attrs are ATTR_SIMPLE.  TODO: implement support for this.
-                simple = [ x for x in columns if type_attrs[x][1] & ATTR_SIMPLE ]
-                if simple:
-                    # One or more ATTR_SIMPLE attributes requested in attrs list,
+                # If any of the requested attributes are ATTR_SIMPLE or 
+                # ATTR_IGNORE_CASE then we need the pickle.
+                pickled = [ x for x in columns if type_attrs[x][1] & (ATTR_SIMPLE | ATTR_IGNORE_CASE) ]
+                if pickled:
+                    # One or more attributes from pickle are requested in attrs list,
                     # so we need to grab the pickle column.
                     if 'pickle' not in columns:
                         columns.append('pickle')
-                    # Remove the list of simple attributes so we don't try to
+                    # Remove the list of pickled attributes so we don't 
                     # request them as sql columns.
-                    columns = list(set(columns).difference(simple))
+                    columns = list(set(columns).difference(pickled))
             else:
                 columns = all_columns
 

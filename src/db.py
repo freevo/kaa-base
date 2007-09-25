@@ -959,6 +959,12 @@ class Database:
             terms_list = []
             for name, (attr_type, flags, attr_ivtidx, attr_split) in type_attrs.items():
                 if attr_ivtidx == ivtidx and name in attrs:
+                    if attr_type == str and type(attrs[name]) == buffer:
+                        # We store string objects in the db as buffers, in
+                        # order to prevent any unicode issues.  So we need
+                        # to convert the buffer we got from the db back to
+                        # a string before parsing the attribute into terms.
+                        attrs[name] = str(attrs[name])
                     terms_list.append((attrs[name], 1.0, attr_split or split, ivtidx))
 
             if ivtidx in attrs and ivtidx not in type_attrs:

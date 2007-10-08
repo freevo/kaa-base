@@ -364,20 +364,23 @@ class IO_Handler(object):
         """
         Read as much as possible and close socket later.
         """
-        while self._handle_input( self.fp ):
+        while self._handle_input( self.fp, True ):
             pass
 
         
-    def _handle_input( self, socket ):
+    def _handle_input( self, socket, flushing = False ):
         """
         Handle data input from socket.
         """
         try:
             data = self.fp.read( 10000 )
         except IOError, (errno, msg):
-            if errno == 11:
+            if errno == 11 and not flushing:
                 # Resource temporarily unavailable; if we try to read on a
-                # non-blocking descriptor we'll get this message.
+                # non-blocking descriptor we'll get this message.  If we're
+                # being called from flush(), it could be because the child
+                # process is dead, in which case this errno will occur but
+                # we don't want to return True.
                 return True
             data = None
         except ValueError:

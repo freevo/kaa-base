@@ -31,7 +31,13 @@ class build_py(distutils.command.build_py.build_py):
         self.kaa_compiler[ttype](tmpfile, tmpfile[:-len(ttype)] + 'py', '.'.join(package))
         os.unlink(tmpfile)
 
-        
+
+    def check_package (self, package, package_dir):
+        if package_dir.endswith('plugins'):
+            return None
+        return distutils.command.build_py.build_py.check_package(self, package, package_dir)
+
+
     def build_packages (self):
         distutils.command.build_py.build_py.build_packages(self)
         for package in self.packages:

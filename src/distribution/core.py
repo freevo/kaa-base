@@ -412,12 +412,17 @@ def setup(**kwargs):
         """
         Helper function to create 'packages' and 'package_dir'.
         """
-        if not '__init__.py' in files:
+        if not '__init__.py' in files and not dirname.endswith('plugins'):
             return
-        python_dirname = prefix + dirname[3:].replace('/', '.')
-        # Anything under module/src/extensions/foo gets translated to 
-        # kaa.module.foo.
-        python_dirname = python_dirname.replace(".extensions.", ".")
+        for key, value in kwargs.get('plugins', {}).items():
+            if dirname.startswith(value):
+                python_dirname = key + dirname[len(value):].replace('/', '.')
+                break
+        else:
+            python_dirname = prefix + dirname[3:].replace('/', '.')
+            # Anything under module/src/extensions/foo gets translated to 
+            # kaa.module.foo.
+            python_dirname = python_dirname.replace(".extensions.", ".")
         kwargs['package_dir'][python_dirname] = dirname
         kwargs['packages'].append(python_dirname)
 
@@ -436,6 +441,9 @@ def setup(**kwargs):
     else:
         os.path.walk('src', _find_packages, (kwargs, 'kaa.' + kwargs['module']))
 
+    if 'plugins' in kwargs:
+        del kwargs['plugins']
+        
     # convert Extensions
     if kwargs.get('ext_modules'):
         kaa_ext_modules = kwargs['ext_modules']

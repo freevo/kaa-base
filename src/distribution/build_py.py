@@ -33,7 +33,7 @@ class build_py(distutils.command.build_py.build_py):
 
 
     def check_package (self, package, package_dir):
-        if package_dir.endswith('plugins'):
+        if package.endswith('plugins'):
             return None
         return distutils.command.build_py.build_py.check_package(self, package, package_dir)
 

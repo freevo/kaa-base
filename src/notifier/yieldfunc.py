@@ -171,7 +171,9 @@ class YieldInProgress(object):
 
 
     def __call__(self, *args, **kwargs):
-        return self._in_progress()
+        r = self._in_progress()
+        self._in_progress = None
+        return r
 
 
 class YieldFunction(InProgress):
@@ -238,6 +240,7 @@ class YieldFunction(InProgress):
             return False
         self._timer = None
         self.finished(result)
+        self._yield__function = None
         return False
 
 

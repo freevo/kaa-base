@@ -681,6 +681,9 @@ class Database:
         for key in attrs.keys():
             if attrs[key] == None:
                 del attrs[key]
+            if key not in type_attrs:
+                raise ValueError, "Reference to undefined attribute '%s'" % key
+
         attrs_copy = attrs.copy()
         for name, (attr_type, flags, attr_ivtidx, attr_split) in type_attrs.items():
             if flags & ATTR_SEARCHABLE and name in attrs:

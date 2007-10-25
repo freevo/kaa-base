@@ -33,6 +33,7 @@
 __all__ = [ 'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer' ]
 
 import logging
+import time
 
 import nf_wrapper as notifier
 from thread import MainThreadCallback, is_mainthread
@@ -90,7 +91,7 @@ class Timer(notifier.NotifierCallback):
 
 class OneShotTimer(Timer):
     """
-    A Timer that onlt gets executed once. If the timer is started again
+    A Timer that only gets executed once. If the timer is started again
     inside the callback, make sure 'False' is NOT returned or the timer
     will be removed again without being called. To be on tge same side,
     return nothing in such a callback.
@@ -108,3 +109,45 @@ class WeakTimer(notifier.WeakNotifierCallback, Timer):
 class WeakOneShotTimer(notifier.WeakNotifierCallback, OneShotTimer):
     pass
 
+class OneShotAtTimer(OneShotTimer):
+    """
+    Timer that will get executed at a time specified with a list
+    of hours, minutes and seconds.
+    """
+    def schedule(self, hour=range(24), min=range(60), sec=0):
+        if not isinstance(hour, (list, tuple)):
+            hour = [ hour ]
+        if not isinstance(min, (list, tuple)):
+            min = [ min ]
+        if not isinstance(sec, (list, tuple)):
+            sec = [ sec ]
+        self._timings = [ ( 5, sec), (4, min), (3, hour) ]
+        self._schedule_next()
+
+
+    def _schedule_next(self):
+        """
+        Internal function to calculate the next callback time and
+        schedule it.
+        """
+        ctime = time.time()
+        next = list(time.localtime(ctime))
+        for pos, values in self._timings:
+            for v in values:
+                if v > next[pos]:
+                    next[pos] = v
+                    self.start(time.mktime(next) - ctime)
+                    return
+            next[pos] = values[0]
+        self.start(time.mktime(next + 24 * 60 * 60) - ctime)
+
+
+class AtTimer(OneShotAtTimer):
+    """
+    Timer that will get executed at a time specified with a list
+    of hours, minutes and seconds. The timer will run until the
+    callback returns False or 'stop' is called.
+    """
+    def __call__(self, *args, **kwargs):
+        if super(Timer, self).__call__(*args, **kwargs) != False:
+            self._schedule_next()

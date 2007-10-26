@@ -30,7 +30,8 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer' ]
+__all__ = [ 'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer',
+            'AtTimer', 'OneShotAtTimer' ]
 
 import logging
 import time

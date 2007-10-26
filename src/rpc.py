@@ -225,6 +225,12 @@ class Channel(object):
         """
         Call the remote command and return InProgress.
         """
+        if not kaa.notifier.is_mainthread():
+            # create InProgress object and return
+            callback = kaa.notifier.InProgress()
+            kwargs['_kaa_rpc_callback'] = callback
+            kaa.notifier.MainThreadCallback(self.rpc)(cmd, *args, **kwargs)
+            return callback
         if not self._wmon:
             raise IOError('channel is disconnected')
         seq = self._next_seq
@@ -233,7 +239,7 @@ class Channel(object):
         payload = cPickle.dumps((cmd, args, kwargs), pickle.HIGHEST_PROTOCOL)
         self._send_packet(seq, packet_type, payload)
         # create InProgress object and return
-        callback = kaa.notifier.InProgress()
+        callback = kwargs.pop('_kaa_rpc_callback', kaa.notifier.InProgress())
         # callback with error handler
         self._rpc_in_progress[seq] = callback
         return callback

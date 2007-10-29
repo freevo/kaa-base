@@ -78,7 +78,7 @@ def init( module, handler = None, shutdown = None, **options ):
     if handler == None:
         handler, shutdown = get_handler(module)
     loop = ThreadLoop(handler, shutdown)
-    nf_wrapper.init( 'generic', use_pynotifier=False, **options )
+    nf_wrapper.init( 'generic', force_internal=True, **options )
     # set main thread and init thread pipe
     kaa.notifier.set_current_as_mainthread()
     # adding a timer or socket is not thread safe in general but

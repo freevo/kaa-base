@@ -138,7 +138,7 @@ def _socket_remove(id, condition = 0):
     return nf_socket_remove(id, nf_conditions[condition])
 
 
-def init( module = None, use_pynotifier=True, **options ):
+def init( module = None, force_internal=False, **options ):
     global timer_add
     global socket_add
     global dispatcher_add
@@ -158,7 +158,7 @@ def init( module = None, use_pynotifier=True, **options ):
         options['recursive_depth'] = 5
         
     try:
-        if not use_pynotifier:
+        if force_internal:
             # pynotifier is not allowed
             raise ImportError()
         import notifier

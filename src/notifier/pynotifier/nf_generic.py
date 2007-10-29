@@ -109,7 +109,7 @@ __current_sockets[ IO_EXCEPT ] = []
 
 ( INTERVAL, TIMESTAMP, CALLBACK ) = range( 3 )
 
-def step( sleep = True, external = True ):
+def step( sleep = True, external = True, simulate = False ):
 	"""Do one step forward in the main loop. First all timers are checked for
 	expiration and if necessary the accociated callback function is called.
 	After that the timer list is searched for the next timer that will expire.
@@ -140,6 +140,11 @@ def step( sleep = True, external = True ):
 				continue
 			now = int( time() * 1000 )
 			if timestamp <= now:
+				if simulate:
+					# we only simulate and we should be called
+					__step_depth -= 1
+					__in_step = False
+					return
 				# Update timestamp on timer before calling the callback to
 				# prevent infinite recursion in case the callback calls
 				# step().
@@ -206,6 +211,12 @@ def step( sleep = True, external = True ):
 			log.exception( 'error in select' )
 			sys.exit( 1 )
 
+		if simulate:
+			__step_depth -= 1
+			__in_step = False
+			# we only simulate
+			return
+		
 		for sl in ( ( r, IO_READ ), ( w, IO_WRITE ), ( e, IO_EXCEPT ) ):
 			sockets, condition = sl
 			# append all unknown sockets to check list

@@ -42,8 +42,6 @@ import atexit
 # kaa.notifier imports
 import nf_wrapper as notifier
 
-init = notifier.init
-
 from popen import *
 from callback import *
 from thread import *
@@ -139,6 +137,16 @@ def loop():
         log.exception('loop')
     running = False
     shutdown()
+
+
+def init( module, **options ):
+    """
+    Init the notifier.
+    """
+    if module == 'thread':
+        import nf_thread
+        return nf_thread.init(options['handler'])
+    return notifier.init( module, **options )
 
 
 def step(*args, **kwargs):

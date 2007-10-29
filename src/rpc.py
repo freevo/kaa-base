@@ -235,11 +235,11 @@ class Channel(object):
             raise IOError('channel is disconnected')
         seq = self._next_seq
         self._next_seq += 1
+        # create InProgress object
+        callback = kwargs.pop('_kaa_rpc_callback', kaa.notifier.InProgress())
         packet_type = 'CALL'
         payload = cPickle.dumps((cmd, args, kwargs), pickle.HIGHEST_PROTOCOL)
         self._send_packet(seq, packet_type, payload)
-        # create InProgress object and return
-        callback = kwargs.pop('_kaa_rpc_callback', kaa.notifier.InProgress())
         # callback with error handler
         self._rpc_in_progress[seq] = callback
         return callback

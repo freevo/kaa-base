@@ -169,19 +169,18 @@ def init( module = None, use_pynotifier=True, **options ):
         import pynotifier as notifier
 
     # find a good main loop
-    if not module and sys.modules.has_key('gtk'):
-        # The gtk module is loaded, this means that we will hook
-        # ourself into the gtk main loop
-        module = 'gtk'
-    elif not module:
-        # use generic
+    if not module:
         module = 'generic'
+        if sys.modules.has_key('gtk'):
+            # The gtk module is loaded, this means that we will hook
+            # ourself into the gtk main loop
+            module = 'gtk'
 
-    if getattr(notifier, module.upper()) is not None:
-        # use the selected module
-        notifier.init(getattr(notifier, module.upper()), **options)
-    elif module:
-        raise AttributeError('no notifier module %s' % module)
+    if not module in ( 'generic', 'gtk'):
+        raise AttributeError('unsupported notifier %s' % module)
+        
+    # use the selected module
+    notifier.init(getattr(notifier, module.upper()), **options)
 
     # delete basic notifier handler
     log = logging.getLogger('notifier')

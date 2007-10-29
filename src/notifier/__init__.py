@@ -143,9 +143,9 @@ def init( module, **options ):
     """
     Init the notifier.
     """
-    if module == 'thread':
+    if module in ('thread', 'twisted'):
         import nf_thread
-        return nf_thread.init(options['handler'])
+        return nf_thread.init(module, **options)
     return notifier.init( module, **options )
 
 

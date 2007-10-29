@@ -45,7 +45,7 @@ class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
         the mainloop.
         """
         a = kaa.notifier.MainThreadCallback(func)
-        a.set_async(True)
+        a.set_async(False)
         return a()
 
 

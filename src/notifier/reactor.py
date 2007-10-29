@@ -80,10 +80,6 @@ def install():
     """
     Configure the twisted mainloop to be run using the kaa reactor.
     """
-    # start internal wakeup queue
-    # FIXME: integrate this better
-    if not kaa.notifier.thread._thread_notifier_pipe:
-        kaa.notifier.thread._create_thread_notifier_pipe()
     reactor = KaaReactor()
     from twisted.internet.main import installReactor
     installReactor(reactor)

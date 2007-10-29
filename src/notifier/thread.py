@@ -104,9 +104,8 @@ class MainThreadCallback(Callback):
         _thread_notifier_lock.acquire()
         _thread_notifier_queue.insert(0, (self, args, kwargs))
         if len(_thread_notifier_queue) == 1:
-            if not _thread_notifier_pipe:
-                _create_thread_notifier_pipe()
-            os.write(_thread_notifier_pipe[1], "1")
+            if _thread_notifier_pipe:
+                os.write(_thread_notifier_pipe[1], "1")
         _thread_notifier_lock.release()
 
         # FIXME: what happens if we switch threads here and execute
@@ -168,14 +167,6 @@ class Thread(threading.Thread):
         """
         Start the thread and return an InProgress object.
         """
-        if not _thread_notifier_pipe:
-            # Make sure the pipe is created in the mainloop _before_ we
-            # start the thread. If we do not do that it could be possible
-            # that the thread needs to create this and it will add the
-            # socket to an already blocking select() which will never
-            # wake up on that new socket.
-            _create_thread_notifier_pipe()
-
         r = InProgress()
         self.signals['completed'].connect_once(r.finished)
         self.signals['exception'].connect_once(r.exception)
@@ -215,29 +206,30 @@ _thread_notifier_queue = []
 # process without exec. If you have this pipe, communication will go wrong.
 _thread_notifier_pipe = None
 
-def _create_thread_notifier_pipe():
-    global _thread_notifier_pipe
-    log.info('create thread notifier pipe')
-    _thread_notifier_pipe = os.pipe()
-
-    fcntl.fcntl(_thread_notifier_pipe[0], fcntl.F_SETFL, os.O_NONBLOCK)
-    fcntl.fcntl(_thread_notifier_pipe[1], fcntl.F_SETFL, os.O_NONBLOCK)
-
-    notifier.socket_add(_thread_notifier_pipe[0], _thread_notifier_run_queue)
-
+    
 def wakeup():
     """
     Wake up main thread.
     """
-    if not _thread_notifier_pipe:
-        _create_thread_notifier_pipe()
-    if len(_thread_notifier_queue) == 0:
+    if _thread_notifier_pipe and len(_thread_notifier_queue) == 0:
         os.write(_thread_notifier_pipe[1], "1")
 
 
 def set_current_as_mainthread():
     global _thread_notifier_mainthread
+    global _thread_notifier_pipe
     _thread_notifier_mainthread = threading.currentThread()
+    # Make sure we have a pipe between the mainloop and threads. Since loop()
+    # calls set_current_as_mainthread it is safe to assume the loop is
+    # connected correctly. If someone calls step() without loop() and
+    # without set_current_as_mainthread inter-thread communication does
+    # not work.
+    if not _thread_notifier_pipe:
+        log.info('create thread notifier pipe')
+        _thread_notifier_pipe = os.pipe()
+        fcntl.fcntl(_thread_notifier_pipe[0], fcntl.F_SETFL, os.O_NONBLOCK)
+        fcntl.fcntl(_thread_notifier_pipe[1], fcntl.F_SETFL, os.O_NONBLOCK)
+        notifier.socket_add(_thread_notifier_pipe[0], _thread_notifier_run_queue)
 
 
 def _thread_notifier_run_queue(fd):

@@ -129,8 +129,6 @@ class _Thread(threading.Thread):
         self.stopped = False
         self.jobs = []
         self.name = name
-        if not thread._thread_notifier_pipe:
-            thread._create_thread_notifier_pipe()
         self.start()
 
 

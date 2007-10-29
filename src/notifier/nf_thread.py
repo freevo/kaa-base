@@ -48,12 +48,12 @@ class ThreadLoop(threading.Thread):
     """
     def __init__(self, interleave, shutdown = None):
         super(ThreadLoop, self).__init__()
-        self.interleave = interleave
-        self.condition = threading.Semaphore(0)
-        self.sleeping = False
-        self.shutdown = kaa.notifier.shutdown
+        self._call_mainloop = interleave
+        self._mainloop_shutdown = kaa.notifier.shutdown
         if shutdown:
-            self.shutdown = shutdown
+            self._mainloop_shutdown = shutdown
+        self._lock = threading.Semaphore(0)
+        self.sleeping = False
 
 
     def handle(self):
@@ -65,8 +65,9 @@ class ThreadLoop(threading.Thread):
                 nf_wrapper.step(sleep = False)
             except (KeyboardInterrupt, SystemExit):
                 kaa.notifier.running = False
+                self._mainloop_shutdown()
         finally:
-            self.condition.release()
+            self._lock.release()
 
 
     def run(self):
@@ -81,18 +82,42 @@ class ThreadLoop(threading.Thread):
                 self.sleeping = False
                 if not kaa.notifier.running:
                     break
-                self.interleave(self.handle)
-                self.condition.acquire()
+                self._call_mainloop(self.handle)
+                self._lock.acquire()
                 if not kaa.notifier.running:
                     break
         except (KeyboardInterrupt, SystemExit):
             pass
         except Exception, e:
             log.exception('loop')
+        if kaa.notifier.running:
+            # this loop stopped, call real mainloop stop. This
+            # should never happen because we call no callbacks.
+            log.warning('thread loop stopped')
+            kaa.notifier.running = False
+            self._call_mainloop(self._mainloop_shutdown)
+
+
+    def stop(self):
+        """
+        Stop the thread and cleanup.
+        """
+        log.info('stop mainloop')
         kaa.notifier.running = False
-        self.interleave(self.shutdown)
+        kaa.notifier.wakeup()
+        kaa.notifier.shutdown()
 
 
+class TwistedLoop(ThreadLoop):
+    """
+    Thread based mainloop in Twisted.
+    """
+    def __init__(self):
+        from twisted.internet import reactor
+        reactor.addSystemEventTrigger('after', 'shutdown', self.stop)
+        super(TwistedLoop, self).__init__(reactor.callFromThread, reactor.stop)
+
+        
 class Wakeup(object):
     """
     Wrapper around a function to wakeup the sleeping notifier loop
@@ -109,24 +134,18 @@ class Wakeup(object):
         return ret
 
 
-def get_handler(module):
-    """
-    Use the thread based mainloop with twisted.
-    """
-    if module == 'twisted':
-        # get reactor and return callback
-        from twisted.internet import reactor
-        return reactor.callFromThread, reactor.stop
-    raise RuntimeError('no handler defined for thread mainloop')
-
-
 def init( module, handler = None, shutdown = None, **options ):
     """
     Init the notifier.
     """
-    if handler == None:
-        handler, shutdown = get_handler(module)
-    loop = ThreadLoop(handler, shutdown)
+    if module == 'twisted':
+        loop = TwistedLoop()
+    elif module == 'thread':
+        if not handler:
+            raise RuntimeError('no callback handler provided')
+        loop = ThreadLoop(handler, shutdown)
+    else:
+        raise RuntimeError('unknown notifier module %s', module)
     nf_wrapper.init( 'generic', force_internal=True, **options )
     # set main thread and init thread pipe
     kaa.notifier.set_current_as_mainthread()

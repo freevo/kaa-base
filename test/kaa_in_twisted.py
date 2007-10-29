@@ -17,6 +17,9 @@ def kaa_callback():
     print 'kaa', kaa.notifier.is_mainthread()
     # sys.exit(0)
 
+def shutdown_callback():
+    print 'shutdown signal'
+    
 kaa.notifier.init('thread', handler = reactor.callFromThread, shutdown = reactor.stop)
 # there is special code in kaa.notifier that does the same by calling
 # kaa.notifier.init('twisted')
@@ -24,8 +27,8 @@ kaa.notifier.init('thread', handler = reactor.callFromThread, shutdown = reactor
 reactor.callLater(2.5, twisted_callback1)
 reactor.callLater(3.5, twisted_callback2)
 kaa.notifier.Timer(kaa_callback).start(1)
+kaa.notifier.signals['shutdown'].connect(shutdown_callback)
 
 reactor.run()
 
-kaa.notifier.shutdown()
-print 'stop'
+print 'done'

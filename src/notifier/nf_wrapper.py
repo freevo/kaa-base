@@ -138,7 +138,7 @@ def _socket_remove(id, condition = 0):
     return nf_socket_remove(id, nf_conditions[condition])
 
 
-def init( module = None, **options ):
+def init( module = None, use_pynotifier=True, **options ):
     global timer_add
     global socket_add
     global dispatcher_add
@@ -158,35 +158,35 @@ def init( module = None, **options ):
         options['recursive_depth'] = 5
         
     try:
+        if not use_pynotifier:
+            # pynotifier is not allowed
+            raise ImportError()
         import notifier
+        if notifier.loop:
+            raise RuntimeError('pynotifier loop already running')
     except ImportError:
         # use our own copy of pynotifier
         import pynotifier as notifier
 
-    if notifier.loop:
-        # pyNotifier should be used and already active
-        log = logging.getLogger('notifier')
-        log.info('pynotifier already running, I hope you know what you are doing')
-    else:
-        # find a good main loop
-        if not module and sys.modules.has_key('gtk'):
-            # The gtk module is loaded, this means that we will hook
-            # ourself into the gtk main loop
-            module = 'gtk'
-        elif not module:
-            # use generic
-            module = 'generic'
+    # find a good main loop
+    if not module and sys.modules.has_key('gtk'):
+        # The gtk module is loaded, this means that we will hook
+        # ourself into the gtk main loop
+        module = 'gtk'
+    elif not module:
+        # use generic
+        module = 'generic'
 
-        if getattr(notifier, module.upper()) is not None:
-            # use the selected module
-            notifier.init(getattr(notifier, module.upper()), **options)
-        elif module:
-            raise AttributeError('no notifier module %s' % module)
+    if getattr(notifier, module.upper()) is not None:
+        # use the selected module
+        notifier.init(getattr(notifier, module.upper()), **options)
+    elif module:
+        raise AttributeError('no notifier module %s' % module)
 
-        # delete basic notifier handler
-        log = logging.getLogger('notifier')
-        for l in log.handlers:
-            log.removeHandler(l)
+    # delete basic notifier handler
+    log = logging.getLogger('notifier')
+    for l in log.handlers:
+        log.removeHandler(l)
 
     timer_remove = notifier.timer_remove
     timer_add = notifier.timer_add

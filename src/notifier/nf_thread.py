@@ -1,6 +1,41 @@
+# -*- coding: iso-8859-1 -*-
+# -----------------------------------------------------------------------------
+# nf_thread.py - Thread based notifier to include in other mainloops
+# -----------------------------------------------------------------------------
+# $Id$
+#
+# -----------------------------------------------------------------------------
+# kaa.notifier - Mainloop and callbacks
+# Copyright (C) 2007 Dirk Meyer, Jason Tackaberry, et al.
+#
+# First Version: Dirk Meyer <dmeyer@tzi.de>
+# Maintainer:    Dirk Meyer <dmeyer@tzi.de>
+#
+# Please see the file AUTHORS for a complete list of authors.
+#
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
+#
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
+#
+# -----------------------------------------------------------------------------
+
+__all__ = [ 'init' ]
+
+# python imports
 import threading
 import logging
 
+# kaa.notifier imports
 import kaa.notifier
 import nf_wrapper
 
@@ -8,7 +43,9 @@ import nf_wrapper
 log = logging.getLogger('notifier')
 
 class ThreadLoop(threading.Thread):
-
+    """
+    Thread running the kaa.notifier mainloop.
+    """
     def __init__(self, interleave, shutdown = None):
         super(ThreadLoop, self).__init__()
         self.interleave = interleave
@@ -17,8 +54,12 @@ class ThreadLoop(threading.Thread):
         self.shutdown = kaa.notifier.shutdown
         if shutdown:
             self.shutdown = shutdown
-        
+
+
     def handle(self):
+        """
+        Callback from the real mainloop.
+        """
         try:
             try:
                 nf_wrapper.step(sleep = False)
@@ -27,7 +68,11 @@ class ThreadLoop(threading.Thread):
         finally:
             self.condition.release()
 
+
     def run(self):
+        """
+        Thread part running the blocking, simulating loop.
+        """
         kaa.notifier.running = True
         try:
             while True:
@@ -49,6 +94,10 @@ class ThreadLoop(threading.Thread):
 
 
 class Wakeup(object):
+    """
+    Wrapper around a function to wakeup the sleeping notifier loop
+    when timer or sockets are added.
+    """
     def __init__(self, loop, func):
         self.loop = loop
         self.func = func

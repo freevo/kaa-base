@@ -187,8 +187,9 @@ class INotify(object):
 
         self._read_buffer += data
 
+        event_len = struct.calcsize('LLLL')
         while True:
-            if len(self._read_buffer) < 16:
+            if len(self._read_buffer) < event_len:
                 if self._move_state:
                     # We received a MOVED_FROM event with no matching 
                     # MOVED_TO.  If we don't get a matching MOVED_TO in 0.1
@@ -196,13 +197,13 @@ class INotify(object):
                     self._moved_timer.start(0.1)
                 break
 
-            wd, mask, cookie, size = struct.unpack("LLLL", self._read_buffer[0:16])
+            wd, mask, cookie, size = struct.unpack("LLLL", self._read_buffer[0:event_len])
             if size:
-                name = self._read_buffer[16:16+size].rstrip('\0')
+                name = self._read_buffer[event_len:event_len+size].rstrip('\0')
             else:
                 name = None
 
-            self._read_buffer = self._read_buffer[16+size:]
+            self._read_buffer = self._read_buffer[event_len+size:]
             if wd not in self._watches:
                 if wd not in self._watches_recently_removed:
                     # Weird, received an event for an unknown watch; this

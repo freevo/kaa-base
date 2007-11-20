@@ -231,6 +231,9 @@ def set_current_as_mainthread():
         fcntl.fcntl(_thread_notifier_pipe[1], fcntl.F_SETFL, os.O_NONBLOCK)
         notifier.socket_add(_thread_notifier_pipe[0], _thread_notifier_run_queue)
         if _thread_notifier_queue:
+            # A thread is already running and wanted to run something in the
+            # mainloop before the mainloop is started. In that case we need
+            # to wakeup the loop ASAP to handle the requests.
             os.write(_thread_notifier_pipe[1], "1")
 
 

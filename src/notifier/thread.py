@@ -230,6 +230,8 @@ def set_current_as_mainthread():
         fcntl.fcntl(_thread_notifier_pipe[0], fcntl.F_SETFL, os.O_NONBLOCK)
         fcntl.fcntl(_thread_notifier_pipe[1], fcntl.F_SETFL, os.O_NONBLOCK)
         notifier.socket_add(_thread_notifier_pipe[0], _thread_notifier_run_queue)
+        if _thread_notifier_queue:
+            os.write(_thread_notifier_pipe[1], "1")
 
 
 def _thread_notifier_run_queue(fd):

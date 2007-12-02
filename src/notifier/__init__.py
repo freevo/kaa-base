@@ -184,9 +184,12 @@ def _shutdown_check(*args):
             running = False
         shutdown()
 
-# # catch SIGTERM if possible for a clean shutdown
+# catch SIGTERM and SIGINT if possible for a clean shutdown
 if threading.enumerate()[0] == threading.currentThread():
-    signal.signal(signal.SIGTERM, _shutdown_check)
+    def signal_handler(*args):
+        sys.exit(0)
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
 else:
     log.info('kaa imported from thread, disable SIGTERM handler')
     

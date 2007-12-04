@@ -15,7 +15,7 @@
 # By inherting from the class you can also override the functions stdout_cb
 # and stderr_cb to process stdout and stderr line by line.
 #
-# The killall function of this class can be called at the end of the programm
+# The kill_all function of this class can be called at the end of the programm
 # to stop all running processes.
 #
 # -----------------------------------------------------------------------------
@@ -44,7 +44,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Process', 'stop_all_processes', 'kill_all_processes']
+__all__ = [ 'Process', 'proclist' ]
 
 # python imports
 import os
@@ -162,9 +162,9 @@ class Process(object):
 
         # add child to watcher
         if not is_mainthread():
-            MainThreadCallback(_watcher.append, self, self.__child_died )
+            MainThreadCallback(proclist.append, self, self.__child_died )
         else:
-            _watcher.append( self, self.__child_died )
+            proclist.append( self, self.__child_died )
         self.in_progress = InProgress()
         return self.in_progress
 
@@ -490,7 +490,7 @@ class Watcher(object):
         return True
 
 
-    def stopall( self ):
+    def stop_all( self ):
         if self.status != 'running':
             return
         # stop all childs without waiting
@@ -499,28 +499,14 @@ class Watcher(object):
         self.status = 'stopping'
 
 
-    def killall( self ):
+    def kill_all( self ):
         # prevent recursion
         if not self.status in ('running', 'stopping'):
             return
         # make sure every child is stopped
-        self.stopall()
+        self.stop_all()
         self.status = 'stopped'
-
-        # now wait until all childs are dead
-        while self.__processes:
-            self.check()
-            try:
-                notifier.step()
-            except ( KeyboardInterrupt, SystemExit ), e:
-                pass
-            except:
-                log.exception( 'Unhandled exception during killall' )
 
 
 # global watcher instance
-_watcher = Watcher()
-
-# global killall function
-stop_all_processes = _watcher.stopall
-kill_all_processes = _watcher.killall
+proclist = Watcher()

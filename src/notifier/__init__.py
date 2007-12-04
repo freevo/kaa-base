@@ -42,7 +42,8 @@ import atexit
 # kaa.notifier imports
 import nf_wrapper as notifier
 
-from popen import *
+from popen import Process
+from popen import proclist as _proclist
 from callback import *
 from thread import *
 from timer import *
@@ -95,14 +96,17 @@ def shutdown():
         return
     shutting_down = True
 
-    stop_all_processes()
+    _proclist.stop_all()
     signals["shutdown"].emit()
     signals["shutdown"].disconnect_all()
     signals["step"].disconnect_all()
 
     # Kill processes _after_ shutdown emits to give callbacks a chance to
     # close them properly.
-    kill_all_processes()
+    _proclist.kill_all()
+    while _proclist.check():
+        # wait until all processes are stopped
+        step()
     kill_jobserver()
     # Collect any zombies
     try:

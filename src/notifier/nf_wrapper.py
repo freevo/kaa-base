@@ -119,7 +119,6 @@ class _Wrapper(object):
 
 dispatcher_add = _Wrapper('dispatcher_add')
 dispatcher_remove = _Wrapper('dispatcher_remove')
-loop = _Wrapper('loop')
 step = _Wrapper('step')
 timer_remove = _Wrapper('timer_remove')
 timer_add = _Wrapper('timer_add')
@@ -145,13 +144,13 @@ def init( module = None, force_internal=False, **options ):
     global timer_remove
     global socket_remove
     global dispatcher_remove
-    global loop, step
+    global step
     global nf_socket_remove
     global nf_socket_add
     global nf_conditions
 
-    if not isinstance(loop, _Wrapper):
-        raise RuntimeError('notifier loop already running')
+    if not isinstance(timer_add, _Wrapper):
+        raise RuntimeError('notifier already initialized')
 
     if not 'recursive_depth' in options:
         # default value of 2 is not enough when using async yield stuff
@@ -163,17 +162,17 @@ def init( module = None, force_internal=False, **options ):
             raise ImportError()
         import notifier
         if notifier.loop:
-            raise RuntimeError('pynotifier loop already running')
+            raise RuntimeError('pynotifier already initialized')
     except ImportError:
         # use our own copy of pynotifier
         import pynotifier as notifier
 
-    # find a good main loop
+    # find a good main notifier implementation
     if not module:
         module = 'generic'
         if sys.modules.has_key('gtk'):
             # The gtk module is loaded, this means that we will hook
-            # ourself into the gtk main loop
+            # ourself into the gtk notifier
             module = 'gtk'
 
     if not module in ( 'generic', 'gtk'):
@@ -199,7 +198,6 @@ def init( module = None, force_internal=False, **options ):
     dispatcher_add = notifier.dispatcher_add
     dispatcher_remove = notifier.dispatcher_remove
 
-    loop = notifier.loop
     step = notifier.step
 
 

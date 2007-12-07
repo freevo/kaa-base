@@ -125,7 +125,8 @@ def loop():
 
     set_current_as_mainthread()
     try:
-        notifier.loop()
+        while True:
+            notifier.step()
     except (KeyboardInterrupt, SystemExit):
         try:
             # This looks stupid, I know that. The problem is that if we have

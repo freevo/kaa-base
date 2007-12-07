@@ -206,7 +206,7 @@ def step( sleep = True, external = True, simulate = False ):
 			while len( __current_sockets[ condition ] ):
 				sock = __current_sockets[ condition ].pop( 0 )
 				is_socket = isinstance( sock, ( socket.socket, file, socket._socketobject ) )
-				if ( is_socket and sock.fileno() != -1 ) or \
+				if ( is_socket and (getattr(sock, 'closed', False) or sock.fileno() != -1 )) or \
 					   ( isinstance( sock, int ) and sock != -1 ):
 					if __sockets[ condition ].has_key( sock ) and \
 						   not __sockets[ condition ][ sock ]( sock ):

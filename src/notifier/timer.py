@@ -34,7 +34,7 @@ __all__ = [ 'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer',
             'AtTimer', 'OneShotAtTimer' ]
 
 import logging
-import time
+import datetime
 
 import nf_wrapper as notifier
 from thread import MainThreadCallback, is_mainthread
@@ -115,14 +115,16 @@ class OneShotAtTimer(OneShotTimer):
     Timer that will get executed at a time specified with a list
     of hours, minutes and seconds.
     """
-    def schedule(self, hour=range(24), min=range(60), sec=0):
+    def start(self, hour=range(24), min=range(60), sec=0):
         if not isinstance(hour, (list, tuple)):
             hour = [ hour ]
         if not isinstance(min, (list, tuple)):
             min = [ min ]
         if not isinstance(sec, (list, tuple)):
             sec = [ sec ]
-        self._timings = [ ( 5, sec), (4, min), (3, hour) ]
+
+        self._timings = hour, min, sec
+        self._last_time = datetime.datetime.now()
         self._schedule_next()
 
 
@@ -131,16 +133,32 @@ class OneShotAtTimer(OneShotTimer):
         Internal function to calculate the next callback time and
         schedule it.
         """
-        ctime = time.time()
-        next = list(time.localtime(ctime))
-        for pos, values in self._timings:
-            for v in values:
-                if v > next[pos]:
-                    next[pos] = v
-                    self.start(time.mktime(next) - ctime)
-                    return
-            next[pos] = values[0]
-        self.start(time.mktime(next + 24 * 60 * 60) - ctime)
+        hour, min, sec = self._timings
+        now = datetime.datetime.now()
+        # Take the later of now or the last scheduled time for purposes of
+        # determining the next time.  If we use the current system time
+        # instead, we may end up firing a callback twice for a given time,
+        # because due to imprecision we may end up here slightly before (a few
+        # milliseconds) the scheduled time.
+        t = max(self._last_time, now).replace(microsecond = 0)
+
+        next_sec = [ x for x in sec if t.second < x ]
+        next_min = [ x for x in min if t.minute < x ]
+        next_hour = [ x for x in hour if t.hour < x ]
+
+        if next_sec:
+            next = t.replace(second = next_sec[0])
+        elif next_min:
+            next = t.replace(minute = next_min[0], second = sec[0])
+        elif next_hour:
+            next = t.replace(hour = next_hour[0], minute = min[0], second = sec[0])
+        else:
+            tmrw = t + datetime.timedelta(days = 1)
+            next = tmrw.replace(hour = hour[0], minute = min[0], second = sec[0])
+
+        delta = next - now
+        super(OneShotAtTimer, self).start(delta.seconds + delta.microseconds / 1000000.0)
+        self._last_time = next
 
 
 class AtTimer(OneShotAtTimer):

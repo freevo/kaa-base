@@ -169,6 +169,15 @@ class Process(object):
         return self.in_progress
 
 
+    def get_pid(self):
+        """
+        Returns the pid of the child process if it has been spawned.  Otherwise
+        returns None
+        """
+        if self.child:
+            return self.child.pid
+
+
     def write( self, line ):
         """
         Write a string to the app.
@@ -302,10 +311,15 @@ class Process(object):
         return False
 
 
-    def __child_died( self, status ):
+    def __child_died( self, pid, status ):
         """
         Callback from watcher when the child died.
         """
+        if pid != self.get_pid():
+            # We received notification from the watcher concerning another
+            # process, so ignore.
+            return
+
         self.__dead = True
         self.stopping = False
         # close IO handler and kill timer
@@ -315,6 +329,7 @@ class Process(object):
         self.child = None
         if self.__kill_timer:
             notifier.timer_remove( self.__kill_timer )
+        print "FINISHED '%s' WITH STATUS %d" % (self._cmd, status)
         self.in_progress.finished(status >> 8)
         self.in_progress = None
         self.signals['completed'].emit(status >> 8)
@@ -457,7 +472,7 @@ class Watcher(object):
                 else:
                     pid, status = os.waitpid( p.pid, os.WNOHANG )
             except OSError:
-                remove_proc.append( p )
+                remove_proc.append( (p, pid, status) )
                 continue
             if not pid:
                 continue
@@ -466,10 +481,10 @@ class Watcher(object):
                 log.error('error retrieving process information from %d' % p)
             elif os.WIFEXITED( status ) or os.WIFSIGNALED( status ) or \
                      os.WCOREDUMP( status ):
-                remove_proc.append( p )
+                remove_proc.append( (p, pid, status) )
 
         # remove dead processes
-        for p in remove_proc:
+        for p, pid, status in remove_proc:
             if p in self.__processes:
                 # call stopped callback
                 callback = self.__processes[p]
@@ -477,7 +492,7 @@ class Watcher(object):
                 # it, since it's possible the callback could call append
                 # again.
                 del self.__processes[p]
-                callback(status)
+                callback(pid, status)
 
         # check if this function needs to be called again
         if not self.__processes:

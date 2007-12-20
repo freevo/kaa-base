@@ -329,7 +329,6 @@ class Process(object):
         self.child = None
         if self.__kill_timer:
             notifier.timer_remove( self.__kill_timer )
-        print "FINISHED '%s' WITH STATUS %d" % (self._cmd, status)
         self.in_progress.finished(status >> 8)
         self.in_progress = None
         self.signals['completed'].emit(status >> 8)

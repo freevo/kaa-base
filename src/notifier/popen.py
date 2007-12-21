@@ -63,6 +63,7 @@ from async import InProgress
 # get logging object
 log = logging.getLogger('notifier')
 
+# FIXME: rewrite :)
 
 class Process(object):
     """
@@ -407,6 +408,8 @@ class IO_Handler(object):
             self.fp.close()
             if self.logger:
                 self.logger.close()
+            # FIXME: we know the child is dead.  Rather than wait for it
+            # to be reaped we can call __child_died in Process instance.
             return False
 
         data  = data.replace('\r', '\n')
@@ -457,6 +460,7 @@ class Watcher(object):
         self.__processes[ proc ] = cb
         if not self.__timer:
             log.info('start process watching')
+            # FIXME: there is no reason to reap 20 times a second.
             self.__timer = notifier.timer_add(50, self.check)
 
 
@@ -465,16 +469,24 @@ class Watcher(object):
 
         # check all processes
         for p in self.__processes:
+
+            if isinstance( p.child, popen2.Popen3 ):
+                pid = p.child.pid
+            else:
+                pid = p.pid
+
             try:
-                if isinstance( p.child, popen2.Popen3 ):
-                    pid, status = os.waitpid( p.child.pid, os.WNOHANG )
-                else:
-                    pid, status = os.waitpid( p.pid, os.WNOHANG )
-            except OSError:
-                remove_proc.append( (p, pid, status) )
+                pid, status = os.waitpid( pid, os.WNOHANG )
+            except OSError, (errno, err):
+                # FIXME: sometimes we get ECHILD ("No child processes", errno=10) even
+                # though we definitely have children.  This happens with pppd, for
+                # example.  Need to figure out why.
+                remove_proc.append( (p, pid, -1) )
                 continue
+
             if not pid:
                 continue
+
             log.info('Dead child: %s (%s)' % ( pid, status ))
             if status == -1:
                 log.error('error retrieving process information from %d' % p)

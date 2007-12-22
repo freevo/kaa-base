@@ -1,6 +1,15 @@
 Release Notes, see ChangeLog for a detailed list of changes.
 
-0.1.4, not yet released
+0.2.0, 2007-12-22
+
+* kaa.config cosmetic updates for the config file
+* Remove Python distutils requirement for runtime
+* pyNotifier updates
+* kaa.db enhancements using new schema
+* AtTimer for kaa.notifier
+* Twisted mainloop support
+* Support to run kaa.notifier in a different mainloop
+* Bugfixes
 
 
 0.1.3, 2007-04-18

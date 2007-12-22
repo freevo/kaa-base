@@ -1,0 +1,7 @@
+Check all files for the use of type(). It may not work with the config
+code, use isinstance instead. Also check the files for exception
+handling. Do not catch all exceptions and do something, add special
+handling for SystemExit and KeyboardInterrupt and call sys.exit() to
+make sure the app stops when pressing C-c.
+
+Create doc in the Wiki and dump it into the doc subdir

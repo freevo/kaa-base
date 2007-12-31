@@ -37,6 +37,7 @@ import time
 import logging
 
 import kaa
+import _utils
 
 # get logging object
 log = logging.getLogger('kaa')
@@ -174,15 +175,31 @@ def is_running(name):
     return 0
 
 
-def set_running(name):
+def set_running(name, modify = True):
     """
-    Set this program as running with the given name.
+    Set this program as running with the given name.  If modify is True, 
+    the process name is updated as described in set_process_name().
     """
     cmdline = open('/proc/%s/cmdline' % os.getpid()).readline()
     run = open(kaa.tempfile('run/' + name), 'w')
     run.write(str(os.getpid()) + '\n')
     run.write(cmdline)
     run.close()
+    if modify:
+        _utils.set_process_name(name, len(cmdline))
+
+
+def set_process_name(name):
+    """
+    On Linux systems later than 2.6.9, this function sets the process name as it
+    appears in ps, and so that it can be found with killall.
+    
+    Note: name will be truncated to the cumulative length of the original
+    process name and all its arguments; once updated, passed arguments will no
+    longer be visible.
+    """
+    cmdline = open('/proc/%s/cmdline' % os.getpid()).readline()
+    _utils.set_process_name(name, len(cmdline))
 
 
 class Singleton(object):

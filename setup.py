@@ -75,6 +75,13 @@ else:
         print "inotify supported by glibc; good."
         extensions.append(inotify_ext)
 
+    utils_ext = Extension('kaa._utils', ['src/extensions/utils.c'], config='src/extensions/config.h')
+    extensions.append(utils_ext)
+    if inotify_ext.check_cc(['<sys/prctl.h>'], 'prctl(PR_SET_NAME, "x");'):
+        utils_ext.config('#define HAVE_PRCTL')
+    else:
+        print 'Disabling Linux-specific features.'
+
 # call setup
 setup(
     module       = 'base',

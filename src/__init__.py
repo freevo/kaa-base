@@ -29,7 +29,8 @@
 import logger
 
 # import some basic notifier functions
-from kaa.notifier import signals, loop as main, shutdown
+from kaa.notifier import *
+from kaa.notifier import loop as main
 
 # strutils
 import strutils

@@ -44,17 +44,34 @@ import nf_wrapper as notifier
 
 from popen import Process
 from popen import proclist as _proclist
-from callback import *
-from thread import *
-from timer import *
-from sockets import *
-from event import *
-from yieldfunc import *
+from callback import Callback, WeakCallback, Signal, Signals
+from thread import MainThreadCallback, Thread, is_mainthread, wakeup, set_current_as_mainthread
+from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, OneShotAtTimer
+from sockets import SocketDispatcher, WeakSocketDispatcher, Socket, IO_READ, IO_WRITE
+from event import Event, EventHandler, WeakEventHandler
+from yieldfunc import YieldContinue, YieldCallback, YieldFunction, yield_execution
 from jobserver import ThreadCallback, execute_in_thread
 from jobserver import killall as kill_jobserver
 from async import Progress, InProgress
 
 from decorators import execute_in_timer, execute_in_mainloop
+
+# Here's what will be imported into the kaa namespace.
+__all__ = [
+    # From sub modules
+    'Process',
+    'Callback', 'WeakCallback', 'Signal', 'Signals',
+    'MainThreadCallback', 'Thread', 'is_mainthread', 'wakeup', 'set_current_as_mainthread',
+    'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer', 'AtTimer', 'OneShotAtTimer',
+    'SocketDispatcher', 'WeakSocketDispatcher', 'Socket', 'IO_READ', 'IO_WRITE',
+    'Event', 'EventHandler', 'WeakEventHandler',
+    'YieldContinue', 'YieldCallback', 'yield_execution', 'YieldFunction',
+    'ThreadCallback', 'execute_in_thread',
+
+    # From this module
+    'init', 'shutdown', 'step', 'running', 'signals'
+    # 'loop' gets imported as 'main'
+]
 
 # get logging object
 log = logging.getLogger('notifier')

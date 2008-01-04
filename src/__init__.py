@@ -28,7 +28,7 @@
 # import logger to update the Python logging module
 import logger
 
-# import some basic notifier functions
+# import notifier functions into kaa namespace
 from kaa.notifier import *
 from kaa.notifier import loop as main
 

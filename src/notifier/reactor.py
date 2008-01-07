@@ -32,8 +32,7 @@
 # get and install reactor
 from twisted.internet import threadedselectreactor
 
-import kaa.notifier
-import kaa.notifier.thread
+import kaa
 
 class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
     """
@@ -44,7 +43,7 @@ class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
         Callback from the Twisted thread kaa should execute from
         the mainloop.
         """
-        a = kaa.notifier.MainThreadCallback(func)
+        a = kaa.MainThreadCallback(func)
         a.set_async(False)
         return a()
 
@@ -53,10 +52,10 @@ class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
         """
         Callback when Twisted wants to stop.
         """
-        if not kaa.notifier.is_mainthread():
-            return kaa.notifier.MainThreadCallback(twisted_stop)()
-        kaa.notifier.OneShotTimer(kaa.notifier.shutdown).start(0)
-        kaa.notifier.signals['shutdown'].disconnect(self.stop)
+        if not kaa.is_mainthread():
+            return kaa.MainThreadCallback(twisted_stop)()
+        kaa.OneShotTimer(kaa.main.stop).start(0)
+        kaa.main.signals['shutdown'].disconnect(self.stop)
 
 
     def connect(self):
@@ -65,7 +64,7 @@ class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
         """
         self.interleave(self._kaa_callback)
         self.addSystemEventTrigger('after', 'shutdown', self._kaa_stop)
-        kaa.notifier.signals['shutdown'].connect(self.stop)
+        kaa.main.signals['shutdown'].connect(self.stop)
 
 
     def run(self, installSignalHandlers=1):
@@ -73,7 +72,7 @@ class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
         Run the reactor by starting the notifier mainloop.
         """
         self.startRunning(installSignalHandlers=installSignalHandlers)
-        kaa.notifier.loop()
+        kaa.main.start()
 
 
 def install():

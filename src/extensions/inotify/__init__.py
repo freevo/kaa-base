@@ -36,7 +36,7 @@ import fcntl
 import select
 
 # kaa imports
-import kaa.notifier
+import kaa
 
 try:
     # imports C module
@@ -71,7 +71,7 @@ class INotify(object):
 
         self.signals = {
             # Master signal: this signal gets emitted on all events.
-            "event": kaa.notifier.Signal()
+            "event": kaa.Signal()
         }
 
         self._watches = {}
@@ -83,7 +83,7 @@ class INotify(object):
         self._watches_recently_removed = []
         self._read_buffer = ""
         self._move_state = None  # For MOVED_FROM events
-        self._moved_timer = kaa.notifier.WeakOneShotTimer(self._emit_last_move)
+        self._moved_timer = kaa.WeakOneShotTimer(self._emit_last_move)
 
         self._fd = _inotify.init()
 
@@ -91,7 +91,7 @@ class INotify(object):
             raise SystemError, "INotify support not detected on this system."
 
         fcntl.fcntl(self._fd, fcntl.F_SETFL, os.O_NONBLOCK)
-        self._mon = kaa.notifier.WeakSocketDispatcher(self._handle_data)
+        self._mon = kaa.WeakSocketDispatcher(self._handle_data)
         self._mon.register(self._fd)
 
 
@@ -122,7 +122,7 @@ class INotify(object):
         if wd < 0:
             raise IOError, "Failed to add watch on '%s'" % path
 
-        signal = kaa.notifier.Signal()
+        signal = kaa.Signal()
         self._watches[wd] = [signal, path]
         self._watches_by_path[path] = [signal, wd]
         return signal

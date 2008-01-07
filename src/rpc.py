@@ -92,7 +92,6 @@ import time
 
 # kaa imports
 import kaa
-import kaa.notifier
 
 # get logging object
 log = logging.getLogger('rpc')
@@ -137,13 +136,13 @@ class Server(object):
         self.socket.setblocking(False)
         self.socket.bind(address)
         self.socket.listen(5)
-        self._mon = kaa.notifier.WeakSocketDispatcher(self._new_connection)
+        self._mon = kaa.WeakSocketDispatcher(self._new_connection)
         self._mon.register(self.socket.fileno())
         # Remove socket file and close clients on shutdown
         kaa.signals["shutdown"].connect_weak(self.close)
 
         self.signals = {
-            "client_connected": kaa.notifier.Signal(),
+            "client_connected": kaa.Signal(),
         }
         self.objects = []
 
@@ -187,9 +186,9 @@ class Channel(object):
     def __init__(self, socket, auth_secret):
         self._socket = socket
 
-        self._rmon = kaa.notifier.SocketDispatcher(self._handle_read)
-        self._rmon.register(self._socket.fileno(), kaa.notifier.IO_READ)
-        self._wmon = kaa.notifier.SocketDispatcher(self._handle_write)
+        self._rmon = kaa.SocketDispatcher(self._handle_read)
+        self._rmon.register(self._socket.fileno(), kaa.IO_READ)
+        self._wmon = kaa.SocketDispatcher(self._handle_write)
         self._authenticated = False
         self._write_buffer = ''
         self._write_buffer_delayed = ''
@@ -200,7 +199,7 @@ class Channel(object):
         self._auth_secret = auth_secret
         self._pending_challenge = None
 
-        self.signals = { 'closed': kaa.notifier.Signal() }
+        self.signals = { 'closed': kaa.Signal() }
         kaa.signals["shutdown"].connect_weak(self._handle_close)
 
 
@@ -225,18 +224,18 @@ class Channel(object):
         """
         Call the remote command and return InProgress.
         """
-        if not kaa.notifier.is_mainthread():
+        if not kaa.is_mainthread():
             # create InProgress object and return
-            callback = kaa.notifier.InProgress()
+            callback = kaa.InProgress()
             kwargs['_kaa_rpc_callback'] = callback
-            kaa.notifier.MainThreadCallback(self.rpc)(cmd, *args, **kwargs)
+            kaa.MainThreadCallback(self.rpc)(cmd, *args, **kwargs)
             return callback
         if not self._wmon:
             raise IOError('channel is disconnected')
         seq = self._next_seq
         self._next_seq += 1
         # create InProgress object
-        callback = kwargs.pop('_kaa_rpc_callback', kaa.notifier.InProgress())
+        callback = kwargs.pop('_kaa_rpc_callback', kaa.InProgress())
         packet_type = 'CALL'
         payload = cPickle.dumps((cmd, args, kwargs), pickle.HIGHEST_PROTOCOL)
         self._send_packet(seq, packet_type, payload)
@@ -389,7 +388,7 @@ class Channel(object):
         written next notifier loop.
         """
         if not self._wmon.active() and self._write_buffer:
-            self._wmon.register(self._socket.fileno(), kaa.notifier.IO_WRITE)
+            self._wmon.register(self._socket.fileno(), kaa.IO_WRITE)
 
 
     def _handle_write(self, close_on_error=True):
@@ -447,7 +446,7 @@ class Channel(object):
                 if self._callbacks[function]._kaa_rpc_param[0]:
                     args = [ self ] + list(args)
                 payload = self._callbacks[function](*args, **kwargs)
-                if isinstance(payload, kaa.notifier.InProgress):
+                if isinstance(payload, kaa.InProgress):
                     payload.connect(self._send_delayed_answer, seq, 'RETN')
                     payload.exception_handler.connect(self._send_delayed_exception, seq, 'EXCP')
                     return True

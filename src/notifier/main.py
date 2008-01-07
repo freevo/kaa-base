@@ -138,6 +138,9 @@ def start():
 def is_running():
     return _running
 
+def _set_running(status):
+    global _running
+    _running = status
 
 def select_notifier(module, **options):
     """

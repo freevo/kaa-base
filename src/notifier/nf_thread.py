@@ -36,8 +36,9 @@ import threading
 import logging
 
 # kaa.notifier imports
-import kaa.notifier
+import kaa
 import nf_wrapper
+from main import _set_running as set_mainloop_running
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -49,7 +50,7 @@ class ThreadLoop(threading.Thread):
     def __init__(self, interleave, shutdown = None):
         super(ThreadLoop, self).__init__()
         self._call_mainloop = interleave
-        self._mainloop_shutdown = kaa.notifier.shutdown
+        self._mainloop_shutdown = kaa.main.stop
         if shutdown:
             self._mainloop_shutdown = shutdown
         self._lock = threading.Semaphore(0)
@@ -64,7 +65,7 @@ class ThreadLoop(threading.Thread):
             try:
                 nf_wrapper.step(sleep = False)
             except (KeyboardInterrupt, SystemExit):
-                kaa.notifier.running = False
+                set_mainloop_running(False)
                 self._mainloop_shutdown()
         finally:
             self._lock.release()
@@ -74,27 +75,27 @@ class ThreadLoop(threading.Thread):
         """
         Thread part running the blocking, simulating loop.
         """
-        kaa.notifier.running = True
+        set_mainloop_running(True)
         try:
             while True:
                 self.sleeping = True
                 nf_wrapper.step(simulate = True)
                 self.sleeping = False
-                if not kaa.notifier.running:
+                if not kaa.main.is_running():
                     break
                 self._call_mainloop(self.handle)
                 self._lock.acquire()
-                if not kaa.notifier.running:
+                if not kaa.main.is_running():
                     break
         except (KeyboardInterrupt, SystemExit):
             pass
         except Exception, e:
             log.exception('loop')
-        if kaa.notifier.running:
+        if kaa.main.is_running():
             # this loop stopped, call real mainloop stop. This
             # should never happen because we call no callbacks.
             log.warning('thread loop stopped')
-            kaa.notifier.running = False
+            set_mainloop_running(False)
             self._call_mainloop(self._mainloop_shutdown)
 
 
@@ -103,9 +104,9 @@ class ThreadLoop(threading.Thread):
         Stop the thread and cleanup.
         """
         log.info('stop mainloop')
-        kaa.notifier.running = False
-        kaa.notifier.wakeup()
-        kaa.notifier.shutdown()
+        set_mainloop_running(False)
+        kaa.main.wakeup()
+        kaa.main.stop()
 
 
 class TwistedLoop(ThreadLoop):
@@ -130,7 +131,7 @@ class Wakeup(object):
     def __call__(self, *args, **kwargs):
         ret = self.func(*args, **kwargs)
         if self.loop.sleeping:
-            kaa.notifier.wakeup()
+            kaa.main.wakeup()
         return ret
 
 
@@ -148,7 +149,7 @@ def init( module, handler = None, shutdown = None, **options ):
         raise RuntimeError('unknown notifier module %s', module)
     nf_wrapper.init( 'generic', force_internal=True, **options )
     # set main thread and init thread pipe
-    kaa.notifier.set_current_as_mainthread()
+    kaa.set_current_as_mainthread()
     # adding a timer or socket is not thread safe in general but
     # an additional wakeup we don't need does not hurt. And in
     # simulation mode the step function does not modify the

@@ -36,7 +36,7 @@ import os
 import time
 
 # kaa imports
-import kaa.notifier
+import kaa
 
 try:
     # try to import python lirc module
@@ -54,8 +54,8 @@ _dispatcher = None
 
 # make sure we have the lirc signal, no matter
 # if lirc is working or not
-signal = kaa.notifier.Signal()
-kaa.notifier.signals["lirc"] = signal
+signal = kaa.Signal()
+kaa.signals["lirc"] = signal
 
 def _handle_lirc_input():
     """
@@ -111,7 +111,7 @@ def stop():
     _dispatcher.unregister()
     _dispatcher = None
     pylirc.exit()
-    kaa.notifier.signals["shutdown"].disconnect(stop)
+    kaa.main.signals["shutdown"].disconnect(stop)
 
 
 def init(appname = None, cfg = None):
@@ -144,9 +144,9 @@ def init(appname = None, cfg = None):
         return False
 
     pylirc.blocking(0)
-    _dispatcher = kaa.notifier.SocketDispatcher(_handle_lirc_input)
+    _dispatcher = kaa.SocketDispatcher(_handle_lirc_input)
     _dispatcher.register(fd)
-    kaa.notifier.signals["shutdown"].connect(stop)
+    kaa.main.signals["shutdown"].connect(stop)
 
     return True
 
@@ -159,4 +159,4 @@ if __name__ == "__main__":
     def cb(code):
         print "CODE", code
     signal.connect(cb)
-    kaa.notifier.loop()
+    kaa.main.start()

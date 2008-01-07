@@ -177,7 +177,10 @@ def init( module = None, force_internal=False, **options ):
 
     if not module in ('generic', 'gtk', 'twisted_experimental'):
         raise AttributeError('unsupported notifier %s' % module)
-        
+
+    if module == 'twisted_experimental':
+        module = 'twisted'
+
     # use the selected module
     notifier.init(getattr(notifier, module.upper()), **options)
 

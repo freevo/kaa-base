@@ -41,7 +41,7 @@ import atexit
 
 from popen import Process
 from callback import Callback, WeakCallback, Signal, Signals
-from thread import MainThreadCallback, Thread, is_mainthread, wakeup, set_current_as_mainthread
+from thread import MainThreadCallback, Thread, is_mainthread, wakeup
 from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, OneShotAtTimer
 from sockets import SocketDispatcher, WeakSocketDispatcher, Socket, IO_READ, IO_WRITE
 from event import Event, EventHandler, WeakEventHandler
@@ -56,7 +56,7 @@ __all__ = [
     # From sub modules
     'Process',
     'Callback', 'WeakCallback', 'Signal', 'Signals',
-    'MainThreadCallback', 'Thread', 'is_mainthread', 'wakeup', 'set_current_as_mainthread',
+    'MainThreadCallback', 'Thread', 'is_mainthread', 'wakeup',
     'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer', 'AtTimer', 'OneShotAtTimer',
     'SocketDispatcher', 'WeakSocketDispatcher', 'Socket', 'IO_READ', 'IO_WRITE',
     'Event', 'EventHandler', 'WeakEventHandler',

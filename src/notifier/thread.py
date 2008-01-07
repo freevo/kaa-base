@@ -46,8 +46,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'MainThreadCallback', 'Thread', 'is_mainthread', 'wakeup',
-            'set_current_as_mainthread' ]
+__all__ = [ 'MainThreadCallback', 'Thread', 'is_mainthread', 'wakeup', 'set_mainthread' ]
 
 # python imports
 import sys
@@ -215,14 +214,14 @@ def wakeup():
         os.write(_thread_notifier_pipe[1], "1")
 
 
-def set_current_as_mainthread():
+def set_mainthread():
     global _thread_notifier_mainthread
     global _thread_notifier_pipe
     _thread_notifier_mainthread = threading.currentThread()
     # Make sure we have a pipe between the mainloop and threads. Since loop()
-    # calls set_current_as_mainthread it is safe to assume the loop is
+    # calls set_mainthread it is safe to assume the loop is
     # connected correctly. If someone calls step() without loop() and
-    # without set_current_as_mainthread inter-thread communication does
+    # without set_mainthread inter-thread communication does
     # not work.
     if not _thread_notifier_pipe:
         log.info('create thread notifier pipe')

@@ -67,4 +67,7 @@ class MainWrapper:
     def select_notifier(self, *args, **kwargs):
         return kaa.notifier.main.select_notifier(*args, **kwargs)
 
+    def __getattr__(self, attr):
+        return getattr(kaa.notifier.main, attr)
+    
 main = MainWrapper()

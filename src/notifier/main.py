@@ -42,11 +42,11 @@ import atexit
 import nf_wrapper as notifier
 from callback import Signal
 from popen import proclist as _proclist
-from thread import MainThreadCallback, is_mainthread, wakeup, set_current_as_mainthread
+from thread import MainThreadCallback, is_mainthread, wakeup, set_mainthread
 from jobserver import killall as kill_jobserver
 from decorators import execute_in_mainloop
 
-__all__ = [ 'init', 'start', 'stop', 'step', 'is_running' ]
+__all__ = [ 'init', 'start', 'stop', 'step', 'is_running', 'wakeup', 'set_mainthread' ]
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -114,7 +114,7 @@ def start():
     global _running
     _running = True
 
-    set_current_as_mainthread()
+    set_mainthread()
     try:
         while True:
             notifier.step()

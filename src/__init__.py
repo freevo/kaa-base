@@ -51,22 +51,6 @@ class MainWrapper:
         log.warning('Deprecated call to kaa.main(); use kaa.main.start() instead')
         return kaa.notifier.main.start()
 
-    # Wrappers for new API.
-    def start(self):
-        return kaa.notifier.main.start()
-
-    def step(self):
-        return kaa.notifier.main.step()
-
-    def stop(self):
-        return kaa.notifier.main.stop()
-
-    def is_running(self):
-        return kaa.notifier.main.is_running()
-
-    def select_notifier(self, *args, **kwargs):
-        return kaa.notifier.main.select_notifier(*args, **kwargs)
-
     def __getattr__(self, attr):
         return getattr(kaa.notifier.main, attr)
     

@@ -182,7 +182,7 @@ def _shutdown_check(*args):
         # SystemExit and things will exit normally.
         if is_mainthread():
             _running = False
-        shutdown()
+        stop()
 
 
 # catch SIGTERM and SIGINT if possible for a clean shutdown

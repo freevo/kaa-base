@@ -63,7 +63,8 @@ __all__ = [
     'YieldContinue', 'YieldCallback', 'yield_execution', 'YieldFunction',
     'ThreadCallback', 'execute_in_thread',
     'execute_in_timer', 'execute_in_mainloop',
-
+    'Progress', 'InProgress',
+    
     # XXX: DEPRECATED wrappers From this module
     'init', 'shutdown', 'step', 'running', 'signals', 'loop'
 ]

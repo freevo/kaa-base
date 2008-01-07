@@ -70,7 +70,7 @@ signals = {
 
 
 # Ensure stop() is called from main thread.
-@execute_in_mainloop()
+@execute_in_mainloop(async = True)
 def stop():
     """
     Shutdown notifier and kill all background processes.

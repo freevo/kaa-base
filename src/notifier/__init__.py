@@ -67,6 +67,7 @@ __all__ = [
     'Event', 'EventHandler', 'WeakEventHandler',
     'YieldContinue', 'YieldCallback', 'yield_execution', 'YieldFunction',
     'ThreadCallback', 'execute_in_thread',
+    'execute_in_timer', 'execute_in_mainloop',
 
     # From this module
     'init', 'shutdown', 'step', 'running', 'signals'

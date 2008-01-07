@@ -175,7 +175,7 @@ def init( module = None, force_internal=False, **options ):
             # ourself into the gtk notifier
             module = 'gtk'
 
-    if not module in ( 'generic', 'gtk'):
+    if not module in ('generic', 'gtk', 'twisted_experimental'):
         raise AttributeError('unsupported notifier %s' % module)
         
     # use the selected module

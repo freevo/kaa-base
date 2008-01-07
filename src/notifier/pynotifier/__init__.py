@@ -43,7 +43,7 @@ loop = None
 step = None
 
 # notifier types
-( GENERIC, QT, GTK, WX ) = range( 4 )
+( GENERIC, QT, GTK, WX, TWISTED_EXPERIMENTAL ) = range( 5 )
 
 # socket conditions
 IO_READ = None
@@ -69,6 +69,9 @@ def init( model = GENERIC, **kwargs ):
 	elif model == WX:
 		import nf_wx as nf_impl
 		log.warn( 'the WX notifier is deprecated and is no longer maintained' )
+	elif model == TWISTED_EXPERIMENTAL:
+		import nf_twisted as nf_impl
+		log.info("using nf_twisted")
 	else:
 		raise Exception( 'unknown notifier model' )
 

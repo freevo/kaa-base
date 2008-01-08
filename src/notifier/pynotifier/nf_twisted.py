@@ -40,6 +40,9 @@ Twisted doc index:
 http://twistedmatrix.com/projects/core/documentation/howto/index.html
 """
 
+# Python imports
+from types import IntType
+
 # Twisted uses zope.interface
 from zope.interface import implements
 
@@ -50,6 +53,7 @@ from twisted.internet import task
 
 # internal packages
 import dispatch
+import log
 
 IO_READ = 1
 IO_WRITE = 2
@@ -83,16 +87,17 @@ class SocketReadCB:
             socket_remove(self.socket, IO_READ)
 
     def fileno(self):
-        # FIXME: check is socket is a socket or int
-        return self.socket
+        if type(self.socket) is IntType:
+            return self.socket
+        elif hasattr(self.socket, 'fileno'):
+            return self.socket.fileno()
 
     def logPrefix(self):
-        # FIXME: debug and improve if needed
-        return "doRead: "
+        return "notifier"
 
     def connectionLost(self, reason): 
-        # FIXME: debug and improve if needed
-        print "connectionLost"
+        # Should we do more?
+        log.error("connection lost on socket fd=%s" % self.fileno())
 
 
 class SocketWriteCB:
@@ -115,16 +120,17 @@ class SocketWriteCB:
             socket_remove(self.socket, IO_WRITE)
 
     def fileno(self):
-        # FIXME: check is socket is a socket or int
-        return self.socket
+        if type(self.socket) is IntType:
+            return self.socket
+        elif hasattr(self.socket, 'fileno'):
+            return self.socket.fileno()
 
     def logPrefix(self):
-        # FIXME: debug and improve if needed
-        return "doWrite: "
+        return "notifier"
 
     def connectionLost(self, reason): 
-        # FIXME: debug and improve if needed
-        print "connectionLost"
+        # Should we do more?
+        log.error("connection lost on socket fd=%s" % self.fileno())
 
 
 def socket_add(id, method, condition = IO_READ):

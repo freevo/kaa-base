@@ -32,7 +32,7 @@
 
 from popen import Process
 from callback import Callback, WeakCallback, Signal, Signals
-from thread import MainThreadCallback, Thread, is_mainthread, wakeup
+from thread import MainThreadCallback, Thread, is_mainthread
 from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, OneShotAtTimer
 from sockets import SocketDispatcher, WeakSocketDispatcher, Socket, IO_READ, IO_WRITE
 from event import Event, EventHandler, WeakEventHandler
@@ -55,7 +55,7 @@ __all__ = [
     'execute_in_timer', 'execute_in_mainloop', 'yield_execution', 'execute_in_thread',
 
     # FIXME: I don't like the following functions in the global kaa namespace
-    'is_mainthread', 'wakeup',
+    'is_mainthread',
     
     # XXX: DEPRECATED wrappers From this module
     'init', 'shutdown', 'step', 'running', 'signals', 'loop'

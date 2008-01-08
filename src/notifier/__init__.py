@@ -6,7 +6,7 @@
 #
 # -----------------------------------------------------------------------------
 # kaa.notifier - Mainloop and callbacks
-# Copyright (C) 2005, 2006 Dirk Meyer, Jason Tackaberry, et al.
+# Copyright (C) 2005-2008 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
@@ -30,15 +30,6 @@
 #
 # -----------------------------------------------------------------------------
 
-# python imports
-import sys
-import logging
-import os
-import time
-import signal
-import threading
-import atexit
-
 from popen import Process
 from callback import Callback, WeakCallback, Signal, Signals
 from thread import MainThreadCallback, Thread, is_mainthread, wakeup
@@ -48,31 +39,37 @@ from event import Event, EventHandler, WeakEventHandler
 from yieldfunc import YieldContinue, YieldCallback, YieldFunction, yield_execution
 from jobserver import ThreadCallback, execute_in_thread
 from async import Progress, InProgress
-
 from decorators import execute_in_timer, execute_in_mainloop
 
 # Here's what will be imported into the kaa namespace.
 __all__ = [
-    # From sub modules
-    'Process',
-    'Callback', 'WeakCallback', 'Signal', 'Signals',
-    'MainThreadCallback', 'Thread', 'is_mainthread', 'wakeup',
-    'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer', 'AtTimer', 'OneShotAtTimer',
-    'SocketDispatcher', 'WeakSocketDispatcher', 'Socket', 'IO_READ', 'IO_WRITE',
-    'Event', 'EventHandler', 'WeakEventHandler',
-    'YieldContinue', 'YieldCallback', 'yield_execution', 'YieldFunction',
-    'ThreadCallback', 'execute_in_thread',
-    'execute_in_timer', 'execute_in_mainloop',
-    'Progress', 'InProgress',
+    'Process', 'Callback', 'WeakCallback', 'Signal', 'Signals', 'MainThreadCallback',
+    'Thread', 'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer', 'AtTimer',
+    'OneShotAtTimer', 'SocketDispatcher', 'WeakSocketDispatcher', 'Socket',
+    'IO_READ', 'IO_WRITE', 'Event', 'EventHandler', 'WeakEventHandler',
+    'YieldContinue', 'YieldCallback', 'YieldFunction', 'ThreadCallback', 'InProgress',
+
+    # decorator for sub modules
+    # FIXME: while we are breaking the API right now, do we want to keep
+    # these names and keep them in the global kaa scope?
+    'execute_in_timer', 'execute_in_mainloop', 'yield_execution', 'execute_in_thread',
+
+    # FIXME: I don't like the following functions in the global kaa namespace
+    'is_mainthread', 'wakeup',
     
+    # FIXME: this this needed somewhere? Maybe make it a subclass of InProgress
+    'Progress',
+
     # XXX: DEPRECATED wrappers From this module
     'init', 'shutdown', 'step', 'running', 'signals', 'loop'
 ]
 
-# XXX: support for deprecated API.  Delete everything below when support is removed.
 import main
 
+# XXX: support for deprecated API.  Delete everything below when support is removed.
+
 # get logging object
+import logging
 log = logging.getLogger('notifier')
 
 def wrap(old_name, new_name, *args, **kwargs):

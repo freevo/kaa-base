@@ -38,7 +38,7 @@ from sockets import SocketDispatcher, WeakSocketDispatcher, Socket, IO_READ, IO_
 from event import Event, EventHandler, WeakEventHandler
 from yieldfunc import YieldContinue, YieldCallback, YieldFunction, yield_execution
 from jobserver import ThreadCallback, execute_in_thread
-from async import Progress, InProgress
+from async import InProgress
 from decorators import execute_in_timer, execute_in_mainloop
 
 # Here's what will be imported into the kaa namespace.
@@ -57,9 +57,6 @@ __all__ = [
     # FIXME: I don't like the following functions in the global kaa namespace
     'is_mainthread', 'wakeup',
     
-    # FIXME: this this needed somewhere? Maybe make it a subclass of InProgress
-    'Progress',
-
     # XXX: DEPRECATED wrappers From this module
     'init', 'shutdown', 'step', 'running', 'signals', 'loop'
 ]

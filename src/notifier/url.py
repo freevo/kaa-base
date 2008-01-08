@@ -46,7 +46,7 @@ import urllib
 import urllib2
 
 # kaa.notifier imports
-from kaa.notifier import Thread, Signals, InProgress, Progress
+from kaa.notifier import Thread, Signals, InProgress
 
 # add password manager to urllib
 pm = urllib2.HTTPPasswordMgrWithDefaultRealm()
@@ -146,7 +146,7 @@ def _fetch_HTTP(url, filename, tmpname):
         # stupid url encoding in url
         url = url[:8+url[8:].find('/')] + \
               urllib.quote(url[8+url[8:].find('/'):])
-    s = Progress()
+    s = InProgress.Progress()
     t = Thread(download, url, filename, tmpname, s)
     t.wait_on_exit(False)
     async = t.start()

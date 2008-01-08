@@ -214,7 +214,7 @@ def wakeup():
         os.write(_thread_notifier_pipe[1], "1")
 
 
-def set_mainthread():
+def set_as_mainthread():
     global _thread_notifier_mainthread
     global _thread_notifier_pipe
     _thread_notifier_mainthread = threading.currentThread()

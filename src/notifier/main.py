@@ -46,7 +46,8 @@ from thread import MainThreadCallback, is_mainthread, wakeup, set_as_mainthread
 from jobserver import killall as kill_jobserver
 from decorators import execute_in_mainloop
 
-__all__ = [ 'init', 'start', 'stop', 'step', 'is_running', 'wakeup', 'set_as_mainthread', 'is_shutting_down' ]
+__all__ = [ 'start', 'stop', 'step', 'select_notifier', 'is_running', 'wakeup',
+            'set_as_mainthread', 'is_shutting_down' ]
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -67,6 +68,45 @@ signals = {
     'shutdown': Signal(),
     'step': Signal(changed_cb = _step_signal_changed),
 }
+
+
+def select_notifier(module, **options):
+    """
+    Initialize the specified notifier.
+    """
+    if module in ('thread', 'twisted'):
+        import nf_thread
+        return nf_thread.init(module, **options)
+    return notifier.init( module, **options )
+
+
+def start():
+    """
+    Notifier main loop function. It will loop until an exception
+    is raised or sys.exit is called.
+    """
+    global _running
+    _running = True
+
+    set_as_mainthread()
+    try:
+        while True:
+            notifier.step()
+    except (KeyboardInterrupt, SystemExit):
+        try:
+            # This looks stupid, I know that. The problem is that if we have
+            # a KeyboardInterrupt, that flag is still valid somewhere inside
+            # python. The next system call will fail because of that. Since we
+            # don't want a join of threads or similar fail, we use a very short
+            # sleep here. In most cases we won't sleep at all because this sleep
+            # fails. But after that everything is back to normal.
+            time.sleep(0.001)
+        except:
+            pass
+    except Exception, e:
+        log.exception('loop')
+    _running = False
+    stop()
 
 
 # Ensure stop() is called from main thread.
@@ -106,55 +146,6 @@ def stop():
         pass
 
 
-def start():
-    """
-    Notifier main loop function. It will loop until an exception
-    is raised or sys.exit is called.
-    """
-    global _running
-    _running = True
-
-    set_as_mainthread()
-    try:
-        while True:
-            notifier.step()
-    except (KeyboardInterrupt, SystemExit):
-        try:
-            # This looks stupid, I know that. The problem is that if we have
-            # a KeyboardInterrupt, that flag is still valid somewhere inside
-            # python. The next system call will fail because of that. Since we
-            # don't want a join of threads or similar fail, we use a very short
-            # sleep here. In most cases we won't sleep at all because this sleep
-            # fails. But after that everything is back to normal.
-            time.sleep(0.001)
-        except:
-            pass
-    except Exception, e:
-        log.exception('loop')
-    _running = False
-    stop()
-
-
-def is_running():
-    return _running
-
-def is_shutting_down():
-    return _shutting_down
-
-def _set_running(status):
-    global _running
-    _running = status
-
-def select_notifier(module, **options):
-    """
-    Initialize the specified notifier.
-    """
-    if module in ('thread', 'twisted'):
-        import nf_thread
-        return nf_thread.init(module, **options)
-    return notifier.init( module, **options )
-
-
 def step(*args, **kwargs):
     """
     Notifier step function with signal support.
@@ -171,6 +162,29 @@ def step(*args, **kwargs):
         notifier.step(*args, **kwargs)
     except (KeyboardInterrupt, SystemExit):
         raise SystemExit
+
+
+def is_running():
+    """
+    Return if the main loop is currently running.
+    """
+    return _running
+
+
+def is_shutting_down():
+    """
+    Return if the mainloop is currently inside stop()
+    """
+    return _shutting_down
+
+
+def _set_running(status):
+    """
+    Set running status. This function is only for the thread based notifier
+    since it does not call start().
+    """
+    global _running
+    _running = status
 
 
 def _shutdown_check(*args):

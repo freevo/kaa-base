@@ -214,12 +214,18 @@ dispatcher_remove = dispatch.dispatcher_remove
 
 
 def step(sleep = True, external = True, simulate = False):
-    global __timers
-
-    reactor.runUntilCurrent()
-    t2 = reactor.timeout()
-    t = reactor.running and t2
-    reactor.doIteration(t)
+    if reactor.running:
+        try:
+            reactor.runUntilCurrent()
+            t2 = reactor.timeout()
+            t = reactor.running and t2
+            reactor.doIteration(t)
+        except:
+            log.error("problem running reactor - exiting")
+            raise SystemExit
+    else:
+        log.info("reactor stopped - exiting")
+        raise SystemExit
 
 
 def loop():

@@ -6,7 +6,7 @@
 #
 # -----------------------------------------------------------------------------
 # kaa.notifier - Mainloop and callbacks
-# Copyright (C) 2006 Dirk Meyer, Jason Tackaberry, et al.
+# Copyright (C) 2006-2008 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
@@ -44,25 +44,24 @@ log = logging.getLogger('notifier.async')
 
 class InProgress(Signal):
     """
-    An InProgress class used to return from function calls
-    that need more time to continue. It is possible to connect
-    to an object of this class like Signals. The memeber 'exception_handler'
-    is a second signal to get notification of an exception raised later.
+    An InProgress class used to return from function calls that need more time
+    to continue. It is possible to connect to an object of this class like
+    Signals. The memeber 'exception_handler' is a second signal to get
+    notification of an exception raised later.
     """
     class Progress(Signal):
         """
-        Generic progress status object for InProgress. This object can be connected
-        to an InProgress object with set_status and the caller can monitor the
-        progress. The caller can read the current position (pos) of the maximum
-        (max) or the percentage of both (percentage).
+        Generic progress status object for InProgress. This object can be
+        connected to an InProgress object using set_status and the caller
+        can monitor the progress.
         """
         def __init__(self):
             super(Progress, self).__init__()
             self.percentage = 0
             self.pos = 0
             self.max = 0
-    
-    
+
+
         def set(self, pos, max=None):
             """
             Set new status. The new status is pos of max.
@@ -77,15 +76,15 @@ class InProgress(Signal):
             else:
                 self.percentage = 0
             self.emit()
-    
-    
+
+
         def update(self, diff):
             """
             Update position by the given difference.
             """
             self.set(self.pos + diff)
-    
-    
+
+
         def get_progressbar(self, width=70):
             """
             Return a small ASCII art progressbar.
@@ -95,9 +94,12 @@ class InProgress(Signal):
                 n = int((self.pos / float(self.max)) * (width-3))
             s = '|%%%ss|' % (width-2)
             return s % ("="*n + ">").ljust(width-2)
-    
-    
+
+
     def __init__(self):
+        """
+        Create an InProgress object.
+        """
         Signal.__init__(self)
         self.exception_handler = Signal()
         self.is_finished = False

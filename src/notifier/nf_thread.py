@@ -149,7 +149,7 @@ def init( module, handler = None, shutdown = None, **options ):
         raise RuntimeError('unknown notifier module %s', module)
     nf_wrapper.init( 'generic', force_internal=True, **options )
     # set main thread and init thread pipe
-    kaa.main.set_mainthread()
+    kaa.main.set_as_mainthread()
     # adding a timer or socket is not thread safe in general but
     # an additional wakeup we don't need does not hurt. And in
     # simulation mode the step function does not modify the

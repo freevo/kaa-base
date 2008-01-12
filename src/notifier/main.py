@@ -46,7 +46,7 @@ from thread import MainThreadCallback, is_mainthread, wakeup, set_as_mainthread
 from jobserver import killall as kill_jobserver
 from decorators import execute_in_mainloop
 
-__all__ = [ 'start', 'stop', 'step', 'select_notifier', 'is_running', 'wakeup',
+__all__ = [ 'run', 'stop', 'step', 'select_notifier', 'is_running', 'wakeup',
             'set_as_mainthread', 'is_shutting_down' ]
 
 # get logging object
@@ -80,7 +80,7 @@ def select_notifier(module, **options):
     return notifier.init( module, **options )
 
 
-def start():
+def run():
     """
     Notifier main loop function. It will loop until an exception
     is raised or sys.exit is called.
@@ -181,7 +181,7 @@ def is_shutting_down():
 def _set_running(status):
     """
     Set running status. This function is only for the thread based notifier
-    since it does not call start().
+    since it does not call run().
     """
     global _running
     _running = status

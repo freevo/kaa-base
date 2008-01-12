@@ -81,7 +81,7 @@ class RunningWrapper:
         return main.is_running()
 
 init = wrap('init', 'select_notifier')
-loop = wrap('loop', 'start')
+loop = wrap('loop', 'run')
 shutdown = wrap('shutdown', 'stop')
 step = wrap('step', 'step')
 signals = main.signals

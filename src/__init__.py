@@ -48,8 +48,8 @@ class MainWrapper:
     def __call__(self):
         import logging
         log = logging.getLogger('notifier')
-        log.warning('Deprecated call to kaa.main(); use kaa.main.start() instead')
-        return kaa.notifier.main.start()
+        log.warning('Deprecated call to kaa.main(); use kaa.main.run() instead')
+        return kaa.notifier.main.run()
 
     def __getattr__(self, attr):
         return getattr(kaa.notifier.main, attr)

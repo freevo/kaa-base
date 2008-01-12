@@ -186,6 +186,14 @@ class Thread(threading.Thread):
             MainThreadCallback(self._emit_and_join, "exception", sys.exc_info()[1])()
 
 
+    def is_running(self):
+        """
+        Returns True if the thread is running, False otherwise.
+        """
+        # We just wrap isAlive().
+        return self.isAlive()
+
+
 def is_mainthread():
     """
     Return True if the caller is in the main thread right now.

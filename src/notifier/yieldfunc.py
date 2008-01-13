@@ -128,7 +128,15 @@ def yield_execution(interval=0, lock=False):
     def decorator(func):
 
         def newfunc(*args, **kwargs):
-            function = func(*args, **kwargs).next
+            result = func(*args, **kwargs)
+            if not hasattr(result, 'next'):
+                # Decorated function doesn't have a next attribute, which
+                # likyle means it didn't yield anything.  There was no sense
+                # in decorating that function with yield_execution, but on
+                # the other hand it's easy enough just to return the result.
+                return result
+
+            function = result.next
             if lock and func._lock is not None and not func._lock.is_finished:
                 return YieldLock(func, function, interval)
             try:

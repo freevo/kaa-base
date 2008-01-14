@@ -234,7 +234,6 @@ class YieldFunction(InProgress):
         except StopIteration:
             result = None
         except Exception, e:
-            log.exception('YieldFunction')
             e._exc_info = sys.exc_info()
             self.exception(e)
             return False

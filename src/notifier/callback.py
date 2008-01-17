@@ -261,6 +261,7 @@ class Signal(object):
     def __init__(self, changed_cb = None):
         self._callbacks = []
         self._changed_cb = changed_cb
+        self._deferred_args = []
 
 
     def __iter__(self):
@@ -323,6 +324,12 @@ class Signal(object):
         self._callbacks.insert(pos, callback)
         if self._changed_cb:
             self._changed_cb(self, Signal.SIGNAL_CONNECTED)
+
+        if self._deferred_args:
+            for args, kwargs in self._deferred_args:
+                self.emit(*args, **kwargs)
+            del self._deferred_args[:]
+
         return callback
 
 
@@ -395,6 +402,26 @@ class Signal(object):
             except Exception, e:
                 log.exception('signal.emit')
         return retval
+
+
+    def emit_deferred(self, *args, **kwargs):
+        """
+        Queues the emission until after the next callback is connected.  This
+        allows a signal to be 'primed' by its creator, and the handler that
+        subsequently connects to it will be called with the given arguments.
+        """
+        self._deferred_args.append((args, kwargs))
+
+
+    def emit_when_handled(self, *args, **kwargs):
+        """
+        Emits the signal if there are callbacks connected, or defer it until
+        the first callback is connected.
+        """
+        if self.count():
+            return self.emit(*args, **kwargs)
+        else:
+            self.emit_deferred(*args, **kwargs)
 
 
     def _weakref_destroyed(self, weakref, callback):

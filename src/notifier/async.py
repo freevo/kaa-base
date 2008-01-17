@@ -141,7 +141,7 @@ class InProgress(Signal):
         self._result = result
         self._exception = None
         # emit signal
-        self.emit(result)
+        self.emit_when_handled(result)
         # cleanup
         self._callbacks = []
         self.exception_handler = None
@@ -165,7 +165,7 @@ class InProgress(Signal):
         self.is_finished = True
         self._exception = e
         # emit signal
-        self.exception_handler.emit(e)
+        self.exception_handler.emit_when_handled(e)
         # cleanup
         self._callbacks = []
         self.exception_handler = None

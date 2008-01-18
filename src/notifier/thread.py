@@ -81,8 +81,7 @@ class MainThreadCallback(Callback):
         self._sync_return = result
         if isinstance(self._sync_return, InProgress):
             if not self._sync_return.is_finished:
-                self._sync_return.connect(self._set_result)
-                self._sync_return.exception_handler.connect(self._set_exception)
+                self._sync_return.connect_both(self._set_result, self._set_exception)
                 return
             self._sync_return = self._sync_return()
         self._wakeup()
@@ -146,7 +145,7 @@ class ThreadInProgress(InProgress):
             MainThreadCallback(self.finished, self._callback())()
         except Exception, e:
             e._exc_info = sys.exc_info()
-            MainThreadCallback(self.exception, e)()
+            MainThreadCallback(self.throw, e)()
         self._callback = None
 
 
@@ -190,7 +189,7 @@ class ThreadCallback(Callback):
         t.setDaemon(self._daemon)
         # connect thread.join to the InProgress
         async.connect(t.join)
-        async.exception_handler.connect(t.join)
+        async.exception.connect(t.join)
         # start the thread
         t.start()
         return async

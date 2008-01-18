@@ -24,7 +24,9 @@
 
 4. Renamed Thread to ThreadCallback. The class has no signals anymore
    and the start function is now __call__ and it will return an
-   InProgress object
+   InProgress object.
 
-
+5. Rename exception_handler in InProgress into exception and the
+   exception callback function to throw. Add a convenience function 
+   connect_both.
 

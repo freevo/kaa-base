@@ -174,8 +174,7 @@ class YieldInProgress(object):
 
 
     def _connect(self, callback):
-        self._in_progress.connect(callback)
-        self._in_progress.exception_handler.connect(callback)
+        self._in_progress.connect_both(callback, callback)
 
 
     def __call__(self, *args, **kwargs):
@@ -235,7 +234,7 @@ class YieldFunction(InProgress):
             result = None
         except Exception, e:
             e._exc_info = sys.exc_info()
-            self.exception(e)
+            self.throw(e)
             return False
         if result == YieldContinue:
             return True

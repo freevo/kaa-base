@@ -181,8 +181,7 @@ class Socket(object):
             cb = Callback(lambda res, x: x.append(res), result_holder)
         else:
             cb = self.signals["connected"].emit
-        in_progress.connect(cb)
-        in_progress.exception_handler.connect(cb)
+        in_progress.connect_both(cb, cb)
 
         if async != None:
             return

@@ -448,7 +448,7 @@ class Channel(object):
                 payload = self._callbacks[function](*args, **kwargs)
                 if isinstance(payload, kaa.InProgress):
                     payload.connect(self._send_delayed_answer, seq, 'RETN')
-                    payload.exception_handler.connect(self._send_delayed_exception, seq, 'EXCP')
+                    payload.exception.connect(self._send_delayed_exception, seq, 'EXCP')
                     return True
                 packet_type = 'RETN'
             except (SystemExit, KeyboardInterrupt):
@@ -480,7 +480,7 @@ class Channel(object):
             if callback is None:
                 return True
             del self._rpc_in_progress[seq]
-            callback.exception(error)
+            callback.throw(error)
             return True
 
         log.error('unknown packet type %s', type)

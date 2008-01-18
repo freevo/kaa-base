@@ -46,7 +46,7 @@ class InProgress(Signal):
     """
     An InProgress class used to return from function calls that need more time
     to continue. It is possible to connect to an object of this class like
-    Signals. The memeber 'exception_handler' is a second signal to get
+    Signals. The member 'exception' is a second signal to get
     notification of an exception raised later.
     """
     class Progress(Signal):
@@ -101,7 +101,7 @@ class InProgress(Signal):
         Create an InProgress object.
         """
         Signal.__init__(self)
-        self.exception_handler = Signal()
+        self.exception = Signal()
         self.is_finished = False
         self.status = None
 
@@ -134,7 +134,7 @@ class InProgress(Signal):
         if isinstance(result, InProgress):
             # we are still not finished, register to this result
             result.connect(self.finished)
-            result.exception_handler.connect(self.exception)
+            result.exception.connect(self.throw)
             return
         # store result
         self.is_finished = True
@@ -144,15 +144,15 @@ class InProgress(Signal):
         self.emit_when_handled(result)
         # cleanup
         self._callbacks = []
-        self.exception_handler = None
+        self.exception = None
 
 
-    def exception(self, e):
+    def throw(self, e):
         """
         This function should be called when the creating function is
         done because it raised an exception.
         """
-        if self.exception_handler.count() == 0:
+        if self.exception.count() == 0:
             if hasattr(e, '_exc_info'):
                 # Exception info set internally, so display traceback from that.
                 trace = ''.join(traceback.format_exception(*e._exc_info))
@@ -165,10 +165,10 @@ class InProgress(Signal):
         self.is_finished = True
         self._exception = e
         # emit signal
-        self.exception_handler.emit_when_handled(e)
+        self.exception.emit_when_handled(e)
         # cleanup
         self._callbacks = []
-        self.exception_handler = None
+        self.exception = None
 
 
     def __call__(self, *args, **kwargs):
@@ -200,3 +200,11 @@ class InProgress(Signal):
         will be emited only once.
         """
         return Signal._connect(self, callback, args, kwargs, True, weak, pos)
+
+
+    def connect_both(self, finished, exception):
+        """
+        Connect a finished and an exception callback without extra arguments.
+        """
+        self.connect(finished)
+        self.exception.connect(exception)

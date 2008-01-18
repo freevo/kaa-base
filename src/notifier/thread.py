@@ -127,6 +127,42 @@ class MainThreadCallback(Callback):
         return None
 
 
+class ThreadInProgress(InProgress):
+    def __init__(self, callback, *args, **kwargs):
+        InProgress.__init__(self)
+        self._callback = Callback(callback, *args, **kwargs)
+
+
+    def _execute(self):
+        """
+        Execute the callback. This function SHOULD be called __call__ but
+        InProgress.__call__ returns the result. This is deprecated but
+        still used.
+        """
+        if self._callback is None:
+            return None
+        try:
+            MainThreadCallback(self.finished, self._callback())()
+        except Exception, e:
+            e._exc_info = sys.exc_info()
+            MainThreadCallback(self.exception, e)()
+        self._callback = None
+
+
+    def active(self):
+        """
+        Return True if the callback is still waiting to be proccessed.
+        """
+        return self._callback is not None
+
+
+    def stop(self):
+        """
+        Remove the callback from the thread schedule if still active.
+        """
+        self._callback = None
+
+
 class Thread(threading.Thread):
     """
     Notifier aware wrapper for threads. When a thread is started, it is

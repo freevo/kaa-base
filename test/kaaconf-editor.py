@@ -20,10 +20,10 @@ import gtk
 import gtk.glade
 import gobject
 
-import kaa, kaa.config, kaa.notifier
+import kaa, kaa.config
 
 # use gtk main loop
-kaa.notifier.init('gtk')
+kaa.main.select_notifier('gtk')
 
 class ProxyCellRenderer(gtk.CellRenderer):
 
@@ -127,7 +127,7 @@ class Editor(object):
     def __init__(self):
         self._current_group = None
         self._current_cfg_path = [], []
-        self._filter_changed_timer = kaa.notifier.OneShotTimer(self.filter_changed_timeout_handler)
+        self._filter_changed_timer = kaa.OneShotTimer(self.filter_changed_timeout_handler)
 
         gladefile = os.path.dirname(os.path.abspath(__file__)) + '/kaaconf-editor.glade'
         self.xml = gtk.glade.XML(gladefile, 'main')
@@ -369,5 +369,5 @@ editor = Editor()
 if len(sys.argv) > 1:
     editor.open(sys.argv[1])
 
-kaa.main()
+kaa.main.run()
 

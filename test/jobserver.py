@@ -1,7 +1,7 @@
 import time
 import logging
 
-from kaa.notifier import ThreadCallback, loop
+from kaa import ThreadCallback, loop
 
 def foo(i):
     time.sleep(0.1)

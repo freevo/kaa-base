@@ -1,10 +1,7 @@
 # Test suite for kaa.notifier classes
 
 import kaa
-from kaa.notifier.callback import *
-from kaa.notifier.sockets import *
-from kaa.notifier.timer import *
-from kaa.notifier.thread import *
+from kaa import *
 
 def test(result, expected):
     if result != expected:
@@ -85,30 +82,30 @@ class Cls(object):
 
 result = []
 OneShotTimer(test_OneShotTimer, 42).start(0)
-kaa.notifier.step()
+kaa.main.step()
 test(result, [42])
 
 result = []
 OneShotTimer(Cls().meth, 42).start(0)
-kaa.notifier.step()
+kaa.main.step()
 test(result, [42])
 
 result = []
 WeakOneShotTimer(Cls().meth, 42).start(0)
-kaa.notifier.step()
+kaa.main.step()
 test(result, [])
 
 result = []
 cb = Cls().meth
 WeakOneShotTimer(cb, 42).start(0)
-kaa.notifier.step()
+kaa.main.step()
 test(result, [42])
 
 result = []
 timer = Timer(Cls().meth, 42)
 timer.start(0)
 for i in range(5):
-    kaa.notifier.step()
+    kaa.main.step()
 timer.stop()
 test(result, [42, 42, 42, 42, 42])
 
@@ -116,7 +113,7 @@ result = []
 timer = WeakTimer(Cls().meth, 42)
 timer.start(0)
 for i in range(5):
-    kaa.notifier.step()
+    kaa.main.step()
 test(result, [])
 test(timer.active(), False)
 

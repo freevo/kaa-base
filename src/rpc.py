@@ -52,7 +52,7 @@
 # to be called when the connection gets lost.
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2006 Dirk Meyer, Jason Tackaberry
+# Copyright (C) 2006-2008 Dirk Meyer, Jason Tackaberry
 #
 # First Edition: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
@@ -139,7 +139,7 @@ class Server(object):
         self._mon = kaa.WeakSocketDispatcher(self._new_connection)
         self._mon.register(self.socket.fileno())
         # Remove socket file and close clients on shutdown
-        kaa.signals["shutdown"].connect_weak(self.close)
+        kaa.main.signals["shutdown"].connect_weak(self.close)
 
         self.signals = {
             "client_connected": kaa.Signal(),
@@ -167,7 +167,7 @@ class Server(object):
         """
         self.socket = None
         self._mon.unregister()
-        kaa.signals["shutdown"].disconnect(self.close)
+        kaa.main.signals["shutdown"].disconnect(self.close)
 
 
     def connect(self, obj):
@@ -200,7 +200,7 @@ class Channel(object):
         self._pending_challenge = None
 
         self.signals = { 'closed': kaa.Signal() }
-        kaa.signals["shutdown"].connect_weak(self._handle_close)
+        kaa.main.signals["shutdown"].connect_weak(self._handle_close)
 
 
     def connect(self, obj):
@@ -261,7 +261,7 @@ class Channel(object):
         self._wmon = self._rmon = None
         self.signals['closed'].emit()
         self.signals = {}
-        kaa.signals["shutdown"].disconnect(self._handle_close)
+        kaa.main.signals["shutdown"].disconnect(self._handle_close)
 
 
     def _handle_read(self):

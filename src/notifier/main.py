@@ -6,7 +6,7 @@
 #
 # -----------------------------------------------------------------------------
 # kaa.notifier - Mainloop and callbacks
-# Copyright (C) 2005, 2006 Dirk Meyer, Jason Tackaberry, et al.
+# Copyright (C) 2005-2008 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
@@ -193,7 +193,7 @@ def _shutdown_check(*args):
     # does not simply return from the main loop and kaa
     # can't call the shutdown handler. This is not a perfect
     # solution, e.g. with the generic notifier you can do
-    # stuff after kaa.main() which is not possible with gtk
+    # stuff after kaa.main.run() which is not possible with gtk
     global _running
     if _running:
         # If the kaa mainthread (i.e. thread the mainloop is running in)

@@ -1,7 +1,7 @@
 import time
 import os
 import sys
-import kaa.notifier
+import kaa
 import kaa.rpc
 
 class Server(object):
@@ -11,22 +11,22 @@ class Server(object):
 
     @kaa.rpc.expose('test1')
     def test1(self, x):
-        return x, kaa.notifier.is_mainthread()
+        return x, kaa.is_mainthread()
     
     @kaa.rpc.expose('test2')
-    @kaa.notifier.execute_in_thread('yield')
+    @kaa.execute_in_thread('yield')
     def test2(self, x):
-        return x, kaa.notifier.is_mainthread()
+        return x, kaa.is_mainthread()
 
     @kaa.rpc.expose('test3')
-    @kaa.notifier.yield_execution()
+    @kaa.yield_execution()
     def test3(self, x):
-        yield kaa.notifier.YieldContinue
+        yield kaa.YieldContinue
         yield x
 
-    @kaa.notifier.yield_execution()
+    @kaa.yield_execution()
     def _test4(self, x):
-        yield kaa.notifier.YieldContinue
+        yield kaa.YieldContinue
         yield x
 
     @kaa.rpc.expose('test4')
@@ -43,16 +43,16 @@ class Server(object):
         sys.exit(0)
 
 def async(callback, *args, **kwargs):
-    kaa.notifier.OneShotTimer(callback, *args, **kwargs).start(0.1)
+    kaa.OneShotTimer(callback, *args, **kwargs).start(0.1)
 
-@kaa.notifier.execute_in_thread('foo')
+@kaa.execute_in_thread('foo')
 def thread(x):
     return x + 1 - 1
 
-@kaa.notifier.execute_in_thread('foo')
+@kaa.execute_in_thread('foo')
 def thread2(c, x):
     # call rpc in thread using MainThreadCallback
-    cb = kaa.notifier.MainThreadCallback(c.rpc)
+    cb = kaa.MainThreadCallback(c.rpc)
     # we not only wait to get the InProgress back, we also wait
     # for the real return from rpc
     cb.set_async(False)
@@ -60,32 +60,32 @@ def thread2(c, x):
     print x
     return x + 1
 
-@kaa.notifier.yield_execution()
+@kaa.yield_execution()
 def subyield():
     print 3
-    yield kaa.notifier.YieldContinue
+    yield kaa.YieldContinue
     print 4
     yield 5
 
-@kaa.notifier.yield_execution()
+@kaa.yield_execution()
 def fast():
     yield 2
 
-@kaa.notifier.yield_execution()
+@kaa.yield_execution()
 def foo():
 
     pid = os.fork()
     if not pid:
 
         s = Server()
-        kaa.notifier.loop()
+        kaa.main.run()
         print 'server down'
         sys.exit(0)
 
     print 1
     for f in ('fast', 'subyield'):
         x = eval(f)()
-        if isinstance(x, kaa.notifier.InProgress):
+        if isinstance(x, kaa.InProgress):
             # this should happen when calling subyield
             print f, 'needs more time'
             yield x                     # waiting...
@@ -98,32 +98,32 @@ def foo():
     print 6
 
     # just break here and return again in the next mainloop iteration
-    yield kaa.notifier.YieldContinue
+    yield kaa.YieldContinue
 
     # call some async function with different types of
     # results (given as parameter)
     
-    callback = kaa.notifier.YieldCallback()
+    callback = kaa.YieldCallback()
     async(callback, 7, 8)
     yield callback
     print callback.get()                # (7, 8)
 
-    callback = kaa.notifier.YieldCallback()
+    callback = kaa.YieldCallback()
     async(callback)
     yield callback
     print callback.get()                # None
 
-    callback = kaa.notifier.YieldCallback()
+    callback = kaa.YieldCallback()
     async(callback, 9)
     yield callback
     print callback.get()                # 9
 
-    callback = kaa.notifier.YieldCallback()
+    callback = kaa.YieldCallback()
     async(callback, foo=10)
     yield callback
     print callback.get()                # 10
 
-    callback = kaa.notifier.YieldCallback()
+    callback = kaa.YieldCallback()
     async(callback, foo=11, bar=12)
     yield callback
     print callback.get()                # {'foo': 11, 'bar': 12}
@@ -198,10 +198,10 @@ def foo():
 def end(res):
     print res                           # 21
     # ugly, do some steps before server is down
-    kaa.notifier.step()
+    kaa.main.step()
     time.sleep(0.1)
-    kaa.notifier.step()
-    kaa.notifier.shutdown()
+    kaa.main.step()
+    kaa.main.stop()
     
 foo().connect(end)
-kaa.notifier.loop()
+kaa.main.run()

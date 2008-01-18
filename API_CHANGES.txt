@@ -1,0 +1,17 @@
+1. Rename kaa.notifier mainloop control:
+   kaa.notifier.init() is kaa.main.select_notifier()
+   kaa.notifier.loop() and kaa.main() is now kaa.main.run()
+   kaa.notifier.step() is kaa.main.step()
+   kaa.notifier.shutdown() is kaa.main.stop()
+   kaa.notifier.running is kaa.main.is_running()
+   kaa.notifier.signals (shutdown/step) are now kaa.main.signals
+   
+   kaa.main can be accessed by importing kaa, you can NOT import
+   kaa.main directly.
+
+2. Move kaa.notifier classes and functions into the kaa namespace.
+   E.g. kaa.notifier.Timer is now kaa.Timer. No part of the code
+   should use anything from kaa.notifier.
+
+   Note: Exception for this is kaa.notifier.url right now
+

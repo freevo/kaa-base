@@ -1,4 +1,4 @@
-from kaa.notifier import execute_in_timer, Timer, OneShotTimer, loop, \
+from kaa import execute_in_timer, Timer, OneShotTimer, loop, \
      is_mainthread, execute_in_thread, execute_in_mainloop
 
 

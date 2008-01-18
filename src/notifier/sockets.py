@@ -38,7 +38,7 @@ import logging
 
 import nf_wrapper as notifier
 from callback import Callback, Signal
-from thread import MainThreadCallback, Thread, is_mainthread
+from thread import MainThreadCallback, ThreadCallback, is_mainthread
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -175,16 +175,14 @@ class Socket(object):
         self._make_socket(addr)
 
 
-        thread = Thread(self._connect_thread)
+        in_progress = ThreadCallback(self._connect_thread)()
         result_holder = []
         if not async:
             cb = Callback(lambda res, x: x.append(res), result_holder)
         else:
             cb = self.signals["connected"].emit
-
-        thread.signals["completed"].connect(cb)
-        thread.signals["exception"].connect(cb)
-        thread.start()
+        in_progress.connect(cb)
+        in_progress.exception_handler.connect(cb)
 
         if async != None:
             return

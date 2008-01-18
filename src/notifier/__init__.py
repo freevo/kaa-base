@@ -32,7 +32,7 @@
 
 from popen import Process
 from callback import Callback, WeakCallback, Signal, Signals
-from thread import MainThreadCallback, ThreadCallback, Thread, is_mainthread
+from thread import MainThreadCallback, ThreadCallback, is_mainthread
 from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, OneShotAtTimer
 from sockets import SocketDispatcher, WeakSocketDispatcher, Socket, IO_READ, IO_WRITE
 from event import Event, EventHandler, WeakEventHandler
@@ -44,7 +44,7 @@ from decorators import execute_in_timer, execute_in_mainloop
 # Here's what will be imported into the kaa namespace.
 __all__ = [
     'Process', 'Callback', 'WeakCallback', 'Signal', 'Signals', 'MainThreadCallback',
-    'Thread', 'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer', 'AtTimer',
+    'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer', 'AtTimer',
     'OneShotAtTimer', 'SocketDispatcher', 'WeakSocketDispatcher', 'Socket',
     'IO_READ', 'IO_WRITE', 'Event', 'EventHandler', 'WeakEventHandler',
     'YieldContinue', 'YieldCallback', 'YieldFunction', 'NamedThreadCallback',

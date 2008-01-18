@@ -46,7 +46,7 @@ import urllib
 import urllib2
 
 # kaa.notifier imports
-from kaa.notifier import Thread, Signals, InProgress
+from kaa.notifier import ThreadCallback, Signals, InProgress
 
 # add password manager to urllib
 pm = urllib2.HTTPPasswordMgrWithDefaultRealm()
@@ -63,7 +63,7 @@ class URLOpener(object):
     """
     def __init__(self, request, data = None):
         self._args = request, data
-        self.signals = Signals('header', 'data', {'completed': InProgress() })
+        self.signals = Signals('header', 'data')
 
 
     def fetch(self, length=0):
@@ -75,14 +75,9 @@ class URLOpener(object):
         The function returns the 'completed' signal which is an InProgress
         object.
         """
-        t = Thread(self._fetch_thread, length)
-        signal = self.signals['completed']
-        t.signals['completed'].connect_once(signal.finished)
-        t.signals['exception'].connect_once(signal.exception)
-        t.start()
-        # FIXME: Thread should return this by default and not the two
-        # independed signals
-        return signal
+        t = ThreadCallback(self._fetch_thread, length)
+        t.wait_on_exit(False)
+        return t()
 
 
     def _fetch_thread(self, length):
@@ -147,9 +142,9 @@ def _fetch_HTTP(url, filename, tmpname):
         url = url[:8+url[8:].find('/')] + \
               urllib.quote(url[8+url[8:].find('/'):])
     s = InProgress.Progress()
-    t = Thread(download, url, filename, tmpname, s)
+    t = ThreadCallback(download, url, filename, tmpname, s)
     t.wait_on_exit(False)
-    async = t.start()
+    async = t()
     async.set_status(s)
     return async
 

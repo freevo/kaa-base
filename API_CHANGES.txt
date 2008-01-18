@@ -22,4 +22,9 @@
    Callback. In most cases ThreadCallback was not used directly so
    this API change should not break some code.
 
+4. Renamed Thread to ThreadCallback. The class has no signals anymore
+   and the start function is now __call__ and it will return an
+   InProgress object
+
+
 

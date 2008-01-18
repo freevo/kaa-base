@@ -46,7 +46,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'MainThreadCallback', 'ThreadCallback', 'Thread', 'is_mainthread',
+__all__ = [ 'MainThreadCallback', 'ThreadCallback', 'is_mainthread',
             'wakeup', 'set_as_mainthread' ]
 
 # python imports
@@ -204,73 +204,6 @@ class ThreadCallback(Callback):
 
 
     
-class Thread(threading.Thread):
-    """
-    Notifier aware wrapper for threads. When a thread is started, it is
-    impossible to fork the current process into a second one without exec both
-    using the notifier main loop because of the shared _thread_notifier_pipe.
-    """
-    def __init__(self, function, *args, **kargs):
-        threading.Thread.__init__(self)
-        self.function  = function
-        self.args      = args
-        self.kargs     = kargs
-
-        self.signals = {
-            "completed": Signal(),
-            "exception": Signal()
-        }
-
-
-    def wait_on_exit(self, wait=False):
-        """
-        Wait for the thread on application exit. Default is True.
-        """
-        self.setDaemon(not wait)
-
-
-    def _emit_and_join(self, signal, arg):
-        """
-        Run callback signals and join dead thread.
-        """
-        self.signals[signal].emit(arg)
-        if self != threading.currentThread():
-            # Only join if we're not the current thread (i.e. mainthread).
-            self.join()
-
-
-    def start(self):
-        """
-        Start the thread and return an InProgress object.
-        """
-        r = InProgress()
-        self.signals['completed'].connect_once(r.finished)
-        self.signals['exception'].connect_once(r.exception)
-        super(Thread, self).start()
-        return r
-
-    
-    def run(self):
-        """
-        Call the function and store the result
-        """
-        try:
-            # run thread function
-            result = self.function(*self.args, **self.kargs)
-            MainThreadCallback(self._emit_and_join, "completed", result)()
-        except:
-            log.exception('Thread raised exception:')
-            MainThreadCallback(self._emit_and_join, "exception", sys.exc_info()[1])()
-
-
-    def is_running(self):
-        """
-        Returns True if the thread is running, False otherwise.
-        """
-        # We just wrap isAlive().
-        return self.isAlive()
-
-
 def is_mainthread():
     """
     Return True if the caller is in the main thread right now.

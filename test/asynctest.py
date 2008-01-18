@@ -49,7 +49,7 @@ def async(callback, *args, **kwargs):
 def thread(x):
     return x + 1 - 1
 
-@kaa.execute_in_thread('foo')
+@kaa.execute_in_thread()
 def thread2(c, x):
     # call rpc in thread using MainThreadCallback
     cb = kaa.MainThreadCallback(c.rpc)

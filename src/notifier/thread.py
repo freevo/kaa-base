@@ -46,7 +46,8 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'MainThreadCallback', 'Thread', 'is_mainthread', 'wakeup', 'set_as_mainthread' ]
+__all__ = [ 'MainThreadCallback', 'ThreadCallback', 'Thread', 'is_mainthread',
+            'wakeup', 'set_as_mainthread' ]
 
 # python imports
 import sys
@@ -163,6 +164,46 @@ class ThreadInProgress(InProgress):
         self._callback = None
 
 
+class ThreadCallback(Callback):
+    """
+    Notifier aware wrapper for threads. When a thread is started, it is
+    impossible to fork the current process into a second one without exec both
+    using the notifier main loop because of the shared _thread_notifier_pipe.
+    """
+    _daemon = False
+    
+    def wait_on_exit(self, wait=False):
+        """
+        Wait for the thread on application exit. Default is True.
+        """
+        self._daemon = not wait
+
+
+    def _create_thread(self, *args, **kwargs):
+        """
+        Create and start the thread.
+        """
+        cb = Callback._get_callback(self)
+        async = ThreadInProgress(cb, *args, **kwargs)
+        # create thread and setDaemon
+        t = threading.Thread(target=async._execute)
+        t.setDaemon(self._daemon)
+        # connect thread.join to the InProgress
+        async.connect(t.join)
+        async.exception_handler.connect(t.join)
+        # start the thread
+        t.start()
+        return async
+
+
+    def _get_callback(self):
+        """
+        Return callable for this Callback.
+        """
+        return self._create_thread
+
+
+    
 class Thread(threading.Thread):
     """
     Notifier aware wrapper for threads. When a thread is started, it is

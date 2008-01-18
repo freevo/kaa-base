@@ -59,9 +59,9 @@ def execute_in_thread(name=None, priority=0):
         def newfunc(*args, **kwargs):
             if name:
                 return NamedThreadCallback((name, priority), func, *args, **kwargs)()
-            t = thread.Thread(func, *args, **kwargs)
+            t = thread.ThreadCallback(func, *args, **kwargs)
             t.wait_on_exit(False)
-            return t.start()
+            return t()
 
         try:
             newfunc.func_name = func.func_name

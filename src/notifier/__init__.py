@@ -32,7 +32,7 @@
 
 from popen import Process
 from callback import Callback, WeakCallback, Signal, Signals
-from thread import MainThreadCallback, Thread, is_mainthread
+from thread import MainThreadCallback, ThreadCallback, Thread, is_mainthread
 from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, OneShotAtTimer
 from sockets import SocketDispatcher, WeakSocketDispatcher, Socket, IO_READ, IO_WRITE
 from event import Event, EventHandler, WeakEventHandler
@@ -48,7 +48,7 @@ __all__ = [
     'OneShotAtTimer', 'SocketDispatcher', 'WeakSocketDispatcher', 'Socket',
     'IO_READ', 'IO_WRITE', 'Event', 'EventHandler', 'WeakEventHandler',
     'YieldContinue', 'YieldCallback', 'YieldFunction', 'NamedThreadCallback',
-    'InProgress',
+    'InProgress', 'ThreadCallback',
 
     # decorator for sub modules
     # FIXME: while we are breaking the API right now, do we want to keep

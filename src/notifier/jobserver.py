@@ -39,7 +39,7 @@ import sys
 
 # kaa notifier imports
 from callback import Signal, Callback
-from async import InProgress, BackgroundTask
+from async import InProgress
 from thread import MainThreadCallback
 import thread
 
@@ -73,7 +73,43 @@ def execute_in_thread(name=None, priority=0):
     return decorator
 
 
-class NamedThreadCallback(BackgroundTask, Callback):
+class InProgressCallback(InProgress):
+    def __init__(self, callback, *args, **kwargs):
+        InProgress.__init__(self)
+        self._callback = Callback(callback, *args, **kwargs)
+
+
+    def _execute(self):
+        """
+        Execute the callback. This function SHOULD be called __call__ but
+        InProgress.__call__ returns the result. This is deprecated but
+        still used.
+        """
+        if self._callback is None:
+            return None
+        try:
+            MainThreadCallback(self.finished, self._callback())()
+        except Exception, e:
+            e._exc_info = sys.exc_info()
+            MainThreadCallback(self.exception, e)()
+        self._callback = None
+
+
+    def active(self):
+        """
+        Return True if the callback is still waiting to be proccessed.
+        """
+        return self._callback is not None
+
+
+    def stop(self):
+        """
+        Remove the callback from the thread schedule if still active.
+        """
+        self._callback = None
+
+
+class NamedThreadCallback(Callback):
     """
     A callback to run a function in a thread. This class is used by
     execute_in_thread, but it is also possible to use this call directly.
@@ -82,44 +118,25 @@ class NamedThreadCallback(BackgroundTask, Callback):
     """
     def __init__(self, thread_information, func, *args, **kwargs):
         Callback.__init__(self, func, *args, **kwargs)
-        BackgroundTask.__init__(self)
         self.priority = 0
         if isinstance(thread_information, (list, tuple)):
             thread_information, self.priority = thread_information
-        self._thread_name = thread_information
-        self._server = None
+        self._thread = thread_information
 
 
-    def active(self):
-        """
-        Return True if the callback is still waiting to be proccessed.
-        """
-        return self._server != None
+    def _create_job(self, *args, **kwargs):
+        cb = Callback._get_callback(self)
+        job = InProgressCallback(cb, *args, **kwargs)
+        job.priority = self.priority
+        if not _threads.has_key(self._thread):
+            _threads[self._thread] = _Thread(self._thread)
+        server = _threads[self._thread]
+        server.add(job)
+        return job
 
 
-    @BackgroundTask.start_background_task()
-    def __call__(self, *args, **kwargs):
-        """
-        Schedule the callback function on the server, returns an InProgress
-        object.
-        """
-        if self._server:
-            raise RuntimeError('NamedThreadCallback already scheduled')
-        if not _threads.has_key(self._thread_name):
-            _threads[self._thread_name] = _Thread(self._thread_name)
-        self._named_thread_args = args, kwargs
-        self._server = _threads[self._thread_name]
-        self._server.add(self)
-
-
-    def stop(self):
-        """
-        Remove the callback from the thread schedule if still active.
-        """
-        if self.active():
-            self._server.remove(self)
-            self._server = None
-            self._named_thread_args = None
+    def _get_callback(self):
+        return self._create_job
 
 
 class _Thread(threading.Thread):
@@ -183,16 +200,7 @@ class _Thread(threading.Thread):
                 continue
             job = self.jobs.pop(0)
             self.condition.release()
-            # process the job
-            job._server = None
-            try:
-                args, kwargs = job._named_thread_args
-                job._named_thread_args = None
-                r = Callback.__call__(job, *args, **kwargs)
-                MainThreadCallback(job.signals['completed'].emit, r)()
-            except Exception, e:
-                e._exc_info = sys.exc_info()
-                MainThreadCallback(job.signals['exception'].emit, e)()
+            job._execute()
         # server stopped
         log.debug('stop thread %s' % self.name)
 

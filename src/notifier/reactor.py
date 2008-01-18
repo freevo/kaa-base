@@ -72,7 +72,7 @@ class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
         Run the reactor by starting the notifier mainloop.
         """
         self.startRunning(installSignalHandlers=installSignalHandlers)
-        kaa.main.start()
+        kaa.main.run()
 
 
 def install():

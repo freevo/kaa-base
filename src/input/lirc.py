@@ -159,4 +159,4 @@ if __name__ == "__main__":
     def cb(code):
         print "CODE", code
     signal.connect(cb)
-    kaa.main.start()
+    kaa.main.run()

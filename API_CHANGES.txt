@@ -15,3 +15,11 @@
 
    Note: Exception for this is kaa.notifier.url right now
 
+3. Renamed ThreadCallback to NamedThreadCallback and make the first
+   paramater in __init__ the thread information (name or list of name
+   and priority). The register function will be changed to __call__.
+   The NamedThreadCallback is not InProgress object anymore, it is a
+   Callback. In most cases ThreadCallback was not used directly so
+   this API change should not break some code.
+
+

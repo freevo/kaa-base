@@ -37,8 +37,8 @@ from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, One
 from sockets import SocketDispatcher, WeakSocketDispatcher, Socket, IO_READ, IO_WRITE
 from event import Event, EventHandler, WeakEventHandler
 from yieldfunc import YieldContinue, YieldCallback, YieldFunction, yield_execution
-from jobserver import ThreadCallback, execute_in_thread
-from async import InProgress
+from jobserver import NamedThreadCallback, execute_in_thread
+from async import InProgress, BackgroundTask
 from decorators import execute_in_timer, execute_in_mainloop
 
 # Here's what will be imported into the kaa namespace.
@@ -47,7 +47,8 @@ __all__ = [
     'Thread', 'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer', 'AtTimer',
     'OneShotAtTimer', 'SocketDispatcher', 'WeakSocketDispatcher', 'Socket',
     'IO_READ', 'IO_WRITE', 'Event', 'EventHandler', 'WeakEventHandler',
-    'YieldContinue', 'YieldCallback', 'YieldFunction', 'ThreadCallback', 'InProgress',
+    'YieldContinue', 'YieldCallback', 'YieldFunction', 'NamedThreadCallback',
+    'InProgress', 'BackgroundTask',
 
     # decorator for sub modules
     # FIXME: while we are breaking the API right now, do we want to keep

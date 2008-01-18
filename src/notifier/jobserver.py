@@ -29,7 +29,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'execute_in_thread', 'ThreadCallback' ]
+__all__ = [ 'execute_in_thread', 'NamedThreadCallback' ]
 
 
 # python imports
@@ -39,7 +39,7 @@ import sys
 
 # kaa notifier imports
 from callback import Signal, Callback
-from async import InProgress
+from async import InProgress, BackgroundTask
 from thread import MainThreadCallback
 import thread
 
@@ -59,9 +59,7 @@ def execute_in_thread(name=None, priority=0):
 
         def newfunc(*args, **kwargs):
             if name:
-                t = ThreadCallback(func, *args, **kwargs)
-                t.register(name, priority)
-                return t
+                return NamedThreadCallback((name, priority), func, *args, **kwargs)()
             t = thread.Thread(func, *args, **kwargs)
             t.wait_on_exit(False)
             return t.start()
@@ -75,16 +73,20 @@ def execute_in_thread(name=None, priority=0):
     return decorator
 
 
-class ThreadCallback(InProgress):
+class NamedThreadCallback(BackgroundTask, Callback):
     """
     A callback to run a function in a thread. This class is used by
     execute_in_thread, but it is also possible to use this call directly.
     The class inherits from InProgress and will call the connected functions
     on termination or exception.
     """
-    def __init__(self, function, *args, **kwargs):
-        super(ThreadCallback, self).__init__()
-        self._callback = Callback(function, *args, **kwargs)
+    def __init__(self, thread_information, func, *args, **kwargs):
+        Callback.__init__(self, func, *args, **kwargs)
+        BackgroundTask.__init__(self)
+        self.priority = 0
+        if isinstance(thread_information, (list, tuple)):
+            thread_information, self.priority = thread_information
+        self._thread_name = thread_information
         self._server = None
 
 
@@ -95,16 +97,18 @@ class ThreadCallback(InProgress):
         return self._server != None
 
 
-    def register(self, name, priority=0):
+    @BackgroundTask.start_background_task()
+    def __call__(self, *args, **kwargs):
         """
-        Register callback to a thread with the given name.
+        Schedule the callback function on the server, returns an InProgress
+        object.
         """
         if self._server:
-            return
-        self.priority = priority
-        if not _threads.has_key(name):
-            _threads[name] = _Thread(name)
-        self._server = _threads[name]
+            raise RuntimeError('NamedThreadCallback already scheduled')
+        if not _threads.has_key(self._thread_name):
+            _threads[self._thread_name] = _Thread(self._thread_name)
+        self._named_thread_args = args, kwargs
+        self._server = _threads[self._thread_name]
         self._server.add(self)
 
 
@@ -115,11 +119,12 @@ class ThreadCallback(InProgress):
         if self.active():
             self._server.remove(self)
             self._server = None
+            self._named_thread_args = None
 
 
 class _Thread(threading.Thread):
     """
-    Thread processing ThreadCallback jobs.
+    Thread processing NamedThreadCallback jobs.
     """
     def __init__(self, name):
         log.debug('start jobserver %s' % name)
@@ -144,7 +149,7 @@ class _Thread(threading.Thread):
 
     def add(self, job):
         """
-        Add a ThreadCallback to the thread.
+        Add a NamedThreadCallback to the thread.
         """
         self.condition.acquire()
         self.jobs.append(job)
@@ -155,7 +160,7 @@ class _Thread(threading.Thread):
 
     def remove(self, job):
         """
-        Remove a ThreadCallback from the schedule.
+        Remove a NamedThreadCallback from the schedule.
         """
         if job in self.jobs:
             self.condition.acquire()
@@ -181,10 +186,13 @@ class _Thread(threading.Thread):
             # process the job
             job._server = None
             try:
-                MainThreadCallback(job.finished, job._callback())()
+                args, kwargs = job._named_thread_args
+                job._named_thread_args = None
+                r = Callback.__call__(job, *args, **kwargs)
+                MainThreadCallback(job.signals['completed'].emit, r)()
             except Exception, e:
                 e._exc_info = sys.exc_info()
-                MainThreadCallback(job.exception, e)()
+                MainThreadCallback(job.signals['exception'].emit, e)()
         # server stopped
         log.debug('stop thread %s' % self.name)
 

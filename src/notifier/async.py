@@ -29,7 +29,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'InProgress' ]
+__all__ = [ 'InProgress', 'BackgroundTask' ]
 
 # python imports
 import logging
@@ -200,3 +200,32 @@ class InProgress(Signal):
         will be emited only once.
         """
         return Signal._connect(self, callback, args, kwargs, True, weak, pos)
+
+
+class BackgroundTask(object):
+    """
+    Task running in the background. This objects provides a 'completed' and
+    an 'exception' signal and a decorator to create an InProgress object.
+    """
+    def __init__(self):
+        self.signals = {
+            'completed': Signal(),
+            'exception': Signal()
+        }
+
+    def start_background_task():
+        def decorator(func):
+            def newfunc(self, *args, **kwargs):
+                async = InProgress()
+                self.signals['completed'].connect_weak_once(async.finished)
+                self.signals['exception'].connect_weak_once(async.exception)
+                func(self, *args, **kwargs)
+                return async
+            try:
+                newfunc.func_name = func.func_name
+            except TypeError:
+                pass
+            return newfunc
+        return decorator
+    
+    start_background_task = staticmethod(start_background_task)

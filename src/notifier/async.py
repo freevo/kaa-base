@@ -177,12 +177,9 @@ class InProgress(Signal):
         The function will either return the result or raise the exception
         provided to the exception function.
         """
-        if not self.is_finished:
-            raise RuntimeError('operation not finished')
-        if self._exception:
-            raise self._exception
-        return self._result
-
+        # DEPRECATED!!!!!!!
+        return self.get_result()
+    
 
     def get_result(self):
         """
@@ -190,7 +187,11 @@ class InProgress(Signal):
         The function will either return the result or raise the exception
         provided to the exception function.
         """
-        return self()
+        if not self.is_finished:
+            raise RuntimeError('operation not finished')
+        if self._exception:
+            raise self._exception
+        return self._result
 
 
     def _connect(self, callback, args = (), kwargs = {}, once = False,

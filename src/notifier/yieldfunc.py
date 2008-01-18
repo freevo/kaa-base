@@ -33,7 +33,7 @@
 #
 # -----------------------------------------------------------------------------
 # kaa.notifier - Mainloop and callbacks
-# Copyright (C) 2006-2007 Dirk Meyer, Jason Tackaberry, et al.
+# Copyright (C) 2006-2008 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
@@ -68,12 +68,21 @@ from async import InProgress
 
 log = logging.getLogger('notifier.yield')
 
+# XXX YIELD CHANGES NOTES
+# XXX Not possible to remove that and replace it with None because a
+# XXX function may want to return None. Using return does not help here.
 YieldContinue = object()
+
+# XXX YIELD CHANGES NOTES
+# XXX The deferrer stuff from Signal and InProgress won't work because
+# XXX some parts connect interally to the InProgress object returned
+# by yield_execution and the deferrer only handles one connect!
+
 
 class YieldCallback(object):
     """
     Callback class that can be used as a callback for a function that is
-    async. Return this object using 'yield' and use the memeber function
+    async. Return this object using 'yield' and use the member function
     'get' later to get the result.
     """
     def __init__(self, func=None):
@@ -84,6 +93,10 @@ class YieldCallback(object):
 
 
     def __call__(self, *args, **kwargs):
+        """
+        Call the YieldCallback by the external function. This will resume
+        the calling YieldFunction.
+        """
         self._args = args
         self._kwargs = kwargs
         self._callback()
@@ -92,6 +105,11 @@ class YieldCallback(object):
 
 
     def _connect(self, callback):
+        """
+        Connect a callback that will be called when the YieldCallback
+        function is called. This callback will resume the calling
+        YieldFunction.
+        """
         self._callback = callback
 
 
@@ -124,6 +142,11 @@ def yield_execution(interval=0, lock=False):
     results. Special yield values for break are YieldContinue or
     YieldCallback or InProgress objects. In lock is True the function will
     be locked against parallel calls. If locked the call will delayed.
+    A function decorated with this decorator will always return a
+    YieldFunction (which is an InProgress object) or the result.
+    XXX YIELD CHANGES NOTES
+    XXX This function will always return YieldFunction or an already
+    XXX finished InProgress object in the future.
     """
     def decorator(func):
 
@@ -134,8 +157,11 @@ def yield_execution(interval=0, lock=False):
                 # likyle means it didn't yield anything.  There was no sense
                 # in decorating that function with yield_execution, but on
                 # the other hand it's easy enough just to return the result.
+                # XXX YIELD CHANGES NOTES
+                # XXX Create InProgress object here and emit delayed
+                # XXX result After that, return that InProgress object
+                # XXX to always return an InProgress object.
                 return result
-
             function = result.next
             if lock and func._lock is not None and not func._lock.is_finished:
                 return YieldLock(func, function, interval)
@@ -143,15 +169,25 @@ def yield_execution(interval=0, lock=False):
                 result = function()
             except StopIteration:
                 # no return with yield, but done, return None
+                # XXX YIELD CHANGES NOTES
+                # XXX Create InProgress object here and emit delayed
+                # XXX result After that, return that InProgress object
+                # XXX to always return an InProgress object.
                 return None
             if not (result == YieldContinue or \
                     isinstance(result, (YieldCallback, InProgress))):
                 # everything went fine, return result
+                # XXX YIELD CHANGES NOTES
+                # XXX Create InProgress object here and emit delayed
+                # XXX result After that, return that InProgress object
+                # XXX to always return an InProgress object.
                 return result
             # we need a step callback to finish this later
+            # result is one of YieldContinue, YieldCallback, InProgress
             progress = YieldFunction(function, interval, result)
             if lock:
                 func._lock = progress
+            # return the YieldFunction (InProgress)
             return progress
 
         func._lock = None
@@ -165,27 +201,12 @@ def yield_execution(interval=0, lock=False):
 # Internal classes
 # -----------------------------------------------------------------------------
 
-class YieldInProgress(object):
-    """
-    Internal function to handle InProgress returns from yield.
-    """
-    def __init__(self, in_progress):
-        self._in_progress = in_progress
-
-
-    def _connect(self, callback):
-        self._in_progress.connect_both(callback, callback)
-
-
-    def __call__(self, *args, **kwargs):
-        r = self._in_progress()
-        self._in_progress = None
-        return r
-
-
 class YieldFunction(InProgress):
     """
-    InProgress class to continue function execution.
+    InProgress class that runs a generator function. This is also the return value
+    for yield_execution if it takes some more time. status can be either None
+    (not started yet), YieldContinue (iterate now), YieldCallback (wait until the
+    callback is called) or InProgress (wait until InProgress is done).
     """
     def __init__(self, function, interval, status=None):
         InProgress.__init__(self)
@@ -193,25 +214,44 @@ class YieldFunction(InProgress):
         self._timer = Timer(self._step)
         self._interval = interval
         if status == None:
-            # call function later
+            # No status from yield_execution, this means that the YieldFunction
+            # was created from the outside and the creator must call this object
             self._valid = False
             return
         self._valid = True
         if status == YieldContinue:
-            return self._timer.start(interval)
-        if isinstance(status, InProgress):
-            status = YieldInProgress(status)
-        status._connect(self._continue)
+            # yield_execution was stopped YieldContinue, start the step timer
+            self._timer.start(interval)
+        elif isinstance(status, InProgress):
+            # continue when InProgress is done
+            # XXX YIELD CHANGES NOTES
+            # XXX Be careful with already finished InProgress
+            # XXX Remember status for Python 2.5 to send back
+            status.connect_both(self._continue, self._continue)
+        elif isinstance(status, YieldCallback):
+            # Set _continue as callback to resume the generator when status is done.
+            # XXX YIELD CHANGES NOTES
+            # XXX Be careful with already finished callbacks
+            # XXX Remember status for Python 2.5 to send back
+            status._connect(self._continue)
+        else:
+            raise RuntimeError('YieldFunction with bad status %s' % status)
 
 
     def __call__(self, *args, **kwargs):
+        """
+        Call the YieldFunction to start it if it was not created by
+        yield_execution.
+        """
         if not self._valid:
-            # setup call
+            # The generator was not started yet
             self._valid = True
             self._yield__function = self._yield__function(*args, **kwargs).next
             self._continue()
             return True
-        return InProgress.__call__(self, *args, **kwargs)
+        # return the result
+        # DEPRECATED!!!!!!!!!!!!!!!!!
+        return InProgress.get_result(self)
 
 
     def _continue(self, *args, **kwargs):
@@ -219,6 +259,7 @@ class YieldFunction(InProgress):
         Restart timer.
         """
         if self._timer:
+            # continue calling _step
             self._timer.start(self._interval)
 
 
@@ -226,24 +267,44 @@ class YieldFunction(InProgress):
         """
         Call next step of the yield function.
         """
+        # XXX YIELD CHANGES NOTES
+        # XXX maybe send a return for Python 2.5 here
         try:
             result = self._yield__function()
         except (SystemExit, KeyboardInterrupt):
+            self._timer.stop()
+            self._yield__function = None
             sys.exit(0)
         except StopIteration:
             result = None
         except Exception, e:
+            # YieldFunction is done with exception
             e._exc_info = sys.exc_info()
+            self._timer.stop()
+            self._yield__function = None
             self.throw(e)
             return False
         if result == YieldContinue:
+            # schedule next interation with the timer
             return True
+        # We have to stop the timer because we either have a result
+        # or have to wait for an InProgress or YieldCallback
         self._timer.stop()
         if isinstance(result, InProgress):
-            result = YieldInProgress(result)
-        if isinstance(result, (YieldCallback, YieldInProgress)):
+            # continue when InProgress is done
+            # XXX YIELD CHANGES NOTES
+            # XXX Remember result for Python 2.5 to send back
+            # XXX Be careful with already finished InProgress
+            result.connect_both(self._continue, self._continue)
+            return False
+        if isinstance(result, YieldCallback):
+            # Set _continue as callback to resume the generator when result is done.
+            # XXX YIELD CHANGES NOTES
+            # XXX Remember result for Python 2.5 to send back
+            # XXX Be careful with already finished callbacks
             result._connect(self._continue)
             return False
+        # YieldFunction is done
         self._timer = None
         self.finished(result)
         self._yield__function = None
@@ -267,15 +328,16 @@ class YieldLock(YieldFunction):
     def __init__(self, original_function, function, interval):
         YieldFunction.__init__(self, function, interval)
         self._func = original_function
-        status = YieldInProgress(self._func._lock)
-        status._connect(self._try_again)
+        self._func._lock.connect_both(self._try_again, self._try_again)
 
 
     def _try_again(self, result):
+        """
+        Try to start now.
+        """
         if not self._func._lock.is_finished:
             # still locked by a new call, wait again
-            status = YieldInProgress(self._func._lock)
-            status._connect(self._try_again)
+            self._func._lock.connect_both(self._try_again, self._try_again)
             return
         self._func._lock = self
         self._continue()

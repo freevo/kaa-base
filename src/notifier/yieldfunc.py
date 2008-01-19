@@ -123,6 +123,25 @@ class YieldCallback(InProgress):
         return InProgress.get_result(self)
         
 
+# variable to detect if send is possible with a generator
+# XXX This breaks existing code because now the exception is raised inside
+# XXX the yield call while this was safe until now, only get_result() could
+# XXX crash before that. After checking the code, _python25 should be set to
+# _python25 = sys.version.split()[0] > '2.4'
+_python25 = False
+
+def _process(func, async=None):
+    """
+    function to call next, step, or throw
+    """
+    if _python25 and async is not None:
+        if async._exception:
+            e = async._exception
+            return func.throw(e.__class__, e)
+        return func.send(async._result)
+    return func.next()
+
+
 def yield_execution(interval=0, lock=False):
     """
     Functions with this decorator uses yield to break and to return the
@@ -149,11 +168,11 @@ def yield_execution(interval=0, lock=False):
                 # XXX result After that, return that InProgress object
                 # XXX to always return an InProgress object.
                 return result
-            function = result.next
+            function = result
             if lock and func._lock is not None and not func._lock.is_finished:
                 return YieldLock(func, function, interval)
             try:
-                result = function()
+                result = _process(function)
             except StopIteration:
                 # no return with yield, but done, return None
                 # XXX YIELD CHANGES NOTES
@@ -205,6 +224,7 @@ class YieldFunction(InProgress):
             self._valid = False
             return
         self._valid = True
+        self._async = None
         if status == YieldContinue:
             # yield_execution was stopped YieldContinue, start the step timer
             self._timer.start(interval)
@@ -212,7 +232,7 @@ class YieldFunction(InProgress):
             # continue when InProgress is done
             # XXX YIELD CHANGES NOTES
             # XXX Be careful with already finished InProgress
-            # XXX Remember status for Python 2.5 to send back
+            self._async = status
             status.connect_both(self._continue, self._continue)
         else:
             raise RuntimeError('YieldFunction with bad status %s' % status)
@@ -226,7 +246,7 @@ class YieldFunction(InProgress):
         if not self._valid:
             # The generator was not started yet
             self._valid = True
-            self._yield__function = self._yield__function(*args, **kwargs).next
+            self._yield__function = self._yield__function(*args, **kwargs)
             self._continue()
             return True
         # return the result
@@ -247,12 +267,11 @@ class YieldFunction(InProgress):
         """
         Call next step of the yield function.
         """
-        # XXX YIELD CHANGES NOTES
-        # XXX maybe send a return for Python 2.5 here
         try:
-            result = self._yield__function()
+            result = _process(self._yield__function, self._async)
         except (SystemExit, KeyboardInterrupt):
             self._timer.stop()
+            self._async = None
             self._yield__function = None
             sys.exit(0)
         except StopIteration:
@@ -261,6 +280,7 @@ class YieldFunction(InProgress):
             # YieldFunction is done with exception
             e._exc_info = sys.exc_info()
             self._timer.stop()
+            self._async = None
             self._yield__function = None
             self.throw(e)
             return False
@@ -275,11 +295,13 @@ class YieldFunction(InProgress):
             # XXX YIELD CHANGES NOTES
             # XXX Remember result for Python 2.5 to send back
             # XXX Be careful with already finished InProgress
+            self._async = result
             result.connect_both(self._continue, self._continue)
             return False
         # YieldFunction is done
         self._timer = None
         self.finished(result)
+        self._async = None
         self._yield__function = None
         return False
 
@@ -292,6 +314,7 @@ class YieldFunction(InProgress):
             self._timer.stop()
         self._timer = None
         self._yield__function = None
+        self._async = None
 
 
 class YieldLock(YieldFunction):

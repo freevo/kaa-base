@@ -106,27 +106,27 @@ def foo():
     callback = kaa.YieldCallback()
     async(callback, 7, 8)
     yield callback
-    print callback.get()                # (7, 8)
+    print callback.get_result()                # (7, 8)
 
     callback = kaa.YieldCallback()
     async(callback)
     yield callback
-    print callback.get()                # None
+    print callback.get_result()                # None
 
     callback = kaa.YieldCallback()
     async(callback, 9)
     yield callback
-    print callback.get()                # 9
+    print callback.get_result()                # 9
 
     callback = kaa.YieldCallback()
     async(callback, foo=10)
     yield callback
-    print callback.get()                # 10
+    print callback.get_result()                # 10
 
     callback = kaa.YieldCallback()
     async(callback, foo=11, bar=12)
     yield callback
-    print callback.get()                # {'foo': 11, 'bar': 12}
+    print callback.get_result()                # {'foo': 11, 'bar': 12}
 
     x = thread(13)
     # this is also an InProgress object

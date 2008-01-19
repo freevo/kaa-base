@@ -79,16 +79,18 @@ YieldContinue = object()
 # by yield_execution and the deferrer only handles one connect!
 
 
-class YieldCallback(object):
+class YieldCallback(InProgress):
     """
     Callback class that can be used as a callback for a function that is
     async. Return this object using 'yield' and use the member function
     'get' later to get the result.
     """
     def __init__(self, func=None):
+        InProgress.__init__(self)
         if func is not None:
             if isinstance(func, Signal):
                 func = func.connect_once
+            # connect self as callback
             func(self)
 
 
@@ -97,50 +99,35 @@ class YieldCallback(object):
         Call the YieldCallback by the external function. This will resume
         the calling YieldFunction.
         """
-        self._args = args
-        self._kwargs = kwargs
-        self._callback()
-        self._callback = None
-        return False
-
-
-    def _connect(self, callback):
-        """
-        Connect a callback that will be called when the YieldCallback
-        function is called. This callback will resume the calling
-        YieldFunction.
-        """
-        self._callback = callback
+        # try to get the results as the caller excepts them
+        if args and kwargs:
+            # no idea how to merge them
+            return self.finished((args, kwargs))
+        if kwargs and len(kwargs) == 1:
+            # return the value
+            return self.finished(kwargs.values()[0])
+        if kwargs:
+            # return as dict
+            return self.finished(kwargs)
+        if len(args) == 1:
+            # return value
+            return self.finished(args[0])
+        if len(args) > 1:
+            # return as list
+            return self.finished(args)
+        return self.finished(None)
 
 
     def get(self):
-        """
-        Return the result of the callback.
-        """
-        # try to get the results as the caller excepts them
-        if self._args and self._kwargs:
-            # no idea how to merge them
-            return self._args, self._kwargs
-        if self._kwargs and len(self._kwargs) == 1:
-            # return the value
-            return self._kwargs.values()[0]
-        if self._kwargs:
-            # return as dict
-            return self._kwargs
-        if len(self._args) == 1:
-            # return value
-            return self._args[0]
-        if len(self._args) > 1:
-            # return as list
-            return self._args
-        return None
-
+        log.warning('Deprecated call to YieldCallback.get(); use get_result() instead')
+        return InProgress.get_result(self)
+        
 
 def yield_execution(interval=0, lock=False):
     """
     Functions with this decorator uses yield to break and to return the
     results. Special yield values for break are YieldContinue or
-    YieldCallback or InProgress objects. In lock is True the function will
+    InProgress objects. In lock is True the function will
     be locked against parallel calls. If locked the call will delayed.
     A function decorated with this decorator will always return a
     YieldFunction (which is an InProgress object) or the result.
@@ -174,8 +161,7 @@ def yield_execution(interval=0, lock=False):
                 # XXX result After that, return that InProgress object
                 # XXX to always return an InProgress object.
                 return None
-            if not (result == YieldContinue or \
-                    isinstance(result, (YieldCallback, InProgress))):
+            if not (result == YieldContinue or isinstance(result, InProgress)):
                 # everything went fine, return result
                 # XXX YIELD CHANGES NOTES
                 # XXX Create InProgress object here and emit delayed
@@ -183,7 +169,7 @@ def yield_execution(interval=0, lock=False):
                 # XXX to always return an InProgress object.
                 return result
             # we need a step callback to finish this later
-            # result is one of YieldContinue, YieldCallback, InProgress
+            # result is one of YieldContinue, InProgress
             progress = YieldFunction(function, interval, result)
             if lock:
                 func._lock = progress
@@ -205,8 +191,8 @@ class YieldFunction(InProgress):
     """
     InProgress class that runs a generator function. This is also the return value
     for yield_execution if it takes some more time. status can be either None
-    (not started yet), YieldContinue (iterate now), YieldCallback (wait until the
-    callback is called) or InProgress (wait until InProgress is done).
+    (not started yet), YieldContinue (iterate now) or InProgress (wait until
+    InProgress is done).
     """
     def __init__(self, function, interval, status=None):
         InProgress.__init__(self)
@@ -228,12 +214,6 @@ class YieldFunction(InProgress):
             # XXX Be careful with already finished InProgress
             # XXX Remember status for Python 2.5 to send back
             status.connect_both(self._continue, self._continue)
-        elif isinstance(status, YieldCallback):
-            # Set _continue as callback to resume the generator when status is done.
-            # XXX YIELD CHANGES NOTES
-            # XXX Be careful with already finished callbacks
-            # XXX Remember status for Python 2.5 to send back
-            status._connect(self._continue)
         else:
             raise RuntimeError('YieldFunction with bad status %s' % status)
 
@@ -250,7 +230,7 @@ class YieldFunction(InProgress):
             self._continue()
             return True
         # return the result
-        # DEPRECATED!!!!!!!!!!!!!!!!!
+        log.warning('Deprecated call to InProgress(); use get_result() instead')
         return InProgress.get_result(self)
 
 
@@ -288,7 +268,7 @@ class YieldFunction(InProgress):
             # schedule next interation with the timer
             return True
         # We have to stop the timer because we either have a result
-        # or have to wait for an InProgress or YieldCallback
+        # or have to wait for an InProgress
         self._timer.stop()
         if isinstance(result, InProgress):
             # continue when InProgress is done
@@ -296,13 +276,6 @@ class YieldFunction(InProgress):
             # XXX Remember result for Python 2.5 to send back
             # XXX Be careful with already finished InProgress
             result.connect_both(self._continue, self._continue)
-            return False
-        if isinstance(result, YieldCallback):
-            # Set _continue as callback to resume the generator when result is done.
-            # XXX YIELD CHANGES NOTES
-            # XXX Remember result for Python 2.5 to send back
-            # XXX Be careful with already finished callbacks
-            result._connect(self._continue)
             return False
         # YieldFunction is done
         self._timer = None

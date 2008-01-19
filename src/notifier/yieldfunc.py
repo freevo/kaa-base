@@ -170,30 +170,38 @@ def yield_execution(interval=0, lock=False):
                 return result
             function = result
             if lock and func._lock is not None and not func._lock.is_finished:
+                # Function is currently called by someone else
                 return YieldLock(func, function, interval)
-            try:
-                result = _process(function)
-            except StopIteration:
-                # no return with yield, but done, return None
-                # XXX YIELD CHANGES NOTES
-                # XXX Create InProgress object here and emit delayed
-                # XXX result After that, return that InProgress object
-                # XXX to always return an InProgress object.
-                return None
-            if not (result == YieldContinue or isinstance(result, InProgress)):
-                # everything went fine, return result
-                # XXX YIELD CHANGES NOTES
-                # XXX Create InProgress object here and emit delayed
-                # XXX result After that, return that InProgress object
-                # XXX to always return an InProgress object.
-                return result
-            # we need a step callback to finish this later
-            # result is one of YieldContinue, InProgress
-            progress = YieldFunction(function, interval, result)
-            if lock:
-                func._lock = progress
-            # return the YieldFunction (InProgress)
-            return progress
+            async = None
+            while True:
+                try:
+                    result = _process(function, async)
+                except StopIteration:
+                    # no return with yield, but done, return None
+                    # XXX YIELD CHANGES NOTES
+                    # XXX Create InProgress object here and emit delayed
+                    # XXX result After that, return that InProgress object
+                    # XXX to always return an InProgress object.
+                    return None
+                if isinstance(result, InProgress):
+                    if result.is_finished:
+                        # InProgress return that is already finished, go on
+                        async = result
+                        continue
+                elif result != YieldContinue:
+                    # everything went fine, return result
+                    # XXX YIELD CHANGES NOTES
+                    # XXX Create InProgress object here and emit delayed
+                    # XXX result After that, return that InProgress object
+                    # XXX to always return an InProgress object.
+                    return result
+                # we need a step callback to finish this later
+                # result is one of YieldContinue, InProgress
+                progress = YieldFunction(function, interval, result)
+                if lock:
+                    func._lock = progress
+                # return the YieldFunction (InProgress)
+                return progress
 
         func._lock = None
         newfunc.func_name = func.func_name
@@ -268,7 +276,16 @@ class YieldFunction(InProgress):
         Call next step of the yield function.
         """
         try:
-            result = _process(self._yield__function, self._async)
+            while True:
+                result = _process(self._yield__function, self._async)
+                if isinstance(result, InProgress) and result.is_finished:
+                    # the result is a finished InProgress object
+                    self._async = result
+                    continue
+                if result == YieldContinue:
+                    # schedule next interation with the timer
+                    return True
+                break
         except (SystemExit, KeyboardInterrupt):
             self._timer.stop()
             self._async = None
@@ -284,16 +301,12 @@ class YieldFunction(InProgress):
             self._yield__function = None
             self.throw(e)
             return False
-        if result == YieldContinue:
-            # schedule next interation with the timer
-            return True
         # We have to stop the timer because we either have a result
         # or have to wait for an InProgress
         self._timer.stop()
         if isinstance(result, InProgress):
             # continue when InProgress is done
             # XXX YIELD CHANGES NOTES
-            # XXX Remember result for Python 2.5 to send back
             # XXX Be careful with already finished InProgress
             self._async = result
             result.connect_both(self._continue, self._continue)

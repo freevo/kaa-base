@@ -156,14 +156,19 @@ def _wrap_result(result):
     return async
 
 
-def yield_execution(interval=0, lock=False):
+def yield_execution(interval = 0, synchronize = False):
     """
     Functions with this decorator uses yield to break and to return the
     results. Special yield values for break are YieldContinue or
-    InProgress objects. In lock is True the function will
-    be locked against parallel calls. If locked the call will delayed.
+    InProgress objects. If synchronize is True the function will
+    be protected against parallel calls, which can be used avoid
+    multithreading pitfalls such as deadlocks or race conditions.
+    If a decorated function is currently being executed, new
+    invocations will be queued.
+
     A function decorated with this decorator will always return a
     YieldFunction (which is an InProgress object) or the result.
+
     XXX YIELD CHANGES NOTES
     XXX This function will always return YieldFunction or an already
     XXX finished InProgress object in the future.
@@ -179,7 +184,7 @@ def yield_execution(interval=0, lock=False):
                 # the other hand it's easy enough just to return the result.
                 return _wrap_result(result)
             function = result
-            if lock and func._lock is not None and not func._lock.is_finished():
+            if synchronize and func._lock is not None and not func._lock.is_finished():
                 # Function is currently called by someone else
                 return YieldLock(func, function, interval)
             async = None
@@ -200,7 +205,7 @@ def yield_execution(interval=0, lock=False):
                 # we need a step callback to finish this later
                 # result is one of YieldContinue, InProgress
                 progress = YieldFunction(function, interval, result)
-                if lock:
+                if synchronize:
                     func._lock = progress
                 # return the YieldFunction (InProgress)
                 return progress

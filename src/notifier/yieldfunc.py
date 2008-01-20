@@ -169,7 +169,7 @@ def yield_execution(interval=0, lock=False):
                 # XXX to always return an InProgress object.
                 return result
             function = result
-            if lock and func._lock is not None and not func._lock.is_finished:
+            if lock and func._lock is not None and not func._lock.is_finished():
                 # Function is currently called by someone else
                 return YieldLock(func, function, interval)
             async = None
@@ -184,7 +184,7 @@ def yield_execution(interval=0, lock=False):
                     # XXX to always return an InProgress object.
                     return None
                 if isinstance(result, InProgress):
-                    if result.is_finished:
+                    if result.is_finished():
                         # InProgress return that is already finished, go on
                         async = result
                         continue
@@ -278,7 +278,7 @@ class YieldFunction(InProgress):
         try:
             while True:
                 result = _process(self._yield__function, self._async)
-                if isinstance(result, InProgress) and result.is_finished:
+                if isinstance(result, InProgress) and result.is_finished():
                     # the result is a finished InProgress object
                     self._async = result
                     continue
@@ -344,7 +344,7 @@ class YieldLock(YieldFunction):
         """
         Try to start now.
         """
-        if not self._func._lock.is_finished:
+        if not self._func._lock.is_finished():
             # still locked by a new call, wait again
             self._func._lock.connect_both(self._try_again, self._try_again)
             return

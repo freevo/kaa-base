@@ -102,7 +102,7 @@ class InProgress(Signal):
         """
         Signal.__init__(self)
         self.exception = Signal()
-        self.is_finished = False
+        self._finished = False
         self.status = None
 
 
@@ -123,7 +123,7 @@ class InProgress(Signal):
         """
         if self.status is not None:
             return self.status
-        return not self.is_finished
+        return not self._finished
 
 
     def finished(self, result):
@@ -137,7 +137,7 @@ class InProgress(Signal):
             result.exception.connect(self.throw)
             return
         # store result
-        self.is_finished = True
+        self._finished = True
         self._result = result
         self._exception = None
         # emit signal
@@ -162,7 +162,7 @@ class InProgress(Signal):
 
             log.error('*** InProgress exception not handled ***\n%s', trace)
         # store result
-        self.is_finished = True
+        self._finished = True
         self._exception = e
         # emit signal
         self.exception.emit_when_handled(e)
@@ -177,9 +177,16 @@ class InProgress(Signal):
         The function will either return the result or raise the exception
         provided to the exception function.
         """
-        # DEPRECATED!!!!!!!
+        log.warning('Deprecated call to InProgress(); use get_result() instead')
         return self.get_result()
     
+
+    def is_finished(self):
+        """
+        Return if the InProgress is finished.
+        """
+        return self._finished
+
 
     def get_result(self):
         """
@@ -187,7 +194,7 @@ class InProgress(Signal):
         The function will either return the result or raise the exception
         provided to the exception function.
         """
-        if not self.is_finished:
+        if not self._finished:
             raise RuntimeError('operation not finished')
         if self._exception:
             raise self._exception

@@ -80,7 +80,7 @@ class MainThreadCallback(Callback):
     def _set_result(self, result):
         self._sync_return = result
         if isinstance(self._sync_return, InProgress):
-            if not self._sync_return.is_finished:
+            if not self._sync_return.is_finished():
                 self._sync_return.connect_both(self._set_result, self._set_exception)
                 return
             self._sync_return = self._sync_return()

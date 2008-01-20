@@ -29,3 +29,5 @@
 5. Rename exception_handler in InProgress into exception and the
    exception callback function to throw. Add a convenience function 
    connect_both. The member variable is_finished is now a function.
+
+6. yield_execution decorator: lock kwarg was renamed to synchronize

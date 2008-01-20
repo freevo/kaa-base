@@ -238,8 +238,6 @@ class YieldFunction(InProgress):
             self._timer.start(interval)
         elif isinstance(status, InProgress):
             # continue when InProgress is done
-            # XXX YIELD CHANGES NOTES
-            # XXX Be careful with already finished InProgress
             self._async = status
             status.connect_both(self._continue, self._continue)
         else:

@@ -28,5 +28,4 @@
 
 5. Rename exception_handler in InProgress into exception and the
    exception callback function to throw. Add a convenience function 
-   connect_both.
-
+   connect_both. The member variable is_finished is now a function.

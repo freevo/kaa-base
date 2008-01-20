@@ -142,6 +142,20 @@ def _process(func, async=None):
     return func.next()
 
 
+def _wrap_result(result):
+    """
+    Wrap the result in a finished InProgress object.
+    """
+    if 1:
+        # Remove this for testing code that _always_ returns an
+        # InProgress object. It is deactivated right now because it
+        # may break existing code.
+        return result
+    async = InProgress()
+    async.finished(result)
+    return async
+
+
 def yield_execution(interval=0, lock=False):
     """
     Functions with this decorator uses yield to break and to return the
@@ -163,11 +177,7 @@ def yield_execution(interval=0, lock=False):
                 # likyle means it didn't yield anything.  There was no sense
                 # in decorating that function with yield_execution, but on
                 # the other hand it's easy enough just to return the result.
-                # XXX YIELD CHANGES NOTES
-                # XXX Create InProgress object here and emit delayed
-                # XXX result After that, return that InProgress object
-                # XXX to always return an InProgress object.
-                return result
+                return _wrap_result(result)
             function = result
             if lock and func._lock is not None and not func._lock.is_finished():
                 # Function is currently called by someone else
@@ -178,11 +188,7 @@ def yield_execution(interval=0, lock=False):
                     result = _process(function, async)
                 except StopIteration:
                     # no return with yield, but done, return None
-                    # XXX YIELD CHANGES NOTES
-                    # XXX Create InProgress object here and emit delayed
-                    # XXX result After that, return that InProgress object
-                    # XXX to always return an InProgress object.
-                    return None
+                    return _wrap_result(None)
                 if isinstance(result, InProgress):
                     if result.is_finished():
                         # InProgress return that is already finished, go on
@@ -190,11 +196,7 @@ def yield_execution(interval=0, lock=False):
                         continue
                 elif result != YieldContinue:
                     # everything went fine, return result
-                    # XXX YIELD CHANGES NOTES
-                    # XXX Create InProgress object here and emit delayed
-                    # XXX result After that, return that InProgress object
-                    # XXX to always return an InProgress object.
-                    return result
+                    return _wrap_result(result)
                 # we need a step callback to finish this later
                 # result is one of YieldContinue, InProgress
                 progress = YieldFunction(function, interval, result)

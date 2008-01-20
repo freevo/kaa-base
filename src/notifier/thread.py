@@ -188,8 +188,8 @@ class ThreadCallback(Callback):
         t = threading.Thread(target=async._execute)
         t.setDaemon(self._daemon)
         # connect thread.join to the InProgress
-        async.connect(t.join)
-        async.exception.connect(t.join)
+        join = lambda *args, **kwargs: t.join()
+        async.connect_both(join, join)
         # start the thread
         t.start()
         return async

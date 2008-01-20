@@ -1,6 +1,6 @@
 import kaa
 
-@kaa.yield_execution(lock=True)
+@kaa.yield_execution(synchronize = True)
 def f(x):
     print 'in', x
     yield kaa.YieldContinue

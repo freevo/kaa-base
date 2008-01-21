@@ -127,7 +127,7 @@ class YieldCallback(InProgress):
 # XXX This breaks existing code because now the exception is raised inside
 # XXX the yield call while this was safe until now, only get_result() could
 # XXX crash before that. After checking the code, _python25 should be set to
-_python25 = sys.version.split()[0] > '2.4'
+#_python25 = sys.version.split()[0] > '2.4'
 _python25 = False
 
 def _process(func, async=None):
@@ -136,7 +136,6 @@ def _process(func, async=None):
     """
     if _python25 and async is not None:
         if async._exception:
-            print "THROWING TO GENERATOR"
             return func.throw(*async._exception)
         return func.send(async._result)
     return func.next()

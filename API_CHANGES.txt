@@ -31,3 +31,6 @@
    connect_both. The member variable is_finished is now a function.
 
 6. yield_execution decorator: lock kwarg was renamed to synchronize
+
+7. All exception handlers now take three arguments (instead of one): 
+   exception type, exception value, traceback.

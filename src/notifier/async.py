@@ -153,6 +153,8 @@ class InProgress(Signal):
         done because it raised an exception.
         """
         if self.exception.count() == 0:
+            # FIXME: we must still log the exception if we have an internal
+            # handler but no external handler.  In this case count() > 0.
             # There is no handler, so dump the exception.
             trace = ''.join(traceback.format_exception(type, value, tb))
             log.error('*** Unhandled InProgress exception ***\n%s', trace)

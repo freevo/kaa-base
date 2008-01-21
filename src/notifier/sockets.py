@@ -37,8 +37,10 @@ import socket
 import logging
 
 import nf_wrapper as notifier
+import main
+from jobserver import execute_in_thread
 from callback import Callback, Signal
-from thread import MainThreadCallback, ThreadCallback, is_mainthread
+from thread import MainThreadCallback, ThreadCallback, is_mainthread, set_as_mainthread
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -156,7 +158,7 @@ class Socket(object):
 
 
 
-    def connect(self, addr, async = False):
+    def connect(self, addr, async = None):
         """
         Connects to the host specified in addr.  If addr is a string in the
         form host:port, or a tuple the form (host, port), a TCP socket is
@@ -164,9 +166,10 @@ class Socket(object):
         treated as a filename.
 
         If async is not None, it is a callback that will be invoked when the
-        connection has been established.  This callback takes one parameter,
-        which is True if the connection was established successfully, or an
-        Exception object otherwise.
+        connection has been established.  This callback takes one or three 
+        parameters: if the connection was successful, the first parameter is
+        True; otherwise there was an exception, and the three parameters are
+        type, value, and traceback of the exception.
 
         If async is None, this call will block until either connected or an
         exception is raised.  Although this call blocks, the notifier loop
@@ -174,31 +177,32 @@ class Socket(object):
         """
         self._make_socket(addr)
 
+        if async is not None and not callable(async):
+            raise ValueError, 'async argument must be callable'
 
-        in_progress = ThreadCallback(self._connect_thread)()
-        result_holder = []
-        if not async:
-            cb = Callback(lambda res, x: x.append(res), result_holder)
-        else:
-            cb = self.signals["connected"].emit
+        in_progress = self._connect_thread()
 
-
-        # XXX FIXME: exception handling is wrong
-        # XXX At will call self.signals["connected"] with three arguments
-        # XXX or crash with result_holder
-
-        in_progress.connect_both(cb, cb)
-
-        if async != None:
+        if async:
+            in_progress.connect_both(async, async)
             return
+        elif not main.is_running():
+            # No main loop is running yet.  We're calling step() below,
+            # but we won't get notified of the connect thread completion
+            # unless the thread notifier pipe is initialized.
+            set_as_mainthread()
 
-        while len(result_holder) == 0:
-            notifier.step()
+        # Connect a dummy handler to exception to prevent it from being
+        # logged.  We will reraise it after.
+        in_progress.exception.connect(lambda *args: None)
 
-        if isinstance(result_holder[0], (Exception, socket.error)):
-            raise result_holder[0]
+        while not in_progress.is_finished():
+            main.step()
+
+        # Any exception that occurred in the thread will get raised here:
+        return in_progress.get_result()
 
 
+    @execute_in_thread()
     def _connect_thread(self):
         if type(self._addr) == str:
             # Unix socket, just connect.
@@ -212,7 +216,6 @@ class Socket(object):
 
         self.wrap()
         return True
-
 
 
     def wrap(self, sock = None, addr = None):
@@ -272,7 +275,7 @@ class Socket(object):
 
     def write(self, data):
         self._write_buffer += data
-        if self._socket and not self._wmon.active():
+        if self._socket and self._wmon and not self._wmon.active():
             self._wmon.register(self._socket, IO_WRITE)
 
     def _handle_write(self):

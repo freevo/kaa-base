@@ -145,7 +145,7 @@ class ThreadInProgress(InProgress):
             return None
         try:
             MainThreadCallback(self.finished, self._callback())()
-        except Exception, e:
+        except:
             MainThreadCallback(self.throw, *sys.exc_info())()
         self._callback = None
 

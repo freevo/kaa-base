@@ -181,6 +181,12 @@ class Socket(object):
             cb = Callback(lambda res, x: x.append(res), result_holder)
         else:
             cb = self.signals["connected"].emit
+
+
+        # XXX FIXME: exception handling is wrong
+        # XXX At will call self.signals["connected"] with three arguments
+        # XXX or crash with result_holder
+
         in_progress.connect_both(cb, cb)
 
         if async != None:

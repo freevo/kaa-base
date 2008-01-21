@@ -343,7 +343,7 @@ class YieldLock(YieldFunction):
         self._func._lock.connect_both(self._try_again, self._try_again)
 
 
-    def _try_again(self, result):
+    def _try_again(self, *args, **kwargs):
         """
         Try to start now.
         """

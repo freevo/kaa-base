@@ -232,13 +232,13 @@ class YieldFunction(InProgress):
         self._yield__function = function
         self._timer = Timer(self._step)
         self._interval = interval
+        self._async = None
         if status == None:
             # No status from yield_execution, this means that the YieldFunction
             # was created from the outside and the creator must call this object
             self._valid = False
             return
         self._valid = True
-        self._async = None
         if status == YieldContinue:
             # yield_execution was stopped YieldContinue, start the step timer
             self._timer.start(interval)

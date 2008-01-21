@@ -147,25 +147,21 @@ class InProgress(Signal):
         self.exception = None
 
 
-    def throw(self, e):
+    def throw(self, type, value, tb):
         """
         This function should be called when the creating function is
         done because it raised an exception.
         """
         if self.exception.count() == 0:
-            if hasattr(e, '_exc_info'):
-                # Exception info set internally, so display traceback from that.
-                trace = ''.join(traceback.format_exception(*e._exc_info))
-            else:
-                # No traceback set explicitly
-                trace = '%s [no traceback available]' % repr(e)
+            # There is no handler, so dump the exception.
+            trace = ''.join(traceback.format_exception(type, value, tb))
+            log.error('*** Unhandled InProgress exception ***\n%s', trace)
 
-            log.error('*** InProgress exception not handled ***\n%s', trace)
         # store result
         self._finished = True
-        self._exception = e
+        self._exception = type, value, tb
         # emit signal
-        self.exception.emit_when_handled(e)
+        self.exception.emit_when_handled(type, value, tb)
         # cleanup
         self._callbacks = []
         self.exception = None
@@ -197,7 +193,9 @@ class InProgress(Signal):
         if not self._finished:
             raise RuntimeError('operation not finished')
         if self._exception:
-            raise self._exception
+            type, value, tb = self._exception
+            # Special 3-argument form of raise; preserves traceback
+            raise type, value, tb
         return self._result
 
 

@@ -38,6 +38,10 @@ class Server(object):
         time.sleep(0.1)
         return x
 
+    @kaa.rpc.expose('test6')
+    def test6(self, x):
+        raise ValueError
+
     @kaa.rpc.expose('shutdown')
     def shutdown(self):
         sys.exit(0)
@@ -184,7 +188,17 @@ def foo():
         print 'bad rpc test failed'
     except:
         print 'bad rpc test ok'
-        pass
+
+    # rpc with remote exception
+    result = c.rpc('test6', 18)
+    yield result
+    try:
+        result()
+        print 'remote rpc exception test failed'
+    except ValueError, e:
+        print 'remote rpc exception test ok'
+        print "========= A traceback (for rpc) is expected below:"
+        print e
 
     # call rpc in thread
     x = thread2(c, 19)

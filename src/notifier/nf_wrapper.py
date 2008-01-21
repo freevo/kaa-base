@@ -91,7 +91,7 @@ class NotifierCallback(Callback):
                 # If any of the exception handlers return True, then the
                 # object is not unregistered from the Notifier.  Otherwise
                 # ret = False and it will unregister.
-                ret = self.signals["exception"].emit(sys.exc_info()[1])
+                ret = self.signals["exception"].emit(*sys.exc_info())
         else:
             ret = super(NotifierCallback, self).__call__(*args, **kwargs)
         # If Notifier callbacks return False, they get unregistered.

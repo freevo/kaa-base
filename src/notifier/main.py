@@ -65,6 +65,7 @@ def _step_signal_changed(signal, flag):
         notifier.dispatcher_remove(signals["step"].emit)
 
 signals = {
+    'exception': Signal(),
     'shutdown': Signal(),
     'step': Signal(changed_cb = _step_signal_changed),
 }
@@ -87,26 +88,39 @@ def run():
     """
     global _running
     _running = True
+    unhandled_exception = None
 
     set_as_mainthread()
-    try:
-        while True:
-            notifier.step()
-    except (KeyboardInterrupt, SystemExit):
+    while True:
         try:
-            # This looks stupid, I know that. The problem is that if we have
-            # a KeyboardInterrupt, that flag is still valid somewhere inside
-            # python. The next system call will fail because of that. Since we
-            # don't want a join of threads or similar fail, we use a very short
-            # sleep here. In most cases we won't sleep at all because this sleep
-            # fails. But after that everything is back to normal.
-            time.sleep(0.001)
-        except:
-            pass
-    except Exception, e:
-        log.exception('loop')
+            notifier.step()
+        except (KeyboardInterrupt, SystemExit):
+            try:
+                # This looks stupid, I know that. The problem is that if we have
+                # a KeyboardInterrupt, that flag is still valid somewhere inside
+                # python. The next system call will fail because of that. Since we
+                # don't want a join of threads or similar fail, we use a very short
+                # sleep here. In most cases we won't sleep at all because this sleep
+                # fails. But after that everything is back to normal.
+                time.sleep(0.001)
+            except:
+                pass
+            break
+        except Exception, e:
+            if signals['exception'].emit(*sys.exc_info()) != False:
+                # Either there are no global exception handlers, or none of
+                # them explicitly returned False to abort mainloop 
+                # termination.  So abort the main loop.
+                unhandled_exception = sys.exc_info()
+                break
+
     _running = False
     stop()
+    if unhandled_exception:
+        # We aborted the main loop due to an unhandled exception.  Now
+        # that we've cleaned up, we can reraise the exception.
+        type, value, tb = unhandled_exception
+        raise type, value, tb
 
 
 # Ensure stop() is called from main thread.

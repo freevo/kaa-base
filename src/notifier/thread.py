@@ -86,8 +86,8 @@ class MainThreadCallback(Callback):
             self._sync_return = self._sync_return()
         self._wakeup()
 
-    def _set_exception(self, e):
-        self._sync_exception = e
+    def _set_exception(self, type, value, tb):
+        self._sync_exception = type, value, tb
         self._wakeup()
 
     def _wakeup(self):
@@ -116,7 +116,9 @@ class MainThreadCallback(Callback):
             # the return value.
             self.lock.acquire()
             if self._sync_exception:
-                raise self._sync_exception
+                type, value, tb = self._sync_exception
+                # Special 3-argument form of raise; preserves traceback
+                raise type, value, tb
 
             return self._sync_return
 
@@ -144,8 +146,7 @@ class ThreadInProgress(InProgress):
         try:
             MainThreadCallback(self.finished, self._callback())()
         except Exception, e:
-            e._exc_info = sys.exc_info()
-            MainThreadCallback(self.throw, e)()
+            MainThreadCallback(self.throw, *sys.exc_info())()
         self._callback = None
 
 
@@ -280,6 +281,5 @@ def _thread_notifier_run_queue(fd):
         except Exception, e:
             log.exception('mainthread callback')
             # set exception in callback
-            e._exc_info = sys.exc_info()
             callback._set_exception(e)
     return True

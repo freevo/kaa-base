@@ -89,6 +89,8 @@ import struct
 import sys
 import sha
 import time
+from new import classobj
+import traceback
 
 # kaa imports
 import kaa
@@ -98,6 +100,51 @@ log = logging.getLogger('rpc')
 
 class ConnectError(Exception):
     pass
+
+
+def make_exception_class(name, bases, dict):
+    """
+    Class generator for RemoteException.  Creates RemoteException class
+    which derives the class of a particular Exception instance.
+    """
+    def create(exc, cmd, stack):
+        e = classobj(name, (exc.__class__,) + bases, dict)(*exc.args)
+        e._set_info(exc.__class__.__name__, cmd, stack)
+        return e
+
+    return create
+
+
+class RemoteException(object):
+    """
+    Raised when remote RPC calls raise exceptions.  Instances of this class
+    inherit the actual remote exception class, so this works:
+
+        try:
+            yield client.rpc('write_file')
+        except IOError, (errno, msg):
+            ...
+
+    When RemoteException instances are printed, they will also include the
+    traceback of the remote stack.
+    """
+    __metaclass__ = make_exception_class
+
+    def _set_info(self, exc_name, cmd, stack):
+        self._rpc_exc_name = exc_name
+        self._rpc_cmd = cmd
+        self._rpc_stack = stack
+
+    def __str__(self):
+        dump = ''.join(traceback.format_list(self._rpc_stack))
+        if self.message:
+            info = '%s: %s' % (self._rpc_exc_name, self.message)
+        else:
+            info = self._rpc_exc_name
+
+        return "Exception during RPC call '%s'; remote traceback follows:\n" % self._rpc_cmd + \
+               dump + info
+
 
 class Server(object):
     """
@@ -240,7 +287,7 @@ class Channel(object):
         payload = cPickle.dumps((cmd, args, kwargs), pickle.HIGHEST_PROTOCOL)
         self._send_packet(seq, packet_type, payload)
         # callback with error handler
-        self._rpc_in_progress[seq] = callback
+        self._rpc_in_progress[seq] = (callback, cmd)
         return callback
 
 
@@ -414,23 +461,24 @@ class Channel(object):
         return True
 
 
-    def _send_delayed_answer(self, payload, seq, packet_type):
+    def _send_answer(self, answer, seq):
         """
         Send delayed answer when callback returns InProgress.
         """
-        payload = cPickle.dumps(payload, pickle.HIGHEST_PROTOCOL)
-        self._send_packet(seq, packet_type, payload)
+        payload = cPickle.dumps(answer, pickle.HIGHEST_PROTOCOL)
+        self._send_packet(seq, 'RETN', payload)
 
 
-    def _send_delayed_exception(self, payload, seq, packet_type):
+    def _send_exception(self, type, value, tb, seq):
         """
         Send delayed exception when callback returns InProgress.
         """
+        stack = traceback.extract_tb(tb)
         try:
-            payload = cPickle.dumps(payload, pickle.HIGHEST_PROTOCOL)
+            payload = cPickle.dumps((value, stack), pickle.HIGHEST_PROTOCOL)
         except cPickle.UnpickleableError:
-            payload = cPickle.dumps(Exception(str(payload)))
-        self._send_packet(seq, packet_type, payload)
+            payload = cPickle.dumps((Exception(str(value)), stack), pickle.HIGHEST_PROTOCOL)
+        self._send_packet(seq, 'EXCP', payload)
 
 
     def _handle_packet_after_auth(self, seq, type, payload):
@@ -440,33 +488,33 @@ class Channel(object):
         """
         if type == 'CALL':
             # Remote function call, send answer
-            payload = cPickle.loads(payload)
-            function, args, kwargs = payload
+            function, args, kwargs = cPickle.loads(payload)
             try:
                 if self._callbacks[function]._kaa_rpc_param[0]:
                     args = [ self ] + list(args)
-                payload = self._callbacks[function](*args, **kwargs)
-                if isinstance(payload, kaa.InProgress):
-                    payload.connect(self._send_delayed_answer, seq, 'RETN')
-                    payload.exception.connect(self._send_delayed_exception, seq, 'EXCP')
-                    return True
-                packet_type = 'RETN'
+                result = self._callbacks[function](*args, **kwargs)
             except (SystemExit, KeyboardInterrupt):
                 sys.exit(0)
             except Exception, e:
-                log.exception('rpc call %s', function)
+                #log.exception('Exception in rpc function "%s"', function)
                 if not function in self._callbacks:
                     log.error(self._callbacks.keys())
-                packet_type = 'EXCP'
-                payload = e
-            payload = cPickle.dumps(payload, pickle.HIGHEST_PROTOCOL)
-            self._send_packet(seq, packet_type, payload)
+                type, value, tb = sys.exc_info()
+                self._send_exception(type, value, tb, seq)
+                return True
+
+            if isinstance(result, kaa.InProgress):
+                result.connect(self._send_answer, seq)
+                result.exception.connect(self._send_exception, seq)
+            else:
+                self._send_answer(result, seq)
+
             return True
 
         if type == 'RETN':
             # RPC return
             payload = cPickle.loads(payload)
-            callback = self._rpc_in_progress.get(seq)
+            callback, cmd = self._rpc_in_progress.get(seq)
             if callback is None:
                 return True
             del self._rpc_in_progress[seq]
@@ -475,12 +523,13 @@ class Channel(object):
 
         if type == 'EXCP':
             # Exception for remote call
-            error = cPickle.loads(payload)
-            callback = self._rpc_in_progress.get(seq)
+            exc_value, stack = cPickle.loads(payload)
+            callback, cmd = self._rpc_in_progress.get(seq)
             if callback is None:
                 return True
             del self._rpc_in_progress[seq]
-            callback.throw(error)
+            remote_exc = RemoteException(exc_value, cmd, stack)
+            callback.throw(remote_exc.__class__, remote_exc, None)
             return True
 
         log.error('unknown packet type %s', type)

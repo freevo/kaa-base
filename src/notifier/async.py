@@ -144,7 +144,6 @@ class InProgress(Signal):
         self.emit_when_handled(result)
         # cleanup
         self._callbacks = []
-        self.exception = None
 
 
     def throw(self, type, value, tb):
@@ -166,7 +165,6 @@ class InProgress(Signal):
         self.exception.emit_when_handled(type, value, tb)
         # cleanup
         self._callbacks = []
-        self.exception = None
 
 
     def __call__(self, *args, **kwargs):

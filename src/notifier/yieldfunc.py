@@ -124,11 +124,7 @@ class YieldCallback(InProgress):
         
 
 # variable to detect if send is possible with a generator
-# XXX This breaks existing code because now the exception is raised inside
-# XXX the yield call while this was safe until now, only get_result() could
-# XXX crash before that. After checking the code, _python25 should be set to
-#_python25 = sys.version.split()[0] > '2.4'
-_python25 = False
+_python25 = sys.version.split()[0] > '2.4'
 
 def _process(func, async=None):
     """
@@ -145,11 +141,6 @@ def _wrap_result(result):
     """
     Wrap the result in a finished InProgress object.
     """
-    if 1:
-        # Remove this for testing code that _always_ returns an
-        # InProgress object. It is deactivated right now because it
-        # may break existing code.
-        return result
     async = InProgress()
     async.finished(result)
     return async
@@ -209,7 +200,8 @@ def yield_execution(interval = 0, synchronize = False):
                 # return the YieldFunction (InProgress)
                 return progress
 
-        func._lock = None
+        if synchronize:
+            func._lock = None
         newfunc.func_name = func.func_name
         return newfunc
 

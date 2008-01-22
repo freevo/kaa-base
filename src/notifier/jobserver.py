@@ -39,7 +39,6 @@ import sys
 
 # kaa notifier imports
 from callback import Signal, Callback
-from async import InProgress
 import thread
 
 # internal list of named threads
@@ -76,8 +75,6 @@ class NamedThreadCallback(Callback):
     """
     A callback to run a function in a thread. This class is used by
     execute_in_thread, but it is also possible to use this call directly.
-    The class inherits from InProgress and will call the connected functions
-    on termination or exception.
     """
     def __init__(self, thread_information, func, *args, **kwargs):
         Callback.__init__(self, func, *args, **kwargs)

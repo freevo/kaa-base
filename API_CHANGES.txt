@@ -34,3 +34,8 @@
 
 7. All exception handlers now take three arguments (instead of one): 
    exception type, exception value, traceback.
+
+8. yield_execution now always returns an InProgress object. This
+   InProgress object may already be finished. Using yield on a
+   finished object will return without waiting. For Python 2.5 the
+   yield also returns the value or can raise an exception.

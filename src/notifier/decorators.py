@@ -37,7 +37,6 @@ import logging
 # notifier thread imports
 from thread import MainThreadCallback, is_mainthread
 from kaa.weakref import weakref
-from yieldfunc import InProgress
 
 # get logging object
 log = logging.getLogger('notifier')

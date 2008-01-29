@@ -213,17 +213,17 @@ def dispatcher_add(method):
 dispatcher_remove = dispatch.dispatcher_remove
 
 
-def step(sleep = True, external = True, simulate = False):
+def step(sleep = True, external = True):
     if reactor.running:
         try:
-            t2 = reactor.timeout()
-            t = reactor.running and t2
+            t = sleep and reactor.running and reactor.timeout()
             reactor.doIteration(t)
             reactor.runUntilCurrent()
         except:
             log.error("problem running reactor - exiting")
             raise SystemExit
-        dispatch.dispatcher_run()
+        if external:
+            dispatch.dispatcher_run()
     else:
         log.info("reactor stopped - exiting")
         raise SystemExit

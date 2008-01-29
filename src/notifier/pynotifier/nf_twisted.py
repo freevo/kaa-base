@@ -216,10 +216,10 @@ dispatcher_remove = dispatch.dispatcher_remove
 def step(sleep = True, external = True, simulate = False):
     if reactor.running:
         try:
-            reactor.runUntilCurrent()
             t2 = reactor.timeout()
             t = reactor.running and t2
             reactor.doIteration(t)
+            reactor.runUntilCurrent()
         except:
             log.error("problem running reactor - exiting")
             raise SystemExit

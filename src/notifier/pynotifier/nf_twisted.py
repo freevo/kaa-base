@@ -223,19 +223,36 @@ def step(sleep = True, external = True, simulate = False):
         except:
             log.error("problem running reactor - exiting")
             raise SystemExit
+        dispatch.dispatcher_run()
     else:
         log.info("reactor stopped - exiting")
         raise SystemExit
 
 
 def loop():
-    reactor.run()
+    """
+    Instead of calling reactor.run() here we must call step() so we get a
+    chance to call dispatch.dispatcher_run().  Otherwise the dispatchers 
+    would have to be run in a timer, making something like the 'step' signal
+    not getting called every iteration of the main loop like it was intended.
+
+    We could also decide between reactor.run() and step() and if we use step()
+    just setup a Timer for the dispatchers at a reasonable rate.  ie:
+
+        global __dispatch_timer
+        __dispatch_timer = task.LoopingCall(dispatch.dispatcher_run)
+        __dispatch_timer.start(dispatch.MIN_TIMER/1000.0) # 10x / second
+        # or
+        # __dispatch_timer.start(1.0/30) # 30x / second
+    """
+    while True:
+        try:
+            step()
+        except:
+            log.debug("exiting loop")
+            break
 
 
 def _init():
-    global __dispatch_timer
-    __dispatch_timer = task.LoopingCall(dispatch.dispatcher_run)
-    __dispatch_timer.start(dispatch.MIN_TIMER/1000.0)
-
     reactor.startRunning(installSignalHandlers=True)
 

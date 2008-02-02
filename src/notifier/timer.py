@@ -50,6 +50,10 @@ class Timer(notifier.NotifierCallback):
         self._interval = None
 
 
+    def set_resart_when_active(self, restart):
+        self.restart_when_active = restart
+
+
     def start(self, interval):
         if not is_mainthread():
             return MainThreadCallback(self.start, interval)()

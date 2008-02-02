@@ -199,6 +199,32 @@ class InProgress(Signal):
         return self._result
 
 
+    def wait(self):
+        """
+        Waits for the result (or exception) of the InProgress object.  The
+        main loop is kept alive.
+        """
+        # Import modules here rather than globally to avoid circular importing.
+        import main
+        if not main.is_running():
+            # No main loop is running yet.  We're calling step() below,
+            # but we won't get notified of any thread completion
+            # unless the thread notifier pipe is initialized.
+            from thread import set_as_mainthread
+            set_as_mainthread()
+ 
+        if self.exception.count() == 0:
+            # No existing exception handler.  Connect a dummy handler to
+            # prevent it from being logged in throw().  It will get raised
+            # later when we call get_result().
+            in_progress.exception.connect(lambda *args: None)
+
+        while not self.is_finished():
+            main.step()
+
+        return self.get_result()
+
+
     def _connect(self, callback, args = (), kwargs = {}, once = False,
                  weak = False, pos = -1):
         """

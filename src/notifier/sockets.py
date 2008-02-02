@@ -37,10 +37,9 @@ import socket
 import logging
 
 import nf_wrapper as notifier
-import main
 from jobserver import execute_in_thread
 from callback import Callback, Signal
-from thread import MainThreadCallback, ThreadCallback, is_mainthread, set_as_mainthread
+from thread import MainThreadCallback, ThreadCallback, is_mainthread
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -165,11 +164,12 @@ class Socket(object):
         established.  Otherwise a Unix socket is established and addr is
         treated as a filename.
 
-        If async is not None, it is a callback that will be invoked when the
-        connection has been established.  This callback takes one or three 
-        parameters: if the connection was successful, the first parameter is
-        True; otherwise there was an exception, and the three parameters are
-        type, value, and traceback of the exception.
+        If async is not None, then an InProgress object is returned.  If async
+        is a callable, then it is automatically connected to both completed and
+        exception handlers of the InProgress object.  This callback takes one
+        or three parameters: if the connection was successful, the first
+        parameter is True; otherwise there was an exception, and the three
+        parameters are type, value, and traceback of the exception.
 
         If async is None, this call will block until either connected or an
         exception is raised.  Although this call blocks, the notifier loop
@@ -177,29 +177,15 @@ class Socket(object):
         """
         self._make_socket(addr)
 
-        if async is not None and not callable(async):
-            raise ValueError, 'async argument must be callable'
-
         in_progress = self._connect_thread()
 
         if async:
-            in_progress.connect_both(async, async)
-            return
-        elif not main.is_running():
-            # No main loop is running yet.  We're calling step() below,
-            # but we won't get notified of the connect thread completion
-            # unless the thread notifier pipe is initialized.
-            set_as_mainthread()
-
-        # Connect a dummy handler to exception to prevent it from being
-        # logged.  We will reraise it after.
-        in_progress.exception.connect(lambda *args: None)
-
-        while not in_progress.is_finished():
-            main.step()
+            if callable(async):
+                in_progress.connect_both(async, async)
+            return in_progress
 
         # Any exception that occurred in the thread will get raised here:
-        return in_progress.get_result()
+        return in_progress.wait()
 
 
     @execute_in_thread()

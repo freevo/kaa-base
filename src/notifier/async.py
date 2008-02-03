@@ -217,7 +217,7 @@ class InProgress(Signal):
             # No existing exception handler.  Connect a dummy handler to
             # prevent it from being logged in throw().  It will get raised
             # later when we call get_result().
-            in_progress.exception.connect(lambda *args: None)
+            self.exception.connect(lambda *args: None)
 
         while not self.is_finished():
             main.step()

@@ -149,10 +149,14 @@ class RemoteException(object):
 class Server(object):
     """
     RPC server class.
+
+    See Client documentation for explanation of bufsize.
     """
-    def __init__(self, address, auth_secret = ''):
+    def __init__(self, address, auth_secret = '', bufsize = None):
 
         self._auth_secret = auth_secret
+        self._socket_buffer_size = bufsize
+
         if type(address) in types.StringTypes:
             if address.find('/') == -1:
                 # create socket in kaa temp dir
@@ -201,7 +205,8 @@ class Server(object):
         client_sock = self.socket.accept()[0]
         client_sock.setblocking(False)
         log.debug("New connection %s", client_sock)
-        client = Channel(socket = client_sock, auth_secret = self._auth_secret)
+        client = Channel(sock = client_sock, auth_secret = self._auth_secret,
+                         bufsize = self._socket_buffer_size)
         for obj in self.objects:
             client.connect(obj)
         client._send_auth_challenge()
@@ -230,8 +235,8 @@ class Channel(object):
     Channel object for two point communication. The server creates a Channel
     object for each client connection, Client itslef is a Channel.
     """
-    def __init__(self, socket, auth_secret):
-        self._socket = socket
+    def __init__(self, sock, auth_secret, bufsize = None):
+        self._socket = sock
 
         self._rmon = kaa.SocketDispatcher(self._handle_read)
         self._rmon.register(self._socket.fileno(), kaa.IO_READ)
@@ -245,6 +250,10 @@ class Channel(object):
         self._rpc_in_progress = {}
         self._auth_secret = auth_secret
         self._pending_challenge = None
+
+        if bufsize:
+            self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, bufsize)
+            self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, bufsize)
 
         self.signals = { 'closed': kaa.Signal() }
         kaa.main.signals["shutdown"].connect_weak(self._handle_close)
@@ -773,8 +782,14 @@ class Channel(object):
 class Client(Channel):
     """
     RPC client to be connected to a server.
+
+    If bufsize is not None, the socket send and receive buffers will be set to
+    this size.  Setting this to higher values (say 1M) improves performance
+    when sending large amounts of data via RPC.  Note that the upper bound may
+    be restricted by the kernel.  (Under Linux, this can be tuned by adjusting
+    /proc/sys/net/core/[rw]mem_max)
     """
-    def __init__(self, address, auth_secret = ''):
+    def __init__(self, address, auth_secret = '', bufsize = None):
         if type(address) in types.StringTypes:
             address = '%s/%s' % (kaa.TEMP, address)
             fd = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -785,7 +800,7 @@ class Client(Channel):
         except socket.error, e:
             raise ConnectError(e)
         fd.setblocking(False)
-        Channel.__init__(self, fd, auth_secret)
+        Channel.__init__(self, fd, auth_secret, bufsize)
 
 
     def _get_channel_type(self):

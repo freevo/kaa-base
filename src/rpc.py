@@ -259,6 +259,10 @@ class Channel(object):
         kaa.main.signals["shutdown"].connect_weak(self._handle_close)
 
 
+    def is_connected(self):
+        return self._rmon and self._rmon.active()
+
+
     def connect(self, obj):
         """
         Connect an object to be exposed to the rpc.

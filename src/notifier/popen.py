@@ -81,6 +81,8 @@ class Process(object):
         self.signals = {
             "stderr": Signal(),
             "stdout": Signal(),
+            "raw-stderr": Signal(),
+            "raw-stdout": Signal(),
             "completed": Signal(),
         }
 
@@ -156,10 +158,10 @@ class Process(object):
 
         # IO_Handler for stdout
         self.stdout = IO_Handler( 'stdout', self.child.fromchild,
-                                  self.signals["stdout"].emit, self._debugname )
+                                  self.signals["stdout"], self.signals['raw-stdout'], self._debugname )
         # IO_Handler for stderr
         self.stderr = IO_Handler( 'stderr', self.child.childerr,
-                                  self.signals["stderr"].emit, self._debugname )
+                                  self.signals["stderr"], self.signals['raw-stderr'], self._debugname )
 
         # add child to watcher
         if not is_mainthread():
@@ -340,14 +342,16 @@ class IO_Handler(object):
     """
     Reading data from socket (stdout or stderr)
     """
-    def __init__( self, name, fp, callback, logger = None):
+    def __init__( self, name, fp, signal, raw_signal, logger = None, raw = False):
         self.name = name
         self.fp = fp
         flags = fcntl.fcntl(self.fp.fileno(), fcntl.F_GETFL)
         fcntl.fcntl( self.fp.fileno(), fcntl.F_SETFL, flags | os.O_NONBLOCK )
-        self.callback = callback
+        self.signal = signal
+        self.raw_signal = raw_signal
         self.logger = None
         self.saved = ''
+        self.raw = raw
         notifier.socket_add( fp, self._handle_input )
         if logger:
             logger = '%s-%s.log' % ( logger, name )
@@ -388,7 +392,7 @@ class IO_Handler(object):
         Handle data input from socket.
         """
         try:
-            data = self.fp.read( 10000 )
+            data = self.fp.read(512*1024)
         except IOError, (errno, msg):
             if errno == 11 and not flushing:
                 # Resource temporarily unavailable; if we try to read on a
@@ -412,6 +416,15 @@ class IO_Handler(object):
             # to be reaped we can call __child_died in Process instance.
             return False
 
+        if self.raw_signal.count():
+            self.raw_signal.emit(data)
+
+        if self.signal.count() == 0:
+            # Nothing connected to the per-line handler, so need to parse.
+            # (And if we're dealing with binary data, it may be important
+            # _not to parse.)
+            return True
+
         data  = data.replace('\r', '\n')
         lines = data.split('\n')
 
@@ -423,7 +436,7 @@ class IO_Handler(object):
         # Combine saved data and first line, send to app
         if self.logger:
             self.logger.write( self.saved + lines[ 0 ] + '\n' )
-        self.callback( self.saved + lines[ 0 ] )
+        self.signal.emit( self.saved + lines[ 0 ] )
         self.saved = ''
 
         # There's one or more lines + possibly a partial line
@@ -437,7 +450,7 @@ class IO_Handler(object):
                     continue
                 if self.logger:
                     self.logger.write( line + '\n' )
-                self.callback( line )
+                self.signal.emit( line )
         else:
             # Send all lines to the app
             for line in lines[ 1 : ]:
@@ -445,7 +458,7 @@ class IO_Handler(object):
                     continue
                 if self.logger:
                     self.logger.write( line + '\n' )
-                self.callback( line )
+                self.signal.emit( line )
         return True
 
 

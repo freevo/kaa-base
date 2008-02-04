@@ -59,6 +59,7 @@ import nf_wrapper as notifier
 from callback import Signal, Callback
 from thread import MainThreadCallback, is_mainthread
 from async import InProgress
+from sockets import SocketDispatcher, IO_WRITE
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -94,6 +95,8 @@ class Process(object):
         self.__kill_timer = None
         self.child = None
         self.in_progress = None
+        self._write_buffer = []
+        self._wmon = None
 
 
     def _normalize_cmd(self, cmd):
@@ -154,6 +157,12 @@ class Process(object):
 
         self.child = popen2.Popen3( cmd, True, 100 )
 
+        flags = fcntl.fcntl(self.child.tochild.fileno(), fcntl.F_GETFL)
+        fcntl.fcntl( self.child.tochild.fileno(), fcntl.F_SETFL, flags | os.O_NONBLOCK )
+        self._wmon = SocketDispatcher(self._handle_write)
+        if self._write_buffer:
+            self._wmon.register(self.child.tochild, IO_WRITE)
+
         log.info('running %s (pid=%s)' % ( self.binary, self.child.pid ) )
 
         # IO_Handler for stdout
@@ -181,16 +190,36 @@ class Process(object):
             return self.child.pid
 
 
-    def write( self, line ):
+    def write(self, data):
         """
-        Write a string to the app.
+        Queue data for writing when the child is ready to receive it.
         """
+        self._write_buffer.append(data)
+        if self._wmon and not self._wmon.active():
+            self._wmon.register(self.child.tochild, IO_WRITE)
+
+
+    def _handle_write(self):
         try:
-            if self.child:
-                self.child.tochild.write(line)
-                self.child.tochild.flush()
-        except (IOError, ValueError):
-            pass
+            while self._write_buffer:
+                data = self._write_buffer[0]
+                sent = os.write(self.child.tochild.fileno(), data)
+                # If we got here, no exception was raised, so we can pop the
+                # data from the buffer.
+                self._write_buffer.pop(0)
+                if sent != len(data):
+                    # Not all data was sent, so push the remaining bytes back and
+                    # abort the loop.
+                    self._write_buffer.insert(0, data[sent:])
+                    break
+        except IOError, (errno, msg):
+            if errno == 11:
+                # Resource temporarily unavailable -- trying to write too
+                # much data.
+                return
+
+        if not self._write_buffer:
+            return False
 
 
     def is_alive( self ):
@@ -342,7 +371,7 @@ class IO_Handler(object):
     """
     Reading data from socket (stdout or stderr)
     """
-    def __init__( self, name, fp, signal, raw_signal, logger = None, raw = False):
+    def __init__( self, name, fp, signal, raw_signal, logger = None):
         self.name = name
         self.fp = fp
         flags = fcntl.fcntl(self.fp.fileno(), fcntl.F_GETFL)
@@ -351,7 +380,6 @@ class IO_Handler(object):
         self.raw_signal = raw_signal
         self.logger = None
         self.saved = ''
-        self.raw = raw
         notifier.socket_add( fp, self._handle_input )
         if logger:
             logger = '%s-%s.log' % ( logger, name )

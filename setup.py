@@ -5,7 +5,7 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2005, 2006 Dirk Meyer, Jason Tackaberry
+# Copyright (C) 2005-2008 Dirk Meyer, Jason Tackaberry
 #
 # First Edition: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
@@ -85,7 +85,7 @@ else:
 # call setup
 setup(
     module       = 'base',
-    version      = '0.2.0',
+    version      = '0.3.0',
     license      = 'LGPL',
     summary      = 'Base module for all Kaa modules.',
     rpminfo      = {

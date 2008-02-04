@@ -1,5 +1,15 @@
 Release Notes, see ChangeLog for a detailed list of changes.
 
+0.3.0, 2008-02-04
+
+* API changes for kaa.notifier. Please read API_CHANGES.txt for
+  details. All classes from kaa.notifier are now in the kaa
+  namespace and yield_execution has changed.
+* Add new native twisted notifier
+* Small kaa.rpc improvements
+* Bugfixes
+
+
 0.2.0, 2007-12-22
 
 * kaa.config cosmetic updates for the config file

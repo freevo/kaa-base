@@ -262,7 +262,7 @@ class Socket(object):
     def write(self, data):
         self._write_buffer += data
         if self._socket and self._wmon and not self._wmon.active():
-            self._wmon.register(self._socket, IO_WRITE)
+            self._wmon.register(self._socket.fileno(), IO_WRITE)
 
     def _handle_write(self):
         if len(self._write_buffer) == 0:

@@ -97,6 +97,7 @@ class Process(object):
         self.in_progress = None
         self._write_buffer = []
         self._wmon = None
+        self._close_stdin = False
 
 
     def _normalize_cmd(self, cmd):
@@ -190,12 +191,31 @@ class Process(object):
             return self.child.pid
 
 
+    def close_stdin(self):
+        """
+        Closes stdin either now, or once the write buffer has been flushed.
+        This might be necessary when, for example, we know we have nothing
+        more to send to the child, but the child is waiting for either more
+        data or a closed fd before outputting data we're interested in.
+        """
+        if not self.child:
+            return
+
+        if self._wmon and self._wmon.active():
+            self._close_stdin = True
+        else:
+            self.child.tochild.close()
+
+
     def write(self, data):
         """
         Queue data for writing when the child is ready to receive it.
         """
+        if self.child.tochild.closed:
+            raise ValueError("Can't write when stdin has been closed")
+
         self._write_buffer.append(data)
-        if self._wmon and not self._wmon.active():
+        if self.child and self._wmon and not self._wmon.active():
             self._wmon.register(self.child.tochild, IO_WRITE)
 
 
@@ -219,6 +239,8 @@ class Process(object):
                 return
 
         if not self._write_buffer:
+            if self._close_stdin:
+                self.child.tochild.close()
             return False
 
 

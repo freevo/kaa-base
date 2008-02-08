@@ -202,6 +202,27 @@ def set_process_name(name):
     _utils.set_process_name(name, len(cmdline))
 
 
+def get_plugins(path, include_files=True, include_directories=True):
+    """
+    Get a list of plugins in the given plugin directory. The 'path' argument
+    can also be a full path of an __init__ file.
+    """
+    if os.path.isfile(path):
+        path = os.path.dirname(path)
+    result = []
+    for plugin in os.listdir(path):
+        for ext in ('.py', '.pyc', '.pyo'):
+            if plugin.endswith(ext) and include_files:
+                plugin = plugin[:-len(ext)]
+                break
+        else:
+            if not include_directories or not os.path.isdir(os.path.join(path, plugin)):
+                continue
+        if not plugin in result and not plugin == '__init__':
+            result.append(plugin)
+    return result
+
+
 class Singleton(object):
     """
     Create Singleton object from classref on demand.

@@ -132,6 +132,7 @@ def _process(func, async=None):
     """
     if _python25 and async is not None:
         if async._exception:
+            async._unhandled_exception = False
             return func.throw(*async._exception)
         return func.send(async._result)
     return func.next()
@@ -265,6 +266,12 @@ class YieldFunction(InProgress):
         if self._timer:
             # continue calling _step
             self._timer.start(self._interval)
+        if len(args) == 3 and isinstance(args[1], Exception):
+            # An InProgress we were waiting on raised an exception.  We are
+            # "inheriting" this exception, so return False to prevent it
+            # from being logged as unhandled in the other InProgress.
+            self.throw(*args)
+            return False
 
 
     def _step(self):

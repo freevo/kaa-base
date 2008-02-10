@@ -72,61 +72,57 @@ class MainThreadCallback(Callback):
         self.lock = threading.Lock()
         self._sync_return = None
         self._sync_exception = None
-        self.set_async()
+        self._async = True
 
     def set_async(self, async = True):
+        log.warning("set_async() is deprecated; use callback().wait() instead.")
         self._async = async
 
-    def _set_result(self, result):
-        self._sync_return = result
-        if isinstance(self._sync_return, InProgress):
-            if not self._sync_return.is_finished():
-                self._sync_return.connect_both(self._set_result, self._set_exception)
-                return
-            self._sync_return = self._sync_return()
-        self._wakeup()
-
-    def _set_exception(self, type, value, tb):
-        self._sync_exception = type, value, tb
-        self._wakeup()
-
     def _wakeup(self):
+        # XXX: this function is called by _thread_notifier_run_queue().  It
+        # is also deprecated.
         self.lock.acquire(False)
         self.lock.release()
 
     def __call__(self, *args, **kwargs):
-        if threading.currentThread() == _thread_notifier_mainthread:
-            return super(MainThreadCallback, self).__call__(*args, **kwargs)
+        in_progress = InProgress()
+
+        if is_mainthread():
+            if not self._async:
+                # TODO: async flag is deprecated, caller should call wait() on
+                # the inprogress instead.
+                return super(MainThreadCallback, self).__call__(*args, **kwargs)
+
+            try:
+                result = super(MainThreadCallback, self).__call__(*args, **kwargs)
+                in_progress.finished(result)
+            except:
+                in_progress.throw(*sys.exc_info())
+
+            return in_progress
 
         self.lock.acquire(False)
 
         _thread_notifier_lock.acquire()
-        _thread_notifier_queue.insert(0, (self, args, kwargs))
+        _thread_notifier_queue.insert(0, (self, args, kwargs, in_progress))
         if len(_thread_notifier_queue) == 1:
             if _thread_notifier_pipe:
                 os.write(_thread_notifier_pipe[1], "1")
         _thread_notifier_lock.release()
 
-        # FIXME: what happens if we switch threads here and execute
-        # the callback? In that case we may block because we already
-        # have the result. Should we use a Condition here?
-
+        # TODO: this is deprecated, caller should use wait() on the InProgress
+        # we return (when set_async(False) isn't called).  This is also broken
+        # because we share a single lock for multiple invocations of this
+        # callback.
         if not self._async:
             # Synchronous execution: wait for main call us and collect
             # the return value.
             self.lock.acquire()
-            if self._sync_exception:
-                type, value, tb = self._sync_exception
-                # Special 3-argument form of raise; preserves traceback
-                raise type, value, tb
+            return in_progress.get_result()
 
-            return self._sync_return
-
-        # Asynchronous: explicitly return None here.  We could return
-        # self._sync_return and there's a chance it'd be valid even
-        # in the async case, but that's non-deterministic and dangerous
-        # to rely on.
-        return None
+        # Return an InProgress object which the caller can connect to
+        # or wait on.
+        return in_progress
 
 
 class ThreadInProgress(InProgress):
@@ -206,15 +202,20 @@ class ThreadCallback(Callback):
     
 def is_mainthread():
     """
-    Return True if the caller is in the main thread right now.
+    Return True if the caller is in the main thread right now, and False if
+    some other thread is the main thread.  If no main thread has been
+    set, returns None.
     """
     # If threading module is None, assume main thread.  (Silences pointless
     # exceptions on shutdown.)
-    return (not threading) or threading.currentThread() == _thread_notifier_mainthread
+    if not threading or threading.currentThread() == _thread_notifier_mainthread:
+        return True
+    elif _thread_notifier_mainthread is None:
+        return None
+    return False
 
 
-
-_thread_notifier_mainthread = threading.currentThread()
+_thread_notifier_mainthread = None
 _thread_notifier_lock = threading.Lock()
 _thread_notifier_queue = []
 
@@ -269,17 +270,15 @@ def _thread_notifier_run_queue(fd):
 
     while _thread_notifier_queue:
         _thread_notifier_lock.acquire()
-        callback, args, kwargs = _thread_notifier_queue.pop()
+        callback, args, kwargs, in_progress = _thread_notifier_queue.pop()
         _thread_notifier_lock.release()
+
         try:
-            # call callback and set result
-            callback._set_result(callback(*args, **kwargs))
-        except ( KeyboardInterrupt, SystemExit ), e:
-            # only wakeup to make it possible to stop the thread
+            in_progress.finished(callback(*args, **kwargs))
+        except:
+            in_progress.throw(*sys.exc_info())
+
+        if in_progress.is_finished():
             callback._wakeup()
-            raise SystemExit
-        except Exception, e:
-            log.exception('mainthread callback')
-            # set exception in callback
-            callback._set_exception(e)
+
     return True

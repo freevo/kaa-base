@@ -39,3 +39,7 @@
    InProgress object may already be finished. Using yield on a
    finished object will return without waiting. For Python 2.5 the
    yield also returns the value or can raise an exception.
+
+9. MainThreadCallback.set_async() is deprecated.  Calling a 
+   MainThreadCallback will return an InProgress object, and the
+   correct approach now is to wait() on this InProgress.

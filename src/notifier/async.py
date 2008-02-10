@@ -34,6 +34,8 @@ __all__ = [ 'InProgress' ]
 # python imports
 import logging
 import traceback
+import time
+import threading
 
 # kaa.notifier imports
 from callback import Signal
@@ -41,6 +43,8 @@ from callback import Signal
 # get logging object
 log = logging.getLogger('notifier.async')
 
+class TimeoutException(Exception):
+    pass
 
 class InProgress(Signal):
     """
@@ -103,8 +107,15 @@ class InProgress(Signal):
         Signal.__init__(self)
         self.exception = Signal()
         self._finished = False
+        self._finished_event = threading.Event()
+        self._unhandled_exception = False
         self.status = None
 
+    def __del__(self):
+        if self._unhandled_exception:
+            # We didn't get a chance to log this unhandled exception, so do
+            # it now.
+            self._log_exception()
 
     def set_status(self, s):
         """
@@ -132,14 +143,16 @@ class InProgress(Signal):
         done and no longer in progress.
         """
         if isinstance(result, InProgress):
-            # we are still not finished, register to this result
-            result.connect(self.finished)
-            result.exception.connect(self.throw)
+            # we are still not finished, link to this new InProgress
+            self.link(result)
             return
+
         # store result
         self._finished = True
         self._result = result
         self._exception = None
+        # Wake any threads waiting on us
+        self._finished_event.set()
         # emit signal
         self.emit_when_handled(result)
         # cleanup
@@ -151,20 +164,30 @@ class InProgress(Signal):
         This function should be called when the creating function is
         done because it raised an exception.
         """
-        if self.exception.count() == 0:
-            # FIXME: we must still log the exception if we have an internal
-            # handler but no external handler.  In this case count() > 0.
-            # There is no handler, so dump the exception.
-            trace = ''.join(traceback.format_exception(type, value, tb))
-            log.error('*** Unhandled InProgress exception ***\n%s', trace)
-
         # store result
         self._finished = True
         self._exception = type, value, tb
-        # emit signal
-        self.exception.emit_when_handled(type, value, tb)
+        self._unhandled_exception = False
+        # Wake any threads waiting on us
+        if self._finished_event:
+            self._finished_event.set()
+
+        if self.exception.emit_when_handled(type, value, tb) != False:
+            # No handler returned False to block us from logging the exception.
+            # Set a flag to log the exception in the destructor if it is
+            # not raised with get_result().
+            self._unhandled_exception = True
+
         # cleanup
         self._callbacks = []
+
+
+    def _log_exception(self):
+        if not self._unhandled_exception:
+            return
+        self._unhandled_exception = False
+        trace = ''.join(traceback.format_exception(*self._exception)).strip()
+        log.error('*** Unhandled %s exception ***\n%s', self.__class__.__name__, trace)
 
 
     def __call__(self, *args, **kwargs):
@@ -193,36 +216,68 @@ class InProgress(Signal):
         if not self._finished:
             raise RuntimeError('operation not finished')
         if self._exception:
+            self._unhandled_exception = False
             type, value, tb = self._exception
             # Special 3-argument form of raise; preserves traceback
             raise type, value, tb
         return self._result
 
 
-    def wait(self):
+    def wait(self, timeout = None):
         """
         Waits for the result (or exception) of the InProgress object.  The
-        main loop is kept alive.
+        main loop is kept alive if waiting in the main thread, otherwise
+        the thread is blocked until another thread finishes the InProgress.
+
+        If timeout is specified, wait() blocks for at most timeout seconds
+        (which may be fractional).  If wait times out, a TimeoutException is
+        raised.
         """
         # Import modules here rather than globally to avoid circular importing.
         import main
+        from thread import set_as_mainthread, is_mainthread
+
         if not main.is_running():
             # No main loop is running yet.  We're calling step() below,
             # but we won't get notified of any thread completion
             # unless the thread notifier pipe is initialized.
-            from thread import set_as_mainthread
             set_as_mainthread()
  
-        if self.exception.count() == 0:
-            # No existing exception handler.  Connect a dummy handler to
-            # prevent it from being logged in throw().  It will get raised
-            # later when we call get_result().
-            self.exception.connect(lambda *args: None)
+        # Connect a dummy handler to prevent any exception from being logged in
+        # throw().  It will get raised later when we call get_result().
+        dummy_handler = lambda *args: False
+        self.exception.connect_once(dummy_handler)
 
-        while not self.is_finished():
-            main.step()
+        if is_mainthread():
+            # We're waiting in the main thread, so we must keep the mainloop
+            # alive by calling step() until we're finished.
+            abort = []
+            if timeout:
+                # Add a timer to make sure the notifier doesn't sleep
+                # beyond out timeout.
+                from timer import OneShotTimer
+                OneShotTimer(lambda: abort.append(True)).start(timeout)
+
+            while not self.is_finished() and not abort:
+                main.step()
+        else:
+            # We're waiting in some other thread, so wait for some other
+            # thread to wake us up.
+            self._finished_event.wait(timeout)
+
+        if not self.is_finished():
+            self.exception.disconnect(dummy_handler)
+            raise TimeoutException
 
         return self.get_result()
+
+
+    def link(self, in_progress):
+        """
+        Links with another InProgress object.  When the supplied in_progress
+        object finishes (or throws), we do too.
+        """
+        in_progress.connect_both(self.finished, self.throw)
 
 
     def _connect(self, callback, args = (), kwargs = {}, once = False,
@@ -239,4 +294,4 @@ class InProgress(Signal):
         Connect a finished and an exception callback without extra arguments.
         """
         self.connect(finished)
-        self.exception.connect(exception)
+        self.exception.connect_once(exception)

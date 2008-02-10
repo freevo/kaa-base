@@ -59,8 +59,8 @@ def thread2(c, x):
     cb = kaa.MainThreadCallback(c.rpc)
     # we not only wait to get the InProgress back, we also wait
     # for the real return from rpc
-    cb.set_async(False)
-    x = cb('test5', x)
+    #cb.set_async(False)
+    x = cb('test5', x).wait()
     print x
     return x + 1
 
@@ -94,7 +94,7 @@ def foo():
             print f, 'needs more time'
             yield x                     # waiting...
             # subyield is now done
-            x = x()
+            x = x.get_result()
         else:
             # this should happen for fast
             print f, 'was a yield function but did not stop'
@@ -135,14 +135,14 @@ def foo():
     x = thread(13)
     # this is also an InProgress object
     yield x
-    print x()                           # 13
+    print x.get_result()                           # 13
 
     x = thread('crash')
-    yield x
     try:
         # the thread raised an exception, so x() will
         # raise it here
-        print x()
+        yield x
+        print x.get_result()
         print 'crash test failed'
     except:
         print 'crash test ok'
@@ -163,37 +163,37 @@ def foo():
     # normal rpc
     result = c.rpc('test1', 15)
     yield result
-    print result()
+    print result.get_result()
 
     # rpc in a thread
     result = c.rpc('test2', 16)
     yield result
-    print result()
+    print result.get_result()
     
     # rpc with yield direct
     result = c.rpc('test3', 17)
     yield result
-    print result()
+    print result.get_result()
     
     # rpc with yield indirect
     result = c.rpc('test4', 18)
     yield result
-    print result()
+    print result.get_result()
     
     # rpc with yield error
     result = c.rpc('crash')
-    yield result
     try:
-        result()
+        yield result
+        result.get_result()
         print 'bad rpc test failed'
     except:
         print 'bad rpc test ok'
 
     # rpc with remote exception
     result = c.rpc('test6', 18)
-    yield result
     try:
-        result()
+        yield result
+        result.get_result()
         print 'remote rpc exception test failed'
     except ValueError, e:
         print 'remote rpc exception test ok'
@@ -203,7 +203,7 @@ def foo():
     # call rpc in thread
     x = thread2(c, 19)
     yield x                             # print 19
-    print x()                           # 20
+    print x.get_result()                           # 20
     
     # normal rpc, we don't care about the answer
     c.rpc('shutdown')

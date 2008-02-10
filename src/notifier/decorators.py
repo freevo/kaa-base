@@ -100,22 +100,26 @@ def execute_in_timer(timer, interval, type=''):
     return decorator
 
 
-def execute_in_mainloop(async=False):
+def execute_in_mainloop(async = False):
     """
-    This decorator makes sure the function is called from the main loop. If
-    the calling thread is the mainloop, it is a normal function call, if not,
-    MainThreadCallback is used to call the function. If 'async' is set to False,
-    the thread will wait for the answer. It is possible with this decorator to
-    have a longer codeblock in a thread and call functions not thread save.
+    This decorator makes sure the function is called from the main loop.  If
+    async is True, any decorated function will return InProgress, whether the
+    function is called in the main thread or another thread.
+
+    If async is False and this function is called in the main thread, it
+    behaves as a normal function call (as if it weren't decorated).  But if the
+    calling thread is not the main thread, it is blocked until the function
+    finishes, and its return value is passed (or any exception is raised)
     """
     def decorator(func):
 
         def newfunc(*args, **kwargs):
-            if is_mainthread():
+            if not async and is_mainthread():
                 return func(*args, **kwargs)
-            t = MainThreadCallback(func, *args, **kwargs)
-            t.set_async(async)
-            return t()
+            in_progress = MainThreadCallback(func)(*args, **kwargs)
+            if not async:
+                return in_progress.wait()
+            return in_progress
 
         try:
             newfunc.func_name = func.func_name

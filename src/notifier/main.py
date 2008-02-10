@@ -90,6 +90,9 @@ def run():
     _running = True
     unhandled_exception = None
 
+    if is_mainthread() is False:
+        raise RuntimeError('Mainthread is already running')
+
     set_as_mainthread()
     while True:
         try:

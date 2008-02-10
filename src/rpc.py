@@ -229,6 +229,15 @@ class Server(object):
         self.objects.append(obj)
 
 
+    def disconnect(self, obj):
+        """
+        Disconnects a previously connected object.
+        """
+        try:
+            self.objects.remove(obj)
+        except ValueError:
+            pass
+
 
 class Channel(object):
     """

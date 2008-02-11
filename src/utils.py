@@ -38,6 +38,7 @@ import logging
 
 import kaa
 import _utils
+from notifier.thread import _create_thread_notifier_pipe
 
 # get logging object
 log = logging.getLogger('kaa')
@@ -121,8 +122,7 @@ def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None,
             os.waitpid(pid, 0)
             return pid
     except OSError, e:
-        log.error("Initial daemonize fork failed: %d, %s\n",
-                  e.errno, e.strerror)
+        log.error("Initial daemonize fork failed: %d, %s\n", e.errno, e.strerror)
         sys.exit(1)
 
     os.chdir("/")
@@ -145,14 +145,16 @@ def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None,
     stdout = file(stdout, 'a+')
     stderr = file(stderr, 'a+', 0)
     if pidfile:
-        pidfile = file(pidfile, 'w+')
-        pidfile.write("%d\n" % os.getpid())
-        pidfile.close()
+        file(pidfile, 'w+').write("%d\n" % os.getpid())
 
     # Remap standard fds.
     os.dup2(stdin.fileno(), sys.stdin.fileno())
     os.dup2(stdout.fileno(), sys.stdout.fileno())
     os.dup2(stderr.fileno(), sys.stderr.fileno())
+
+    # Replace any existing thread notifier pipe, otherwise we'll be listening
+    # to our parent's thread notifier.
+    _create_thread_notifier_pipe(new=False, purge=True)
 
     return lock
 

@@ -47,7 +47,7 @@
 # -----------------------------------------------------------------------------
 
 __all__ = [ 'MainThreadCallback', 'ThreadCallback', 'is_mainthread',
-            'wakeup', 'set_as_mainthread' ]
+            'wakeup', 'set_as_mainthread', '_create_thread_notifier_pipe' ]
 
 # python imports
 import sys
@@ -103,13 +103,7 @@ class MainThreadCallback(Callback):
             return in_progress
 
         self.lock.acquire(False)
-
-        _thread_notifier_lock.acquire()
-        _thread_notifier_queue.insert(0, (self, args, kwargs, in_progress))
-        if len(_thread_notifier_queue) == 1:
-            if _thread_notifier_pipe:
-                os.write(_thread_notifier_pipe[1], "1")
-        _thread_notifier_lock.release()
+        _thread_notifier_queue_callback(self, args, kwargs, in_progress)
 
         # TODO: this is deprecated, caller should use wait() on the InProgress
         # we return (when set_async(False) isn't called).  This is also broken
@@ -217,6 +211,7 @@ _thread_notifier_queue = []
 # For MainThread* callbacks. The pipe will be created when it is used the first
 # time. This solves a nasty bug when you fork() into a second notifier based
 # process without exec. If you have this pipe, communication will go wrong.
+# (kaa.utils.daemonize does not have this problem.)
 _thread_notifier_pipe = None
 
     
@@ -228,26 +223,57 @@ def wakeup():
         os.write(_thread_notifier_pipe[1], "1")
 
 
+def _create_thread_notifier_pipe(new = True, purge = False):
+    """
+    Creates a new pipe for the thread notifier.  If new is True, a new pipe
+    will always be created; if it is False, it will only be created if one
+    already exists.  If purge is True, any previously queued work will be
+    discarded.
+
+    This is an internal function, but we export it for kaa.utils.daemonize.
+    """
+    global _thread_notifier_pipe
+    log.info('create thread notifier pipe')
+
+    if not _thread_notifier_pipe and not new:
+        return
+    elif _thread_notifier_pipe:
+        # There is an existing pipe already, so stop monitoring it.
+        notifier.socket_remove(_thread_notifier_pipe[0])
+
+    if purge:
+        del _thread_notifier_queue[:]
+
+    _thread_notifier_pipe = os.pipe()
+    fcntl.fcntl(_thread_notifier_pipe[0], fcntl.F_SETFL, os.O_NONBLOCK)
+    fcntl.fcntl(_thread_notifier_pipe[1], fcntl.F_SETFL, os.O_NONBLOCK)
+    notifier.socket_add(_thread_notifier_pipe[0], _thread_notifier_run_queue)
+
+    if _thread_notifier_queue:
+        # A thread is already running and wanted to run something in the
+        # mainloop before the mainloop is started. In that case we need
+        # to wakeup the loop ASAP to handle the requests.
+        os.write(_thread_notifier_pipe[1], "1")
+
+
 def set_as_mainthread():
     global _thread_notifier_mainthread
-    global _thread_notifier_pipe
     _thread_notifier_mainthread = threading.currentThread()
-    # Make sure we have a pipe between the mainloop and threads. Since loop()
-    # calls set_as_mainthread it is safe to assume the loop is
-    # connected correctly. If someone calls step() without loop() and
-    # without set_as_mainthread inter-thread communication does
-    # not work.
     if not _thread_notifier_pipe:
-        log.info('create thread notifier pipe')
-        _thread_notifier_pipe = os.pipe()
-        fcntl.fcntl(_thread_notifier_pipe[0], fcntl.F_SETFL, os.O_NONBLOCK)
-        fcntl.fcntl(_thread_notifier_pipe[1], fcntl.F_SETFL, os.O_NONBLOCK)
-        notifier.socket_add(_thread_notifier_pipe[0], _thread_notifier_run_queue)
-        if _thread_notifier_queue:
-            # A thread is already running and wanted to run something in the
-            # mainloop before the mainloop is started. In that case we need
-            # to wakeup the loop ASAP to handle the requests.
+        # Make sure we have a pipe between the mainloop and threads. Since
+        # loop() calls set_as_mainthread it is safe to assume the loop is
+        # connected correctly. If someone calls step() without loop() and
+        # without set_as_mainthread inter-thread communication does not work.
+        _create_thread_notifier_pipe()
+    
+
+def _thread_notifier_queue_callback(callback, args, kwargs, in_progress):
+    _thread_notifier_lock.acquire()
+    _thread_notifier_queue.append((callback, args, kwargs, in_progress))
+    if len(_thread_notifier_queue) == 1:
+        if _thread_notifier_pipe:
             os.write(_thread_notifier_pipe[1], "1")
+    _thread_notifier_lock.release()
 
 
 def _thread_notifier_run_queue(fd):
@@ -265,7 +291,7 @@ def _thread_notifier_run_queue(fd):
 
     while _thread_notifier_queue:
         _thread_notifier_lock.acquire()
-        callback, args, kwargs, in_progress = _thread_notifier_queue.pop()
+        callback, args, kwargs, in_progress = _thread_notifier_queue.pop(0)
         _thread_notifier_lock.release()
 
         try:
@@ -273,6 +299,12 @@ def _thread_notifier_run_queue(fd):
         except:
             in_progress.throw(*sys.exc_info())
 
+        # We must test if the in_progress is finished even though we called
+        # finished() or throw() on it above, because if the callback returns
+        # another InProgress object, in_progress is linked to it but it is
+        # not finished, and so we mustn't wake the caller.
+        # XXX: but this is needed only for deprecated functionality anyway
+        # (set_async) and can be removed in the future.
         if in_progress.is_finished():
             callback._wakeup()
 

@@ -52,8 +52,9 @@ __all__ = [ 'run', 'stop', 'step', 'select_notifier', 'is_running', 'wakeup',
 # get logging object
 log = logging.getLogger('notifier')
 
-# variable to check if the notifier is running
-_running = False
+# pid of the process running the notifier loop.  This lets run() know
+# if we've just forked and we want to run a new loop.
+_running_pid = None
 # Set if currently in shutdown() (to prevent reentrancy)
 _shutting_down = False
 
@@ -86,13 +87,12 @@ def run():
     Notifier main loop function. It will loop until an exception
     is raised or sys.exit is called.
     """
-    global _running
     unhandled_exception = None
 
     if is_running():
         raise RuntimeError('Mainthread is already running')
 
-    _running = True
+    _set_running(True)
     set_as_mainthread()
 
     while True:
@@ -118,7 +118,7 @@ def run():
                 unhandled_exception = sys.exc_info()
                 break
 
-    _running = False
+    _set_running(False)
     stop()
     if unhandled_exception:
         # We aborted the main loop due to an unhandled exception.  Now
@@ -135,7 +135,7 @@ def stop():
     """
     global _shutting_down
 
-    if _running:
+    if is_running():
         # notifier loop still running, send system exit
         log.info('Stop notifier loop')
         raise SystemExit
@@ -186,7 +186,7 @@ def is_running():
     """
     Return if the main loop is currently running.
     """
-    return _running
+    return _running_pid == os.getpid()
 
 
 def is_shutting_down():
@@ -201,8 +201,11 @@ def _set_running(status):
     Set running status. This function is only for the thread based notifier
     since it does not call run().
     """
-    global _running
-    _running = status
+    global _running_pid
+    if status:
+        _running_pid = os.getpid()
+    else:
+        _running_pid = None
 
 
 def _shutdown_check(*args):
@@ -212,14 +215,13 @@ def _shutdown_check(*args):
     # can't call the shutdown handler. This is not a perfect
     # solution, e.g. with the generic notifier you can do
     # stuff after kaa.main.run() which is not possible with gtk
-    global _running
-    if _running:
+    if is_running():
         # If the kaa mainthread (i.e. thread the mainloop is running in)
         # is not the program's main thread, then is_mainthread() will be False
         # and we don't need to set running=False since shutdown() will raise a
         # SystemExit and things will exit normally.
         if is_mainthread():
-            _running = False
+            _set_running(False)
         stop()
 
 

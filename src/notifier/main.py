@@ -87,13 +87,14 @@ def run():
     is raised or sys.exit is called.
     """
     global _running
-    _running = True
     unhandled_exception = None
 
-    if is_mainthread() is False:
+    if is_running():
         raise RuntimeError('Mainthread is already running')
 
+    _running = True
     set_as_mainthread()
+
     while True:
         try:
             notifier.step()

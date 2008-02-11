@@ -175,7 +175,7 @@ class Process(object):
 
         # add child to watcher
         if not is_mainthread():
-            MainThreadCallback(proclist.append, self, self.__child_died )
+            MainThreadCallback(proclist.append)(self, self.__child_died)
         else:
             proclist.append( self, self.__child_died )
         self.in_progress = InProgress()

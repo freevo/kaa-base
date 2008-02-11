@@ -202,20 +202,14 @@ class ThreadCallback(Callback):
     
 def is_mainthread():
     """
-    Return True if the caller is in the main thread right now, and False if
-    some other thread is the main thread.  If no main thread has been
-    set, returns None.
+    Return True if the caller is in the main thread right now.
     """
     # If threading module is None, assume main thread.  (Silences pointless
     # exceptions on shutdown.)
-    if not threading or threading.currentThread() == _thread_notifier_mainthread:
-        return True
-    elif _thread_notifier_mainthread is None:
-        return None
-    return False
+    return (not threading) or threading.currentThread() == _thread_notifier_mainthread
 
 
-_thread_notifier_mainthread = None
+_thread_notifier_mainthread = threading.currentThread()
 _thread_notifier_lock = threading.Lock()
 _thread_notifier_queue = []
 

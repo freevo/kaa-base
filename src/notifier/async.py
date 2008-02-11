@@ -243,11 +243,6 @@ class InProgress(Signal):
             # unless the thread notifier pipe is initialized.
             set_as_mainthread()
  
-        # Connect a dummy handler to prevent any exception from being logged in
-        # throw().  It will get raised later when we call get_result().
-        dummy_handler = lambda *args: False
-        self.exception.connect_once(dummy_handler)
-
         if is_mainthread():
             # We're waiting in the main thread, so we must keep the mainloop
             # alive by calling step() until we're finished.
@@ -266,7 +261,6 @@ class InProgress(Signal):
             self._finished_event.wait(timeout)
 
         if not self.is_finished():
-            self.exception.disconnect(dummy_handler)
             raise TimeoutException
 
         return self.get_result()

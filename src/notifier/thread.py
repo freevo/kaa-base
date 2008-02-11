@@ -95,9 +95,10 @@ class MainThreadCallback(Callback):
 
             try:
                 result = super(MainThreadCallback, self).__call__(*args, **kwargs)
-                in_progress.finished(result)
             except:
                 in_progress.throw(*sys.exc_info())
+            else:
+                in_progress.finished(result)
 
             return in_progress
 

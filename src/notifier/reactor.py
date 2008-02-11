@@ -43,9 +43,7 @@ class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
         Callback from the Twisted thread kaa should execute from
         the mainloop.
         """
-        a = kaa.MainThreadCallback(func)
-        a.set_async(False)
-        return a()
+        return kaa.MainThreadCallback(func)().wait()
 
 
     def _kaa_stop(self):

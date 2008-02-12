@@ -156,7 +156,8 @@ class InProgress(Signal):
         # emit signal
         self.emit_when_handled(result)
         # cleanup
-        self._callbacks = []
+        self.disconnect_all()
+        self.exception.disconnect_all()
 
 
     def throw(self, type, value, tb):
@@ -169,8 +170,7 @@ class InProgress(Signal):
         self._exception = type, value, tb
         self._unhandled_exception = False
         # Wake any threads waiting on us
-        if self._finished_event:
-            self._finished_event.set()
+        self._finished_event.set()
 
         if self.exception.emit_when_handled(type, value, tb) != False:
             # No handler returned False to block us from logging the exception.
@@ -179,7 +179,8 @@ class InProgress(Signal):
             self._unhandled_exception = True
 
         # cleanup
-        self._callbacks = []
+        self.disconnect_all()
+        self.exception.disconnect_all()
 
 
     def _log_exception(self):

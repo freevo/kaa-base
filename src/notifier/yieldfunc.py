@@ -267,6 +267,8 @@ class YieldFunction(InProgress):
             # An InProgress we were waiting on raised an exception.  We are
             # "inheriting" this exception, so return False to prevent it
             # from being logged as unhandled in the other InProgress.
+            # Remove the internal timer and the async result to remove bad
+            # circular references.
             self._timer = None
             self._async = None
             self._yield__function = None
@@ -293,6 +295,8 @@ class YieldFunction(InProgress):
                     return True
                 break
         except (SystemExit, KeyboardInterrupt):
+            # Remove the internal timer and the async result to remove bad
+            # circular references.
             self._timer.stop()
             self._timer = None
             self._async = None
@@ -302,6 +306,8 @@ class YieldFunction(InProgress):
             result = None
         except Exception, e:
             # YieldFunction is done with exception
+            # Remove the internal timer and the async result to remove bad
+            # circular references.
             self._timer.stop()
             self._timer = None
             self._async = None
@@ -313,12 +319,12 @@ class YieldFunction(InProgress):
         self._timer.stop()
         if isinstance(result, InProgress):
             # continue when InProgress is done
-            # XXX YIELD CHANGES NOTES
-            # XXX Be careful with already finished InProgress
             self._async = result
             result.connect_both(self._continue, self._continue)
             return False
         # YieldFunction is done
+        # Remove the internal timer and the async result to remove bad
+        # circular references.
         self._timer = None
         self.finished(result)
         self._async = None
@@ -332,6 +338,8 @@ class YieldFunction(InProgress):
         """
         if self._timer and self._timer.active():
             self._timer.stop()
+        # Remove the internal timer and the async result to remove bad
+        # circular references.
         self._timer = None
         self._yield__function = None
         self._async = None

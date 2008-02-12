@@ -132,7 +132,7 @@ def _process(func, async=None):
     """
     if _python25 and async is not None:
         if async._exception:
-            async._unhandled_exception = False
+            async._unhandled_exception = None
             return func.throw(*async._exception)
         return func.send(async._result)
     return func.next()

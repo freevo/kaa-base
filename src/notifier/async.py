@@ -35,10 +35,11 @@ __all__ = [ 'InProgress' ]
 import logging
 import traceback
 import time
+import _weakref
 import threading
 
 # kaa.notifier imports
-from callback import Signal
+from callback import Signal, Callback
 
 # get logging object
 log = logging.getLogger('notifier.async')
@@ -108,14 +109,9 @@ class InProgress(Signal):
         self.exception = Signal()
         self._finished = False
         self._finished_event = threading.Event()
-        self._unhandled_exception = False
+        self._unhandled_exception = None
         self.status = None
 
-    def __del__(self):
-        if self._unhandled_exception:
-            # We didn't get a chance to log this unhandled exception, so do
-            # it now.
-            self._log_exception()
 
     def set_status(self, s):
         """
@@ -168,27 +164,34 @@ class InProgress(Signal):
         # store result
         self._finished = True
         self._exception = type, value, tb
-        self._unhandled_exception = False
+        self._unhandled_exception = None
         # Wake any threads waiting on us
         self._finished_event.set()
 
         if self.exception.emit_when_handled(type, value, tb) != False:
             # No handler returned False to block us from logging the exception.
             # Set a flag to log the exception in the destructor if it is
-            # not raised with get_result().
-            self._unhandled_exception = True
+            # not raised with get_result(). Using a nornal Python destructor
+            # does not work because it would be too easy to create a circular
+            # reference with InProgress and yield_execution which would result
+            # in a memory leak. Since we do not need the InProgress object to
+            # log the unhandled exception, a weakref callback is used. So this
+            # is __del__ without using __del__.
+            trace = ''.join(traceback.format_exception(*self._exception)).strip()
+            cb = Callback(InProgress._log_exception, trace)
+            self._unhandled_exception = _weakref.ref(self, cb)
 
         # cleanup
         self.disconnect_all()
         self.exception.disconnect_all()
 
 
-    def _log_exception(self):
-        if not self._unhandled_exception:
-            return
-        self._unhandled_exception = False
-        trace = ''.join(traceback.format_exception(*self._exception)).strip()
-        log.error('*** Unhandled %s exception ***\n%s', self.__class__.__name__, trace)
+    @classmethod
+    def _log_exception(cls, weakref, trace):
+        """
+        Callback to log unhandled exceptions.
+        """
+        log.error('*** Unhandled %s exception ***\n%s', cls.__name__, trace)
 
 
     def __call__(self, *args, **kwargs):
@@ -217,7 +220,7 @@ class InProgress(Signal):
         if not self._finished:
             raise RuntimeError('operation not finished')
         if self._exception:
-            self._unhandled_exception = False
+            self._unhandled_exception = None
             type, value, tb = self._exception
             # Special 3-argument form of raise; preserves traceback
             raise type, value, tb

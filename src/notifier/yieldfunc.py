@@ -303,6 +303,7 @@ class YieldFunction(InProgress):
         except Exception, e:
             # YieldFunction is done with exception
             self._timer.stop()
+            self._timer = None
             self._async = None
             self._yield__function = None
             self.throw(*sys.exc_info())

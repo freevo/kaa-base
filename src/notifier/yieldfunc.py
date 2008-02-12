@@ -263,15 +263,18 @@ class YieldFunction(InProgress):
         """
         Restart timer.
         """
-        if self._timer:
-            # continue calling _step
-            self._timer.start(self._interval)
         if len(args) == 3 and isinstance(args[1], Exception):
             # An InProgress we were waiting on raised an exception.  We are
             # "inheriting" this exception, so return False to prevent it
             # from being logged as unhandled in the other InProgress.
+            self._timer = None
+            self._async = None
+            self._yield__function = None
             self.throw(*args)
             return False
+        if self._timer:
+            # continue calling _step
+            self._timer.start(self._interval)
 
 
     def _step(self):
@@ -291,6 +294,7 @@ class YieldFunction(InProgress):
                 break
         except (SystemExit, KeyboardInterrupt):
             self._timer.stop()
+            self._timer = None
             self._async = None
             self._yield__function = None
             sys.exit(0)

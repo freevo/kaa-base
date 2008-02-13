@@ -50,8 +50,8 @@ log = logging.getLogger('notifier.thread')
 
 class NamedThreadCallback(Callback):
     """
-    A callback to run a function in a thread. This class is used by
-    execute_in_thread, but it is also possible to use this call directly.
+    A callback to run a function in a thread. This class is used by the
+    threaded decorator, but it is also possible to use this call directly.
     """
     def __init__(self, thread_information, func, *args, **kwargs):
         Callback.__init__(self, func, *args, **kwargs)

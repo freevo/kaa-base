@@ -43,7 +43,7 @@ class TLSConnection(tlslite.api.TLSConnection):
     It enhances the tlslite version of the class with the same name with
     kaa.notifier support.
     """
-    @kaa.yield_execution()
+    @kaa.coroutine()
     def handshakeClientCert(self, certChain=None, privateKey=None, session=None,
                             settings=None, checker=None):
         """
@@ -86,7 +86,7 @@ class Socket(kaa.Socket):
         self.signals['tls'] = kaa.Signal()
 
 
-    @kaa.yield_execution()
+    @kaa.coroutine()
     def starttls_client(self, session=None):
         """
         Start a certificate-based handshake in the role of a TLS client.

@@ -6,7 +6,7 @@
 #
 # -----------------------------------------------------------------------------
 # kaa.notifier - Mainloop and callbacks
-# Copyright (C) 2005, 2006 Dirk Meyer, Jason Tackaberry, et al.
+# Copyright (C) 2005-2008 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>

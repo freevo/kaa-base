@@ -43,7 +43,7 @@ import nf_wrapper as notifier
 from signals import Signal
 from popen import proclist as _proclist
 from thread import is_mainthread, wakeup, set_as_mainthread
-from jobserver import killall as kill_jobserver
+from thread import killall as kill_jobserver
 from decorators import threaded, MAINTHREAD
 
 __all__ = [ 'run', 'stop', 'step', 'select_notifier', 'is_running', 'wakeup',

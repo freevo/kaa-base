@@ -34,8 +34,8 @@ from kaa.notifier import *
 # strutils
 import strutils
 
-# tempfile support. FIXME: remove TEMP when no longer used
-from tmpfile import tempfile, TEMP
+# tempfile support.
+from tmpfile import tempfile
 
 # Expose main loop functions under kaa.main
 from kaa.notifier import main

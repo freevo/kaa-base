@@ -160,7 +160,7 @@ class Server(object):
         if type(address) in types.StringTypes:
             if address.find('/') == -1:
                 # create socket in kaa temp dir
-                address = '%s/%s' % (kaa.TEMP, address)
+                address = kaa.tempfile(address)
 
             if os.path.exists(address):
                 # maybe a server is already running at this address, test it
@@ -804,7 +804,7 @@ class Client(Channel):
     """
     def __init__(self, address, auth_secret = '', bufsize = None):
         if type(address) in types.StringTypes:
-            address = '%s/%s' % (kaa.TEMP, address)
+            address = kaa.tempfile(address)
             fd = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         if type(address) == tuple:
             fd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

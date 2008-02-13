@@ -1,5 +1,11 @@
 Release Notes, see ChangeLog for a detailed list of changes.
 
+0.4.0, 2008-xx-xx
+
+* Again some API changes for kaa.notifier. Please read
+  API_CHANGES.txt for details. The API should be stable now.
+
+
 0.3.0, 2008-02-04
 
 * API changes for kaa.notifier. Please read API_CHANGES.txt for

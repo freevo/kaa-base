@@ -1,3 +1,11 @@
+The API for kaa.notifier has changed in releases 0.3.0 and 0.4.0. We
+think the API is now stable again. You need to check your code to
+adjust to the new API.
+
+
+Changes for 0.3.0
+-----------------
+
 1. Rename kaa.notifier mainloop control:
    kaa.notifier.init() is kaa.main.select_notifier()
    kaa.notifier.loop() and kaa.main() is now kaa.main.run()
@@ -8,9 +16,6 @@
    
    kaa.main can be accessed by importing kaa, you can NOT import
    kaa.main directly.
-
-   NOTE: as of 0.4.0 (svn r3057) these functions under kaa.notifier
-   have been completely removed.
 
 2. Move kaa.notifier classes and functions into the kaa namespace.
    E.g. kaa.notifier.Timer is now kaa.Timer. No part of the code
@@ -43,20 +48,21 @@
    finished object will return without waiting. For Python 2.5 the
    yield also returns the value or can raise an exception.
 
-9. MainThreadCallback.set_async() is deprecated.  Calling a 
+
+Changes for 0.4.0
+-----------------
+
+1. MainThreadCallback.set_async() is removed.  Calling a 
    MainThreadCallback will return an InProgress object, and the
-   correct approach now is to wait() on this InProgress.
+   new approach now is to wait() on this InProgress.
 
-   NOTE: as of 0.4.0 (svn r3057), set_async() has been removed.  Calling
-   it will raise an Exception instead of logging a warning.
-
-10. Several decorators renamed:
+2. Several decorators renamed:
       @kaa.execute_in_timer  -->  @kaa.timed
       @kaa.execute_in_thread  -->  @kaa.threaded
       @kaa.execute_in_mainloop  --> @kaa.threaded(kaa.MAINTHREAD)
       @kaa.yield_execution  -->  @kaa.coroutine
 
-    Currently the old names are still functional but a warning will be
-    logged if they are used. @kaa.timed also changed the parameter
-    order and name. It is now interval, timer (default Timer) and
-    policy (default POLICY_RESTART).
+   Currently the old names are still functional but a warning will be
+   logged if they are used. @kaa.timed also changed the parameter
+   order and name. It is now interval, timer (default Timer) and
+   policy (default POLICY_RESTART).

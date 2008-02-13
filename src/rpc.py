@@ -187,7 +187,7 @@ class Server(object):
         self.socket.setblocking(False)
         self.socket.bind(address)
         self.socket.listen(5)
-        self._mon = kaa.WeakSocketDispatcher(self._new_connection)
+        self._mon = kaa.WeakIOMonitor(self._new_connection)
         self._mon.register(self.socket.fileno())
         # Remove socket file and close clients on shutdown
         kaa.main.signals["shutdown"].connect_weak(self.close)
@@ -247,9 +247,9 @@ class Channel(object):
     def __init__(self, sock, auth_secret, bufsize = None):
         self._socket = sock
 
-        self._rmon = kaa.SocketDispatcher(self._handle_read)
+        self._rmon = kaa.IOMonitor(self._handle_read)
         self._rmon.register(self._socket.fileno(), kaa.IO_READ)
-        self._wmon = kaa.SocketDispatcher(self._handle_write)
+        self._wmon = kaa.IOMonitor(self._handle_write)
         self._authenticated = False
         self._write_buffer = ''
         self._write_buffer_delayed = ''

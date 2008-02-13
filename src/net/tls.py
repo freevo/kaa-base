@@ -56,7 +56,7 @@ class TLSConnection(tlslite.api.TLSConnection):
             while True:
                 n = handshake.next()
                 cb = kaa.YieldCallback()
-                disp = kaa.notifier.SocketDispatcher(cb)
+                disp = kaa.notifier.IOMonitor(cb)
                 if n == 0:
                     disp.register(self.sock.fileno(), kaa.notifier.IO_READ)
                 if n == 1:
@@ -71,7 +71,7 @@ class TLSConnection(tlslite.api.TLSConnection):
     def fileno(self):
         """
         Return socket descriptor. This makes this class feel like a normal
-        socket to the SocketDispatcher.
+        socket to the IOMonitor.
         """
         return self.sock.fileno()
 

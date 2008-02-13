@@ -59,7 +59,7 @@ import nf_wrapper as notifier
 from callback import Signal, Callback
 from thread import MainThreadCallback, is_mainthread
 from async import InProgress
-from sockets import SocketDispatcher, IO_WRITE
+from sockets import IOMonitor, IO_WRITE
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -160,7 +160,7 @@ class Process(object):
 
         flags = fcntl.fcntl(self.child.tochild.fileno(), fcntl.F_GETFL)
         fcntl.fcntl( self.child.tochild.fileno(), fcntl.F_SETFL, flags | os.O_NONBLOCK )
-        self._wmon = SocketDispatcher(self._handle_write)
+        self._wmon = IOMonitor(self._handle_write)
         if self._write_buffer:
             self._wmon.register(self.child.tochild, IO_WRITE)
 

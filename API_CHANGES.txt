@@ -66,3 +66,7 @@ Changes for 0.4.0
    logged if they are used. @kaa.timed also changed the parameter
    order and name. It is now interval, timer (default Timer) and
    policy (default POLICY_RESTART).
+
+3. SocketDispatcher and WeakSocketDispatcher are renamed to IOMonitor
+   and WeakIOMonitor. The old name is still functional with a
+   warning.

@@ -144,7 +144,7 @@ def init(appname = None, cfg = None):
         return False
 
     pylirc.blocking(0)
-    _dispatcher = kaa.SocketDispatcher(_handle_lirc_input)
+    _dispatcher = kaa.IOMonitor(_handle_lirc_input)
     _dispatcher.register(fd)
     kaa.main.signals["shutdown"].connect(stop)
 

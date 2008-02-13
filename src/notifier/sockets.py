@@ -30,7 +30,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'SocketDispatcher', 'WeakSocketDispatcher', 'Socket',
+__all__ = [ 'IOMonitor', 'WeakIOMonitor', 'Socket',
             'IO_READ', 'IO_WRITE' ]
 
 import socket
@@ -47,10 +47,10 @@ log = logging.getLogger('notifier')
 IO_READ   = 0
 IO_WRITE  = 1
 
-class SocketDispatcher(notifier.NotifierCallback):
+class IOMonitor(notifier.NotifierCallback):
 
     def __init__(self, callback, *args, **kwargs):
-        super(SocketDispatcher, self).__init__(callback, *args, **kwargs)
+        super(IOMonitor, self).__init__(callback, *args, **kwargs)
         self.set_ignore_caller_args()
 
 
@@ -70,11 +70,11 @@ class SocketDispatcher(notifier.NotifierCallback):
         if not is_mainthread():
             return MainThreadCallback(self.unregister)()
         notifier.socket_remove(self._id, self._condition)
-        super(SocketDispatcher, self).unregister()
+        super(IOMonitor, self).unregister()
 
 
 
-class WeakSocketDispatcher(notifier.WeakNotifierCallback, SocketDispatcher):
+class WeakIOMonitor(notifier.WeakNotifierCallback, IOMonitor):
     pass
 
 
@@ -216,8 +216,8 @@ class Socket(object):
             self._rmon.unregister()
             self._wmon.unregister()
 
-        self._rmon = SocketDispatcher(self._handle_read)
-        self._wmon = SocketDispatcher(self._handle_write)
+        self._rmon = IOMonitor(self._handle_read)
+        self._wmon = IOMonitor(self._handle_write)
 
         self._rmon.register(self._socket, IO_READ)
         if self._write_buffer:

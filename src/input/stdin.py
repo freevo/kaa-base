@@ -125,7 +125,7 @@ def _handle_stdin_keypress():
     return True
 
 
-_dispatcher = kaa.SocketDispatcher(_handle_stdin_keypress)
+_dispatcher = kaa.IOMonitor(_handle_stdin_keypress)
 
 def _keypress_signal_changed(s, flag):
     if flag == kaa.Signal.SIGNAL_CONNECTED and s.count() == 1:

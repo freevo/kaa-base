@@ -91,7 +91,7 @@ class INotify(object):
             raise SystemError, "INotify support not detected on this system."
 
         fcntl.fcntl(self._fd, fcntl.F_SETFL, os.O_NONBLOCK)
-        self._mon = kaa.WeakSocketDispatcher(self._handle_data)
+        self._mon = kaa.WeakIOMonitor(self._handle_data)
         self._mon.register(self._fd)
 
 

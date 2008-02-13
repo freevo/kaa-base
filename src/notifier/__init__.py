@@ -34,7 +34,7 @@ from popen import Process
 from callback import Callback, WeakCallback, Signal, Signals
 from thread import MainThreadCallback, ThreadCallback, is_mainthread
 from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, OneShotAtTimer
-from sockets import SocketDispatcher, WeakSocketDispatcher, Socket, IO_READ, IO_WRITE
+from sockets import IOMonitor, WeakIOMonitor, Socket, IO_READ, IO_WRITE
 from event import Event, EventHandler, WeakEventHandler
 from yieldfunc import YieldContinue, YieldCallback, YieldFunction, coroutine
 from jobserver import NamedThreadCallback
@@ -69,3 +69,5 @@ def wrap(func, old_name, new_name):
 
 execute_in_thread=wrap(threaded, 'execute_in_thread', 'threaded')
 yield_execution=wrap(coroutine, 'yield_execution', 'coroutine')
+SocketDispatcher=wrap(IOMonitor, 'SocketDispatcher', 'IOMonitor')
+WeakSocketDispatcher=wrap(IOMonitor, 'WeakSocketDispatcher', 'WeakIOMonitor')

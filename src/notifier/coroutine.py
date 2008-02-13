@@ -75,8 +75,8 @@ YieldContinue = object()
 class YieldCallback(InProgress):
     """
     Callback class that can be used as a callback for a function that is
-    async. Return this object using 'yield' and use the member function
-    'get' later to get the result.
+    async. Return this object using 'yield' and use get_result() later.
+    You can also use result = yield YieldCallback object for Python 2.5.
     """
     def __init__(self, func=None):
         InProgress.__init__(self)
@@ -109,11 +109,6 @@ class YieldCallback(InProgress):
             # return as list
             return self.finished(args)
         return self.finished(None)
-
-
-    def get(self):
-        log.warning('Deprecated call to YieldCallback.get(); use get_result() instead')
-        return InProgress.get_result(self)
 
 
 # variable to detect if send is possible with a generator

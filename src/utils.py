@@ -252,3 +252,32 @@ class Singleton(object):
         if self._singleton is None:
             return Singleton.MemberFunction(self, attr)
         return getattr(self._singleton, attr)
+
+
+class property(property):
+    """
+    Replaces built-in property function to extend it as per 
+    http://bugs.python.org/issue1416
+    """
+    def __init__(self, fget = None, fset = None, fdel = None, doc = None):
+        super(property, self).__init__(fget, fset, fdel)
+        self.__doc__ = doc or fget.__doc__
+
+    def _add_doc(self, prop, doc = None):
+        prop.__doc__ = doc or self.__doc__
+        return prop
+
+    def setter(self, fset):
+        if isinstance(fset, property):
+            # Wrapping another property, use deleter.
+            self, fset = fset, fset.fdel
+        return self._add_doc(property(self.fget, fset, self.fdel))
+
+    def deleter(self, fdel):
+        if isinstance(fdel, property):
+            # Wrapping another property, use setter.
+            self, fdel = fdel, fdel.fset
+        return self._add_doc(property(self.fget, self.fset, fdel))
+
+    def getter(self, fget):
+        return self._add_doc(property(fget, self.fset, self.fdel), fget.__doc__ or self.fget.__doc__)

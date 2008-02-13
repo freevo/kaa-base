@@ -5,7 +5,7 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2005,2006 Dirk Meyer, Jason Tackaberry
+# Copyright (C) 2005-2008 Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.
 #
@@ -28,13 +28,14 @@
 # import logger to update the Python logging module
 import logger
 
-# import notifier functions into kaa namespace
+# Import notifier functions into kaa namespace. The list of all classes, functions
+# and decorators can be found in notifier/__init__.py
 from kaa.notifier import *
 
-# import the two important strutils functions
+# Import the two important strutils functions
 from strutils import str_to_unicode, unicode_to_str
 
-# tempfile support.
+# Add tempfile support.
 from tmpfile import tempfile
 
 # Expose main loop functions under kaa.main

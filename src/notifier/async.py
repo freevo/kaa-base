@@ -246,16 +246,6 @@ class InProgress(Signal):
         log.error('Unhandled %s exception:\n%s', cls.__name__, trace)
 
 
-    def __call__(self, *args, **kwargs):
-        """
-        You can call the InProgress object to get the results when finished.
-        The function will either return the result or raise the exception
-        provided to the exception function.
-        """
-        log.warning('Deprecated call to InProgress(); use get_result() instead')
-        return self.get_result()
-    
-
     def is_finished(self):
         """
         Return if the InProgress is finished.

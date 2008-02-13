@@ -238,15 +238,13 @@ class YieldFunction(InProgress):
         Call the YieldFunction to start it if it was not created by
         coroutine.
         """
-        if not self._valid:
-            # The generator was not started yet
-            self._valid = True
-            self._yield__function = self._yield__function(*args, **kwargs)
-            self._continue()
-            return True
-        # return the result
-        log.warning('Deprecated call to InProgress(); use get_result() instead')
-        return InProgress.get_result(self)
+        if self._valid:
+            raise RuntimeError('YieldFunction already running')
+        # The generator was not started yet
+        self._valid = True
+        self._yield__function = self._yield__function(*args, **kwargs)
+        self._continue()
+        return True
 
 
     def _continue(self, *args, **kwargs):

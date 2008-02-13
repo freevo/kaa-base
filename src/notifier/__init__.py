@@ -30,42 +30,33 @@
 #
 # -----------------------------------------------------------------------------
 
-from popen import Process
+# Import all classes, functions and decorators that are part of the API
+
+# Callback classes
 from callback import Callback, WeakCallback
+
+# Signal and dict of Signals
 from signals import Signal, Signals
-from thread import MainThreadCallback, NamedThreadCallback, ThreadCallback, is_mainthread, threaded, MAINTHREAD
-from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, OneShotAtTimer, timed, POLICY_ONCE, POLICY_MANY, POLICY_RESTART
-from sockets import IOMonitor, WeakIOMonitor, Socket, IO_READ, IO_WRITE
-from event import Event, EventHandler, WeakEventHandler
-from coroutine import YieldContinue, YieldCallback, YieldFunction, coroutine
+
+# InProgress class
 from async import InProgress
 
+# Thread callbacks, helper functions and decorators
+from thread import MainThreadCallback, NamedThreadCallback, ThreadCallback, \
+     is_mainthread, threaded, MAINTHREAD
 
-# XXX: wrappers for deprecated (renamed) decorators.  Everything below
-# this comment can be removed once support for deprecated names is
-# removed.
-import logging
-log = logging.getLogger('notifier')
+# Timer classes and decorators
+from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, \
+     OneShotAtTimer, timed, POLICY_ONCE, POLICY_MANY, POLICY_RESTART
 
-def execute_in_mainloop(async=False):
-    log.warning('Decorator @kaa.execute_in_mainloop deprecated; use @kaa.threaded(kaa.MAINTHREAD)');
-    return threaded(MAINTHREAD, async=async)
+# IO/Socket handling
+from sockets import IOMonitor, WeakIOMonitor, Socket, IO_READ, IO_WRITE
 
-def execute_in_timer(timer, interval, type=''):
-    log.warning('Decorator @kaa.execute_in_timer deprecated; use @kaa.timed');
-    if not type:
-        type = POLICY_MANY
-    if type == 'override':
-        type = POLICY_RESTART
-    return timed(interval, timer, type)
+# Event and event handler classes
+from event import Event, EventHandler, WeakEventHandler
 
-def wrap(func, old_name, new_name):
-    def decorator(*args, **kwargs):
-        log.warning('Decorator @kaa.%s deprecated; use @kaa.%s' % (old_name, new_name))
-        return func(*args, **kwargs)
-    return decorator
+# coroutine decorator and helper classes
+from coroutine import YieldContinue, YieldCallback, YieldFunction, coroutine
 
-execute_in_thread=wrap(threaded, 'execute_in_thread', 'threaded')
-yield_execution=wrap(coroutine, 'yield_execution', 'coroutine')
-SocketDispatcher=wrap(IOMonitor, 'SocketDispatcher', 'IOMonitor')
-WeakSocketDispatcher=wrap(IOMonitor, 'WeakSocketDispatcher', 'WeakIOMonitor')
+# process management
+from popen import Process

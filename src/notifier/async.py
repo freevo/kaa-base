@@ -161,25 +161,66 @@ class InProgress(Signal):
         This function should be called when the creating function is
         done because it raised an exception.
         """
-        # store result
+        # This function must deal with a tricky problem.  See:
+        # http://mail.python.org/pipermail/python-dev/2005-September/056091.html
+        # 
+        # Ideally, we want to store the traceback object so we can defer the
+        # exception handling until some later time.  The problem is that by
+        # storing the traceback, we create some ridiculously deep circular
+        # references.
+        #
+        # The way we deal with this is to pass along the traceback object to
+        # any handler that can handle the exception immediately, and then
+        # discard the traceback.  A stringified formatted traceback is attached
+        # to the exception in the formatted_traceback attribute.
+        #
+        # The above URL suggests a possible non-trivial workaround: create a
+        # custom traceback object in C code that preserves the parts of the
+        # stack frames needed for printing tracebacks, but discarding objects
+        # that would create circular references.  This might be a TODO.
+
         self._finished = True
         self._exception = type, value, tb
-        self._unhandled_exception = None
-        # Wake any threads waiting on us
+        self._unhandled_exception = True
+
+        # Attach a stringified traceback to the exception object.  Right now,
+        # this is the best we can do for asynchronous handlers.
+        trace = ''.join(traceback.format_exception(*self._exception)).strip()
+        value.formatted_traceback = trace
+
+        # Wake any threads waiting on us.  We've initialized _exception with
+        # the traceback object, so any threads that call get_result() between
+        # now and the end of this function will have an opportunity to get
+        # the live traceback.
         self._finished_event.set()
 
-        if self.exception.emit_when_handled(type, value, tb) != False:
-            # No handler returned False to block us from logging the exception.
-            # Set a flag to log the exception in the destructor if it is
-            # not raised with get_result(). Using a nornal Python destructor
-            # does not work because it would be too easy to create a circular
-            # reference with InProgress and yield_execution which would result
-            # in a memory leak. Since we do not need the InProgress object to
-            # log the unhandled exception, a weakref callback is used. So this
-            # is __del__ without using __del__.
-            trace = ''.join(traceback.format_exception(*self._exception)).strip()
+        if self.exception.count() == 0:
+            # There are no exception handlers, so we know we will end up
+            # queuing the traceback in the exception signal.  Set it to None
+            # to prevent that.
+            tb = None
+
+        if self.exception.emit_when_handled(type, value, tb) == False:
+            # A handler has acknowledged handling this exception by returning
+            # False.  So we won't log it.
+            self._unhandled_exception = None
+
+        if self._unhandled_exception:
+            # This exception was not handled synchronously, so we set up a
+            # weakref object with a finalize callback to a function that
+            # logs the exception.  We could do this in __del__, except that
+            # the gc refuses to collect objects with a destructor.  The weakref
+            # kludge lets us accomplish the same thing without actually using
+            # __del__.
+            #
+            # If the exception is passed back via get_result(), then it is
+            # considered handled, and it will not be logged.
             cb = Callback(InProgress._log_exception, trace)
             self._unhandled_exception = _weakref.ref(self, cb)
+
+        # Remove traceback from stored exception.  If any waiting threads 
+        # haven't gotten it by now, it's too late.
+        self._exception = type, value, None
 
         # cleanup
         self.disconnect_all()

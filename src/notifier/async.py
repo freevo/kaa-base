@@ -215,7 +215,7 @@ class InProgress(Signal):
             #
             # If the exception is passed back via get_result(), then it is
             # considered handled, and it will not be logged.
-            cb = Callback(InProgress._log_exception, trace)
+            cb = Callback(InProgress._log_exception, trace, value)
             self._unhandled_exception = _weakref.ref(self, cb)
 
         # Remove traceback from stored exception.  If any waiting threads 
@@ -228,11 +228,21 @@ class InProgress(Signal):
 
 
     @classmethod
-    def _log_exception(cls, weakref, trace):
+    def _log_exception(cls, weakref, trace, exc):
         """
         Callback to log unhandled exceptions.
         """
-        log.error('*** Unhandled %s exception ***\n%s', cls.__name__, trace)
+        if isinstance(exc, (SystemExit, KeyboardInterrupt)):
+            # We have an unhandled asynchronous SystemExit or KeyboardInterrupt
+            # exception.  Rather than logging it, we reraise it in the main
+            # loop so that the main loop exception handler can act
+            # appropriately.
+            import main
+            def reraise():
+                raise exc
+            return main.signals['step'].connect_once(reraise)
+
+        log.error('Unhandled %s exception:\n%s', cls.__name__, trace)
 
 
     def __call__(self, *args, **kwargs):

@@ -57,4 +57,6 @@
       @kaa.yield_execution  -->  @kaa.coroutine
 
     Currently the old names are still functional but a warning will be
-    logged if they are used.
+    logged if they are used. @kaa.timed also changed the parameter
+    order and name. It is now interval, timer (default Timer) and
+    policy (default POLICY_RESTART).

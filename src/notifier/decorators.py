@@ -49,7 +49,7 @@ POLICY_RESTART = 'restart'
 # get logging object
 log = logging.getLogger('notifier')
 
-def timed(interval, timer=Timer, policy=POLICY_MANY, **kwargs):
+def timed(interval, timer=Timer, policy=POLICY_MANY):
     """
     Decorator to call the decorated function in a Timer. When calling the
     function, a timer will be started with the given interval calling that
@@ -76,14 +76,6 @@ def timed(interval, timer=Timer, policy=POLICY_MANY, **kwargs):
     if type(interval) == type(Timer) and issubclass(interval, Timer):
         log.warning('Deprecated use of @kaa.timed decorator; arg 1 is interval, arg 2 is (optional) timer class')
         interval, timer = timer, interval
-
-    if 'type' in kwargs:
-        log.warning('@kaa.timed kwarg "type" deprecated; use "policy" instead.')
-        policy = kwargs['type']
-
-    if policy == 'override':
-        log.warning('@kaa.timed policy "override" deprecated; use POLICY_RESTART instead.')
-        policy = POLICY_RESTART
 
     if not policy in (POLICY_MANY, POLICY_ONCE, POLICY_RESTART):
         raise RunTimeError('Invalid @kaa.timed policy %s' % policy)

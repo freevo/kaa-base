@@ -53,12 +53,19 @@ def execute_in_mainloop(async=False):
     log.warning('Decorator @kaa.execute_in_mainloop deprecated; use @kaa.threaded(kaa.MAINTHREAD)');
     return threaded(MAINTHREAD, async=async)
 
+def execute_in_timer(timer, interval, type=''):
+    log.warning('Decorator @kaa.execute_in_timer deprecated; use @kaa.timed');
+    if not type:
+        type = POLICY_MANY
+    if type == 'override':
+        type = POLICY_RESTART
+    return timed(interval, timer, type)
+
 def wrap(func, old_name, new_name):
     def decorator(*args, **kwargs):
         log.warning('Decorator @kaa.%s deprecated; use @kaa.%s' % (old_name, new_name))
         return func(*args, **kwargs)
     return decorator
 
-execute_in_timer=wrap(timed, 'execute_in_timer', 'timed')
 execute_in_thread=wrap(threaded, 'execute_in_thread', 'threaded')
 yield_execution=wrap(coroutine, 'yield_execution', 'coroutine')

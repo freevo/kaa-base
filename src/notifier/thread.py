@@ -47,7 +47,7 @@
 # -----------------------------------------------------------------------------
 
 __all__ = [ 'MainThreadCallback', 'ThreadCallback', 'is_mainthread',
-            'wakeup', 'set_as_mainthread', '_create_thread_notifier_pipe' ]
+            'wakeup', 'set_as_mainthread', 'create_thread_notifier_pipe' ]
 
 # python imports
 import sys
@@ -223,7 +223,7 @@ def wakeup():
         os.write(_thread_notifier_pipe[1], "1")
 
 
-def _create_thread_notifier_pipe(new = True, purge = False):
+def create_thread_notifier_pipe(new = True, purge = False):
     """
     Creates a new pipe for the thread notifier.  If new is True, a new pipe
     will always be created; if it is False, it will only be created if one
@@ -264,7 +264,7 @@ def set_as_mainthread():
         # loop() calls set_as_mainthread it is safe to assume the loop is
         # connected correctly. If someone calls step() without loop() and
         # without set_as_mainthread inter-thread communication does not work.
-        _create_thread_notifier_pipe()
+        create_thread_notifier_pipe()
     
 
 def _thread_notifier_queue_callback(callback, args, kwargs, in_progress):

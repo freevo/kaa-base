@@ -259,6 +259,7 @@ class YieldFunction(InProgress):
                 if result == YieldContinue:
                     # schedule next interation with the timer
                     return True
+                # YieldFunction is done with result
                 break
         except StopIteration:
             # YieldFunction is done without result

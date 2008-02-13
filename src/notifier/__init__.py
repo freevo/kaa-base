@@ -36,54 +36,29 @@ from thread import MainThreadCallback, ThreadCallback, is_mainthread
 from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, OneShotAtTimer
 from sockets import SocketDispatcher, WeakSocketDispatcher, Socket, IO_READ, IO_WRITE
 from event import Event, EventHandler, WeakEventHandler
-from yieldfunc import YieldContinue, YieldCallback, YieldFunction, yield_execution
-from jobserver import NamedThreadCallback, execute_in_thread
+from yieldfunc import YieldContinue, YieldCallback, YieldFunction, coroutine
+from jobserver import NamedThreadCallback
 from async import InProgress
-from decorators import execute_in_timer, execute_in_mainloop
+from decorators import timed, threaded, MAINTHREAD
 
-# Here's what will be imported into the kaa namespace.
-__all__ = [
-    'Process', 'Callback', 'WeakCallback', 'Signal', 'Signals', 'MainThreadCallback',
-    'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer', 'AtTimer',
-    'OneShotAtTimer', 'SocketDispatcher', 'WeakSocketDispatcher', 'Socket',
-    'IO_READ', 'IO_WRITE', 'Event', 'EventHandler', 'WeakEventHandler',
-    'YieldContinue', 'YieldCallback', 'YieldFunction', 'NamedThreadCallback',
-    'InProgress', 'ThreadCallback',
 
-    # decorator for sub modules
-    # FIXME: while we are breaking the API right now, do we want to keep
-    # these names and keep them in the global kaa scope?
-    'execute_in_timer', 'execute_in_mainloop', 'yield_execution', 'execute_in_thread',
 
-    # FIXME: I don't like the following functions in the global kaa namespace
-    'is_mainthread',
-    
-    # XXX: DEPRECATED wrappers From this module
-    'init', 'shutdown', 'step', 'running', 'signals', 'loop'
-]
-
-import main
-
-# XXX: support for deprecated API.  Delete everything below when support is removed.
-
-# get logging object
+# XXX: wrappers for deprecated (renamed) decorators.  Everything below
+# this comment can be removed once support for deprecated names is
+# removed.
 import logging
 log = logging.getLogger('notifier')
 
-def wrap(old_name, new_name, *args, **kwargs):
-    def f(*args, **kwargs):
-        log.warning('Deprecated call to notifier.%s(); use main.%s() instead' % (old_name, new_name))
-        return getattr(main, new_name)(*args, **kwargs)
-    return f
+def execute_in_mainloop(async=False):
+    log.warning('Decorator @kaa.execute_in_mainloop deprecated; use @kaa.threaded(kaa.MAINTHREAD)');
+    return threaded(MAINTHREAD, async=async)
 
-class RunningWrapper:
-    def __nonzero__(self):
-        log.warning('Deprecated access of notifier.running; use main.is_running() instead')
-        return main.is_running()
+def wrap(func, old_name, new_name):
+    def decorator(*args, **kwargs):
+        log.warning('Decorator @kaa.%s deprecated; use @kaa.%s' % (old_name, new_name))
+        return func(*args, **kwargs)
+    return decorator
 
-init = wrap('init', 'select_notifier')
-loop = wrap('loop', 'run')
-shutdown = wrap('shutdown', 'stop')
-step = wrap('step', 'step')
-signals = main.signals
-running = RunningWrapper()
+execute_in_timer=wrap(timed, 'execute_in_timer', 'timed')
+execute_in_thread=wrap(threaded, 'execute_in_thread', 'threaded')
+yield_execution=wrap(coroutine, 'yield_execution', 'coroutine')

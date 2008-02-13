@@ -37,7 +37,7 @@ import socket
 import logging
 
 import nf_wrapper as notifier
-from jobserver import execute_in_thread
+from decorators import threaded
 from callback import Callback, Signal
 from thread import MainThreadCallback, ThreadCallback, is_mainthread
 
@@ -188,7 +188,7 @@ class Socket(object):
         return in_progress.wait()
 
 
-    @execute_in_thread()
+    @threaded()
     def _connect_thread(self):
         if type(self._addr) == str:
             # Unix socket, just connect.

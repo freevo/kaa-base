@@ -9,6 +9,9 @@
    kaa.main can be accessed by importing kaa, you can NOT import
    kaa.main directly.
 
+   NOTE: as of 0.4.0 (svn r3057) these functions under kaa.notifier
+   have been completely removed.
+
 2. Move kaa.notifier classes and functions into the kaa namespace.
    E.g. kaa.notifier.Timer is now kaa.Timer. No part of the code
    should use anything from kaa.notifier.
@@ -43,3 +46,15 @@
 9. MainThreadCallback.set_async() is deprecated.  Calling a 
    MainThreadCallback will return an InProgress object, and the
    correct approach now is to wait() on this InProgress.
+
+   NOTE: as of 0.4.0 (svn r3057), set_async() has been removed.  Calling
+   it will raise an Exception instead of logging a warning.
+
+10. Several decorators renamed:
+      @kaa.execute_in_timer  -->  @kaa.timed
+      @kaa.execute_in_thread  -->  @kaa.threaded
+      @kaa.execute_in_mainloop  --> @kaa.threaded(kaa.MAINTHREAD)
+      @kaa.yield_execution  -->  @kaa.coroutine
+
+    Currently the old names are still functional but a warning will be
+    logged if they are used.

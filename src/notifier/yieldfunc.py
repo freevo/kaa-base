@@ -7,14 +7,14 @@
 # This file contains a decorator usefull for functions that may need more
 # time to execute and that needs more than one step to fullfill the task.
 #
-# A caller of a function decorated with 'yield_execution' will either get the
+# A caller of a function decorated with 'coroutine' will either get the
 # return value of the function call or an InProgress object in return. The
 # first is similar to a normal function call, if an InProgress object is
 # returned, this means that the function is still running. The object has a
 # 'connect' function to connect a callback to get the results of the function
 # call when it is done.
 #
-# A function decorated with 'yield_execution' can't use 'return' to return the
+# A function decorated with 'coroutine' can't use 'return' to return the
 # result of the function call. Instead it has to use yield to do this. Besides
 # a normal return, the function can also return 'YieldContinue' in the yield
 # statement. In that case, the function call continues at this point in the
@@ -27,7 +27,7 @@
 # result of the async call. It is also possible to yield an InProgress object
 # and call it later to get the results (or the exception).
 #
-# The 'yield_execution' decorator has a parameter interval. This is the
+# The 'coroutine' decorator has a parameter interval. This is the
 # interval used to schedule when the function should continue after a yield.
 # The default value is 0, the first iteration is always called without a timer.
 #
@@ -56,7 +56,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'YieldContinue', 'YieldCallback', 'yield_execution',
+__all__ = [ 'YieldContinue', 'YieldCallback', 'coroutine',
             'YieldFunction' ]
 
 import sys
@@ -76,7 +76,7 @@ YieldContinue = object()
 # XXX YIELD CHANGES NOTES
 # XXX The deferrer stuff from Signal and InProgress won't work because
 # XXX some parts connect interally to the InProgress object returned
-# by yield_execution and the deferrer only handles one connect!
+# by coroutine and the deferrer only handles one connect!
 
 
 class YieldCallback(InProgress):
@@ -147,7 +147,8 @@ def _wrap_result(result):
     return async
 
 
-def yield_execution(interval = 0, synchronize = False):
+# TODO move this function to decorators.py
+def coroutine(interval = 0, synchronize = False):
     """
     Functions with this decorator uses yield to break and to return the
     results. Special yield values for break are YieldContinue or
@@ -171,7 +172,7 @@ def yield_execution(interval = 0, synchronize = False):
             if not hasattr(result, 'next'):
                 # Decorated function doesn't have a next attribute, which
                 # likyle means it didn't yield anything.  There was no sense
-                # in decorating that function with yield_execution, but on
+                # in decorating that function with coroutine, but on
                 # the other hand it's easy enough just to return the result.
                 return _wrap_result(result)
             function = result
@@ -216,7 +217,7 @@ def yield_execution(interval = 0, synchronize = False):
 class YieldFunction(InProgress):
     """
     InProgress class that runs a generator function. This is also the return value
-    for yield_execution if it takes some more time. status can be either None
+    for coroutine if it takes some more time. status can be either None
     (not started yet), YieldContinue (iterate now) or InProgress (wait until
     InProgress is done).
     """
@@ -227,13 +228,13 @@ class YieldFunction(InProgress):
         self._interval = interval
         self._async = None
         if status == None:
-            # No status from yield_execution, this means that the YieldFunction
+            # No status from coroutine, this means that the YieldFunction
             # was created from the outside and the creator must call this object
             self._valid = False
             return
         self._valid = True
         if status == YieldContinue:
-            # yield_execution was stopped YieldContinue, start the step timer
+            # coroutine was stopped YieldContinue, start the step timer
             self._timer.start(interval)
         elif isinstance(status, InProgress):
             # continue when InProgress is done
@@ -246,7 +247,7 @@ class YieldFunction(InProgress):
     def __call__(self, *args, **kwargs):
         """
         Call the YieldFunction to start it if it was not created by
-        yield_execution.
+        coroutine.
         """
         if not self._valid:
             # The generator was not started yet
@@ -347,7 +348,7 @@ class YieldFunction(InProgress):
 
 class YieldLock(YieldFunction):
     """
-    YieldFunction for handling locked yield_execution functions.
+    YieldFunction for handling locked coroutine functions.
     """
     def __init__(self, original_function, function, interval):
         YieldFunction.__init__(self, function, interval)

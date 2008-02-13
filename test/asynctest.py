@@ -14,17 +14,17 @@ class Server(object):
         return x, kaa.is_mainthread()
     
     @kaa.rpc.expose('test2')
-    @kaa.execute_in_thread('yield')
+    @kaa.threaded('yield')
     def test2(self, x):
         return x, kaa.is_mainthread()
 
     @kaa.rpc.expose('test3')
-    @kaa.yield_execution()
+    @kaa.coroutine()
     def test3(self, x):
         yield kaa.YieldContinue
         yield x
 
-    @kaa.yield_execution()
+    @kaa.coroutine()
     def _test4(self, x):
         yield kaa.YieldContinue
         yield x
@@ -49,11 +49,11 @@ class Server(object):
 def async(callback, *args, **kwargs):
     kaa.OneShotTimer(callback, *args, **kwargs).start(0.1)
 
-@kaa.execute_in_thread('foo')
+@kaa.threaded('foo')
 def thread(x):
     return x + 1 - 1
 
-@kaa.execute_in_thread()
+@kaa.threaded()
 def thread2(c, x):
     # call rpc in thread using MainThreadCallback
     cb = kaa.MainThreadCallback(c.rpc)
@@ -64,18 +64,18 @@ def thread2(c, x):
     print x
     return x + 1
 
-@kaa.yield_execution()
+@kaa.coroutine()
 def subyield():
     print 3
     yield kaa.YieldContinue
     print 4
     yield 5
 
-@kaa.yield_execution()
+@kaa.coroutine()
 def fast():
     yield 2
 
-@kaa.yield_execution()
+@kaa.coroutine()
 def foo():
 
     pid = os.fork()

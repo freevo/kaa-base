@@ -44,7 +44,7 @@ from callback import Signal
 from popen import proclist as _proclist
 from thread import is_mainthread, wakeup, set_as_mainthread
 from jobserver import killall as kill_jobserver
-from decorators import execute_in_mainloop
+from decorators import threaded, MAINTHREAD
 
 __all__ = [ 'run', 'stop', 'step', 'select_notifier', 'is_running', 'wakeup',
             'set_as_mainthread', 'is_shutting_down' ]
@@ -128,7 +128,7 @@ def run():
 
 
 # Ensure stop() is called from main thread.
-@execute_in_mainloop(async = True)
+@threaded(MAINTHREAD)
 def stop():
     """
     Shutdown notifier and kill all background processes.

@@ -37,21 +37,5 @@ import strutils
 # tempfile support. FIXME: remove TEMP when no longer used
 from tmpfile import tempfile, TEMP
 
-
-# XXX: when support for deprecated API is removed, everything below can be deleted
-# and replaced by 'from kaa.notifier import main'
-import kaa.notifier.main
-
-class MainWrapper:
-    signals = kaa.notifier.main.signals
-
-    def __call__(self):
-        import logging
-        log = logging.getLogger('notifier')
-        log.warning('Deprecated call to kaa.main(); use kaa.main.run() instead')
-        return kaa.notifier.main.run()
-
-    def __getattr__(self, attr):
-        return getattr(kaa.notifier.main, attr)
-    
-main = MainWrapper()
+# Expose main loop functions under kaa.main
+from kaa.notifier import main

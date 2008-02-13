@@ -67,32 +67,10 @@ from async import InProgress
 log = logging.getLogger('notifier')
 
 class MainThreadCallback(Callback):
-    def __init__(self, callback, *args, **kwargs):
-        super(MainThreadCallback, self).__init__(callback, *args, **kwargs)
-        self.lock = threading.Lock()
-        self._sync_return = None
-        self._sync_exception = None
-        self._async = True
-
-    def set_async(self, async = True):
-        log.warning("set_async() is deprecated; use callback().wait() instead.")
-        self._async = async
-
-    def _wakeup(self):
-        # XXX: this function is called by _thread_notifier_run_queue().  It
-        # is also deprecated.
-        self.lock.acquire(False)
-        self.lock.release()
-
     def __call__(self, *args, **kwargs):
         in_progress = InProgress()
 
         if is_mainthread():
-            if not self._async:
-                # TODO: async flag is deprecated, caller should call wait() on
-                # the inprogress instead.
-                return super(MainThreadCallback, self).__call__(*args, **kwargs)
-
             try:
                 result = super(MainThreadCallback, self).__call__(*args, **kwargs)
             except:
@@ -102,18 +80,7 @@ class MainThreadCallback(Callback):
 
             return in_progress
 
-        self.lock.acquire(False)
         _thread_notifier_queue_callback(self, args, kwargs, in_progress)
-
-        # TODO: this is deprecated, caller should use wait() on the InProgress
-        # we return (when set_async(False) isn't called).  This is also broken
-        # because we share a single lock for multiple invocations of this
-        # callback.
-        if not self._async:
-            # Synchronous execution: wait for main call us and collect
-            # the return value.
-            self.lock.acquire()
-            return in_progress.get_result()
 
         # Return an InProgress object which the caller can connect to
         # or wait on.
@@ -298,14 +265,5 @@ def _thread_notifier_run_queue(fd):
             in_progress.finished(callback(*args, **kwargs))
         except:
             in_progress.throw(*sys.exc_info())
-
-        # We must test if the in_progress is finished even though we called
-        # finished() or throw() on it above, because if the callback returns
-        # another InProgress object, in_progress is linked to it but it is
-        # not finished, and so we mustn't wake the caller.
-        # XXX: but this is needed only for deprecated functionality anyway
-        # (set_async) and can be removed in the future.
-        if in_progress.is_finished():
-            callback._wakeup()
 
     return True

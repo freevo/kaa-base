@@ -29,19 +29,22 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'execute_in_timer', 'execute_in_mainloop' ]
+__all__ = [ 'timed', 'threaded', 'MAINTHREAD' ]
 
 # python imports
 import logging
 
 # notifier thread imports
-from thread import MainThreadCallback, is_mainthread
+from thread import MainThreadCallback, ThreadCallback, is_mainthread
+from jobserver import NamedThreadCallback
 from kaa.weakref import weakref
+
+MAINTHREAD = 'main'
 
 # get logging object
 log = logging.getLogger('notifier')
 
-def execute_in_timer(timer, interval, type=''):
+def timed(timer, interval, type=''):
     """
     Decorator to call the decorated function in a Timer. When calling the
     function, a timer will be started with the given interval calling that
@@ -100,23 +103,34 @@ def execute_in_timer(timer, interval, type=''):
     return decorator
 
 
-def execute_in_mainloop(async = False):
+def threaded(name=None, priority=0, async=True):
     """
-    This decorator makes sure the function is called from the main loop.  If
-    async is True, any decorated function will return InProgress, whether the
-    function is called in the main thread or another thread.
+    The decorator makes sure the function is always called in the thread
+    with the given name. The function will return an InProgress object if
+    async=True (default), otherwise it will cause invoking the decorated
+    function to block (the main loop is kept alive) and its result is
+    returned.
 
-    If async is False and this function is called in the main thread, it
-    behaves as a normal function call (as if it weren't decorated).  But if the
-    calling thread is not the main thread, it is blocked until the function
-    finishes, and its return value is passed (or any exception is raised)
+    If name=kaa.MAINTHREAD, the decorated function will be invoked from
+    the main thread.  (In this case, currently the priority kwarg is
+    ignored.)
     """
     def decorator(func):
 
         def newfunc(*args, **kwargs):
-            if not async and is_mainthread():
-                return func(*args, **kwargs)
-            in_progress = MainThreadCallback(func)(*args, **kwargs)
+            if name == MAINTHREAD:
+                if not async and is_mainthread():
+                    # Fast-path case: mainthread synchronous call from the mainthread
+                    return func(*args, **kwargs)
+                callback =  MainThreadCallback(func)
+            elif name:
+                callback = NamedThreadCallback((name, priority), func)
+            else:
+                callback = ThreadCallback(func)
+                callback.wait_on_exit(False)
+
+            # callback will always return InProgress
+            in_progress = callback(*args, **kwargs)
             if not async:
                 return in_progress.wait()
             return in_progress

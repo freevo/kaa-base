@@ -29,7 +29,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'execute_in_thread', 'NamedThreadCallback' ]
+__all__ = [ 'NamedThreadCallback' ]
 
 
 # python imports
@@ -46,29 +46,6 @@ _threads = {}
 
 # get logging object
 log = logging.getLogger('notifier.thread')
-
-
-def execute_in_thread(name=None, priority=0):
-    """
-    The decorator makes sure the function is always called in the thread
-    with the given name. The function will return an InProgress object.
-    """
-    def decorator(func):
-
-        def newfunc(*args, **kwargs):
-            if name:
-                return NamedThreadCallback((name, priority), func, *args, **kwargs)()
-            t = thread.ThreadCallback(func, *args, **kwargs)
-            t.wait_on_exit(False)
-            return t()
-
-        try:
-            newfunc.func_name = func.func_name
-        except TypeError:
-            pass
-        return newfunc
-
-    return decorator
 
 
 class NamedThreadCallback(Callback):

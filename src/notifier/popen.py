@@ -220,6 +220,12 @@ class Process(object):
 
 
     def _handle_write(self):
+        if not self.child:
+            # The child process might have died before we had a chance to
+            # flush the write buffer.
+            del self._write_buffer[:]
+            return False
+
         try:
             while self._write_buffer:
                 data = self._write_buffer[0]

@@ -267,13 +267,11 @@ class YieldFunction(InProgress):
             # An InProgress we were waiting on raised an exception.  We are
             # "inheriting" this exception, so return False to prevent it
             # from being logged as unhandled in the other InProgress.
-            # Remove the internal timer and the async result to remove bad
-            # circular references.
-            self._timer = None
-            self._async = None
-            self._yield__function = None
-            self.throw(*args)
+            # Call _step() so that we throw the exception and clear
+            # any state.
+            self._step()
             return False
+
         if self._timer:
             # continue calling _step
             self._timer.start(self._interval)
@@ -314,6 +312,7 @@ class YieldFunction(InProgress):
             self._yield__function = None
             self.throw(*sys.exc_info())
             return False
+
         # We have to stop the timer because we either have a result
         # or have to wait for an InProgress
         self._timer.stop()
@@ -322,6 +321,7 @@ class YieldFunction(InProgress):
             self._async = result
             result.connect_both(self._continue, self._continue)
             return False
+
         # YieldFunction is done
         # Remove the internal timer and the async result to remove bad
         # circular references.

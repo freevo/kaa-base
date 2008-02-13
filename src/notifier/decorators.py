@@ -29,7 +29,8 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'timed', 'threaded', 'MAINTHREAD' ]
+__all__ = [ 'timed', 'threaded', 'MAINTHREAD', 'POLICY_ONCE', 'POLICY_MANY',
+            'POLICY_RESTART' ]
 
 # python imports
 import logging
@@ -41,11 +42,14 @@ from timer import Timer
 from kaa.weakref import weakref
 
 MAINTHREAD = 'main'
+POLICY_ONCE = 'once'
+POLICY_MANY = 'many'
+POLICY_RESTART = 'restart'
 
 # get logging object
 log = logging.getLogger('notifier')
 
-def timed(interval, timer=Timer, policy='many', **kwargs):
+def timed(interval, timer=Timer, policy=POLICY_MANY, **kwargs):
     """
     Decorator to call the decorated function in a Timer. When calling the
     function, a timer will be started with the given interval calling that
@@ -59,15 +63,15 @@ def timed(interval, timer=Timer, policy='many', **kwargs):
     of the decorated function is irrelevant.)
 
     The policy parameter controls how multiple invocations of the decorated
-    function should be handled.  By default (many), each invocation of
+    function should be handled.  By default (POLICY_MANY), each invocation of
     the function will create a new timer, each firing at the specified
-    interval.  If policy is 'once', subsequent invocations are ignored while
-    the first timer is still active.  If the policy is 'restart', subsequent
-    invocations will restart the first timer.
+    interval.  If policy is POLICY_ONCE, subsequent invocations are ignored
+    while the first timer is still active.  If the policy is POLICY_RESTART,
+    subsequent invocations will restart the first timer.
 
-    Note that in the case of 'once' or 'restart', if the timer is currently
-    running, any arguments passed to the decorated function on subsequent
-    calls will be discarded.
+    Note that in the case of POLICY_ONCE or POLICY_RESTART, if the timer is
+    currently running, any arguments passed to the decorated function on
+    subsequent calls will be discarded.
     """
     if type(interval) == type(Timer) and issubclass(interval, Timer):
         log.warning('Deprecated use of @kaa.timed decorator; arg 1 is interval, arg 2 is (optional) timer class')
@@ -78,14 +82,15 @@ def timed(interval, timer=Timer, policy='many', **kwargs):
         policy = kwargs['type']
 
     if policy == 'override':
-        log.warning('@kaa.timed policy "override" deprecated; use "restart" instead.')
+        log.warning('@kaa.timed policy "override" deprecated; use POLICY_RESTART instead.')
+        policy = POLICY_RESTART
 
-    if not policy in ('many', 'once', 'restart', 'override'):
+    if not policy in (POLICY_MANY, POLICY_ONCE, POLICY_RESTART):
         raise RunTimeError('Invalid @kaa.timed policy %s' % policy)
 
     def decorator(func):
         def newfunc(*args, **kwargs):
-            if policy == 'many':
+            if policy == POLICY_MANY:
                 # just start the timer
                 t = timer(func, *args, **kwargs)
                 t.start(interval)
@@ -104,7 +109,7 @@ def timed(interval, timer=Timer, policy='many', **kwargs):
             # check current timer
             if hasattr(obj, name) and getattr(obj, name) and \
                    getattr(obj, name).active():
-                if policy == 'once':
+                if policy == POLICY_ONCE:
                     # timer already running and not override
                     return False
                 # stop old timer

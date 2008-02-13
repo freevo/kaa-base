@@ -39,7 +39,7 @@ from event import Event, EventHandler, WeakEventHandler
 from yieldfunc import YieldContinue, YieldCallback, YieldFunction, coroutine
 from jobserver import NamedThreadCallback
 from async import InProgress
-from decorators import timed, threaded, MAINTHREAD
+from decorators import timed, threaded, MAINTHREAD, POLICY_ONCE, POLICY_MANY, POLICY_RESTART
 
 
 

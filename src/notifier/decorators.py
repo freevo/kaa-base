@@ -83,20 +83,28 @@ def timed(interval, timer=Timer, policy=POLICY_MANY):
                 t = timer(func, *args, **kwargs)
                 t.start(interval)
                 return True
+
+            # Object to save the timer in; the function itself for non-methods,
+            # or the instance object for methods.
             # object to save the timer in
-            obj  = func
+            obj = func
             # name of the attribute in the object
             name = '__kaa_timer_decorator'
-            # Try to find out if the function is bound to an object.
-            # FIXME: maybe this is bad solution, how fast is comparing
-            # the func_code attributes?
-            if args and args[0] and hasattr(args[0], func.func_name) and \
-                   newfunc.func_code == getattr(args[0], func.func_name).func_code:
+
+            # Try to find out if the function is actually an instance method.
+            # The decorator only sees a function object, even for methods, so
+            # this kludge compares the code object of newfunc (this wrapper)
+            # with the code object of the first argument's attribute of the
+            # function's name.  If they're the same, then we must be decorating
+            # a method, and we can attach the timer object to the instance
+            # instead of the function.
+            if args and newfunc.func_code == \
+                        getattr(getattr(args[0], func.func_name, None), 'func_code', None):
                 obj  = args[0]
                 name = '%s__%s' % (name, func.func_name)
+
             # check current timer
-            if hasattr(obj, name) and getattr(obj, name) and \
-                   getattr(obj, name).active():
+            if getattr(obj, name, None) and getattr(obj, name).active():
                 if policy == POLICY_ONCE:
                     # timer already running and not override
                     return False

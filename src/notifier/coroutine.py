@@ -68,15 +68,8 @@ from async import InProgress
 
 log = logging.getLogger('notifier.yield')
 
-# XXX YIELD CHANGES NOTES
-# XXX Not possible to remove that and replace it with None because a
-# XXX function may want to return None. Using return does not help here.
+# object to signal that the function whats to continue
 YieldContinue = object()
-
-# XXX YIELD CHANGES NOTES
-# XXX The deferrer stuff from Signal and InProgress won't work because
-# XXX some parts connect interally to the InProgress object returned
-# by coroutine and the deferrer only handles one connect!
 
 
 class YieldCallback(InProgress):
@@ -121,7 +114,7 @@ class YieldCallback(InProgress):
     def get(self):
         log.warning('Deprecated call to YieldCallback.get(); use get_result() instead')
         return InProgress.get_result(self)
-        
+
 
 # variable to detect if send is possible with a generator
 _python25 = sys.version.split()[0] > '2.4'
@@ -158,12 +151,8 @@ def coroutine(interval = 0, synchronize = False):
     If a decorated function is currently being executed, new
     invocations will be queued.
 
-    A function decorated with this decorator will always return a
-    YieldFunction (which is an InProgress object) or the result.
-
-    XXX YIELD CHANGES NOTES
-    XXX This function will always return YieldFunction or an already
-    XXX finished InProgress object in the future.
+    A function decorated with this decorator will always return an
+    InProgress object. It may already be finished.
     """
     def decorator(func):
 

@@ -33,15 +33,12 @@
 from popen import Process
 from callback import Callback, WeakCallback
 from signals import Signal, Signals
-from thread import MainThreadCallback, ThreadCallback, is_mainthread
-from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, OneShotAtTimer
+from thread import MainThreadCallback, NamedThreadCallback, ThreadCallback, is_mainthread, threaded, MAINTHREAD
+from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, OneShotAtTimer, timed, POLICY_ONCE, POLICY_MANY, POLICY_RESTART
 from sockets import IOMonitor, WeakIOMonitor, Socket, IO_READ, IO_WRITE
 from event import Event, EventHandler, WeakEventHandler
 from coroutine import YieldContinue, YieldCallback, YieldFunction, coroutine
-from jobserver import NamedThreadCallback
 from async import InProgress
-from decorators import timed, threaded, MAINTHREAD, POLICY_ONCE, POLICY_MANY, POLICY_RESTART
-
 
 
 # XXX: wrappers for deprecated (renamed) decorators.  Everything below

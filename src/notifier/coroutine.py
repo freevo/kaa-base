@@ -1,6 +1,6 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# yieldfunc.py - Yield decorator and helper functions
+# coroutine.py - coroutine decorator and helper functions
 # -----------------------------------------------------------------------------
 # $Id$
 #

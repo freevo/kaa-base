@@ -37,7 +37,7 @@ from thread import MainThreadCallback, ThreadCallback, is_mainthread
 from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, OneShotAtTimer
 from sockets import IOMonitor, WeakIOMonitor, Socket, IO_READ, IO_WRITE
 from event import Event, EventHandler, WeakEventHandler
-from yieldfunc import YieldContinue, YieldCallback, YieldFunction, coroutine
+from coroutine import YieldContinue, YieldCallback, YieldFunction, coroutine
 from jobserver import NamedThreadCallback
 from async import InProgress
 from decorators import timed, threaded, MAINTHREAD, POLICY_ONCE, POLICY_MANY, POLICY_RESTART

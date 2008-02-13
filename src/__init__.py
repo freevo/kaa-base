@@ -31,8 +31,8 @@ import logger
 # import notifier functions into kaa namespace
 from kaa.notifier import *
 
-# strutils
-import strutils
+# import the two important strutils functions
+from strutils import str_to_unicode, unicode_to_str
 
 # tempfile support.
 from tmpfile import tempfile

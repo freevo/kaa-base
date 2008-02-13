@@ -37,6 +37,7 @@ import logging
 # notifier thread imports
 from thread import MainThreadCallback, ThreadCallback, is_mainthread
 from jobserver import NamedThreadCallback
+from timer import Timer
 from kaa.weakref import weakref
 
 MAINTHREAD = 'main'
@@ -44,29 +45,47 @@ MAINTHREAD = 'main'
 # get logging object
 log = logging.getLogger('notifier')
 
-def timed(timer, interval, type=''):
+def timed(interval, timer=Timer, policy='many', **kwargs):
     """
     Decorator to call the decorated function in a Timer. When calling the
     function, a timer will be started with the given interval calling that
-    function. This decorater is usefull for putting a huge task into smaller
-    once calling each task in one step of the main loop or execute a function
-    delayed. The parameter timer is the timer class to use (Timer or WeakTimer
-    for stepping or OneShotTimer or WeakOneShotTimer for delayed). The parameter
-    type can be used to force having only one timer active at one time. Set
-    type to 'once' to make sure only the first active timer is executed, a
-    later one will be ignored or 'override' to remove the current timer and
-    activate the new call. If you use 'once' or 'override', keep in mind that
-    if you call the function with different parameters only one call gets
-    executed.
-    """
+    function.  The decorated function will be called from the main thread.
 
-    if not type in ('', 'once', 'override'):
-        raise RunTimeError('invalid type %s' % type)
+    The timer parameter optionally specifies which timer class should be
+    used to wrap the function.  kaa.Timer (default) or kaa.WeakTimer will
+    repeatedly invoke the decorated function until it returns False.
+    kaa.OneShotTimer or kaa.WeakOneShotTimer will invoke the function once,
+    delaying it by the specified interval.  (In this case the return value
+    of the decorated function is irrelevant.)
+
+    The policy parameter controls how multiple invocations of the decorated
+    function should be handled.  By default (many), each invocation of
+    the function will create a new timer, each firing at the specified
+    interval.  If policy is 'once', subsequent invocations are ignored while
+    the first timer is still active.  If the policy is 'restart', subsequent
+    invocations will restart the first timer.
+
+    Note that in the case of 'once' or 'restart', if the timer is currently
+    running, any arguments passed to the decorated function on subsequent
+    calls will be discarded.
+    """
+    if type(interval) == type(Timer) and issubclass(interval, Timer):
+        log.warning('Deprecated use of @kaa.timed decorator; arg 1 is interval, arg 2 is (optional) timer class')
+        interval, timer = timer, interval
+
+    if 'type' in kwargs:
+        log.warning('@kaa.timed kwarg "type" deprecated; use "policy" instead.')
+        policy = kwargs['type']
+
+    if policy == 'override':
+        log.warning('@kaa.timed policy "override" deprecated; use "restart" instead.')
+
+    if not policy in ('many', 'once', 'restart', 'override'):
+        raise RunTimeError('Invalid @kaa.timed policy %s' % policy)
 
     def decorator(func):
-
         def newfunc(*args, **kwargs):
-            if not type:
+            if policy == 'many':
                 # just start the timer
                 t = timer(func, *args, **kwargs)
                 t.start(interval)
@@ -85,7 +104,7 @@ def timed(timer, interval, type=''):
             # check current timer
             if hasattr(obj, name) and getattr(obj, name) and \
                    getattr(obj, name).active():
-                if type == 'once':
+                if policy == 'once':
                     # timer already running and not override
                     return False
                 # stop old timer

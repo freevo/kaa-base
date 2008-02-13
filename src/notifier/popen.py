@@ -56,7 +56,8 @@ import logging
 
 # notifier imports
 import nf_wrapper as notifier
-from callback import Signal, Callback
+from callback import Callback
+from signals import Signal
 from thread import MainThreadCallback, is_mainthread
 from async import InProgress
 from sockets import IOMonitor, IO_WRITE

@@ -60,7 +60,8 @@ import errno
 
 # notifier imports
 import nf_wrapper as notifier
-from callback import Callback, Signal
+from callback import Callback
+from signals import Signal
 from async import InProgress
 
 # get logging object

@@ -31,7 +31,8 @@
 # -----------------------------------------------------------------------------
 
 from popen import Process
-from callback import Callback, WeakCallback, Signal, Signals
+from callback import Callback, WeakCallback
+from signals import Signal, Signals
 from thread import MainThreadCallback, ThreadCallback, is_mainthread
 from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, OneShotAtTimer
 from sockets import IOMonitor, WeakIOMonitor, Socket, IO_READ, IO_WRITE

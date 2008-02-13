@@ -35,7 +35,8 @@ import sys
 import atexit
 
 # notifier import
-from callback import Callback, WeakCallback, Signal
+from callback import Callback, WeakCallback
+from signals import Signal
 
 # get logging object
 log = logging.getLogger('notifier')

@@ -38,7 +38,8 @@ import logging
 import sys
 
 # kaa notifier imports
-from callback import Signal, Callback
+from callback import Callback
+from signals import Signal
 import thread
 
 # internal list of named threads

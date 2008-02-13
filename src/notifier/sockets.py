@@ -38,7 +38,8 @@ import logging
 
 import nf_wrapper as notifier
 from decorators import threaded
-from callback import Callback, Signal
+from callback import Callback
+from signals import Signal
 from thread import MainThreadCallback, ThreadCallback, is_mainthread
 
 # get logging object

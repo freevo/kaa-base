@@ -39,7 +39,8 @@ import _weakref
 import threading
 
 # kaa.notifier imports
-from callback import Signal, Callback
+from callback import Callback
+from signals import Signal
 
 # get logging object
 log = logging.getLogger('notifier.async')

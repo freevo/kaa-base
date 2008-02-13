@@ -62,7 +62,7 @@ __all__ = [ 'YieldContinue', 'YieldCallback', 'coroutine',
 import sys
 import logging
 
-from callback import Signal
+from signals import Signal
 from timer import Timer
 from async import InProgress
 

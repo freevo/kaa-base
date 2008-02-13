@@ -40,7 +40,7 @@ import threading
 import atexit
 
 import nf_wrapper as notifier
-from callback import Signal
+from signals import Signal
 from popen import proclist as _proclist
 from thread import is_mainthread, wakeup, set_as_mainthread
 from jobserver import killall as kill_jobserver

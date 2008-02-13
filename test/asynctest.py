@@ -21,12 +21,12 @@ class Server(object):
     @kaa.rpc.expose('test3')
     @kaa.coroutine()
     def test3(self, x):
-        yield kaa.YieldContinue
+        yield kaa.NotFinished
         yield x
 
     @kaa.coroutine()
     def _test4(self, x):
-        yield kaa.YieldContinue
+        yield kaa.NotFinished
         yield x
 
     @kaa.rpc.expose('test4')
@@ -67,7 +67,7 @@ def thread2(c, x):
 @kaa.coroutine()
 def subyield():
     print 3
-    yield kaa.YieldContinue
+    yield kaa.NotFinished
     print 4
     yield 5
 
@@ -102,7 +102,7 @@ def foo():
     print 6
 
     # just break here and return again in the next mainloop iteration
-    yield kaa.YieldContinue
+    yield kaa.NotFinished
 
     # call some async function with different types of
     # results (given as parameter)

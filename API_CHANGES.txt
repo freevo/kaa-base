@@ -68,3 +68,5 @@ Changes for 0.4.0
 
 3. SocketDispatcher and WeakSocketDispatcher are renamed to IOMonitor
    and WeakIOMonitor.
+
+4. Rename YieldContinue to NotFinished

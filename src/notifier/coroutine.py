@@ -16,7 +16,7 @@
 #
 # A function decorated with 'coroutine' can't use 'return' to return the
 # result of the function call. Instead it has to use yield to do this. Besides
-# a normal return, the function can also return 'YieldContinue' in the yield
+# a normal return, the function can also return 'NotFinished' in the yield
 # statement. In that case, the function call continues at this point in the
 # next notifier iteration. If the function itself has to wait for a result of
 # a function call (either another yield function are something else working
@@ -56,7 +56,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'YieldContinue', 'YieldCallback', 'coroutine', 'YieldFunction' ]
+__all__ = [ 'NotFinished', 'YieldCallback', 'coroutine', 'YieldFunction' ]
 
 # python imports
 import sys
@@ -67,7 +67,7 @@ from timer import Timer
 from async import InProgress
 
 # object to signal that the function whats to continue
-YieldContinue = object()
+NotFinished = object()
 
 
 class YieldCallback(InProgress):
@@ -136,7 +136,7 @@ def _wrap_result(result):
 def coroutine(interval = 0, synchronize = False):
     """
     Functions with this decorator uses yield to break and to return the
-    results. Special yield values for break are YieldContinue or
+    results. Special yield values for break are NotFinished or
     InProgress objects. If synchronize is True the function will
     be protected against parallel calls, which can be used avoid
     multithreading pitfalls such as deadlocks or race conditions.
@@ -172,11 +172,11 @@ def coroutine(interval = 0, synchronize = False):
                         # InProgress return that is already finished, go on
                         async = result
                         continue
-                elif result != YieldContinue:
+                elif result != NotFinished:
                     # everything went fine, return result
                     return _wrap_result(result)
                 # we need a YieldFunction to finish this later
-                # result is either YieldContinue or InProgress
+                # result is either NotFinished or InProgress
                 progress = YieldFunction(function, interval, result)
                 if synchronize:
                     func._lock = progress
@@ -199,7 +199,7 @@ class YieldFunction(InProgress):
     """
     InProgress class that runs a generator function. This is also the return value
     for coroutine if it takes some more time. progress can be either None
-    (not started yet), YieldContinue (iterate now) or InProgress (wait until
+    (not started yet), NotFinished (iterate now) or InProgress (wait until
     InProgress is done).
     """
     def __init__(self, function, interval, progress=None):
@@ -213,8 +213,8 @@ class YieldFunction(InProgress):
             # No progress from coroutine, this means that the YieldFunction
             # was created from the outside and the creator must call this object
             self._valid = False
-        elif progress == YieldContinue:
-            # coroutine was stopped YieldContinue, start the step timer
+        elif progress == NotFinished:
+            # coroutine was stopped NotFinished, start the step timer
             self._timer.start(interval)
         elif isinstance(progress, InProgress):
             # continue when InProgress is done
@@ -256,7 +256,7 @@ class YieldFunction(InProgress):
                     # the result is a finished InProgress object
                     self._async = result
                     continue
-                if result == YieldContinue:
+                if result == NotFinished:
                     # schedule next interation with the timer
                     return True
                 # YieldFunction is done with result

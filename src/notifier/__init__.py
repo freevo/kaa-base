@@ -56,7 +56,7 @@ from sockets import IOMonitor, WeakIOMonitor, Socket, IO_READ, IO_WRITE
 from event import Event, EventHandler, WeakEventHandler
 
 # coroutine decorator and helper classes
-from coroutine import YieldContinue, YieldCallback, YieldFunction, coroutine
+from coroutine import NotFinished, YieldCallback, YieldFunction, coroutine
 
 # process management
 from popen import Process

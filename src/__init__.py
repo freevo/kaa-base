@@ -39,3 +39,4 @@ from tmpfile import tempfile, TEMP
 
 # Expose main loop functions under kaa.main
 from kaa.notifier import main
+from kaa.notifier.main import signals

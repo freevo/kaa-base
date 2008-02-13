@@ -140,7 +140,6 @@ def _wrap_result(result):
     return async
 
 
-# TODO move this function to decorators.py
 def coroutine(interval = 0, synchronize = False):
     """
     Functions with this decorator uses yield to break and to return the
@@ -183,8 +182,8 @@ def coroutine(interval = 0, synchronize = False):
                 elif result != YieldContinue:
                     # everything went fine, return result
                     return _wrap_result(result)
-                # we need a step callback to finish this later
-                # result is one of YieldContinue, InProgress
+                # we need a YieldFunction to finish this later
+                # result is either YieldContinue or InProgress
                 progress = YieldFunction(function, interval, result)
                 if synchronize:
                     func._lock = progress
@@ -212,7 +211,7 @@ class YieldFunction(InProgress):
     """
     def __init__(self, function, interval, status=None):
         InProgress.__init__(self)
-        self._yield__function = function
+        self._yield_function = function
         self._timer = Timer(self._step)
         self._interval = interval
         self._async = None
@@ -240,9 +239,9 @@ class YieldFunction(InProgress):
         """
         if self._valid:
             raise RuntimeError('YieldFunction already running')
-        # The generator was not started yet
         self._valid = True
-        self._yield__function = self._yield__function(*args, **kwargs)
+        # The generator was not started yet
+        self._yield_function = self._yield_function(*args, **kwargs)
         self._continue()
         return True
 
@@ -251,15 +250,6 @@ class YieldFunction(InProgress):
         """
         Restart timer.
         """
-        if len(args) == 3 and isinstance(args[1], Exception):
-            # An InProgress we were waiting on raised an exception.  We are
-            # "inheriting" this exception, so return False to prevent it
-            # from being logged as unhandled in the other InProgress.
-            # Call _step() so that we throw the exception and clear
-            # any state.
-            self._step()
-            return False
-
         if self._timer:
             # continue calling _step
             self._timer.start(self._interval)
@@ -271,7 +261,7 @@ class YieldFunction(InProgress):
         """
         try:
             while True:
-                result = _process(self._yield__function, self._async)
+                result = _process(self._yield_function, self._async)
                 if isinstance(result, InProgress) and result.is_finished():
                     # the result is a finished InProgress object
                     self._async = result
@@ -281,23 +271,13 @@ class YieldFunction(InProgress):
                     return True
                 break
         except (SystemExit, KeyboardInterrupt):
-            # Remove the internal timer and the async result to remove bad
-            # circular references.
-            self._timer.stop()
-            self._timer = None
-            self._async = None
-            self._yield__function = None
+            self.stop()
             sys.exit(0)
         except StopIteration:
             result = None
         except Exception, e:
             # YieldFunction is done with exception
-            # Remove the internal timer and the async result to remove bad
-            # circular references.
-            self._timer.stop()
-            self._timer = None
-            self._async = None
-            self._yield__function = None
+            self.stop()
             self.throw(*sys.exc_info())
             return False
 
@@ -311,12 +291,8 @@ class YieldFunction(InProgress):
             return False
 
         # YieldFunction is done
-        # Remove the internal timer and the async result to remove bad
-        # circular references.
-        self._timer = None
+        self.stop()
         self.finished(result)
-        self._async = None
-        self._yield__function = None
         return False
 
 
@@ -329,7 +305,7 @@ class YieldFunction(InProgress):
         # Remove the internal timer and the async result to remove bad
         # circular references.
         self._timer = None
-        self._yield__function = None
+        self._yield_function = None
         self._async = None
 
 

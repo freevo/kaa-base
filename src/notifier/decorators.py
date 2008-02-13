@@ -41,7 +41,7 @@ from jobserver import NamedThreadCallback
 from timer import Timer
 from kaa.weakref import weakref
 
-MAINTHREAD = 'main'
+MAINTHREAD = object()
 POLICY_ONCE = 'once'
 POLICY_MANY = 'many'
 POLICY_RESTART = 'restart'
@@ -130,7 +130,7 @@ def threaded(name=None, priority=0, async=True):
     def decorator(func):
 
         def newfunc(*args, **kwargs):
-            if name == MAINTHREAD:
+            if name is MAINTHREAD:
                 if not async and is_mainthread():
                     # Fast-path case: mainthread synchronous call from the mainthread
                     return func(*args, **kwargs)

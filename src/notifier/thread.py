@@ -102,9 +102,9 @@ class ThreadInProgress(InProgress):
         if self._callback is None:
             return None
         try:
-            MainThreadCallback(self.finished, self._callback())()
+            MainThreadCallback(self.finished)(self._callback())
         except:
-            MainThreadCallback(self.throw, *sys.exc_info())()
+            MainThreadCallback(self.throw)(*sys.exc_info())
         self._callback = None
 
 

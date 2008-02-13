@@ -73,10 +73,6 @@ def timed(interval, timer=Timer, policy=POLICY_MANY):
     currently running, any arguments passed to the decorated function on
     subsequent calls will be discarded.
     """
-    if type(interval) == type(Timer) and issubclass(interval, Timer):
-        log.warning('Deprecated use of @kaa.timed decorator; arg 1 is interval, arg 2 is (optional) timer class')
-        interval, timer = timer, interval
-
     if not policy in (POLICY_MANY, POLICY_ONCE, POLICY_RESTART):
         raise RunTimeError('Invalid @kaa.timed policy %s' % policy)
 

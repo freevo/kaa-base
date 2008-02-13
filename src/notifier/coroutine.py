@@ -56,17 +56,15 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'YieldContinue', 'YieldCallback', 'coroutine',
-            'YieldFunction' ]
+__all__ = [ 'YieldContinue', 'YieldCallback', 'coroutine', 'YieldFunction' ]
 
+# python imports
 import sys
-import logging
 
+# kaa.notifier imports
 from signals import Signal
 from timer import Timer
 from async import InProgress
-
-log = logging.getLogger('notifier.yield')
 
 # object to signal that the function whats to continue
 YieldContinue = object()
@@ -200,31 +198,30 @@ def coroutine(interval = 0, synchronize = False):
 class YieldFunction(InProgress):
     """
     InProgress class that runs a generator function. This is also the return value
-    for coroutine if it takes some more time. status can be either None
+    for coroutine if it takes some more time. progress can be either None
     (not started yet), YieldContinue (iterate now) or InProgress (wait until
     InProgress is done).
     """
-    def __init__(self, function, interval, status=None):
+    def __init__(self, function, interval, progress=None):
         InProgress.__init__(self)
         self._yield_function = function
         self._timer = Timer(self._step)
         self._interval = interval
         self._async = None
-        if status == None:
-            # No status from coroutine, this means that the YieldFunction
+        self._valid = True
+        if progress is None:
+            # No progress from coroutine, this means that the YieldFunction
             # was created from the outside and the creator must call this object
             self._valid = False
-            return
-        self._valid = True
-        if status == YieldContinue:
+        elif progress == YieldContinue:
             # coroutine was stopped YieldContinue, start the step timer
             self._timer.start(interval)
-        elif isinstance(status, InProgress):
+        elif isinstance(progress, InProgress):
             # continue when InProgress is done
-            self._async = status
-            status.connect_both(self._continue, self._continue)
+            self._async = progress
+            progress.connect_both(self._continue, self._continue)
         else:
-            raise RuntimeError('YieldFunction with bad status %s' % status)
+            raise RuntimeError('YieldFunction with bad progress %s' % progress)
 
 
     def __call__(self, *args, **kwargs):
@@ -237,22 +234,20 @@ class YieldFunction(InProgress):
         self._valid = True
         # The generator was not started yet
         self._yield_function = self._yield_function(*args, **kwargs)
-        self._continue()
-        return True
+        self._timer.start(self._interval)
 
 
     def _continue(self, *args, **kwargs):
         """
-        Restart timer.
+        Restart timer to call _step() after interval seconds.
         """
         if self._timer:
-            # continue calling _step
             self._timer.start(self._interval)
 
 
     def _step(self):
         """
-        Call next step of the yield function.
+        Call next step of the coroutine.
         """
         try:
             while True:
@@ -265,10 +260,8 @@ class YieldFunction(InProgress):
                     # schedule next interation with the timer
                     return True
                 break
-        except (SystemExit, KeyboardInterrupt):
-            self.stop()
-            sys.exit(0)
         except StopIteration:
+            # YieldFunction is done without result
             result = None
         except Exception, e:
             # YieldFunction is done with exception
@@ -276,9 +269,6 @@ class YieldFunction(InProgress):
             self.throw(*sys.exc_info())
             return False
 
-        # We have to stop the timer because we either have a result
-        # or have to wait for an InProgress
-        self._timer.stop()
         if isinstance(result, InProgress):
             # continue when InProgress is done
             self._async = result
@@ -297,8 +287,8 @@ class YieldFunction(InProgress):
         """
         if self._timer and self._timer.active():
             self._timer.stop()
-        # Remove the internal timer and the async result to remove bad
-        # circular references.
+        # Remove the internal timer, the async result and the
+        # generator function to remove bad circular references.
         self._timer = None
         self._yield_function = None
         self._async = None

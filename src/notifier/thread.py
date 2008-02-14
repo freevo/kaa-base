@@ -59,6 +59,7 @@ import fcntl
 import socket
 import errno
 import thread
+import types
 
 # notifier imports
 import nf_wrapper as notifier
@@ -273,9 +274,15 @@ class ThreadInProgress(InProgress):
         if self._callback is None:
             return None
         try:
-            MainThreadCallback(self.finished)(self._callback())
+            result = self._callback()
         except:
             MainThreadCallback(self.throw)(*sys.exc_info())
+        else:
+            if type(result) == types.GeneratorType or isinstance(result, InProgress):
+                # Looks like the callback is yielding something, or callback is a
+                # coroutine-decorated function.  Not supported (yet?).
+                log.warning('NYI: threads cannot yet be coroutines.')
+            MainThreadCallback(self.finished)(result)
         self._callback = None
 
 

@@ -147,15 +147,17 @@ def coroutine(interval = 0, synchronize = False):
     InProgress object. It may already be finished.
     """
     def decorator(func):
-
         def newfunc(*args, **kwargs):
             result = func(*args, **kwargs)
             if not hasattr(result, 'next'):
                 # Decorated function doesn't have a next attribute, which
-                # likyle means it didn't yield anything.  There was no sense
-                # in decorating that function with coroutine, but on
-                # the other hand it's easy enough just to return the result.
-                return _wrap_result(result)
+                # means it isn't a generator.  We might simply wrap the result
+                # in an InProgress and pass it back, but for example if the
+                # coroutine is wrapping a @threaded decorated function which is
+                # itself a generator, wrapping the result will silently not work
+                # with any indication why.  It's better to raise an exception.
+                raise ValueError('@coroutine decorated function is not a generator')
+
             function = result
             if synchronize and func._lock is not None and not func._lock.is_finished():
                 # Function is currently called by someone else

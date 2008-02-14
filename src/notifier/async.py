@@ -32,6 +32,7 @@
 __all__ = [ 'InProgress' ]
 
 # python imports
+import sys
 import logging
 import traceback
 import time
@@ -244,6 +245,21 @@ class InProgress(Signal):
             return main.signals['step'].connect_once(reraise)
 
         log.error('Unhandled %s exception:\n%s', cls.__name__, trace)
+
+
+    def execute(self, func, *args, **kwargs):
+        """
+        Execute the function and store the result or exception inside the
+        InProgress object. Returns self to support yield in a coroutine.
+        To yield a finished object call yield InProgress().execute(...)
+        """
+        try:
+            result = func(*args, **kwargs)
+        except:
+            self.throw(*sys.exc_info())
+        else:
+            self.finished(result)
+        return self
 
 
     def is_finished(self):

@@ -115,7 +115,7 @@ def make_exception_class(name, bases, dict):
     return create
 
 
-class RemoteException(object):
+class RemoteException(Exception):
     """
     Raised when remote RPC calls raise exceptions.  Instances of this class
     inherit the actual remote exception class, so this works:
@@ -137,8 +137,12 @@ class RemoteException(object):
 
     def __str__(self):
         dump = ''.join(traceback.format_list(self._rpc_stack))
-        if self.message:
-            info = '%s: %s' % (self._rpc_exc_name, self.message)
+        # Python 2.5 always has self.message; for Python 2.4, fall back to
+        # first argument if it's a string.
+        msg = (hasattr(self, 'message') and self.message) or \
+              (self.args and isinstance(self.args[0], basestring) and self.args[0])
+        if msg:
+            info = '%s: %s' % (self._rpc_exc_name, msg)
         else:
             info = self._rpc_exc_name
 

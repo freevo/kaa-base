@@ -67,7 +67,7 @@ NotFinished = object()
 
 
 # variable to detect if send is possible with a generator
-_python25 = sys.version.split()[0] > '2.4'
+_python25 = sys.hexversion >= 0x02050000
 
 def _process(func, async=None):
     """

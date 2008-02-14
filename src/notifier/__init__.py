@@ -39,7 +39,7 @@ from callback import Callback, WeakCallback
 from signals import Signal, Signals
 
 # InProgress class
-from async import InProgress
+from async import TimeoutException, InProgress, InProgressCallback
 
 # Thread callbacks, helper functions and decorators
 from thread import MainThreadCallback, NamedThreadCallback, ThreadCallback, \
@@ -56,7 +56,7 @@ from sockets import IOMonitor, WeakIOMonitor, Socket, IO_READ, IO_WRITE
 from event import Event, EventHandler, WeakEventHandler
 
 # coroutine decorator and helper classes
-from coroutine import NotFinished, YieldCallback, coroutine
+from coroutine import NotFinished, coroutine
 
 # process management
 from popen import Process

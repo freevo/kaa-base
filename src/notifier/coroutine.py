@@ -20,12 +20,8 @@
 # statement. In that case, the function call continues at this point in the
 # next notifier iteration. If the function itself has to wait for a result of
 # a function call (either another yield function are something else working
-# async), it can create a 'YieldCallback' object, add this as callback to the
-# function it is calling and return this object using yield. In this case, the
-# function will continue at this point when the other async call is finished.
-# The function can use the 'get' function of the 'YieldCallback' to get the
-# result of the async call. It is also possible to yield an InProgress object
-# and call it later to get the results (or the exception).
+# async with an InProgress object) and it can create a 'InProgressCallback'
+# object and use this as callback.
 #
 # The 'coroutine' decorator has a parameter interval. This is the
 # interval used to schedule when the function should continue after a yield.
@@ -56,7 +52,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'NotFinished', 'YieldCallback', 'coroutine' ]
+__all__ = [ 'NotFinished', 'coroutine' ]
 
 # python imports
 import sys
@@ -68,45 +64,6 @@ from async import InProgress
 
 # object to signal that the function whats to continue
 NotFinished = object()
-
-
-class YieldCallback(InProgress):
-    """
-    Callback class that can be used as a callback for a function that is
-    async. Return this object using 'yield' and use get_result() later.
-    You can also use result = yield YieldCallback object for Python 2.5.
-    """
-    def __init__(self, func=None):
-        InProgress.__init__(self)
-        if func is not None:
-            if isinstance(func, Signal):
-                func = func.connect_once
-            # connect self as callback
-            func(self)
-
-
-    def __call__(self, *args, **kwargs):
-        """
-        Call the YieldCallback by the external function. This will resume
-        the calling YieldFunction.
-        """
-        # try to get the results as the caller excepts them
-        if args and kwargs:
-            # no idea how to merge them
-            return self.finished((args, kwargs))
-        if kwargs and len(kwargs) == 1:
-            # return the value
-            return self.finished(kwargs.values()[0])
-        if kwargs:
-            # return as dict
-            return self.finished(kwargs)
-        if len(args) == 1:
-            # return value
-            return self.finished(args[0])
-        if len(args) > 1:
-            # return as list
-            return self.finished(args)
-        return self.finished(None)
 
 
 # variable to detect if send is possible with a generator

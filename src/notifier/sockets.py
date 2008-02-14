@@ -39,8 +39,7 @@ import nf_wrapper as notifier
 from callback import Callback, WeakCallback
 from signals import Signals, Signal
 from thread import MainThreadCallback, ThreadCallback, is_mainthread, threaded
-from async import InProgress
-from coroutine import YieldCallback
+from async import InProgress, InProgressCallback
 from kaa.utils import property
 from timer import OneShotTimer, timed, POLICY_ONCE
 
@@ -281,7 +280,7 @@ class Socket(object):
         if self._listening:
             raise RuntimeError("Can't read on a listening socket.")
 
-        return YieldCallback(signal)
+        return InProgressCallback(signal)
 
 
     def read(self):

@@ -70,5 +70,6 @@ Changes for 0.4.0
    and WeakIOMonitor.
 
 4. Rename YieldContinue to NotFinished
+   Rename YieldCallback to InProgressCallback
    Remove YieldFunction from the API, the class is now only for
    internal use and may change without further notice.

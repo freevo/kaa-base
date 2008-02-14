@@ -29,7 +29,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'InProgress' ]
+__all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallback' ]
 
 # python imports
 import sys
@@ -165,7 +165,7 @@ class InProgress(Signal):
         """
         # This function must deal with a tricky problem.  See:
         # http://mail.python.org/pipermail/python-dev/2005-September/056091.html
-        # 
+        #
         # Ideally, we want to store the traceback object so we can defer the
         # exception handling until some later time.  The problem is that by
         # storing the traceback, we create some ridiculously deep circular
@@ -220,7 +220,7 @@ class InProgress(Signal):
             cb = Callback(InProgress._log_exception, trace, value)
             self._unhandled_exception = _weakref.ref(self, cb)
 
-        # Remove traceback from stored exception.  If any waiting threads 
+        # Remove traceback from stored exception.  If any waiting threads
         # haven't gotten it by now, it's too late.
         self._exception = type, value, None
 
@@ -304,7 +304,7 @@ class InProgress(Signal):
             # but we won't get notified of any thread completion
             # unless the thread notifier pipe is initialized.
             set_as_mainthread()
- 
+
         if is_mainthread():
             # We're waiting in the main thread, so we must keep the mainloop
             # alive by calling step() until we're finished.
@@ -351,3 +351,44 @@ class InProgress(Signal):
         """
         self.connect(finished)
         self.exception.connect_once(exception)
+
+
+
+class InProgressCallback(InProgress):
+    """
+    InProgress object that can be used as a callback for an async
+    function. The InProgress object will be finished when it is
+    called. Special support for Signals that will finish the InProgress
+    object when the signal is emited.
+    """
+    def __init__(self, func=None):
+        InProgress.__init__(self)
+        if func is not None:
+            if isinstance(func, Signal):
+                func = func.connect_once
+            # connect self as callback
+            func(self)
+
+
+    def __call__(self, *args, **kwargs):
+        """
+        Call the InProgressCallback by the external function. This will
+        finish the InProgress object.
+        """
+        # try to get the results as the caller excepts them
+        if args and kwargs:
+            # no idea how to merge them
+            return self.finished((args, kwargs))
+        if kwargs and len(kwargs) == 1:
+            # return the value
+            return self.finished(kwargs.values()[0])
+        if kwargs:
+            # return as dict
+            return self.finished(kwargs)
+        if len(args) == 1:
+            # return value
+            return self.finished(args[0])
+        if len(args) > 1:
+            # return as list
+            return self.finished(args)
+        return self.finished(None)

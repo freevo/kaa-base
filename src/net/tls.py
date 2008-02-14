@@ -55,7 +55,7 @@ class TLSConnection(tlslite.api.TLSConnection):
         try:
             while True:
                 n = handshake.next()
-                cb = kaa.YieldCallback()
+                cb = kaa.InProgressCallback()
                 disp = kaa.notifier.IOMonitor(cb)
                 if n == 0:
                     disp.register(self.sock.fileno(), kaa.notifier.IO_READ)

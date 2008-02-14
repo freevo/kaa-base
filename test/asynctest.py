@@ -107,27 +107,27 @@ def foo():
     # call some async function with different types of
     # results (given as parameter)
     
-    callback = kaa.YieldCallback()
+    callback = kaa.InProgressCallback()
     async(callback, 7, 8)
     yield callback
     print callback.get_result()                # (7, 8)
 
-    callback = kaa.YieldCallback()
+    callback = kaa.InProgressCallback()
     async(callback)
     yield callback
     print callback.get_result()                # None
 
-    callback = kaa.YieldCallback()
+    callback = kaa.InProgressCallback()
     async(callback, 9)
     yield callback
     print callback.get_result()                # 9
 
-    callback = kaa.YieldCallback()
+    callback = kaa.InProgressCallback()
     async(callback, foo=10)
     yield callback
     print callback.get_result()                # 10
 
-    callback = kaa.YieldCallback()
+    callback = kaa.InProgressCallback()
     async(callback, foo=11, bar=12)
     yield callback
     print callback.get_result()                # {'foo': 11, 'bar': 12}

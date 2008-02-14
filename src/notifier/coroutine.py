@@ -120,7 +120,7 @@ def coroutine(interval = 0, synchronize = False):
             function = result
             if synchronize and func._lock is not None and not func._lock.is_finished():
                 # Function is currently called by someone else
-                return YieldLock(func, function, interval)
+                return CoroutineInProgressLock(func, function, interval)
             async = None
             while True:
                 try:
@@ -136,12 +136,12 @@ def coroutine(interval = 0, synchronize = False):
                 elif result != NotFinished:
                     # everything went fine, return result
                     return _wrap_result(result)
-                # we need a YieldFunction to finish this later
+                # we need a CoroutineInProgress to finish this later
                 # result is either NotFinished or InProgress
-                progress = YieldFunction(function, interval, result)
+                progress = CoroutineInProgress(function, interval, result)
                 if synchronize:
                     func._lock = progress
-                # return the YieldFunction (InProgress)
+                # return the CoroutineInProgress
                 return progress
 
         if synchronize:
@@ -156,12 +156,11 @@ def coroutine(interval = 0, synchronize = False):
 # Internal classes
 # -----------------------------------------------------------------------------
 
-class YieldFunction(InProgress):
+class CoroutineInProgress(InProgress):
     """
     InProgress class that runs a generator function. This is also the return value
-    for coroutine if it takes some more time. progress can be either None
-    (not started yet), NotFinished (iterate now) or InProgress (wait until
-    InProgress is done).
+    for coroutine if it takes some more time. progress can be either NotFinished
+    (iterate now) or InProgress (wait until InProgress is done).
     """
     def __init__(self, function, interval, progress=None):
         InProgress.__init__(self)
@@ -170,11 +169,7 @@ class YieldFunction(InProgress):
         self._interval = interval
         self._async = None
         self._valid = True
-        if progress is None:
-            # No progress from coroutine, this means that the YieldFunction
-            # was created from the outside and the creator must call this object
-            self._valid = False
-        elif progress == NotFinished:
+        if progress == NotFinished:
             # coroutine was stopped NotFinished, start the step timer
             self._timer.start(interval)
         elif isinstance(progress, InProgress):
@@ -182,20 +177,7 @@ class YieldFunction(InProgress):
             self._async = progress
             progress.connect_both(self._continue, self._continue)
         else:
-            raise RuntimeError('YieldFunction with bad progress %s' % progress)
-
-
-    def __call__(self, *args, **kwargs):
-        """
-        Call the YieldFunction to start it if it was not created by
-        coroutine.
-        """
-        if self._valid:
-            raise RuntimeError('YieldFunction already running')
-        self._valid = True
-        # The generator was not started yet
-        self._yield_function = self._yield_function(*args, **kwargs)
-        self._timer.start(self._interval)
+            raise AttributeError('invalid progress %s' % progress)
 
 
     def _continue(self, *args, **kwargs):
@@ -220,13 +202,13 @@ class YieldFunction(InProgress):
                 if result == NotFinished:
                     # schedule next interation with the timer
                     return True
-                # YieldFunction is done with result
+                # CoroutineInProgress is done with result
                 break
         except StopIteration:
-            # YieldFunction is done without result
+            # CoroutineInProgress is done without result
             result = None
         except Exception, e:
-            # YieldFunction is done with exception
+            # CoroutineInProgress is done with exception
             self.stop()
             self.throw(*sys.exc_info())
             return False
@@ -237,7 +219,7 @@ class YieldFunction(InProgress):
             result.connect_both(self._continue, self._continue)
             return False
 
-        # YieldFunction is done
+        # CoroutineInProgress is done
         self.stop()
         self.finished(result)
         return False
@@ -268,12 +250,12 @@ class YieldFunction(InProgress):
         self._async = None
 
 
-class YieldLock(YieldFunction):
+class CoroutineInProgressLock(CoroutineInProgress):
     """
-    YieldFunction for handling locked coroutine functions.
+    CoroutineInProgress for handling locked coroutine functions.
     """
     def __init__(self, original_function, function, interval):
-        YieldFunction.__init__(self, function, interval)
+        CoroutineInProgress.__init__(self, function, interval)
         self._func = original_function
         self._func._lock.connect_both(self._try_again, self._try_again)
 

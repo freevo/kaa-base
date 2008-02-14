@@ -56,7 +56,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'NotFinished', 'YieldCallback', 'coroutine', 'YieldFunction' ]
+__all__ = [ 'NotFinished', 'YieldCallback', 'coroutine' ]
 
 # python imports
 import sys
@@ -144,7 +144,9 @@ def coroutine(interval = 0, synchronize = False):
     invocations will be queued.
 
     A function decorated with this decorator will always return an
-    InProgress object. It may already be finished.
+    InProgress object. It may already be finished. If it is not finished,
+    it has stop() and set_interval() member functions. If stop() is called,
+    the InProgress object will emit the finished signal.
     """
     def decorator(func):
         def newfunc(*args, **kwargs):
@@ -282,6 +284,18 @@ class YieldFunction(InProgress):
         self.stop()
         self.finished(result)
         return False
+
+
+    def set_interval(self, interval):
+        """
+        Set a new interval for the internal timer.
+        """
+        if not self._timer:
+            pass
+        if self._timer.active():
+            # restart timer
+            self._timer.start(interval)
+        self._interval = interval
 
 
     def stop(self):

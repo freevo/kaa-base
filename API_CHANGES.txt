@@ -70,3 +70,5 @@ Changes for 0.4.0
    and WeakIOMonitor.
 
 4. Rename YieldContinue to NotFinished
+   Remove YieldFunction from the API, the class is now only for
+   internal use and may change without further notice.

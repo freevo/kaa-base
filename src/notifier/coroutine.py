@@ -81,15 +81,6 @@ def _process(func, async=None):
     return func.next()
 
 
-def _wrap_result(result):
-    """
-    Wrap the result in a finished InProgress object.
-    """
-    async = InProgress()
-    async.finished(result)
-    return async
-
-
 def coroutine(interval = 0, synchronize = False):
     """
     Functions with this decorator uses yield to break and to return the
@@ -127,15 +118,22 @@ def coroutine(interval = 0, synchronize = False):
                     result = _process(function, async)
                 except StopIteration:
                     # no return with yield, but done, return None
-                    return _wrap_result(None)
+                    result = None
+                except Exception, e:
+                    # exception handling, return finished InProgress
+                    ip = InProgress()
+                    ip.throw(*sys.exc_info())
+                    return ip
                 if isinstance(result, InProgress):
                     if result.is_finished():
                         # InProgress return that is already finished, go on
                         async = result
                         continue
                 elif result != NotFinished:
-                    # everything went fine, return result
-                    return _wrap_result(result)
+                    # everything went fine, return result in an InProgress
+                    ip = InProgress()
+                    ip.finished(result)
+                    return ip
                 # we need a CoroutineInProgress to finish this later
                 # result is either NotFinished or InProgress
                 progress = CoroutineInProgress(function, interval, result)
@@ -164,7 +162,7 @@ class CoroutineInProgress(InProgress):
     """
     def __init__(self, function, interval, progress=None):
         InProgress.__init__(self)
-        self._yield_function = function
+        self._coroutine = function
         self._timer = Timer(self._step)
         self._interval = interval
         self._async = None
@@ -194,32 +192,28 @@ class CoroutineInProgress(InProgress):
         """
         try:
             while True:
-                result = _process(self._yield_function, self._async)
-                if isinstance(result, InProgress) and result.is_finished():
-                    # the result is a finished InProgress object
+                result = _process(self._coroutine, self._async)
+                if isinstance(result, InProgress):
                     self._async = result
-                    continue
-                if result == NotFinished:
+                    if not result.is_finished():
+                        # continue when InProgress is done
+                        self._async = result
+                        result.connect_both(self._continue, self._continue)
+                        return False
+                elif result == NotFinished:
                     # schedule next interation with the timer
                     return True
-                # CoroutineInProgress is done with result
-                break
+                else:
+                    # coroutine is done
+                    break
         except StopIteration:
-            # CoroutineInProgress is done without result
+            # coroutine is done without result
             result = None
         except Exception, e:
-            # CoroutineInProgress is done with exception
+            # coroutine is done with exception
             self.stop()
             self.throw(*sys.exc_info())
             return False
-
-        if isinstance(result, InProgress):
-            # continue when InProgress is done
-            self._async = result
-            result.connect_both(self._continue, self._continue)
-            return False
-
-        # CoroutineInProgress is done
         self.stop()
         self.finished(result)
         return False
@@ -229,9 +223,7 @@ class CoroutineInProgress(InProgress):
         """
         Set a new interval for the internal timer.
         """
-        if not self._timer:
-            pass
-        if self._timer.active():
+        if self._timer and self._timer.active():
             # restart timer
             self._timer.start(interval)
         self._interval = interval
@@ -246,7 +238,7 @@ class CoroutineInProgress(InProgress):
         # Remove the internal timer, the async result and the
         # generator function to remove bad circular references.
         self._timer = None
-        self._yield_function = None
+        self._coroutine = None
         self._async = None
 
 

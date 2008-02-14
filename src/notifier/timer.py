@@ -39,6 +39,7 @@ import datetime
 
 import nf_wrapper as notifier
 from thread import MainThreadCallback, is_mainthread
+from kaa.weakref import weakref
 
 POLICY_ONCE = 'once'
 POLICY_MANY = 'many'

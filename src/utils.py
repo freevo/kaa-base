@@ -38,7 +38,6 @@ import logging
 
 import kaa
 import _utils
-from kaa.notifier.thread import create_thread_notifier_pipe
 
 # get logging object
 log = logging.getLogger('kaa')
@@ -154,6 +153,7 @@ def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None,
 
     # Replace any existing thread notifier pipe, otherwise we'll be listening
     # to our parent's thread notifier.
+    from kaa.notifier.thread import create_thread_notifier_pipe
     create_thread_notifier_pipe(new=False, purge=True)
 
     return lock

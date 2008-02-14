@@ -521,8 +521,7 @@ class Channel(object):
                 #log.exception('Exception in rpc function "%s"', function)
                 if not function in self._callbacks:
                     log.error(self._callbacks.keys())
-                type, value, tb = sys.exc_info()
-                self._send_exception(type, value, tb, seq)
+                self._send_exception(*sys.exc_info() + (seq,))
                 return True
 
             if isinstance(result, kaa.InProgress):

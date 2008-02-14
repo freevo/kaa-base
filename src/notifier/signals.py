@@ -38,6 +38,7 @@ import atexit
 
 # callbacks from kaa.notifier
 from callback import Callback, WeakCallback
+from kaa.utils import property
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -59,8 +60,19 @@ class Signal(object):
 
     def __init__(self, changed_cb = None):
         self._callbacks = []
-        self._changed_cb = changed_cb
+        self.changed_cb = changed_cb
         self._deferred_args = []
+
+
+    @property
+    def changed_cb(self):
+        return self._changed_cb
+
+
+    @changed_cb.setter
+    def changed_cb(self, callback):
+        assert(callback is None or callable(callback))
+        self._changed_cb = callback
 
 
     def __iter__(self):
@@ -248,7 +260,15 @@ class Signals(dict):
                 # parameter is something else, bad
                 raise AttributeError('signal key must be string')
 
-            
+
+    def add(self, *signals):
+        """
+        Creates a new Signals object by merging all signals defined in
+        self and the signals specified in the arguments.
+        """
+        return Signals(self, *signals)
+
+
     def __getattr__(self, attr):
         """
         Get attribute function from Signal().

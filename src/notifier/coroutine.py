@@ -132,7 +132,7 @@ def coroutine(interval = 0, synchronize = False):
                 elif result != NotFinished:
                     # everything went fine, return result in an InProgress
                     ip = InProgress()
-                    ip.finished(result)
+                    ip.finish(result)
                     return ip
                 # we need a CoroutineInProgress to finish this later
                 # result is either NotFinished or InProgress
@@ -215,7 +215,7 @@ class CoroutineInProgress(InProgress):
             self.throw(*sys.exc_info())
             return False
         self.stop()
-        self.finished(result)
+        self.finish(result)
         return False
 
 

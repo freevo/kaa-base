@@ -543,7 +543,7 @@ class Channel(object):
             if callback is None:
                 return True
             del self._rpc_in_progress[seq]
-            callback.finished(payload)
+            callback.finish(payload)
             return True
 
         if type == 'EXCP':

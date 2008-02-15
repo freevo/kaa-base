@@ -136,6 +136,12 @@ class InProgress(Signal):
 
 
     def finished(self, result):
+        # XXX: Temporary wrapper for deprecated method name.
+        log.warning('InProgress.finished() deprecated; use InProgress.finish()')
+        return self.finish(result)
+
+
+    def finish(self, result):
         """
         This function should be called when the creating function is
         done and no longer in progress.
@@ -258,7 +264,7 @@ class InProgress(Signal):
         except:
             self.throw(*sys.exc_info())
         else:
-            self.finished(result)
+            self.finish(result)
         return self
 
 
@@ -333,7 +339,7 @@ class InProgress(Signal):
         Links with another InProgress object.  When the supplied in_progress
         object finishes (or throws), we do too.
         """
-        in_progress.connect_both(self.finished, self.throw)
+        in_progress.connect_both(self.finish, self.throw)
 
 
     def _connect(self, callback, args = (), kwargs = {}, once = False,
@@ -378,17 +384,17 @@ class InProgressCallback(InProgress):
         # try to get the results as the caller excepts them
         if args and kwargs:
             # no idea how to merge them
-            return self.finished((args, kwargs))
+            return self.finish((args, kwargs))
         if kwargs and len(kwargs) == 1:
             # return the value
-            return self.finished(kwargs.values()[0])
+            return self.finish(kwargs.values()[0])
         if kwargs:
             # return as dict
-            return self.finished(kwargs)
+            return self.finish(kwargs)
         if len(args) == 1:
             # return value
-            return self.finished(args[0])
+            return self.finish(args[0])
         if len(args) > 1:
             # return as list
-            return self.finished(args)
-        return self.finished(None)
+            return self.finish(args)
+        return self.finish(None)

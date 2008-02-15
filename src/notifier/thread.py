@@ -228,7 +228,7 @@ def _thread_notifier_run_queue(fd):
         _thread_notifier_lock.release()
 
         try:
-            in_progress.finished(callback(*args, **kwargs))
+            in_progress.finish(callback(*args, **kwargs))
         except:
             in_progress.throw(*sys.exc_info())
 
@@ -248,7 +248,7 @@ class MainThreadCallback(Callback):
             except:
                 in_progress.throw(*sys.exc_info())
             else:
-                in_progress.finished(result)
+                in_progress.finish(result)
 
             return in_progress
 
@@ -282,7 +282,7 @@ class ThreadInProgress(InProgress):
                 # Looks like the callback is yielding something, or callback is a
                 # coroutine-decorated function.  Not supported (yet?).
                 log.warning('NYI: threads cannot yet be coroutines.')
-            MainThreadCallback(self.finished)(result)
+            MainThreadCallback(self.finish)(result)
         self._callback = None
 
 

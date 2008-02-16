@@ -345,7 +345,9 @@ class InProgress(Signal):
             else:
                 # No traceback, so construct an AsyncException based on the
                 # stack.
-                raise AsyncException(exc_value, exc_tb_or_stack)
+                if not isinstance(exc_value, AsyncExceptionBase):
+                    exc_value = AsyncException(exc_value, exc_tb_or_stack)
+                raise exc_value
 
         return self._result
 

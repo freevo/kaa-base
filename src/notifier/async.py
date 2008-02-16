@@ -56,6 +56,10 @@ def make_exception_class(name, bases, dict):
     """
     def create(exc, stack, *args):
         from new import classobj
+        dict.update({
+            # Necessary for python 2.4
+            '__str__': AsyncExceptionBase.__str__
+        })
         e = classobj(name, (exc.__class__,) + bases, dict)(*exc.args)
         e._set_info(exc.__class__.__name__, stack, *args)
         return e

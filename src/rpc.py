@@ -89,11 +89,11 @@ import struct
 import sys
 import sha
 import time
-from new import classobj
 import traceback
 
 # kaa imports
 import kaa
+from notifier.async import make_exception_class, AsyncExceptionBase
 
 # get logging object
 log = logging.getLogger('rpc')
@@ -101,21 +101,7 @@ log = logging.getLogger('rpc')
 class ConnectError(Exception):
     pass
 
-
-def make_exception_class(name, bases, dict):
-    """
-    Class generator for RemoteException.  Creates RemoteException class
-    which derives the class of a particular Exception instance.
-    """
-    def create(exc, cmd, stack):
-        e = classobj(name, (exc.__class__,) + bases, dict)(*exc.args)
-        e._set_info(exc.__class__.__name__, cmd, stack)
-        return e
-
-    return create
-
-
-class RemoteException(Exception):
+class RemoteException(AsyncExceptionBase):
     """
     Raised when remote RPC calls raise exceptions.  Instances of this class
     inherit the actual remote exception class, so this works:
@@ -129,25 +115,8 @@ class RemoteException(Exception):
     traceback of the remote stack.
     """
     __metaclass__ = make_exception_class
-
-    def _set_info(self, exc_name, cmd, stack):
-        self._rpc_exc_name = exc_name
-        self._rpc_cmd = cmd
-        self._rpc_stack = stack
-
-    def __str__(self):
-        dump = ''.join(traceback.format_list(self._rpc_stack))
-        # Python 2.5 always has self.message; for Python 2.4, fall back to
-        # first argument if it's a string.
-        msg = (hasattr(self, 'message') and self.message) or \
-              (self.args and isinstance(self.args[0], basestring) and self.args[0])
-        if msg:
-            info = '%s: %s' % (self._rpc_exc_name, msg)
-        else:
-            info = self._rpc_exc_name
-
-        return "Exception during RPC call '%s'; remote traceback follows:\n" % self._rpc_cmd + \
-               dump + info
+    def _get_header(self):
+        return "Exception during RPC call '%s'; remote traceback follows:" % self._kaa_exc_args[0]
 
 
 class Server(object):
@@ -553,7 +522,7 @@ class Channel(object):
             if callback is None:
                 return True
             del self._rpc_in_progress[seq]
-            remote_exc = RemoteException(exc_value, cmd, stack)
+            remote_exc = RemoteException(exc_value, stack, cmd)
             callback.throw(remote_exc.__class__, remote_exc, None)
             return True
 

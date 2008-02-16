@@ -29,7 +29,8 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallback' ]
+__all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallback', 'AsyncException',
+            'AsyncExceptionBase', 'make_exception_class' ]
 
 # python imports
 import sys
@@ -38,6 +39,7 @@ import traceback
 import time
 import _weakref
 import threading
+import types
 
 # kaa.notifier imports
 from callback import Callback
@@ -46,8 +48,58 @@ from signals import Signal
 # get logging object
 log = logging.getLogger('notifier.async')
 
+
+def make_exception_class(name, bases, dict):
+    """
+    Class generator for AsyncException.  Creates AsyncException class
+    which derives the class of a particular Exception instance.
+    """
+    def create(exc, stack, *args):
+        from new import classobj
+        e = classobj(name, (exc.__class__,) + bases, dict)(*exc.args)
+        e._set_info(exc.__class__.__name__, stack, *args)
+        return e
+
+    return create
+
+
+class AsyncExceptionBase(Exception):
+    """
+    Base class for asynchronous exceptions.  This class can be used to raise
+    exceptions where the traceback object is not available.  The stack is
+    stored (which is safe to reference and can be pickled) instead, and when
+    AsyncExceptionBase instances are printed, the original traceback will
+    be printed.
+    """
+    def _set_info(self, exc_name, stack, *args):
+        self._kaa_exc_name = exc_name
+        self._kaa_exc_stack = stack
+        self._kaa_exc_args = args
+
+    def _get_header(self):
+        return 'Exception raised asynchronously; traceback follows:'
+
+    def __str__(self):
+        dump = ''.join(traceback.format_list(self._kaa_exc_stack))
+        # Python 2.5 always has self.message; for Python 2.4, fall back to
+        # first argument if it's a string.
+        msg = (hasattr(self, 'message') and self.message) or \
+              (self.args and isinstance(self.args[0], basestring) and self.args[0])
+        if msg:
+            info = '%s: %s' % (self._kaa_exc_name, msg)
+        else:
+            info = self._kaa_exc_name
+
+        return self._get_header() + '\n' + dump + info
+
+
+class AsyncException(AsyncExceptionBase):
+    __metaclass__ = make_exception_class
+
+
 class TimeoutException(Exception):
     pass
+
 
 class InProgress(Signal):
     """
@@ -190,6 +242,7 @@ class InProgress(Signal):
         self._finished = True
         self._exception = type, value, tb
         self._unhandled_exception = True
+        stack = traceback.extract_tb(tb)
 
         # Attach a stringified traceback to the exception object.  Right now,
         # this is the best we can do for asynchronous handlers.
@@ -228,7 +281,7 @@ class InProgress(Signal):
 
         # Remove traceback from stored exception.  If any waiting threads
         # haven't gotten it by now, it's too late.
-        self._exception = type, value, None
+        self._exception = type, value, stack
 
         # cleanup
         self.disconnect_all()
@@ -285,9 +338,15 @@ class InProgress(Signal):
             raise RuntimeError('operation not finished')
         if self._exception:
             self._unhandled_exception = None
-            type, value, tb = self._exception
-            # Special 3-argument form of raise; preserves traceback
-            raise type, value, tb
+            exc_type, exc_value, exc_tb_or_stack = self._exception
+            if type(exc_tb_or_stack) == types.TracebackType:
+                # We have the traceback, so we can raise using it.
+                raise exc_type, exc_value, exc_tb_or_stack
+            else:
+                # No traceback, so construct an AsyncException based on the
+                # stack.
+                raise AsyncException(exc_value, exc_tb_or_stack)
+
         return self._result
 
 

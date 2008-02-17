@@ -285,7 +285,9 @@ class InProgress(Signal):
 
         # Remove traceback from stored exception.  If any waiting threads
         # haven't gotten it by now, it's too late.
-        self._exception = type, value, stack
+        if not isinstance(value, AsyncExceptionBase):
+            value = AsyncException(value, stack)
+        self._exception = value.__class__, value, None
 
         # cleanup
         self.disconnect_all()
@@ -342,16 +344,14 @@ class InProgress(Signal):
             raise RuntimeError('operation not finished')
         if self._exception:
             self._unhandled_exception = None
-            exc_type, exc_value, exc_tb_or_stack = self._exception
-            if type(exc_tb_or_stack) == types.TracebackType:
+            if self._exception[2]:
                 # We have the traceback, so we can raise using it.
+                exc_type, exc_value, exc_tb_or_stack = self._exception
                 raise exc_type, exc_value, exc_tb_or_stack
             else:
                 # No traceback, so construct an AsyncException based on the
                 # stack.
-                if not isinstance(exc_value, AsyncExceptionBase):
-                    exc_value = AsyncException(exc_value, exc_tb_or_stack)
-                raise exc_value
+                raise self._exception[1]
 
         return self._result
 

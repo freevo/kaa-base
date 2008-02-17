@@ -129,7 +129,7 @@ def coroutine(interval = 0, synchronize = False):
                         # InProgress return that is already finished, go on
                         async = result
                         continue
-                elif result != NotFinished:
+                elif result is not NotFinished:
                     # everything went fine, return result in an InProgress
                     ip = InProgress()
                     ip.finish(result)
@@ -167,7 +167,7 @@ class CoroutineInProgress(InProgress):
         self._interval = interval
         self._async = None
         self._valid = True
-        if progress == NotFinished:
+        if progress is NotFinished:
             # coroutine was stopped NotFinished, start the step timer
             self._timer.start(interval)
         elif isinstance(progress, InProgress):
@@ -200,7 +200,7 @@ class CoroutineInProgress(InProgress):
                         self._async = result
                         result.connect_both(self._continue, self._continue)
                         return False
-                elif result == NotFinished:
+                elif result is NotFinished:
                     # schedule next interation with the timer
                     return True
                 else:

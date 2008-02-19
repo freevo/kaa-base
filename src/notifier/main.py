@@ -109,18 +109,6 @@ def loop(condition, timeout = None):
     while condition() and not abort:
         try:
             notifier.step()
-        except (KeyboardInterrupt, SystemExit):
-            try:
-                # This looks stupid, I know that. The problem is that if we have
-                # a KeyboardInterrupt, that flag is still valid somewhere inside
-                # python. The next system call will fail because of that. Since we
-                # don't want a join of threads or similar fail, we use a very short
-                # sleep here. In most cases we won't sleep at all because this sleep
-                # fails. But after that everything is back to normal.
-                time.sleep(0.001)
-            except:
-                pass
-            break
         except Exception, e:
             if signals['exception'].emit(*sys.exc_info()) != False:
                 # Either there are no global exception handlers, or none of
@@ -151,7 +139,21 @@ def run():
         raise RuntimeError('Mainthread is already running')
 
     try:
-        loop(True)
+        # Nested try necessary because python 2.4 doesn't support
+        # try/except/finally.
+        try:
+            loop(True)
+        except (KeyboardInterrupt, SystemExit):
+            try:
+                # This looks stupid, I know that. The problem is that if we have
+                # a KeyboardInterrupt, that flag is still valid somewhere inside
+                # python. The next system call will fail because of that. Since we
+                # don't want a join of threads or similar fail, we use a very short
+                # sleep here. In most cases we won't sleep at all because this sleep
+                # fails. But after that everything is back to normal.
+                time.sleep(0.001)
+            except:
+                pass
     finally:
         stop()
 

@@ -41,6 +41,7 @@ import atexit
 
 import nf_wrapper as notifier
 from signals import Signal
+from timer import OneShotTimer
 from popen import proclist as _proclist
 from thread import is_mainthread, wakeup, set_as_mainthread, threaded, MAINTHREAD
 from thread import killall as kill_jobserver
@@ -80,21 +81,32 @@ def select_notifier(module, **options):
     return notifier.init( module, **options )
 
 
-def loop(condition):
+def loop(condition, timeout = None):
     """
     Executes the main loop until condition is met.  condition is either a
     callable, or value that is evaluated after each step of the main loop.
     """
     unhandled_exception = None
+    initial_mainloop = False
 
     if not is_running():
+        # no mainloop is running, set this thread as mainloop and
+        # set the internal running state.
+        initial_mainloop = True
         set_as_mainthread()
         _set_running(True)
 
     if not callable(condition):
         condition = lambda: condition
 
-    while condition():
+    abort = []
+    if timeout is not None:
+        # timeout handling to stop the mainloop after the given timeout
+        # even when the condition is still True.
+        timeout = OneShotTimer(lambda: abort.append(True))
+        timeout.start(timeout)
+
+    while condition() and not abort:
         try:
             notifier.step()
         except (KeyboardInterrupt, SystemExit):
@@ -117,7 +129,12 @@ def loop(condition):
                 unhandled_exception = sys.exc_info()
                 break
 
-    _set_running(False)
+    if timeout is not None:
+        timeout.stop(timeout)
+
+    if initial_mainloop:
+        _set_running(False)
+
     if unhandled_exception:
         # We aborted the main loop due to an unhandled exception.  Now
         # that we've cleaned up, we can reraise the exception.

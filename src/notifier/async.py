@@ -379,7 +379,6 @@ class InProgress(Signal):
                 from timer import OneShotTimer
                 OneShotTimer(lambda: abort.append(True)).start(timeout)
 
-            import threading
             main.loop(lambda: not self.is_finished() and not abort)
         else:
             # We're waiting in some other thread, so wait for some other

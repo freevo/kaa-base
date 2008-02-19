@@ -46,7 +46,7 @@ from thread import is_mainthread, wakeup, set_as_mainthread, threaded, MAINTHREA
 from thread import killall as kill_jobserver
 
 __all__ = [ 'run', 'stop', 'step', 'select_notifier', 'is_running', 'wakeup',
-            'set_as_mainthread', 'is_shutting_down' ]
+            'set_as_mainthread', 'is_shutting_down', 'loop' ]
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -56,7 +56,6 @@ log = logging.getLogger('notifier')
 _running_pid = None
 # Set if currently in shutdown() (to prevent reentrancy)
 _shutting_down = False
-
 
 def _step_signal_changed(signal, flag):
     if flag == Signal.SIGNAL_CONNECTED and signal.count() == 1:
@@ -81,20 +80,21 @@ def select_notifier(module, **options):
     return notifier.init( module, **options )
 
 
-def run():
+def loop(condition):
     """
-    Notifier main loop function. It will loop until an exception
-    is raised or sys.exit is called.
+    Executes the main loop until condition is met.  condition is either a
+    callable, or value that is evaluated after each step of the main loop.
     """
     unhandled_exception = None
 
-    if is_running():
-        raise RuntimeError('Mainthread is already running')
+    if not is_running():
+        set_as_mainthread()
+        _set_running(True)
 
-    _set_running(True)
-    set_as_mainthread()
+    if not callable(condition):
+        condition = lambda: condition
 
-    while True:
+    while condition():
         try:
             notifier.step()
         except (KeyboardInterrupt, SystemExit):
@@ -118,12 +118,25 @@ def run():
                 break
 
     _set_running(False)
-    stop()
     if unhandled_exception:
         # We aborted the main loop due to an unhandled exception.  Now
         # that we've cleaned up, we can reraise the exception.
         type, value, tb = unhandled_exception
         raise type, value, tb
+
+
+def run():
+    """
+    Notifier main loop function. It will loop until an exception
+    is raised or sys.exit is called.
+    """
+    if is_running():
+        raise RuntimeError('Mainthread is already running')
+
+    try:
+        loop(True)
+    finally:
+        stop()
 
 
 # Ensure stop() is called from main thread.

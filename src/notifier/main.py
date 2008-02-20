@@ -113,7 +113,8 @@ def loop(condition, timeout = None):
                     # Either there are no global exception handlers, or none of
                     # them explicitly returned False to abort mainloop 
                     # termination.  So abort the main loop.
-                    raise sys.exc_info()
+                    type, value, tb = sys.exc_info()
+                    raise type, value, tb
     finally:
         # make sure we set mainloop status even for Exceptions we did not
         # catch. E.g. in Python 2.5 SystemExit and KeyboardInterrupt do not

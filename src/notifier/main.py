@@ -86,9 +86,7 @@ def loop(condition, timeout = None):
     Executes the main loop until condition is met.  condition is either a
     callable, or value that is evaluated after each step of the main loop.
     """
-    unhandled_exception = None
     initial_mainloop = False
-
     if not is_running():
         # no mainloop is running, set this thread as mainloop and
         # set the internal running state.
@@ -106,28 +104,24 @@ def loop(condition, timeout = None):
         timeout = OneShotTimer(lambda: abort.append(True))
         timeout.start(timeout)
 
-    while condition() and not abort:
-        try:
-            notifier.step()
-        except Exception, e:
-            if signals['exception'].emit(*sys.exc_info()) != False:
-                # Either there are no global exception handlers, or none of
-                # them explicitly returned False to abort mainloop 
-                # termination.  So abort the main loop.
-                unhandled_exception = sys.exc_info()
-                break
-
-    if timeout is not None:
-        timeout.stop(timeout)
-
-    if initial_mainloop:
-        _set_running(False)
-
-    if unhandled_exception:
-        # We aborted the main loop due to an unhandled exception.  Now
-        # that we've cleaned up, we can reraise the exception.
-        type, value, tb = unhandled_exception
-        raise type, value, tb
+    try:
+        while condition() and not abort:
+            try:
+                notifier.step()
+            except Exception, e:
+                if signals['exception'].emit(*sys.exc_info()) != False:
+                    # Either there are no global exception handlers, or none of
+                    # them explicitly returned False to abort mainloop 
+                    # termination.  So abort the main loop.
+                    raise sys.exc_info()
+    finally:
+        # make sure we set mainloop status even for Exceptions we did not
+        # catch. E.g. in Python 2.5 SystemExit and KeyboardInterrupt do not
+        # inherit from Exception.
+        if timeout is not None:
+            timeout.stop(timeout)
+        if initial_mainloop:
+            _set_running(False)
 
 
 def run():
@@ -229,8 +223,7 @@ def is_shutting_down():
 
 def _set_running(status):
     """
-    Set running status. This function is only for the thread based notifier
-    since it does not call run().
+    Set mainloop running status.
     """
     global _running_pid
     if status:

@@ -115,7 +115,7 @@ class RemoteException(AsyncExceptionBase):
     traceback of the remote stack.
     """
     __metaclass__ = make_exception_class
-    def _get_header(self):
+    def _kaa_get_header(self):
         return "Exception during RPC call '%s'; remote traceback follows:" % self._kaa_exc_args[0]
 
 

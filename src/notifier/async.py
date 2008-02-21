@@ -58,29 +58,36 @@ def make_exception_class(name, bases, dict):
         from new import classobj
         dict.update({
             # Necessary for python 2.4
+            '__getattribute__': AsyncExceptionBase.__getattribute__,
             '__str__': AsyncExceptionBase.__str__
         })
-        e = classobj(name, (exc.__class__,) + bases, dict)(*exc.args)
-        e._set_info(exc.__class__.__name__, stack, *args)
+        e = classobj(name, bases + (exc.__class__,), dict)(exc, stack, *args)
         return e
 
     return create
 
 
-class AsyncExceptionBase(Exception):
+class AsyncExceptionBase(object):
     """
     Base class for asynchronous exceptions.  This class can be used to raise
     exceptions where the traceback object is not available.  The stack is
     stored (which is safe to reference and can be pickled) instead, and when
     AsyncExceptionBase instances are printed, the original traceback will
     be printed.
+
+    This class will proxy the given exception object.
     """
-    def _set_info(self, exc_name, stack, *args):
-        self._kaa_exc_name = exc_name
+    def __init__(self, exc, stack, *args):
+        self._kaa_exc = exc
         self._kaa_exc_stack = stack
         self._kaa_exc_args = args
 
-    def _get_header(self):
+    def __getattribute__(self, attr):
+        if attr.startswith('_kaa'):
+            return super(AsyncExceptionBase, self).__getattribute__(attr)
+        return getattr(self._kaa_exc, attr)
+        
+    def _kaa_get_header(self):
         return 'Exception raised asynchronously; traceback follows:'
 
     def __str__(self):
@@ -90,11 +97,11 @@ class AsyncExceptionBase(Exception):
         msg = (hasattr(self, 'message') and self.message) or \
               (self.args and isinstance(self.args[0], basestring) and self.args[0])
         if msg:
-            info = '%s: %s' % (self._kaa_exc_name, msg)
+            info = '%s: %s' % (self._kaa_exc.__class__.__name__, msg)
         else:
-            info = self._kaa_exc_name
+            info = self._kaa_exc.__class__.__name__
 
-        return self._get_header() + '\n' + dump + info
+        return self._kaa_get_header() + '\n' + dump + info
 
 
 class AsyncException(AsyncExceptionBase):

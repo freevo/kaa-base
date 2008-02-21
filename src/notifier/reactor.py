@@ -73,6 +73,15 @@ class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
         kaa.main.run()
 
 
+    def stop(self):
+        """
+        Stop the reactor by stopping both the kaa main loop and the
+        twisted reactor part.
+        """
+        kaa.main.stop()
+        super(KaaReactor,self).stop()
+
+
 def install():
     """
     Configure the twisted mainloop to be run using the kaa reactor.

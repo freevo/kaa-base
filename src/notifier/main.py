@@ -161,13 +161,13 @@ def stop():
     """
     global _shutting_down
 
+    if _shutting_down:
+        return
+
     if is_running():
         # notifier loop still running, send system exit
         log.info('Stop notifier loop')
-        raise SystemExit
-
-    if _shutting_down:
-        return
+        notifier.shutdown()
 
     _shutting_down = True
 
@@ -253,7 +253,9 @@ def _shutdown_check(*args):
 # catch SIGTERM and SIGINT if possible for a clean shutdown
 if threading.enumerate()[0] == threading.currentThread():
     def signal_handler(*args):
-        sys.exit(0)
+        # use the preferred stop function for the notifier. Most notifier
+        # backends only call sys.exit(0). Some, like twisted need specific code.
+        notifier.shutdown()
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
 else:

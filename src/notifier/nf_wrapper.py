@@ -126,6 +126,9 @@ timer_add = _Wrapper('timer_add')
 socket_remove = _Wrapper('socket_remove')
 socket_add = _Wrapper('socket_add')
 
+def shutdown():
+    # prefered way to shut down the system
+    sys.exit(0)
 
 # socket wrapper
 
@@ -149,6 +152,7 @@ def init( module = None, force_internal=False, **options ):
     global nf_socket_remove
     global nf_socket_add
     global nf_conditions
+    global shutdown
 
     if not isinstance(timer_add, _Wrapper):
         raise RuntimeError('notifier already initialized')
@@ -156,7 +160,7 @@ def init( module = None, force_internal=False, **options ):
     if not 'recursive_depth' in options:
         # default value of 2 is not enough when using async yield stuff
         options['recursive_depth'] = 5
-        
+
     try:
         if force_internal:
             # pynotifier is not allowed
@@ -203,6 +207,11 @@ def init( module = None, force_internal=False, **options ):
     dispatcher_remove = notifier.dispatcher_remove
 
     step = notifier.step
+
+    if module == 'twisted':
+        # special stop handling for twisted
+        from twisted.internet import reactor
+        shutdown = reactor.stop
 
 
 def _shutdown_weakref_destroyed():

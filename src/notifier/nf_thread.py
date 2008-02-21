@@ -37,7 +37,7 @@ import logging
 
 # kaa.notifier imports
 import kaa
-import nf_wrapper
+import nf_wrapper as notifier
 from main import _set_running as set_mainloop_running
 
 # get logging object
@@ -49,10 +49,10 @@ class ThreadLoop(threading.Thread):
     """
     def __init__(self, interleave, shutdown = None):
         super(ThreadLoop, self).__init__()
+        if shutdown is not None:
+            # special shutdown function
+            notifier.shutdown = shutdown
         self._call_mainloop = interleave
-        self._mainloop_shutdown = kaa.main.stop
-        if shutdown:
-            self._mainloop_shutdown = shutdown
         self._lock = threading.Semaphore(0)
         self.sleeping = False
 
@@ -63,10 +63,10 @@ class ThreadLoop(threading.Thread):
         """
         try:
             try:
-                nf_wrapper.step(sleep = False)
+                notifier.step(sleep = False)
             except (KeyboardInterrupt, SystemExit):
                 set_mainloop_running(False)
-                self._mainloop_shutdown()
+                notifier.shutdown()
         finally:
             self._lock.release()
 
@@ -79,7 +79,7 @@ class ThreadLoop(threading.Thread):
         try:
             while True:
                 self.sleeping = True
-                nf_wrapper.step(simulate = True)
+                notifier.step(simulate = True)
                 self.sleeping = False
                 if not kaa.main.is_running():
                     break
@@ -96,7 +96,7 @@ class ThreadLoop(threading.Thread):
             # should never happen because we call no callbacks.
             log.warning('thread loop stopped')
             set_mainloop_running(False)
-            self._call_mainloop(self._mainloop_shutdown)
+            self._call_mainloop(self.notifier.shutdown)
 
 
     def stop(self):
@@ -147,13 +147,17 @@ def init( module, handler = None, shutdown = None, **options ):
         loop = ThreadLoop(handler, shutdown)
     else:
         raise RuntimeError('unknown notifier module %s', module)
-    nf_wrapper.init( 'generic', force_internal=True, **options )
+    notifier.init( 'generic', force_internal=True, **options )
+    if shutdown is not None:
+        # set specific shutdown function
+        notifier.shutdown = shutdown
     # set main thread and init thread pipe
     kaa.main.set_as_mainthread()
     # adding a timer or socket is not thread safe in general but
     # an additional wakeup we don't need does not hurt. And in
     # simulation mode the step function does not modify the
     # internal variables.
-    nf_wrapper.timer_add = Wakeup(loop, nf_wrapper.timer_add)
-    nf_wrapper.socket_add = Wakeup(loop, nf_wrapper.socket_add)
+    notifier.timer_add = Wakeup(loop, notifier.timer_add)
+    notifier.socket_add = Wakeup(loop, notifier.socket_add)
     loop.start()
+    return loop

@@ -35,6 +35,9 @@ from kaa.notifier import *
 # Import the two important strutils functions
 from strutils import str_to_unicode, unicode_to_str
 
+# add interface and implements
+from utils import add_interface, implements
+
 # Add tempfile support.
 from tmpfile import tempfile
 

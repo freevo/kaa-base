@@ -179,7 +179,7 @@ def is_running(name):
 
 def set_running(name, modify = True):
     """
-    Set this program as running with the given name.  If modify is True, 
+    Set this program as running with the given name.  If modify is True,
     the process name is updated as described in set_process_name().
     """
     cmdline = open('/proc/%s/cmdline' % os.getpid()).readline()
@@ -195,7 +195,7 @@ def set_process_name(name):
     """
     On Linux systems later than 2.6.9, this function sets the process name as it
     appears in ps, and so that it can be found with killall.
-    
+
     Note: name will be truncated to the cumulative length of the original
     process name and all its arguments; once updated, passed arguments will no
     longer be visible.
@@ -237,7 +237,7 @@ class Singleton(object):
 
         def __call__(self, *args, **kwargs):
             return getattr(self._singleton(), self._name)(*args, **kwargs)
-        
+
 
     def __init__(self, classref):
         self._singleton = None
@@ -256,7 +256,7 @@ class Singleton(object):
 
 class property(property):
     """
-    Replaces built-in property function to extend it as per 
+    Replaces built-in property function to extend it as per
     http://bugs.python.org/issue1416
     """
     def __init__(self, fget = None, fset = None, fdel = None, doc = None):
@@ -281,3 +281,45 @@ class property(property):
 
     def getter(self, fget):
         return self._add_doc(property(fget, self.fset, self.fdel), fget.__doc__ or self.fget.__doc__)
+
+
+# list of interface definitions
+_interfaces = {}
+
+class implements(object):
+    """
+    Metaclass class generator that will inherit the object from all interfaces
+    defined on __init__. This can be used to inherit from a class which is not
+    visible when the base class is defined.
+    """
+    def __init__(self, *cls):
+        self._cls = cls
+
+    def __call__(self, name, bases, dict):
+        """
+        The metadata class
+        """
+        def create(*args, **kwargs):
+            inherit = list(bases)
+            for interface in self._cls:
+                if not interface in _interfaces:
+                    raise AttributeError('%s is no valid interface' % interface)
+                inherit.append(_interfaces[interface])
+            from new import classobj
+            if object in inherit:
+                inherit.remove(object)
+            obj = classobj(name, tuple(inherit), dict)(*args, **kwargs)
+            for interface in self._cls:
+                # call hidden __interface__ functions for __init__
+                func = getattr(_interfaces[interface], '__interface__', None)
+                if func is not None:
+                    func(obj)
+            return obj
+
+        return create
+
+def add_interface(cls, name):
+    """
+    Add a class definition as interface with the given name.
+    """
+    _interfaces[name] = cls

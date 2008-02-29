@@ -286,37 +286,26 @@ class property(property):
 # list of interface definitions
 _interfaces = {}
 
-class implements(object):
+def implements(*interfaces):
     """
     Metaclass class generator that will inherit the object from all interfaces
     defined on __init__. This can be used to inherit from a class which is not
     visible when the base class is defined.
     """
-    def __init__(self, *cls):
-        self._cls = cls
-
-    def __call__(self, name, bases, dict):
-        """
-        The metadata class
-        """
-        def create(*args, **kwargs):
+    class MetaClass(type):
+        def __new__(cls, name, bases, dict):
+            """
+            The metadata class
+            """
             inherit = list(bases)
-            for interface in self._cls:
+            for interface in interfaces:
                 if not interface in _interfaces:
                     raise AttributeError('%s is no valid interface' % interface)
                 inherit.append(_interfaces[interface])
-            from new import classobj
             if object in inherit:
                 inherit.remove(object)
-            obj = classobj(name, tuple(inherit), dict)(*args, **kwargs)
-            for interface in self._cls:
-                # call hidden __interface__ functions for __init__
-                func = getattr(_interfaces[interface], '__interface__', None)
-                if func is not None:
-                    func(obj)
-            return obj
-
-        return create
+            return type.__new__(cls, name, tuple(inherit), dict)
+    return MetaClass
 
 def add_interface(cls, name):
     """

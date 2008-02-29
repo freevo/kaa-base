@@ -6,9 +6,7 @@ import kaa
 
 class FooInterface(object):
 
-    def __interface__(self):
-        # __init__ function for interfaces, no args allowed
-        # will be called after __init__ of the real class
+    def init_FooInterface(self):
         print 'Init FooInterface:', self.get_value()
 
     def get_value(self):
@@ -24,6 +22,9 @@ class FooInterface(object):
 
     def func3(self):
         raise NotImplementedError
+
+    def x(self):
+        print 2
 
 kaa.add_interface(FooInterface, 'test.Foo')
 
@@ -42,6 +43,10 @@ kaa.add_interface(BarInterface, 'bar')
 class MyObject(object):
     __metaclass__  = kaa.implements('test.Foo', 'bar')
 
+    def __init__(self):
+        print 'Init MyObject'
+        self.init_FooInterface()
+        
     def get_value(self):
         # required by test.Foo
         return 1
@@ -49,7 +54,12 @@ class MyObject(object):
     def func1(self, string):
         print string
 
+    def x(self):
+        print 1
+        super(MyObject, self).x()
+
 p = MyObject()  # print Init FooInterface: 1
+p.x()           # print 1 and 2
 p.func1('x')    # --> print x
 p.is_also_foo() # --> print True
 p.func2()       # --> print already defined

@@ -26,14 +26,14 @@ class FooInterface(object):
     def x(self):
         print 2
 
-kaa.add_interface(FooInterface, 'test.Foo')
+kaa.utils.add_interface(FooInterface, 'test.Foo')
 
 class BarInterface(object):
 
     def is_also_foo(self):
         print isinstance(self, FooInterface)
 
-kaa.add_interface(BarInterface, 'bar')
+kaa.utils.add_interface(BarInterface, 'bar')
 
 
 #
@@ -41,7 +41,10 @@ kaa.add_interface(BarInterface, 'bar')
 #
 
 class MyObject(object):
-    __metaclass__  = kaa.implements('test.Foo', 'bar')
+
+    # Note: the interfaces MUST be added up to this point or it
+    # will crash even if MyObject is not created!
+    __metaclass__  = kaa.utils.implements('test.Foo', 'bar')
 
     def __init__(self):
         print 'Init MyObject'

@@ -281,34 +281,3 @@ class property(property):
 
     def getter(self, fget):
         return self._add_doc(property(fget, self.fset, self.fdel), fget.__doc__ or self.fget.__doc__)
-
-
-# list of interface definitions
-_interfaces = {}
-
-def implements(*interfaces):
-    """
-    Metaclass class generator that will inherit the object from all interfaces
-    defined on __init__. This can be used to inherit from a class which is not
-    visible when the base class is defined.
-    """
-    class MetaClass(type):
-        def __new__(cls, name, bases, dict):
-            """
-            The metadata class
-            """
-            inherit = list(bases)
-            for interface in interfaces:
-                if not interface in _interfaces:
-                    raise AttributeError('%s is no valid interface' % interface)
-                inherit.append(_interfaces[interface])
-            if object in inherit:
-                inherit.remove(object)
-            return type.__new__(cls, name, tuple(inherit), dict)
-    return MetaClass
-
-def add_interface(cls, name):
-    """
-    Add a class definition as interface with the given name.
-    """
-    _interfaces[name] = cls

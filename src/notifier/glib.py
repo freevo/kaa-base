@@ -88,7 +88,6 @@ class Wrapper(object):
         loop = gobject.main_context_default()
         while not self.stopped:
             loop.iteration()
-        print 'thread done'
         self._finished_event.set()
 
     def add(self, callback):

@@ -58,7 +58,6 @@ import logging
 import fcntl
 import socket
 import errno
-import thread
 import types
 
 # notifier imports
@@ -129,20 +128,74 @@ def threaded(name=None, priority=0, async=True):
     return decorator
 
 
-def synchronized(lock=threading.Lock()):
+class synchronized(object):
     """
-    Synchronization decorator. This decorator does not work
-    together with coroutines (yet).
+    synchronized decorator and with statement similar to synchronized
+    in Java. When decorating a non-member function, a lock or any class
+    inheriting from object must be provided.
     """
-    def decorator(f):
-        def newFunction(*args, **kw):
+    def __init__(self, obj=None):
+        if obj is None:
+            # decorator in classes
+            self._lock = None
+            return
+        if isinstance(obj, threading._RLock):
+            # decorator from functions
+            self._lock = obj
+            return
+        # with statement or function decorator with object
+        if not hasattr(obj, '_kaa_synchronized_lock'):
+            obj._kaa_synchronized_lock = threading.RLock()
+        self._lock = obj._kaa_synchronized_lock
+
+    def __enter__(self):
+        """
+        with statement enter
+        """
+        if self._lock is None:
+            raise RuntimeError('synchronized in with needs a parameter')
+        self._lock.acquire()
+        return self._lock
+
+    def __exit__(self, type, value, traceback):
+        """
+        with statement exit
+        """
+        self._lock.release()
+        return False
+
+    def __call__(self, func):
+        """
+        decorator init
+        """
+        def call(*args, **kwargs):
+            """
+            decorator call
+            """
+            lock = self._lock
+            if lock is None:
+                # Try to find out if the function is actually an instance method.
+                # The decorator only sees a function object, even for methods, so
+                # this kludge compares the code object of call (this wrapper)
+                # with the code object of the first argument's attribute of the
+                # function's name.  If they're the same, then we must be decorating
+                # a method, and we can attach the timer object to the instance
+                # instead of the function.
+                if args and call.func_code == \
+                       getattr(getattr(args[0], func.func_name, None), 'func_code', None):
+                    # first parameter is self, link lock to self
+                    obj = args[0]
+                else:
+                    obj = func
+                if not hasattr(obj, '_kaa_synchronized_lock'):
+                    obj._kaa_synchronized_lock = threading.RLock()
+                lock = obj._kaa_synchronized_lock
             lock.acquire()
             try:
-                return f(*args, **kw)
+                return func(*args, **kwargs)
             finally:
                 lock.release()
-        return newFunction
-    return decorator
+        return call
 
 
 def is_mainthread():
@@ -371,7 +424,7 @@ class NamedThreadCallback(Callback):
 
     def _create_job(self, *args, **kwargs):
         cb = Callback._get_callback(self)
-        job = thread.ThreadInProgress(cb, *args, **kwargs)
+        job = ThreadInProgress(cb, *args, **kwargs)
         job.priority = self.priority
         if not _threads.has_key(self._thread):
             _threads[self._thread] = _JobServer(self._thread)

@@ -43,7 +43,7 @@ from async import TimeoutException, InProgress, InProgressCallback
 
 # Thread callbacks, helper functions and decorators
 from thread import MainThreadCallback, NamedThreadCallback, ThreadCallback, \
-     is_mainthread, threaded, MAINTHREAD
+     is_mainthread, threaded, MAINTHREAD, synchronized
 
 # Timer classes and decorators
 from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, \

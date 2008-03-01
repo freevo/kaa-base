@@ -48,7 +48,7 @@
 
 __all__ = [ 'MainThreadCallback', 'ThreadCallback', 'is_mainthread', 
             'wakeup', 'set_as_mainthread', 'create_thread_notifier_pipe',
-            'threaded', 'MAINTHREAD' ]
+            'threaded', 'MAINTHREAD', 'synchronized' ]
 
 # python imports
 import sys
@@ -126,6 +126,22 @@ def threaded(name=None, priority=0, async=True):
             pass
         return newfunc
 
+    return decorator
+
+
+def synchronized(lock=threading.Lock()):
+    """
+    Synchronization decorator. This decorator does not work
+    together with coroutines (yet).
+    """
+    def decorator(f):
+        def newFunction(*args, **kw):
+            lock.acquire()
+            try:
+                return f(*args, **kw)
+            finally:
+                lock.release()
+        return newFunction
     return decorator
 
 

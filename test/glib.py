@@ -19,7 +19,6 @@ class Test():
         print 'go'
         
 if 1:
-    kaa.main.select_notifier('generic')
     kaa.gobject_set_threaded()
 else:
     kaa.main.select_notifier('gtk')

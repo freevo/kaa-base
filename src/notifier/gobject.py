@@ -43,12 +43,15 @@ __all__ = [ 'GOBJECT', 'gobject_set_threaded' ]
 # python imports
 import threading
 
+# get import helper since this file conflicts with the
+# global gobject module.
+from kaa.utils import importhelper
 try:
     # try to import gobject
-    import gobject
+    gobject = importhelper('gobject')
 except ImportError:
     gobject = None
-
+    
 # get notifier thread module
 import thread as thread_support
 

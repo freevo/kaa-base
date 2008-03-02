@@ -61,5 +61,5 @@ from coroutine import NotFinished, coroutine
 # process management
 from popen import Process
 
-# special glib thread support
-from glib import GOBJECT, gobject_set_threaded
+# special gobject thread support
+from gobject import GOBJECT, gobject_set_threaded

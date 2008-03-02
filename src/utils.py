@@ -294,7 +294,7 @@ def importhelper(name):
         return sys.modules[name]
     except KeyError:
         pass
-    fp, pathname, description = imp.find_module(name)
+    fp, pathname, description = imp.find_module(name, sys.path[1:])
     try:
         return imp.load_module(name, fp, pathname, description)
     finally:

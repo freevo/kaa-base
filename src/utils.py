@@ -34,6 +34,7 @@ import sys
 import os
 import stat
 import time
+import imp
 import logging
 
 import kaa
@@ -281,3 +282,22 @@ class property(property):
 
     def getter(self, fget):
         return self._add_doc(property(fget, self.fset, self.fdel), fget.__doc__ or self.fget.__doc__)
+
+
+def importhelper(name):
+    """
+    Help to import modules with name conflict. E.g. thread.py in notifier
+    uses importhelper('thread').
+    """
+    # Fast path: see if the module has already been imported.
+    try:
+        return sys.modules[name]
+    except KeyError:
+        pass
+    fp, pathname, description = imp.find_module(name)
+    try:
+        return imp.load_module(name, fp, pathname, description)
+    finally:
+        # Since we may exit via an exception, close fp explicitly.
+        if fp:
+            fp.close()

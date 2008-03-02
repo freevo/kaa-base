@@ -66,6 +66,10 @@ from callback import Callback
 from signals import Signal
 from async import InProgress
 
+# import python thread file
+from kaa.utils import importhelper
+thread = importhelper('thread')
+
 # get logging object
 log = logging.getLogger('notifier')
 
@@ -139,7 +143,7 @@ class synchronized(object):
             # decorator in classes
             self._lock = None
             return
-        if isinstance(obj, threading._RLock):
+        if isinstance(obj, (threading._RLock, thread.LockType)):
             # decorator from functions
             self._lock = obj
             return

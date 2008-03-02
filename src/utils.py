@@ -284,10 +284,10 @@ class property(property):
         return self._add_doc(property(fget, self.fset, self.fdel), fget.__doc__ or self.fget.__doc__)
 
 
-def importhelper(name):
+def sysimport(name):
     """
     Help to import modules with name conflict. E.g. thread.py in notifier
-    uses importhelper('thread').
+    uses sysimport('thread').
     """
     # Fast path: see if the module has already been imported.
     try:

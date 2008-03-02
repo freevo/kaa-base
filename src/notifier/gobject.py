@@ -45,10 +45,10 @@ import threading
 
 # get import helper since this file conflicts with the
 # global gobject module.
-from kaa.utils import importhelper
+from kaa.utils import sysimport
 try:
     # try to import gobject
-    gobject = importhelper('gobject')
+    gobject = sysimport('gobject')
 except ImportError:
     gobject = None
     

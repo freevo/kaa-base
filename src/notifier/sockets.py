@@ -303,13 +303,19 @@ class Socket(object):
         return self._async_read(self._readline_signal)
 
 
+    def _accept(self):
+        """
+        Accept a new connection and return a new Socket object.
+        """
+        sock, addr = self._socket.accept()
+        client_socket = Socket()
+        client_socket.wrap(sock, addr)
+        self.signals['new-client'].emit(client_socket)
+
+
     def _handle_read(self):
         if self._listening:
-            sock, addr = self._socket.accept()
-            client_socket = Socket()
-            client_socket.wrap(sock, addr)
-            self.signals['new-client'].emit(client_socket)
-            return
+            return self._accept()
 
         try:
             data = self._socket.recv(1024*1024)

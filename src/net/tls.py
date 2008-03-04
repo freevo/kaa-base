@@ -28,6 +28,9 @@
 #
 # -----------------------------------------------------------------------------
 
+# python imports
+import logging
+
 # import some classes to the namespace of this module
 from tlslite.api import X509, X509CertChain, parsePEMKey, Session
 
@@ -36,6 +39,15 @@ import tlslite.api
 
 # kaa imports
 import kaa
+
+# exceptions from tlslite
+TLSAbruptCloseError = tlslite.api.TLSAbruptCloseError
+TLSLocalAlert = tlslite.api.TLSLocalAlert
+TLSRemoteAlert = tlslite.api.TLSRemoteAlert
+
+# get logging object
+log = logging.getLogger('tls')
+
 
 class TLSConnection(tlslite.api.TLSConnection):
     """
@@ -98,7 +110,7 @@ class TlsSocket(kaa.Socket):
     def __init__(self):
         kaa.Socket.__init__(self)
         self.signals['tls'] = kaa.Signal()
-
+        self._handshake = False
 
     def _accept(self):
         """
@@ -128,6 +140,21 @@ class TlsSocket(kaa.Socket):
         if not self._rmon.active():
             self._rmon.register(self._socket.fileno(), kaa.IO_READ)
 
+    def write(self, data):
+        if self._handshake:
+            # do not send data while doing a handshake
+            return self._write_buffer.append(data)
+        return super(TlsSocket, self).write(data)
+        
+    def _handle_read(self):
+        try:
+            return super(TlsSocket, self)._handle_read()
+        except TLSAbruptCloseError, e:
+            log.error('TLSAbruptCloseError')
+            self._read_signal.emit(None)
+            self._readline_signal.emit(None)
+            return self.close(immediate=True, expected=False)
+
     @kaa.coroutine()
     def starttls_client(self, session=None):
         """
@@ -135,15 +162,18 @@ class TlsSocket(kaa.Socket):
         Note: this function DOES NOT check the server key based on the
         key chain yet.
         """
-        if session is None:
-            session = Session()
-        c = TLSConnection(self._socket)
-        self._rmon.unregister()
-        yield c.handshakeClientCert(session=session)
-        self._socket = c
-        self.signals['tls'].emit()
-        self._rmon.register(self._socket.fileno(), kaa.IO_READ)
-
+        try:
+            self._handshake = True
+            if session is None:
+                session = Session()
+            c = TLSConnection(self._socket)
+            self._rmon.unregister()
+            yield c.handshakeClientCert(session=session)
+            self._socket = c
+            self.signals['tls'].emit()
+            self._rmon.register(self._socket.fileno(), kaa.IO_READ)
+        finally:
+            self._handshake = False
 
     @kaa.coroutine()
     def starttls_server(self, key, cert_chain, client_cert=None):
@@ -151,14 +181,17 @@ class TlsSocket(kaa.Socket):
         Start a certificate-based handshake in the role of a TLS server.
         Note: this function DOES NOT check the client key if requested.
         """
-        c = TLSConnection(self._socket)
-        self._rmon.unregister()
- 	yield c.handshakeServer(
-            privateKey=key, certChain=cert_chain, reqCert=client_cert)
-        self._socket = c
-        self.signals['tls'].emit()
-        self._rmon.register(self._socket.fileno(), kaa.IO_READ)
-
+        try:
+            self._handshake = True
+            c = TLSConnection(self._socket)
+            self._rmon.unregister()
+            yield c.handshakeServer(
+                privateKey=key, certChain=cert_chain, reqCert=client_cert)
+            self._socket = c
+            self.signals['tls'].emit()
+            self._rmon.register(self._socket.fileno(), kaa.IO_READ)
+        finally:
+            self._handshake = False
 
 def loadkey(filename, private=False):
     """

@@ -87,9 +87,8 @@ class Socket(object):
     Notifier-aware socket class.
     """
 
-    signals = Signals('closed', 'read', 'readline', 'new-client')
-
     def __init__(self):
+        self.signals = Signals('closed', 'read', 'readline', 'new-client')
         self._socket = None
         self._write_buffer = []
         self._addr = None
@@ -221,6 +220,9 @@ class Socket(object):
 
         sock, addr = self._make_socket(bind_info)
         sock.bind(addr)
+        if addr[1] == 0:
+            # get real port used
+            addr = (addr[0], sock.getsockname()[1])
         sock.listen(qlen)
         self._listening = True
         self.wrap(sock, addr)

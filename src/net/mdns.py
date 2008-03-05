@@ -9,6 +9,10 @@
 # mdns implementations are not supported yet but should be added later to
 # support other platforms like OSX.
 #
+# TODO: Update service txt record. There is a function UpdateServiceTxt and
+# it looks like it does something, but the service browser does not have a
+# signal to detect this.
+#
 # -----------------------------------------------------------------------------
 # Copyright (C) 2008 Dirk Meyer
 #
@@ -99,12 +103,18 @@ class Avahi(object):
         self._bus = None
         self._services = {}
         self._announce = None
-
+        self._provided = {}
+        self._nextid = 0
+        self._sync_running = False
+        self._sync_required = False
+        
     @kaa.threaded(kaa.GOBJECT)
     def provide(self, name, type, port, txt):
         """
         Provide a service with the given name and type listening on the given
-        port with additional information in the txt record.
+        port with additional information in the txt record. This function returns
+        an InProgress object with the id of the service to remove the service
+        later.
         """
         if self._bus is None:
             self._dbus_connect()
@@ -112,7 +122,8 @@ class Avahi(object):
             self._announce = dbus.Interface(
                 self._bus.get_object( avahi.DBUS_NAME, self._avahi.EntryGroupNew()),
                 avahi.DBUS_INTERFACE_ENTRY_GROUP)
-        self._announce.AddService(
+        self._nextid += 1
+        self._provided[self._nextid] = [
             avahi.IF_UNSPEC,            # interface
             avahi.PROTO_UNSPEC,         # protocol
             0,                          # flags
@@ -120,9 +131,56 @@ class Avahi(object):
             "",                         # domain
             "",                         # host
             dbus.UInt16(port),          # port
-            avahi.string_array_to_txt_array([ '%s=%s' % t for t in txt.items() ]))
-        self._announce.Commit()
+            avahi.string_array_to_txt_array([ '%s=%s' % t for t in txt.items() ]),
+        ]
+        self._sync_required = True
+        self._sync()
+        return self._nextid
 
+    @kaa.threaded(kaa.GOBJECT)
+    def remove(self, id):
+        """
+        Remove a service.
+        """
+        if id in self._provided:
+            self._provided.pop(id)
+            self._sync_required = True
+            self._sync()
+        
+    def _sync(self):
+        """
+        Sync providing service list to avahi. This is an internal function that
+        has to be called from a function running in the GOBJECT thread.
+        """
+        # return if nothing to do
+        if self._sync_running or not self._sync_required:
+            return
+        # dbus callbacks to block sync
+        callbacks = dict(
+            reply_handler=self._sync_finished,
+            error_handler=self._sync_finished
+        )
+        self._sync_running = True
+        self._sync_required = False
+        if not self._provided:
+            self._announce.Reset(**callbacks)
+            return
+        self._announce.Reset()
+        for service in self._provided.values():
+            self._announce.AddService(*service)
+        self._announce.Commit(**callbacks)
+
+    def _sync_finished(self, error=None):
+        """
+        Dbus event when sync is finished. This is an internal function that
+        has to be called from a function running in the GOBJECT thread.
+        """
+        if error:
+            # something went wrong
+            log.error(error)
+        self._sync_running = False
+        self._sync()
+            
     def get_type(self, service):
         """
         Get a ServiceList object for the given type.
@@ -142,7 +200,7 @@ class Avahi(object):
         self._avahi = dbus.Interface(
             self._bus.get_object( avahi.DBUS_NAME, avahi.DBUS_PATH_SERVER ),
             avahi.DBUS_INTERFACE_SERVER )
-
+        
     @kaa.threaded(kaa.GOBJECT)
     def _service_add_browser(self, service):
         """
@@ -162,7 +220,7 @@ class Avahi(object):
                                  avahi.DBUS_INTERFACE_SERVICE_BROWSER)
         browser.connect_to_signal('ItemNew', self._service_new)
         browser.connect_to_signal('ItemRemove', self._service_remove)
-
+        
     @kaa.threaded(kaa.MAINTHREAD)
     def _service_remove(self, interface, protocol, name, type, domain, flags):
         """
@@ -213,3 +271,4 @@ mdns = kaa.utils.Singleton(Avahi)
 # create functions to use from the outside
 provide = mdns.provide
 get_type = mdns.get_type
+remove = mdns.remove

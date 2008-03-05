@@ -18,10 +18,14 @@ def added(service, type):
 def removed(service):
     print 'lost', service
 
+def provide_callback(id, sec):
+    kaa.OneShotTimer(mdns.remove, id).start(sec)
+
 if len(sys.argv) > 1:
     # go into provide mode
     # mdns.py ServiceName Port
-    mdns.provide(sys.argv[1], '_test._tcp', int(sys.argv[2]), {'foo': 'bar'})
+    mdns.provide(sys.argv[1], '_test._tcp', int(sys.argv[2]), {'foo': 'bar'}).connect(provide_callback, 2)
+    mdns.provide(sys.argv[1] + 'x', '_test._tcp', int(sys.argv[2]), {'foo': 'bar'}).connect(provide_callback, 5)
 else:
     # go into listen mode
     # monitor printer

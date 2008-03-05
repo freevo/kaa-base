@@ -6,6 +6,8 @@ Release Notes, see ChangeLog for a detailed list of changes.
   API_CHANGES.txt for details. The API should be stable now.
 * synchronized decorator
 * Support to run a glib mainloop in an extra thread
+* TLS socket support using tlslite
+* Multicast DNS service discovery support using Avahi Dbus bindings
 
 
 0.3.0, 2008-02-04

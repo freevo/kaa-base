@@ -102,26 +102,17 @@ class Avahi(object):
     def __init__(self):
         self._bus = None
         self._services = {}
-        self._announce = None
         self._provided = {}
         self._nextid = 0
         self._sync_running = False
         self._sync_required = False
         
-    @kaa.threaded(kaa.GOBJECT)
     def provide(self, name, type, port, txt):
         """
         Provide a service with the given name and type listening on the given
         port with additional information in the txt record. This function returns
-        an InProgress object with the id of the service to remove the service
-        later.
+        the id of the service to remove the service later.
         """
-        if self._bus is None:
-            self._dbus_connect()
-        if self._announce is None:
-            self._announce = dbus.Interface(
-                self._bus.get_object( avahi.DBUS_NAME, self._avahi.EntryGroupNew()),
-                avahi.DBUS_INTERFACE_ENTRY_GROUP)
         self._nextid += 1
         self._provided[self._nextid] = [
             avahi.IF_UNSPEC,            # interface
@@ -137,7 +128,6 @@ class Avahi(object):
         self._sync()
         return self._nextid
 
-    @kaa.threaded(kaa.GOBJECT)
     def remove(self, id):
         """
         Remove a service.
@@ -147,40 +137,6 @@ class Avahi(object):
             self._sync_required = True
             self._sync()
         
-    def _sync(self):
-        """
-        Sync providing service list to avahi. This is an internal function that
-        has to be called from a function running in the GOBJECT thread.
-        """
-        # return if nothing to do
-        if self._sync_running or not self._sync_required:
-            return
-        # dbus callbacks to block sync
-        callbacks = dict(
-            reply_handler=self._sync_finished,
-            error_handler=self._sync_finished
-        )
-        self._sync_running = True
-        self._sync_required = False
-        if not self._provided:
-            self._announce.Reset(**callbacks)
-            return
-        self._announce.Reset()
-        for service in self._provided.values():
-            self._announce.AddService(*service)
-        self._announce.Commit(**callbacks)
-
-    def _sync_finished(self, error=None):
-        """
-        Dbus event when sync is finished. This is an internal function that
-        has to be called from a function running in the GOBJECT thread.
-        """
-        if error:
-            # something went wrong
-            log.error(error)
-        self._sync_running = False
-        self._sync()
-            
     def get_type(self, service):
         """
         Get a ServiceList object for the given type.
@@ -200,7 +156,47 @@ class Avahi(object):
         self._avahi = dbus.Interface(
             self._bus.get_object( avahi.DBUS_NAME, avahi.DBUS_PATH_SERVER ),
             avahi.DBUS_INTERFACE_SERVER )
+        self._entrygroup = dbus.Interface(
+            self._bus.get_object( avahi.DBUS_NAME, self._avahi.EntryGroupNew()),
+            avahi.DBUS_INTERFACE_ENTRY_GROUP)
         
+    @kaa.threaded(kaa.GOBJECT)
+    def _sync(self):
+        """
+        Sync providing service list to avahi. This is an internal function that
+        has to be called from a function running in the GOBJECT thread.
+        """
+        if self._bus is None:
+            self._dbus_connect()
+        # return if nothing to do
+        if self._sync_running or not self._sync_required:
+            return
+        # dbus callbacks to block sync
+        callbacks = dict(
+            reply_handler=self._sync_finished,
+            error_handler=self._sync_finished
+        )
+        self._sync_running = True
+        self._sync_required = False
+        if not self._provided:
+            self._entrygroup.Reset(**callbacks)
+            return
+        self._entrygroup.Reset()
+        for service in self._provided.values():
+            self._entrygroup.AddService(*service)
+        self._entrygroup.Commit(**callbacks)
+
+    def _sync_finished(self, error=None):
+        """
+        Dbus event when sync is finished. This is an internal function that
+        has to be called from a function running in the GOBJECT thread.
+        """
+        if error:
+            # something went wrong
+            log.error(error)
+        self._sync_running = False
+        self._sync()
+            
     @kaa.threaded(kaa.GOBJECT)
     def _service_add_browser(self, service):
         """

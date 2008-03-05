@@ -24,8 +24,12 @@ def provide_callback(id, sec):
 if len(sys.argv) > 1:
     # go into provide mode
     # mdns.py ServiceName Port
-    mdns.provide(sys.argv[1], '_test._tcp', int(sys.argv[2]), {'foo': 'bar'}).connect(provide_callback, 2)
-    mdns.provide(sys.argv[1] + 'x', '_test._tcp', int(sys.argv[2]), {'foo': 'bar'}).connect(provide_callback, 5)
+    s1 = mdns.provide(sys.argv[1], '_test._tcp', int(sys.argv[2]), {'foo': 'bar'})
+    s2 = mdns.provide(sys.argv[1] + 'x', '_test._tcp', int(sys.argv[2]), {'foo': 'bar'})
+
+    if 1:
+        kaa.OneShotTimer(mdns.remove, s1).start(5)
+        kaa.OneShotTimer(mdns.remove, s2).start(10)
 else:
     # go into listen mode
     # monitor printer

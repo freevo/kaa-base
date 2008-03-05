@@ -31,8 +31,8 @@
 # python imports
 import logging
 
-# import some classes to the namespace of this module
-from tlslite.api import X509, X509CertChain, parsePEMKey, Session
+# import tlslite API to the namespace of this module
+from tlslite.api import *
 
 # import tlslite.api to overwrite TLSConnection
 import tlslite.api
@@ -71,7 +71,6 @@ class TLSConnection(tlslite.api.TLSConnection):
         except StopIteration:
             pass
 
-    @kaa.coroutine()
     def handshakeClientCert(self, certChain=None, privateKey=None, session=None,
                             settings=None, checker=None):
         """
@@ -80,9 +79,8 @@ class TLSConnection(tlslite.api.TLSConnection):
         handshake = tlslite.api.TLSConnection.handshakeClientCert(
             self, certChain=certChain, privateKey=privateKey, session=session,
             settings=settings, checker=checker, async=True)
-        yield self._iterate_handshake(handshake)
+        return self._iterate_handshake(handshake)
 
-    @kaa.coroutine()
     def handshakeServer(self, sharedKeyDB=None, verifierDB=None, certChain=None,
                         privateKey=None, reqCert=None, sessionCache=None,
                         settings=None, checker=None):
@@ -92,7 +90,7 @@ class TLSConnection(tlslite.api.TLSConnection):
         handshake = tlslite.api.TLSConnection.handshakeServerAsync(
             self, sharedKeyDB, verifierDB, certChain, privateKey, reqCert,
             sessionCache, settings, checker)
-        yield self._iterate_handshake(handshake)
+        return self._iterate_handshake(handshake)
 
     def fileno(self):
         """
@@ -103,7 +101,7 @@ class TLSConnection(tlslite.api.TLSConnection):
 
 
 
-class TlsSocket(kaa.Socket):
+class TLSSocket(kaa.Socket):
     """
     Special version of kaa.Socket with TLS support.
     """
@@ -117,12 +115,12 @@ class TlsSocket(kaa.Socket):
         Accept a new connection and return a new Socket object.
         """
         sock, addr = self._socket.accept()
-        client_socket = TlsSocket()
+        client_socket = TLSSocket()
         client_socket.wrap(sock, addr)
         self.signals['new-client'].emit(client_socket)
 
     def _update_read_monitor(self, signal = None, change = None):
-        # This function is broken in TlsSocket for two reasons:
+        # This function is broken in TLSSocket for two reasons:
         # 1. auto-reconnect while doing a tls handshake is wrong
         # 2. Passing self._socket to register does not work,
         #    self._socket.fileno() is needed. Always using fileno()
@@ -134,7 +132,7 @@ class TlsSocket(kaa.Socket):
         Wraps an existing low-level socket object.  addr specifies the address
         corresponding to the socket.
         """
-        super(TlsSocket, self).wrap(sock, addr)
+        super(TLSSocket, self).wrap(sock, addr)
         # since _update_read_monitor is deactivated we need to always register
         # the rmon to the notifier.
         if not self._rmon.active():
@@ -144,11 +142,11 @@ class TlsSocket(kaa.Socket):
         if self._handshake:
             # do not send data while doing a handshake
             return self._write_buffer.append(data)
-        return super(TlsSocket, self).write(data)
+        return super(TLSSocket, self).write(data)
         
     def _handle_read(self):
         try:
-            return super(TlsSocket, self)._handle_read()
+            return super(TLSSocket, self)._handle_read()
         except TLSAbruptCloseError, e:
             log.error('TLSAbruptCloseError')
             self._read_signal.emit(None)
@@ -156,19 +154,22 @@ class TlsSocket(kaa.Socket):
             return self.close(immediate=True, expected=False)
 
     @kaa.coroutine()
-    def starttls_client(self, session=None):
+    def starttls_client(self, session=None, key=None, **kwargs):
         """
         Start a certificate-based handshake in the role of a TLS client.
         Note: this function DOES NOT check the server key based on the
         key chain yet.
         """
         try:
+            if key:
+                kwargs['privateKey'] = key.key
+                kwargs['certChain'] = key.chain 
             self._handshake = True
             if session is None:
                 session = Session()
             c = TLSConnection(self._socket)
             self._rmon.unregister()
-            yield c.handshakeClientCert(session=session)
+            yield c.handshakeClientCert(session=session, **kwargs)
             self._socket = c
             self.signals['tls'].emit()
             self._rmon.register(self._socket.fileno(), kaa.IO_READ)
@@ -176,7 +177,7 @@ class TlsSocket(kaa.Socket):
             self._handshake = False
 
     @kaa.coroutine()
-    def starttls_server(self, key, cert_chain, client_cert=None):
+    def starttls_server(self, key, **kwargs):
         """
         Start a certificate-based handshake in the role of a TLS server.
         Note: this function DOES NOT check the client key if requested.
@@ -185,25 +186,24 @@ class TlsSocket(kaa.Socket):
             self._handshake = True
             c = TLSConnection(self._socket)
             self._rmon.unregister()
-            yield c.handshakeServer(
-                privateKey=key, certChain=cert_chain, reqCert=client_cert)
+            yield c.handshakeServer(privateKey=key.key, certChain=key.chain, **kwargs)
             self._socket = c
             self.signals['tls'].emit()
             self._rmon.register(self._socket.fileno(), kaa.IO_READ)
         finally:
             self._handshake = False
 
-def loadkey(filename, private=False):
-    """
-    Load a key in PEM format from file.
-    """
-    return parsePEMKey(open(filename).read(), private=private)
 
-
-def loadcert(filename):
+class TLSKey(object):
     """
-    Load a X509 certificate and create a chain.
+    Class to hold the public (and private) key together with the certification chain.
+    This class can be used with TLSSocket as key.
     """
-    x509 = X509()
-    x509.parse(open(filename).read())
-    return X509CertChain([x509])
+    def __init__(self, filename, private, *certs):
+        self.key = parsePEMKey(open(filename).read(), private=private)
+        chain = []
+        for cert in (filename, ) + certs:
+            x509 = X509()
+            x509.parse(open(cert).read())
+            chain.append(x509)
+        self.chain = X509CertChain(chain)

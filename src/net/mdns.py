@@ -51,7 +51,7 @@ class Service(object):
     """
     A service object with all available mdns information
     """
-    def __init__(self, interface, protocol, name, domain, host, address, port, txt):
+    def __init__(self, interface, protocol, name, domain, host, address, port, local, txt):
         self.interface = interface
         self.protocol = protocol
         self.name = name
@@ -59,6 +59,7 @@ class Service(object):
         self.host = host
         self.address = address
         self.port = port
+        self.local = local
         self.txt = txt
 
     def __repr__(self):
@@ -73,8 +74,8 @@ class ServiceList(object):
         self.signals = kaa.Signals('added', 'removed')
         self._dict = {}
 
-    def _add(self, interface, protocol, name, domain, host, address, port, txt):
-        s = Service(interface, protocol, name, domain, host, address, port, txt)
+    def _add(self, interface, protocol, name, domain, host, address, port, local, txt):
+        s = Service(interface, protocol, name, domain, host, address, port, local, txt)
         self._dict[(interface, protocol, name, domain)] = s
         self.signals['added'].emit(s)
 
@@ -175,12 +176,6 @@ class Avahi(object):
         Callback from dbus when a new service is available. This function is
         called inside the GOBJECT thread and uses dbus again.
         """
-        try:
-            if flags & avahi.LOOKUP_RESULT_LOCAL:
-                # This is a local service
-                pass
-        except dbus.DBusException:
-            pass
         self._avahi.ResolveService(
             interface, protocol, name, type, domain, avahi.PROTO_INET, dbus.UInt32(0),
             reply_handler=self._service_resolved, error_handler=self._error)
@@ -196,9 +191,15 @@ class Avahi(object):
             if record.find('=') > 0:
                 k, v = record.split('=', 2)
                 txtdict[k] = v
+        local = False
+        try:
+            if flags & avahi.LOOKUP_RESULT_LOCAL:
+                local = True
+        except dbus.DBusException:
+            pass
         self._services[type]._add(
             int(interface), int(protocol), str(name), str(domain),
-            str(host), str(address), int(port), txtdict
+            str(host), str(address), int(port), local, txtdict
         )
 
     @kaa.threaded(kaa.MAINTHREAD)

@@ -4,6 +4,10 @@
 # -----------------------------------------------------------------------------
 # $Id$
 #
+# This module wraps TLS for client and server based on tlslite. See
+# http://trevp.net/tlslite/docs/public/tlslite.TLSConnection.TLSConnection-class.html
+# for more information about optional paramater.
+#
 # -----------------------------------------------------------------------------
 # Copyright (C) 2008 Dirk Meyer
 #
@@ -40,11 +44,6 @@ import tlslite.api
 # kaa imports
 import kaa
 
-# exceptions from tlslite
-TLSAbruptCloseError = tlslite.api.TLSAbruptCloseError
-TLSLocalAlert = tlslite.api.TLSLocalAlert
-TLSRemoteAlert = tlslite.api.TLSRemoteAlert
-
 # get logging object
 log = logging.getLogger('tls')
 
@@ -57,6 +56,10 @@ class TLSConnection(tlslite.api.TLSConnection):
     """
     @kaa.coroutine()
     def _iterate_handshake(self, handshake):
+        """
+        Iterate through the TLS handshake for asynchronous calls using
+        kaa.notifier IOMonitor and InProgressCallback.
+        """
         try:
             while True:
                 n = handshake.next()
@@ -103,7 +106,9 @@ class TLSConnection(tlslite.api.TLSConnection):
 
 class TLSSocket(kaa.Socket):
     """
-    Special version of kaa.Socket with TLS support.
+    Special version of kaa.Socket with TLS support. On creation the
+    connection is NOT encrypted, starttls_client and starttls_server
+    must be called to encrypt the connection.
     """
     def __init__(self):
         kaa.Socket.__init__(self)
@@ -120,12 +125,13 @@ class TLSSocket(kaa.Socket):
         self.signals['new-client'].emit(client_socket)
 
     def _update_read_monitor(self, signal = None, change = None):
-        # This function is broken in TLSSocket for two reasons:
+        # FIXME: This function is broken in TLSSocket for two reasons:
         # 1. auto-reconnect while doing a tls handshake is wrong
+        #    This could be fixed using self._handshake
         # 2. Passing self._socket to register does not work,
         #    self._socket.fileno() is needed. Always using fileno()
         #    does not work for some strange reason.
-        pass
+        return
 
     def wrap(self, sock, addr = None):
         """
@@ -139,12 +145,19 @@ class TLSSocket(kaa.Socket):
             self._rmon.register(self._socket.fileno(), kaa.IO_READ)
 
     def write(self, data):
+        """
+        Write data to the socket. The data will be delayed while the socket
+        is doing the TLS handshake.
+        """
         if self._handshake:
             # do not send data while doing a handshake
             return self._write_buffer.append(data)
         return super(TLSSocket, self).write(data)
-        
+
     def _handle_read(self):
+        """
+        Callback for new data on the socket.
+        """
         try:
             return super(TLSSocket, self)._handle_read()
         except TLSAbruptCloseError, e:
@@ -158,12 +171,14 @@ class TLSSocket(kaa.Socket):
         """
         Start a certificate-based handshake in the role of a TLS client.
         Note: this function DOES NOT check the server key based on the
-        key chain yet.
+        key chain. Provide a checker callback to be called for verification.
+        http://trevp.net/tlslite/docs/public/tlslite.Checker.Checker-class.html
+        Every callable object can be used as checker.
         """
         try:
             if key:
                 kwargs['privateKey'] = key.key
-                kwargs['certChain'] = key.chain 
+                kwargs['certChain'] = key.chain
             self._handshake = True
             if session is None:
                 session = Session()
@@ -180,7 +195,10 @@ class TLSSocket(kaa.Socket):
     def starttls_server(self, key, **kwargs):
         """
         Start a certificate-based handshake in the role of a TLS server.
-        Note: this function DOES NOT check the client key if requested.
+        Note: this function DOES NOT check the client key if requested,
+        provide a checker callback to be called for verification.
+        http://trevp.net/tlslite/docs/public/tlslite.Checker.Checker-class.html
+        Every callable object can be used as checker.
         """
         try:
             self._handshake = True

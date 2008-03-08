@@ -112,7 +112,7 @@ def timed(interval, timer=None, policy=POLICY_MANY):
                 getattr(obj, name).stop()
 
             # create new timer, set it to the object and start it
-            t = timer(func, *args, **kwargs)
+            t = (timer or Timer)(func, *args, **kwargs)
             setattr(obj, name, weakref(t))
             getattr(obj, name).start(interval)
             return True

@@ -693,7 +693,7 @@ class Client(Channel):
         try:
             sock.connect(address).wait()
         except socket.error, e:
-            raise ConnectError(e.args)
+            raise ConnectError(*e.args)
             
         Channel.__init__(self, sock, auth_secret)
 

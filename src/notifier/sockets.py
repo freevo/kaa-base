@@ -376,9 +376,9 @@ class Socket(object):
         if self._write_buffer:
             self._wmon.register(sock, IO_WRITE)
 
-        import main
+        import kaa
         # Disconnect socket and remove socket file (if unix socket) on shutdown
-        main.signals['shutdown'].connect_weak(self.close)
+        kaa.signals['shutdown'].connect_weak(self.close)
 
 
     def _async_read(self, signal):
@@ -481,8 +481,8 @@ class Socket(object):
         self._socket = None
 
         self.signals['closed'].emit(expected)
-        import main
-        main.signals['shutdown'].disconnect(self.close)
+        import kaa
+        kaa.signals['shutdown'].disconnect(self.close)
 
 
     def write(self, data):

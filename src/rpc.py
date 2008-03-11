@@ -690,7 +690,11 @@ class Client(Channel):
         # FIXME: we block on connect for now; Channel.rpc() tests socket
         # connected and raises exception if it isn't, so if we do rpc() right
         # after connecting, it will fail.
-        sock.connect(address).wait()
+        try:
+            sock.connect(address).wait()
+        except socket.error, e:
+            raise ConnectError(e.args)
+            
         Channel.__init__(self, sock, auth_secret)
 
 

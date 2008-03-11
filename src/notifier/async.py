@@ -92,15 +92,7 @@ class AsyncExceptionBase(object):
 
     def __str__(self):
         dump = ''.join(traceback.format_list(self._kaa_exc_stack))
-        # Python 2.5 always has self.message; for Python 2.4, fall back to
-        # first argument if it's a string.
-        msg = (hasattr(self, 'message') and self.message) or \
-              (self.args and isinstance(self.args[0], basestring) and self.args[0])
-        if msg:
-            info = '%s: %s' % (self._kaa_exc.__class__.__name__, msg)
-        else:
-            info = self._kaa_exc.__class__.__name__
-
+        info = '%s: %s' % (self._kaa_exc.__class__.__name__, str(self._kaa_exc))
         return self._kaa_get_header() + '\n' + dump + info
 
 

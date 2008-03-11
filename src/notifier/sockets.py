@@ -32,7 +32,10 @@
 
 __all__ = [ 'IOMonitor', 'WeakIOMonitor', 'Socket', 'IO_READ', 'IO_WRITE' ]
 
+import sys
+import os
 import socket
+import errno
 import logging
 
 import nf_wrapper as notifier
@@ -42,6 +45,7 @@ from thread import MainThreadCallback, ThreadCallback, is_mainthread, threaded
 from async import InProgress, InProgressCallback
 from kaa.utils import property
 from timer import OneShotTimer, timed, POLICY_ONCE
+from kaa.tmpfile import tempfile
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -87,13 +91,15 @@ class Socket(object):
     Notifier-aware socket class.
     """
 
-    def __init__(self):
+    def __init__(self, buffer_size=None, chunk_size=1024*1024):
         self.signals = Signals('closed', 'read', 'readline', 'new-client')
         self._socket = None
         self._write_buffer = []
         self._addr = None
         self._listening = False
         self._queue_close = False
+        self._buffer_size = buffer_size
+        self._chunk_size = chunk_size
 
         # Internal signals for read() and readline()  (these are different from
         # the public signals 'read' and 'readline' as they get emitted even
@@ -110,6 +116,11 @@ class Socket(object):
         # that disconnected sockets will get properly deleted when they are not
         # referenced.
         self._rmon = self._wmon = None
+
+    def __repr__(self):
+        if not self._socket:
+            return '<kaa.Socket - disconnected>'
+        return '<kaa.Socket fd=%d>' % self.fileno
 
 
     @property
@@ -141,6 +152,60 @@ class Socket(object):
         return self._socket != None
 
 
+    @property
+    def buffer_size(self):
+        """
+        Size of the send and receive socket buffers (SO_SNDBUF and SO_RCVBUF)
+        in bytes.  Setting this to higher values (say 1M) improves performance
+        when sending large amounts of data across the socket.  Note that the
+        upper bound may be restricted by the kernel.  (Under Linux, this can be
+        tuned by adjusting /proc/sys/net/core/[rw]mem_max)
+        """
+        return self._buffer_size
+
+
+    @buffer_size.setter
+    def buffer_size(self, size):
+        self._buffer_size = size
+        if self._socket and size:
+            self._set_buffer_size(self._socket, size)
+
+
+    @property
+    def chunk_size(self):
+        """
+        Number of bytes to attempt to read from the socket at a time.  The
+        default is 1M.  A 'read' signal is emitted for each chunk read from the
+        socket.  (The number of bytes read at a time may be less than the chunk
+        size, but will never be more.)
+        """
+        return self._chunk_size
+
+
+    @chunk_size.setter
+    def chunk_size(self, size):
+        self._chunk_size = size
+
+
+    @property
+    def fileno(self):
+        """
+        Returns the file descriptor of the socket, or None if the socket is
+        not connected.
+        """
+        if not self._socket:
+            return None
+        return self._socket.fileno()
+
+
+    def _set_buffer_size(self, s, size):
+        """
+        Sets the send and receive buffers of the given socket s to size.
+        """
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, size)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, size)
+        
+
     @timed(0, OneShotTimer, POLICY_ONCE)
     def _update_read_monitor(self, signal = None, change = None):
         # Update read IOMonitor to register or unregister based on if there are
@@ -151,7 +216,7 @@ class Socket(object):
             return
         elif not self._listening and len(self._read_signal) == len(self._readline_signal) == \
                                      len(self.signals['read']) == len(self.signals['readline']) == 0:
-           self._rmon.unregister()
+            self._rmon.unregister()
         elif not self._rmon.active():
             self._rmon.register(self._socket, IO_READ)
 
@@ -160,26 +225,57 @@ class Socket(object):
         """
         Converts address strings in the form host:port into 2-tuples 
         containing the hostname and integer port.  Strings not in that
-        form are left untouched (as they represent unix socket paths).
+        form are assumed to represent unix socket paths.  If such a string
+        contains no /, a tempfile is used using kaa.tempfile().  If we can't
+        make sense of the given address, a ValueError exception will
+        be raised.
         """
-        if isinstance(addr, basestring) and ":" in addr:
-            addr = addr.split(":")
-            assert(len(addr) == 2)
-            addr[1] = int(addr[1])
-            addr = tuple(addr)
+        if isinstance(addr, basestring):
+            if addr.count(':') == 1:
+                addr, port = addr.split(':')
+                if not port.isdigit():
+                    raise ValueError('Port specified is not an integer')
+                return addr, int(port)
+            elif '/' not in addr:
+                return tempfile(addr)
+        elif not isinstance(addr, (tuple, list)) or len(addr) != 2:
+            raise ValueError('Invalid address')
 
         return addr
 
 
-    def _make_socket(self, addr = None):
+    def _make_socket(self, addr = None, overwrite = False):
         """
         Constructs a socket based on the given addr.  Returns the socket and
         the normalized address as a 2-tuple.
+
+        If overwrite is True, if addr specifies a path to a unix socket and
+        that unix socket already exists, it will be removed if the socket is
+        not actually in use.  If it is in use, an IOError will be raised.
         """
         addr = self._normalize_address(addr)
         assert(type(addr) in (str, tuple, None))
 
         if isinstance(addr, basestring):
+            if overwrite and os.path.exists(addr):
+                # Unix socket exists; test to see if it's active.
+                try:
+                    dummy = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                    dummy.connect(addr)
+                except socket.error, (err, msg):
+                    if err == errno.ECONNREFUSED:
+                        # Socket is not active, so we can remove it.
+                        log.debug('Replacing dead unix socket at %s' % addr)
+                    else:
+                        # Reraise unexpected exception
+                        tp, exc, tb = sys.exc_info()
+                        raise tp, exc, tb
+                else:
+                    # We were able to connect to the existing socket, so it's
+                    # in use.  We won't overwrite it.
+                    raise IOError('Address already in use')
+                os.unlink(addr)
+
             sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         else:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -218,7 +314,7 @@ class Socket(object):
             # used with socket.bind()
             bind_info = ('', bind_info)
 
-        sock, addr = self._make_socket(bind_info)
+        sock, addr = self._make_socket(bind_info, overwrite=True)
         sock.bind(addr)
         if addr[1] == 0:
             # get real port used
@@ -234,7 +330,8 @@ class Socket(object):
         Connects to the host specified in addr.  If addr is a string in the
         form host:port, or a tuple the form (host, port), a TCP socket is
         established.  Otherwise a Unix socket is established and addr is
-        treated as a filename.
+        treated as a filename.  In this case, if addr does not contain a /
+        character, a kaa tempfile is created.
 
         This function is executed in a thread to avoid blocking.  It therefore
         returns an InProgress object.  If the socket is connected, the InProgress
@@ -265,6 +362,8 @@ class Socket(object):
         self._queue_close = False
 
         sock.setblocking(False)
+        if self._buffer_size:
+            self._set_buffer_size(sock, self._buffer_size)
 
         if self._rmon:
             self._rmon.unregister()
@@ -276,6 +375,10 @@ class Socket(object):
         self._update_read_monitor()
         if self._write_buffer:
             self._wmon.register(sock, IO_WRITE)
+
+        import main
+        # Disconnect socket and remove socket file (if unix socket) on shutdown
+        main.signals['shutdown'].connect_weak(self.close)
 
 
     def _async_read(self, signal):
@@ -318,7 +421,7 @@ class Socket(object):
             return self._accept()
 
         try:
-            data = self._socket.recv(1024*1024)
+            data = self._socket.recv(self._chunk_size)
         except socket.error, (errno, msg):
             if errno == 11:
                 # Resource temporarily unavailable -- we are trying to read
@@ -326,7 +429,12 @@ class Socket(object):
                 return
             # If we're here, then the socket is likely disconnected.
             data = None
+        except:
+            log.exception('kaa.Socket._handle_read failed with unknown exception, closing socket')
+            data = None
 
+        # _read_signal is for InProgress objects waiting on the next read().
+        # For these we must emit even when data is None.
         self._read_signal.emit(data)
 
         if not data:
@@ -334,6 +442,7 @@ class Socket(object):
             return self.close(immediate=True, expected=False)
 
         self.signals['read'].emit(data)
+        # FIXME: why do this here?
         self._update_read_monitor()
 
         # TODO: parse input into separate lines and emit readline.
@@ -361,8 +470,19 @@ class Socket(object):
         self._queue_close = False
 
         self._socket.close()
+        if isinstance(self._addr, basestring) and '/' in self._addr:
+            # Remove unix socket if it exists.
+            try:
+                os.unlink(self._addr)
+            except OSError:
+                pass
+
+        self._addr = None
         self._socket = None
+
         self.signals['closed'].emit(expected)
+        import main
+        main.signals['shutdown'].disconnect(self.close)
 
 
     def write(self, data):

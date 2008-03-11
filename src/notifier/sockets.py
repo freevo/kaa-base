@@ -223,12 +223,11 @@ class Socket(object):
 
     def _normalize_address(self, addr):
         """
-        Converts address strings in the form host:port into 2-tuples 
-        containing the hostname and integer port.  Strings not in that
-        form are assumed to represent unix socket paths.  If such a string
-        contains no /, a tempfile is used using kaa.tempfile().  If we can't
-        make sense of the given address, a ValueError exception will
-        be raised.
+        Converts address strings in the form host:port into 2-tuples containing
+        the hostname and integer port.  Strings not in that form are assumed to
+        represent unix socket paths.  If such a string does not start with /, a
+        tempfile is used using kaa.tempfile().  If we can't make sense of the
+        given address, a ValueError exception will be raised.
         """
         if isinstance(addr, basestring):
             if addr.count(':') == 1:
@@ -236,7 +235,7 @@ class Socket(object):
                 if not port.isdigit():
                     raise ValueError('Port specified is not an integer')
                 return addr, int(port)
-            elif '/' not in addr:
+            elif not addr.startswith('/'):
                 return tempfile(addr)
         elif not isinstance(addr, (tuple, list)) or len(addr) != 2:
             raise ValueError('Invalid address')
@@ -330,7 +329,7 @@ class Socket(object):
         Connects to the host specified in addr.  If addr is a string in the
         form host:port, or a tuple the form (host, port), a TCP socket is
         established.  Otherwise a Unix socket is established and addr is
-        treated as a filename.  In this case, if addr does not contain a /
+        treated as a filename.  In this case, if addr does not start with a /
         character, a kaa tempfile is created.
 
         This function is executed in a thread to avoid blocking.  It therefore
@@ -470,7 +469,7 @@ class Socket(object):
         self._queue_close = False
 
         self._socket.close()
-        if isinstance(self._addr, basestring) and '/' in self._addr:
+        if isinstance(self._addr, basestring) and self._addr.startswith('/'):
             # Remove unix socket if it exists.
             try:
                 os.unlink(self._addr)

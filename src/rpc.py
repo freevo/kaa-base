@@ -687,6 +687,8 @@ class Client(Channel):
     def __init__(self, address, auth_secret = '', buffer_size = None):
         sock = kaa.Socket(buffer_size)
         sock.buffer_size = buffer_size
+        if isinstance(address, str) and not address.startswith('/'):
+            address = kaa.tempfile(address)
         # FIXME: we block on connect for now; Channel.rpc() tests socket
         # connected and raises exception if it isn't, so if we do rpc() right
         # after connecting, it will fail.

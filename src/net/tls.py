@@ -33,6 +33,7 @@
 # -----------------------------------------------------------------------------
 
 # python imports
+import sys
 import logging
 
 # import tlslite API to the namespace of this module
@@ -188,8 +189,11 @@ class TLSSocket(kaa.Socket):
             self._socket = c
             self.signals['tls'].emit()
             self._rmon.register(self._socket.fileno(), kaa.IO_READ)
-        finally:
             self._handshake = False
+        except:
+            self._handshake = False
+            type, value, tb = sys.exc_info()
+            raise type, value, tb
 
     @kaa.coroutine()
     def starttls_server(self, key, **kwargs):
@@ -208,8 +212,11 @@ class TLSSocket(kaa.Socket):
             self._socket = c
             self.signals['tls'].emit()
             self._rmon.register(self._socket.fileno(), kaa.IO_READ)
-        finally:
             self._handshake = False
+        except:
+            self._handshake = False
+            type, value, tb = sys.exc_info()
+            raise type, value, tb
 
 
 class TLSKey(object):

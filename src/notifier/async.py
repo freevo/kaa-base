@@ -56,12 +56,7 @@ def make_exception_class(name, bases, dict):
     """
     def create(exc, stack, *args):
         from new import classobj
-        dict.update({
-            # Necessary for python 2.4
-            '__getattribute__': AsyncExceptionBase.__getattribute__,
-            '__str__': AsyncExceptionBase.__str__
-        })
-        e = classobj(name, bases + (exc.__class__,), dict)(exc, stack, *args)
+        e = classobj(name, bases + (exc.__class__,), {})(exc, stack, *args)
         return e
 
     return create
@@ -78,18 +73,20 @@ class AsyncExceptionBase(Exception):
     This class will proxy the given exception object.
     """
     def __init__(self, exc, stack, *args):
-        # Call constructor of the Exception class we are proxying (and which
-        # will be in our __bases__ due to metaclass).
-        exc.__class__.__init__(self)
         self._kaa_exc = exc
         self._kaa_exc_stack = stack
         self._kaa_exc_args = args
 
     def __getattribute__(self, attr):
+        # Used by python 2.5, where exceptions are new-style classes.
         if attr.startswith('_kaa'):
             return super(AsyncExceptionBase, self).__getattribute__(attr)
         return getattr(self._kaa_exc, attr)
-        
+    
+    def __getattr__(self, attr):
+        # Used by python 2.4, where exceptions are old-style classes.
+        return self.__getattribute__(attr)
+
     def _kaa_get_header(self):
         return 'Exception raised asynchronously; traceback follows:'
 

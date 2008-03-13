@@ -78,6 +78,9 @@ class AsyncExceptionBase(Exception):
     This class will proxy the given exception object.
     """
     def __init__(self, exc, stack, *args):
+        # Call constructor of the Exception class we are proxying (and which
+        # will be in our __bases__ due to metaclass).
+        exc.__class__.__init__(self)
         self._kaa_exc = exc
         self._kaa_exc_stack = stack
         self._kaa_exc_args = args

@@ -85,6 +85,11 @@ class AsyncExceptionBase(Exception):
     
     def __getattr__(self, attr):
         # Used by python 2.4, where exceptions are old-style classes.
+        exc = self._kaa_exc
+        if attr == '__members__':
+            return [ x for x in dir(exc) if not callable(getattr(exc, x)) ]
+        elif attr == '__methods__':
+            return [ x for x in dir(exc) if callable(getattr(exc, x)) ]
         return self.__getattribute__(attr)
 
     def _kaa_get_header(self):

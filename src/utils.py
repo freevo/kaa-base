@@ -294,7 +294,12 @@ def sysimport(name):
         return sys.modules[name]
     except KeyError:
         pass
-    fp, pathname, description = imp.find_module(name, sys.path[1:])
+
+    # Remove the current directory and anything below it from the
+    # search path.
+    cwd = os.path.realpath(os.getcwd())
+    path = [ x for x in sys.path if x and not os.path.realpath(x).startswith(cwd) ]
+    fp, pathname, description = imp.find_module(name, path)
     try:
         return imp.load_module(name, fp, pathname, description)
     finally:

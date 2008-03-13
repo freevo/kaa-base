@@ -67,7 +67,7 @@ def make_exception_class(name, bases, dict):
     return create
 
 
-class AsyncExceptionBase(object):
+class AsyncExceptionBase(Exception):
     """
     Base class for asynchronous exceptions.  This class can be used to raise
     exceptions where the traceback object is not available.  The stack is

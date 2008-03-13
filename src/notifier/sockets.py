@@ -469,7 +469,7 @@ class Socket(object):
         self._queue_close = False
 
         self._socket.close()
-        if isinstance(self._addr, basestring) and self._addr.startswith('/'):
+        if self._listening and isinstance(self._addr, basestring) and self._addr.startswith('/'):
             # Remove unix socket if it exists.
             try:
                 os.unlink(self._addr)

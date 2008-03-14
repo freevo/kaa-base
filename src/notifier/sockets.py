@@ -375,9 +375,12 @@ class Socket(object):
         if self._write_buffer:
             self._wmon.register(sock, IO_WRITE)
 
-        import kaa
+        # This breaks Freevo startup somehow. The code blocks in
+        # import kaa. Nothing happens anymore. No idea why. Replacing
+        # kaa with main does not help.
+        # import kaa
         # Disconnect socket and remove socket file (if unix socket) on shutdown
-        kaa.signals['shutdown'].connect_weak(self.close)
+        # kaa.signals['shutdown'].connect_weak(self.close)
 
 
     def _async_read(self, signal):
@@ -480,8 +483,9 @@ class Socket(object):
         self._socket = None
 
         self.signals['closed'].emit(expected)
-        import kaa
-        kaa.signals['shutdown'].disconnect(self.close)
+        # See connect above
+        # import kaa
+        # kaa.signals['shutdown'].disconnect(self.close)
 
 
     def write(self, data):

@@ -123,7 +123,7 @@ class InProgress(Signal):
         can monitor the progress.
         """
         def __init__(self):
-            super(Progress, self).__init__()
+            super(InProgress.Progress, self).__init__()
             self.percentage = 0
             self.pos = 0
             self.max = 0
@@ -206,6 +206,8 @@ class InProgress(Signal):
         This function should be called when the creating function is
         done and no longer in progress.
         """
+        if self._finished:
+            raise RuntimeError('%s already finished' % self)
         if isinstance(result, InProgress):
             # we are still not finished, link to this new InProgress
             self.link(result)

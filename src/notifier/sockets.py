@@ -347,8 +347,9 @@ class Socket(object):
                 # Resolve the hostname.
                 host = socket.gethostbyname(host)
             sock.connect((host, port))
-
-        self.wrap(sock, addr)
+        # wrap() must be called from the mainthread or the internal import kaa
+        # will block. No idea why.
+        return MainThreadCallback(self.wrap, sock, addr)()
 
 
     def wrap(self, sock, addr = None):
@@ -375,13 +376,10 @@ class Socket(object):
         if self._write_buffer:
             self._wmon.register(sock, IO_WRITE)
 
-        # This breaks Freevo startup somehow. The code blocks in
-        # import kaa. Nothing happens anymore. No idea why. Replacing
-        # kaa with main does not help.
-        # import kaa
+        import kaa
         # Disconnect socket and remove socket file (if unix socket) on shutdown
-        # kaa.signals['shutdown'].connect_weak(self.close)
-
+        kaa.signals['shutdown'].connect_weak(self.close)
+        
 
     def _async_read(self, signal):
         if self._listening:
@@ -483,9 +481,8 @@ class Socket(object):
         self._socket = None
 
         self.signals['closed'].emit(expected)
-        # See connect above
-        # import kaa
-        # kaa.signals['shutdown'].disconnect(self.close)
+        import kaa
+        kaa.signals['shutdown'].disconnect(self.close)
 
 
     def write(self, data):

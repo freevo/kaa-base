@@ -86,6 +86,12 @@ class WeakIOMonitor(notifier.WeakNotifierCallback, IOMonitor):
     pass
 
 
+# We need to import main for the signals dict (we add a handler to
+# shutdown to gracefully close sockets), but main itself imports us
+# for IOHandler.  So we must import main _after_ declaring IOHandler,
+# instead of doing so at the top of the file.
+from kaa.notifier import main
+
 class Socket(object):
     """
     Notifier-aware socket class.
@@ -347,9 +353,7 @@ class Socket(object):
                 # Resolve the hostname.
                 host = socket.gethostbyname(host)
             sock.connect((host, port))
-        # wrap() must be called from the mainthread or the internal import kaa
-        # will block. No idea why.
-        return MainThreadCallback(self.wrap, sock, addr)()
+        self.wrap(sock, addr)
 
 
     def wrap(self, sock, addr = None):
@@ -376,9 +380,8 @@ class Socket(object):
         if self._write_buffer:
             self._wmon.register(sock, IO_WRITE)
 
-        import kaa
         # Disconnect socket and remove socket file (if unix socket) on shutdown
-        kaa.signals['shutdown'].connect_weak(self.close)
+        main.signals['shutdown'].connect_weak(self.close)
         
 
     def _async_read(self, signal):
@@ -481,8 +484,7 @@ class Socket(object):
         self._socket = None
 
         self.signals['closed'].emit(expected)
-        import kaa
-        kaa.signals['shutdown'].disconnect(self.close)
+        main.signals['shutdown'].disconnect(self.close)
 
 
     def write(self, data):

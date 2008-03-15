@@ -173,7 +173,8 @@ def is_running(name):
     run.close()
     if not os.path.exists('/proc/%s/cmdline' % pid):
         return 0
-    if open('/proc/%s/cmdline' % pid).readline() == cmdline:
+    current = open('/proc/%s/cmdline' % pid).readline()
+    if current == cmdline or current.strip('\x00') == name:
         return int(pid)
     return 0
 

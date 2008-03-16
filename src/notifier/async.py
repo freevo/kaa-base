@@ -29,8 +29,8 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallback', 'AsyncException',
-            'AsyncExceptionBase', 'make_exception_class' ]
+__all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallback', 'InProgressSignals',
+            'AsyncException', 'AsyncExceptionBase', 'make_exception_class' ]
 
 # python imports
 import sys
@@ -82,7 +82,7 @@ class AsyncExceptionBase(Exception):
         if attr.startswith('_kaa'):
             return super(AsyncExceptionBase, self).__getattribute__(attr)
         return getattr(self._kaa_exc, attr)
-    
+
     def __getattr__(self, attr):
         # Used by python 2.4, where exceptions are old-style classes.
         exc = self._kaa_exc
@@ -454,3 +454,26 @@ class InProgressCallback(InProgress):
             # return as list
             return self.finish(args)
         return self.finish(None)
+
+
+class InProgressSignals(InProgress):
+    """
+    InProgress object that will be finished if one of the provided
+    signals is emited. The return value is the number of the signal
+    starting with 0.
+    """
+    def __init__(self, *signals):
+        for num, signal in enumerate(signals):
+            signal.connect_once(self.finish, num).set_ignore_caller_args()
+        self._signals = signals
+        super(InProgressSignals, self).__init__()
+
+
+    def finish(self, result):
+        """
+        Callback when one signal is emited.
+        """
+        for num, signal in enumerate(self._signals):
+            signal.disconnect(self.finish, num)
+        self._signals = []
+        return super(InProgressSignals, self).finish(result)

@@ -464,15 +464,16 @@ class InProgressSignals(InProgress):
     """
     def __init__(self, *signals):
         for num, signal in enumerate(signals):
-            signal.connect_once(self.finish, num).set_ignore_caller_args()
+            signal.connect_once(self.finish, num).set_user_args_first()
         self._signals = signals
         super(InProgressSignals, self).__init__()
 
 
-    def finish(self, result):
+    def finish(self, result, *args):
         """
         Callback when one signal is emited.
         """
+        self.signal_args = args
         for num, signal in enumerate(self._signals):
             signal.disconnect(self.finish, num)
         self._signals = []

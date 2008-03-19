@@ -103,6 +103,15 @@ class TLSConnection(tlslite.api.TLSConnection):
         """
         return self.sock.fileno()
 
+    def close(self):
+        """
+        Close the socket.
+        """
+        if not self.closed:
+            # force socket close or this will block
+            # on kaa shutdown.
+            self.sock.close()
+        return tlslite.api.TLSConnection.close(self)
 
 
 class TLSSocket(kaa.Socket):

@@ -29,9 +29,8 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallback',
-            'InProgressSignals', 'InProgressExecution', 'AsyncException',
-            'AsyncExceptionBase', 'make_exception_class' ]
+__all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallback', 'InProgressSignals',
+            'execute', 'AsyncException', 'AsyncExceptionBase', 'make_exception_class' ]
 
 # python imports
 import sys
@@ -458,22 +457,19 @@ class InProgressCallback(InProgress):
         return self.finish(None)
 
 
-class InProgressExecution(InProgress):
+def execute(func, *args, **kwargs):
     """
-    This class can be used to wrap a function to call to an InProgress object.
-    The result or exception will be stored inside the InProgressExecution
-    object. This is usefull when an InProgress object is expected but the function
-    to be called does not provide this.
+    Execute the given function and return the result or exception in an
+    InProgress object.
     """
-    def __init__(self, func, *args, **kwargs):
-        super(InProgressExecution, self).__init__()
-        try:
-            result = func(*args, **kwargs)
-        except:
-            self.throw(*sys.exc_info())
-        else:
-            self.finish(result)
-
+    async = InProgress()
+    try:
+        result = func(*args, **kwargs)
+    except:
+        async.throw(*sys.exc_info())
+    else:
+        async.finish(result)
+    return async
 
     
 class InProgressSignals(InProgress):

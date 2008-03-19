@@ -40,7 +40,7 @@ from signals import Signal, Signals
 
 # InProgress class
 from async import TimeoutException, InProgress, InProgressCallback, InProgressSignals, \
-     InProgressExecution
+     execute
 
 # Thread callbacks, helper functions and decorators
 from thread import MainThreadCallback, NamedThreadCallback, ThreadCallback, \

@@ -460,9 +460,15 @@ class InProgressSignals(InProgress):
     """
     InProgress object that will be finished if one of the provided
     signals is emited. The return value is the number of the signal
-    starting with 0.
+    starting with 0. A second interface is to provide a dict of signals
+    as first parameter and the dict keys after that. E.g.
+    InProgressSignals(object.signals['completed'], object.signals['failed'])
+    InProgressSignals(object.signals, 'completed', 'failed')
     """
     def __init__(self, *signals):
+        assert(signals)
+        if isinstance(signals[0], dict):
+            signals = [ signals[0][key] for key in signals[1:] ]
         for num, signal in enumerate(signals):
             signal.connect_once(self.finish, num).set_user_args_first()
         self._signals = signals

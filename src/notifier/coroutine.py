@@ -235,11 +235,24 @@ class CoroutineInProgress(InProgress):
         """
         if self._timer and self._timer.active():
             self._timer.stop()
+        # if this object waits for another CoroutineInProgress, stop
+        # that one, too.
+        if isinstance(self._async, CoroutineInProgress):
+            self._async.stop()
         # Remove the internal timer, the async result and the
         # generator function to remove bad circular references.
         self._timer = None
         self._coroutine = None
         self._async = None
+
+
+    def timeout(self, timeout):
+        """
+        Return an InProgress object linked to this one that will throw
+        a TimeoutException if this object is not finished in time. If used,
+        this will stop the coroutine.
+        """
+        return InProgress.timeout(self, timeout, callback=self.stop)
 
 
 class CoroutineInProgressLock(CoroutineInProgress):

@@ -195,12 +195,6 @@ class InProgress(Signal):
         return not self._finished
 
 
-    def finished(self, result):
-        # XXX: Temporary wrapper for deprecated method name.
-        log.warning('InProgress.finished() deprecated; use InProgress.finish()')
-        return self.finish(result)
-
-
     def finish(self, result):
         """
         This function should be called when the creating function is
@@ -360,6 +354,28 @@ class InProgress(Signal):
                 raise self._exception[1]
 
         return self._result
+
+
+    def timeout(self, timeout, callback=None):
+        """
+        Return an InProgress object linked to this one that will throw
+        a TimeoutException if this object is not finished in time. This
+        will not affect this InProgress object. If callback is given, the
+        callback will be called just before TimeoutException is raised.
+        """
+        # Import modules here rather than globally to avoid circular importing.
+        from timer import OneShotTimer
+        async = InProgress()
+        def trigger():
+            self.disconnect(async.finish)
+            self.exception.disconnect(async.throw)
+            if not async._finished:
+                if callback:
+                    callback()
+                async.throw(TimeoutException, TimeoutException('timeout'), None)
+        async.link(self)
+        OneShotTimer(trigger).start(timeout)
+        return async
 
 
     def wait(self, timeout = None):

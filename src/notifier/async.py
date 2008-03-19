@@ -29,8 +29,9 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallback', 'InProgressSignals',
-            'AsyncException', 'AsyncExceptionBase', 'make_exception_class' ]
+__all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallback',
+            'InProgressSignals', 'InProgressExecution', 'AsyncException',
+            'AsyncExceptionBase', 'make_exception_class' ]
 
 # python imports
 import sys
@@ -312,21 +313,6 @@ class InProgress(Signal):
         log.error('Unhandled %s exception:\n%s', cls.__name__, trace)
 
 
-    def execute(self, func, *args, **kwargs):
-        """
-        Execute the function and store the result or exception inside the
-        InProgress object. Returns self to support yield in a coroutine.
-        To yield a finished object call yield InProgress().execute(...)
-        """
-        try:
-            result = func(*args, **kwargs)
-        except:
-            self.throw(*sys.exc_info())
-        else:
-            self.finish(result)
-        return self
-
-
     def is_finished(self):
         """
         Return if the InProgress is finished.
@@ -472,6 +458,24 @@ class InProgressCallback(InProgress):
         return self.finish(None)
 
 
+class InProgressExecution(InProgress):
+    """
+    This class can be used to wrap a function to call to an InProgress object.
+    The result or exception will be stored inside the InProgressExecution
+    object. This is usefull when an InProgress object is expected but the function
+    to be called does not provide this.
+    """
+    def __init__(self, func, *args, **kwargs):
+        super(InProgressExecution, self).__init__()
+        try:
+            result = func(*args, **kwargs)
+        except:
+            self.throw(*sys.exc_info())
+        else:
+            self.finish(result)
+
+
+    
 class InProgressSignals(InProgress):
     """
     InProgress object that will be finished if one of the provided

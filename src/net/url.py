@@ -141,11 +141,12 @@ def _fetch_HTTP(url, filename, tmpname):
         # stupid url encoding in url
         url = url[:8+url[8:].find('/')] + \
               urllib.quote(url[8+url[8:].find('/'):])
+    # FIXME: use kaa.threaded()
     s = InProgress.Progress()
     t = ThreadCallback(download, url, filename, tmpname, s)
     t.wait_on_exit(False)
     async = t()
-    async.set_status(s)
+    async.progress = s
     return async
 
 

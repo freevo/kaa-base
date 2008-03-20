@@ -44,6 +44,7 @@ import types
 # kaa.notifier imports
 from callback import Callback
 from signals import Signal
+from kaa.utils import property
 
 # get logging object
 log = logging.getLogger('notifier.async')
@@ -119,33 +120,30 @@ class InProgress(Signal):
     class Progress(Signal):
         """
         Generic progress status object for InProgress. This object can be
-        connected to an InProgress object using set_status and the caller
+        used as 'progress' member of an InProgress object and the caller
         can monitor the progress.
         """
-        def __init__(self):
+        def __init__(self, max=0):
             super(InProgress.Progress, self).__init__()
-            self.percentage = 0
+            self.start_time = time.time()
             self.pos = 0
-            self.max = 0
+            self.max = max
 
 
-        def set(self, pos, max=None):
+        def set(self, pos=None, max=None):
             """
             Set new status. The new status is pos of max.
             """
             if max is not None:
                 self.max = max
-            self.pos = pos
+            if pos is not None:
+                self.pos = pos
             if pos > self.max:
                 self.max = pos
-            if self.max:
-                self.percentage = (self.pos * 100) / self.max
-            else:
-                self.percentage = 0
-            self.emit()
+            self.emit(self)
 
 
-        def update(self, diff):
+        def update(self, diff=1):
             """
             Update position by the given difference.
             """
@@ -162,7 +160,19 @@ class InProgress(Signal):
             s = '|%%%ss|' % (width-2)
             return s % ("="*n + ">").ljust(width-2)
 
+        @property
+        def eta(self):
+            if not self.pos:
+                return 0
+            sec = (time.time() - self.start_time) / self.pos
+            return sec * (self.max - self.pos)
 
+        @property
+        def percentage(self):
+            if self.max:
+                return (self.pos * 100) / self.max
+            return 0
+            
     def __init__(self):
         """
         Create an InProgress object.
@@ -172,27 +182,7 @@ class InProgress(Signal):
         self._finished = False
         self._finished_event = threading.Event()
         self._unhandled_exception = None
-        self.status = None
-
-
-    def set_status(self, s):
-        """
-        Connect a status object to the InProgress object. The status object
-        has to be updated by the creator of that object. The status should
-        be a Signal so the monitoring function can connect to it to get
-        notified on updates.
-        """
-        self.status = s
-
-
-    def get_status(self):
-        """
-        Return status object if connected or return True if the function is
-        still in progress or False if not.
-        """
-        if self.status is not None:
-            return self.status
-        return not self._finished
+        self.progress = None
 
 
     def finish(self, result):

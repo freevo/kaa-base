@@ -81,7 +81,7 @@ def _process(func, async=None):
     return func.next()
 
 
-def coroutine(interval = 0, synchronize = False):
+def coroutine(interval = 0, synchronize = False, progress=False):
     """
     Functions with this decorator uses yield to break and to return the
     results. Special yield values for break are NotFinished or
@@ -89,7 +89,9 @@ def coroutine(interval = 0, synchronize = False):
     be protected against parallel calls, which can be used avoid
     multithreading pitfalls such as deadlocks or race conditions.
     If a decorated function is currently being executed, new
-    invocations will be queued.
+    invocations will be queued. If progress is True, the first argument
+    to the function is an InProgress.Progress object to return execution
+    progress.
 
     A function decorated with this decorator will always return an
     InProgress object. It may already be finished. If it is not finished,
@@ -98,6 +100,12 @@ def coroutine(interval = 0, synchronize = False):
     """
     def decorator(func):
         def newfunc(*args, **kwargs):
+            def wrap(obj):
+                if progress:
+                    obj.progress = args[0]
+                return obj
+            if progress:
+                args = [ InProgress.Progress(), ] + list(args)
             result = func(*args, **kwargs)
             if not hasattr(result, 'next'):
                 # Decorated function doesn't have a next attribute, which
@@ -111,7 +119,7 @@ def coroutine(interval = 0, synchronize = False):
             function = result
             if synchronize and func._lock is not None and not func._lock.is_finished():
                 # Function is currently called by someone else
-                return CoroutineInProgressLock(func, function, interval)
+                return wrap(CoroutineInProgressLock(func, function, interval))
             async = None
             while True:
                 try:
@@ -123,7 +131,7 @@ def coroutine(interval = 0, synchronize = False):
                     # exception handling, return finished InProgress
                     ip = InProgress()
                     ip.throw(*sys.exc_info())
-                    return ip
+                    return wrap(ip)
                 if isinstance(result, InProgress):
                     if result.is_finished():
                         # InProgress return that is already finished, go on
@@ -133,14 +141,14 @@ def coroutine(interval = 0, synchronize = False):
                     # everything went fine, return result in an InProgress
                     ip = InProgress()
                     ip.finish(result)
-                    return ip
+                    return wrap(ip)
                 # we need a CoroutineInProgress to finish this later
                 # result is either NotFinished or InProgress
-                progress = CoroutineInProgress(function, interval, result)
+                ip = CoroutineInProgress(function, interval, result)
                 if synchronize:
-                    func._lock = progress
+                    func._lock = ip
                 # return the CoroutineInProgress
-                return progress
+                return wrap(ip)
 
         if synchronize:
             func._lock = None

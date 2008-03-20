@@ -91,13 +91,14 @@ _threads = {}
 # For threaded decorator
 MAINTHREAD = object()
 
-def threaded(name=None, priority=0, async=True):
+def threaded(name=None, priority=0, async=True, progress=False):
     """
     The decorator makes sure the function is always called in the thread
     with the given name. The function will return an InProgress object if
     async=True (default), otherwise it will cause invoking the decorated
     function to block (the main loop is kept alive) and its result is
-    returned.
+    returned. If progress is True, the first argument to the function is
+    an InProgress.Progress object to return execution progress.
 
     If name=kaa.MAINTHREAD, the decorated function will be invoked from
     the main thread.  (In this case, currently the priority kwarg is
@@ -106,11 +107,13 @@ def threaded(name=None, priority=0, async=True):
     def decorator(func):
 
         def newfunc(*args, **kwargs):
+            if progress:
+                args = [ InProgress.Progress(), ] + list(args)
             if name is MAINTHREAD:
                 if not async and is_mainthread():
                     # Fast-path case: mainthread synchronous call from the mainthread
                     return func(*args, **kwargs)
-                callback =  MainThreadCallback(func)
+                callback = MainThreadCallback(func)
             elif name:
                 callback = NamedThreadCallback((name, priority), func)
             else:
@@ -121,6 +124,8 @@ def threaded(name=None, priority=0, async=True):
             in_progress = callback(*args, **kwargs)
             if not async:
                 return in_progress.wait()
+            if progress:
+                in_progress.progress = args[0]
             return in_progress
 
         try:

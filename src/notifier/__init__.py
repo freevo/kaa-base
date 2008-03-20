@@ -39,8 +39,7 @@ from callback import Callback, WeakCallback
 from signals import Signal, Signals
 
 # InProgress class
-from async import TimeoutException, InProgress, InProgressCallback, InProgressSignals, \
-     execute
+from async import TimeoutException, InProgress, InProgressCallback, InProgressSignals
 
 # Thread callbacks, helper functions and decorators
 from thread import MainThreadCallback, NamedThreadCallback, ThreadCallback, \

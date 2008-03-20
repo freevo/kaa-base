@@ -30,7 +30,7 @@
 # -----------------------------------------------------------------------------
 
 __all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallback', 'InProgressSignals',
-            'execute', 'AsyncException', 'AsyncExceptionBase', 'make_exception_class' ]
+            'AsyncException', 'AsyncExceptionBase', 'make_exception_class' ]
 
 # python imports
 import sys
@@ -353,6 +353,20 @@ class InProgress(Signal):
         return async
 
 
+    def execute(self, func, *args, **kwargs):
+        """
+        Execute the given function and return the result or exception in the
+        InProgress object. Returns self as result of the execution.
+        """
+        try:
+            result = func(*args, **kwargs)
+        except:
+            self.throw(*sys.exc_info())
+        else:
+            self.finish(result)
+        return self
+
+    
     def wait(self, timeout = None):
         """
         Waits for the result (or exception) of the InProgress object.  The
@@ -447,21 +461,6 @@ class InProgressCallback(InProgress):
         return self.finish(None)
 
 
-def execute(func, *args, **kwargs):
-    """
-    Execute the given function and return the result or exception in an
-    InProgress object.
-    """
-    async = InProgress()
-    try:
-        result = func(*args, **kwargs)
-    except:
-        async.throw(*sys.exc_info())
-    else:
-        async.finish(result)
-    return async
-
-    
 class InProgressSignals(InProgress):
     """
     InProgress object that will be finished if one of the provided

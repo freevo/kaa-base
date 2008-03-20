@@ -32,8 +32,8 @@ class MyProgress(kaa.Signal):
         self.values = []
         
 @kaa.coroutine(interval=0.1, progress=MyProgress)
-def scan3(progress):
-    for i in range(20):
+def scan3(progress, num):
+    for i in range(num):
         progress.values.append(i)
         progress.emit(progress)
         yield kaa.NotFinished
@@ -48,7 +48,7 @@ def test():
     async.progress.connect(update)
     yield async
     print
-    async = scan3()
+    async = scan3(15)
     async.progress.connect(update3)
     yield async
     print

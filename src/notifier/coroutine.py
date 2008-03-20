@@ -98,6 +98,9 @@ def coroutine(interval = 0, synchronize = False, progress=False):
     it has stop() and set_interval() member functions. If stop() is called,
     the InProgress object will emit the finished signal.
     """
+    if progress is True:
+        progress = InProgress.Progress
+
     def decorator(func):
         def newfunc(*args, **kwargs):
             def wrap(obj):
@@ -105,7 +108,7 @@ def coroutine(interval = 0, synchronize = False, progress=False):
                     obj.progress = args[0]
                 return obj
             if progress:
-                args = [ InProgress.Progress(), ] + list(args)
+                args = [ progress(), ] + list(args)
             result = func(*args, **kwargs)
             if not hasattr(result, 'next'):
                 # Decorated function doesn't have a next attribute, which

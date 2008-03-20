@@ -21,6 +21,22 @@ def scan2(progress):
     for i in range(20):
         progress.update()
         yield kaa.NotFinished
+
+def update3(progress):
+    sys.stdout.write('\r%s' % progress.values)
+    sys.stdout.flush()
+
+class MyProgress(kaa.Signal):
+    def __init__(self):
+        super(MyProgress, self).__init__()
+        self.values = []
+        
+@kaa.coroutine(interval=0.1, progress=MyProgress)
+def scan3(progress):
+    for i in range(20):
+        progress.values.append(i)
+        progress.emit(progress)
+        yield kaa.NotFinished
         
 @kaa.coroutine()
 def test():
@@ -30,6 +46,10 @@ def test():
     print
     async = scan2()
     async.progress.connect(update)
+    yield async
+    print
+    async = scan3()
+    async.progress.connect(update3)
     yield async
     print
     sys.exit(0)

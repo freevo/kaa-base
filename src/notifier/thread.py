@@ -104,11 +104,14 @@ def threaded(name=None, priority=0, async=True, progress=False):
     the main thread.  (In this case, currently the priority kwarg is
     ignored.)
     """
+    if progress is True:
+        progress = InProgress.Progress
+
     def decorator(func):
 
         def newfunc(*args, **kwargs):
             if progress:
-                args = [ InProgress.Progress(), ] + list(args)
+                args = [ progress(), ] + list(args)
             if name is MAINTHREAD:
                 if not async and is_mainthread():
                     # Fast-path case: mainthread synchronous call from the mainthread

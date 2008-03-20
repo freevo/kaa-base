@@ -161,18 +161,34 @@ class InProgress(Signal):
             return s % ("="*n + ">").ljust(width-2)
 
         @property
+        def elapsed(self):
+            """
+            Return time elapsed since the operation started.
+            """
+            return time.time() - self.start_time
+
+        @property
         def eta(self):
+            """
+            Estimated time left to complete the operation. Depends on the
+            operation itself if this is correct or not.
+            """
             if not self.pos:
                 return 0
             sec = (time.time() - self.start_time) / self.pos
+            # we assume every step takes the same amount of time
             return sec * (self.max - self.pos)
 
         @property
         def percentage(self):
+            """
+            Return percentage of steps done.
+            """
             if self.max:
                 return (self.pos * 100) / self.max
             return 0
-            
+
+
     def __init__(self):
         """
         Create an InProgress object.

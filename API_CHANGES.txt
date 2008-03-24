@@ -1,0 +1,75 @@
+The API for kaa.notifier has changed in releases 0.3.0 and 0.4.0. We
+think the API is now stable again. You need to check your code to
+adjust to the new API.
+
+
+Changes for 0.3.0
+-----------------
+
+1. Rename kaa.notifier mainloop control:
+   kaa.notifier.init() is kaa.main.select_notifier()
+   kaa.notifier.loop() and kaa.main() is now kaa.main.run()
+   kaa.notifier.step() is kaa.main.step()
+   kaa.notifier.shutdown() is kaa.main.stop()
+   kaa.notifier.running is kaa.main.is_running()
+   kaa.notifier.signals (shutdown/step) are now kaa.main.signals
+   
+   kaa.main can be accessed by importing kaa, you can NOT import
+   kaa.main directly.
+
+2. Move kaa.notifier classes and functions into the kaa namespace.
+   E.g. kaa.notifier.Timer is now kaa.Timer. No part of the code
+   should use anything from kaa.notifier.
+
+   Note: Exception for this is kaa.notifier.url right now
+
+3. Renamed ThreadCallback to NamedThreadCallback and make the first
+   paramater in __init__ the thread information (name or list of name
+   and priority). The register function will be changed to __call__.
+   The NamedThreadCallback is not InProgress object anymore, it is a
+   Callback. In most cases ThreadCallback was not used directly so
+   this API change should not break some code.
+
+4. Renamed Thread to ThreadCallback. The class has no signals anymore
+   and the start function is now __call__ and it will return an
+   InProgress object.
+
+5. Rename exception_handler in InProgress into exception and the
+   exception callback function to throw. Add a convenience function 
+   connect_both. The member variable is_finished is now a function.
+
+6. yield_execution decorator: lock kwarg was renamed to synchronize
+
+7. All exception handlers now take three arguments (instead of one): 
+   exception type, exception value, traceback.
+
+8. yield_execution now always returns an InProgress object. This
+   InProgress object may already be finished. Using yield on a
+   finished object will return without waiting. For Python 2.5 the
+   yield also returns the value or can raise an exception.
+
+
+Changes for 0.4.0
+-----------------
+
+1. MainThreadCallback.set_async() is removed.  Calling a 
+   MainThreadCallback will return an InProgress object, and the
+   new approach now is to wait() on this InProgress.
+
+2. Several decorators renamed:
+      @kaa.execute_in_timer  -->  @kaa.timed
+      @kaa.execute_in_thread  -->  @kaa.threaded
+      @kaa.execute_in_mainloop  --> @kaa.threaded(kaa.MAINTHREAD)
+      @kaa.yield_execution  -->  @kaa.coroutine
+
+   @kaa.timed also changed the parameter order and name. It is now
+   interval, timer (default Timer) and policy (default
+   POLICY_RESTART).
+
+3. SocketDispatcher and WeakSocketDispatcher are renamed to IOMonitor
+   and WeakIOMonitor.
+
+4. Rename YieldContinue to NotFinished
+   Rename YieldCallback to InProgressCallback
+   Remove YieldFunction from the API, the class is now only for
+   internal use and may change without further notice.

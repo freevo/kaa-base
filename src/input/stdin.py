@@ -49,6 +49,8 @@ _keycode_names = {
     "\x1b\x5b\x42": "down",
     "\x1b\x5b\x43": "right",
     "\x1b\x5b\x44": "left",
+    "\x1b\x5b\x35": "pgup",
+    "\x1b\x5b\x36": "pgdn",
 
     "\x1b\x4f\x50": "F1",
     "\x1b\x4f\x51": "F2",
@@ -92,13 +94,12 @@ def getch():
     #for c in buf:
     #    print "  " +  hex(ord(c))
     code = buf
-    #buf = ""
     if code in _keycode_names:
         return _keycode_names[code]
     elif len(code) == 1:
         return code
     else:
-        return "??"
+        return '??'
 
 
 def getch_enable():

@@ -101,8 +101,9 @@ def loop(condition, timeout = None):
     if timeout is not None:
         # timeout handling to stop the mainloop after the given timeout
         # even when the condition is still True.
+        sec = timeout
         timeout = OneShotTimer(lambda: abort.append(True))
-        timeout.start(timeout)
+        timeout.start(sec)
 
     try:
         while condition() and not abort:
@@ -120,7 +121,7 @@ def loop(condition, timeout = None):
         # catch. E.g. in Python 2.5 SystemExit and KeyboardInterrupt do not
         # inherit from Exception.
         if timeout is not None:
-            timeout.stop(timeout)
+            timeout.stop()
         if initial_mainloop:
             _set_running(False)
 

@@ -208,7 +208,7 @@ class Channel(object):
         self._auth_secret = auth_secret
         self._pending_challenge = None
 
-        self.signals = kaa.Signals('closed')
+        self.signals = kaa.Signals('closed', 'authenticated')
         # Creates a circular reference so that RPC channels survive even when
         # there is no reference to them.  (Servers do not hold references to
         # clients channels.)  As long as the socket is connected, the channel
@@ -611,6 +611,7 @@ class Channel(object):
             # Empty deferred write buffer now that we're authenticated.
             self._socket.write(''.join(self._write_buffer_deferred))
             self._write_buffer_deferred = []
+            self.signals['authenticated'].emit()
 
 
     def _get_rand_value(self):

@@ -466,6 +466,10 @@ class Socket(object):
             self._queue_close = True
             return
 
+        if not self._rmon and not self._wmon:
+            # already closed
+            return
+
         self._rmon.unregister()
         self._wmon.unregister()
         self._rmon = self._wmon = None

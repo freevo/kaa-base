@@ -222,7 +222,8 @@ def get_plugins(path, include_files=True, include_directories=True):
         else:
             if not include_directories or not os.path.isdir(os.path.join(path, plugin)):
                 continue
-        if not plugin in result and not plugin == '__init__':
+        if not plugin in result and not plugin == '__init__' and \
+               not plugin.startswith('.'):
             result.append(plugin)
     return result
 

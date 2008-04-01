@@ -126,13 +126,21 @@ def loop(condition, timeout = None):
             _set_running(False)
 
 
-def run():
+def run(threaded=False):
     """
     Notifier main loop function. It will loop until an exception
-    is raised or sys.exit is called.
+    is raised or sys.exit is called. If thread is true the mainloop
+    will run in an extra thread.
     """
     if is_running():
         raise RuntimeError('Mainthread is already running')
+
+    if threaded:
+        # start mainloop as thread and wait until it is started
+        event = threading.Event()
+        OneShotTimer(event.set).start(0)
+        threading.Thread(target=run).start()
+        return event.wait()
 
     try:
         # Nested try necessary because python 2.4 doesn't support

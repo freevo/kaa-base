@@ -1,6 +1,6 @@
 import os
 import stat
-import tempfile
+from tempfile import mktemp
 
 __all__ = [ 'tempfile' ]
 
@@ -32,4 +32,4 @@ def tempfile(name, unique=False):
         os.mkdir(os.path.dirname(name))
     if not unique:
         return name
-    return tempfile.mktemp(os.path.basename(name), dir=os.path.dirname(name))
+    return mktemp(prefix=os.path.basename(name), dir=os.path.dirname(name))

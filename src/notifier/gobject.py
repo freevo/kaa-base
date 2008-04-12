@@ -69,28 +69,29 @@ class Wrapper(object):
         self.thread = False
         self.init = False
 
-    def set_threaded(self):
+    def set_threaded(self, mainloop=None):
         """
         Start the glib mainloop in a thread.
         """
         if self.init:
-            raise RuntimeError()
+            raise RuntimeError('gobject loop already running')
         if self.thread:
             return
         self.thread = True
         if gobject is not None:
             self._finished_event = threading.Event()
-            gobject.threads_init()
-            self.loop()
+            self.loop(mainloop)
 
     @thread_support.threaded()
-    def loop(self):
+    def loop(self, mainloop):
         """
         Glib thread.
         """
-        loop = gobject.main_context_default()
-        while not self.stopped:
-            loop.iteration()
+        gobject.threads_init()
+        if mainloop is None:
+            mainloop = gobject.MainLoop()
+        self._loop = mainloop
+        self._loop.run()
         self._finished_event.set()
 
     def add(self, callback):
@@ -108,6 +109,8 @@ class Wrapper(object):
         """
         if callback is not None:
             callback._execute()
+        elif self.stopped:
+            self._loop.quit()
         return False
 
     def stop(self):

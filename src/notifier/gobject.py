@@ -87,6 +87,7 @@ class Wrapper(object):
         """
         Glib thread.
         """
+        self.thread = threading.currentThread()
         gobject.threads_init()
         if mainloop is None:
             mainloop = gobject.MainLoop()
@@ -99,7 +100,7 @@ class Wrapper(object):
         Add a callback.
         """
         self.init = True
-        if not self.thread:
+        if not self.thread or threading.currentThread() == self.thread:
             return callback._execute()
         gobject.timeout_add(0, self._execute, callback)
 

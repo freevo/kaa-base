@@ -102,7 +102,7 @@ class Wrapper(object):
         self.init = True
         if not self.thread or threading.currentThread() == self.thread:
             return callback._execute()
-        gobject.timeout_add(0, self._execute, callback)
+        gobject.idle_add(self._execute, callback)
 
     def _execute(self, callback):
         """

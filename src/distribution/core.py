@@ -198,8 +198,9 @@ class Library(object):
 
 
     def compile(self, includes, code='', args='', extra_libraries = []):
-        ext_args = [ "-L%s" % x for x in self.library_dirs ]
-        ext_args += [ "-I%s" % x for x in self.include_dirs ]
+        ext_args = [ "-L%s" % x for x in self.library_dirs ] + \
+                   [ "-l%s" % x for x in self.libraries ] + \
+                   [ "-I%s" % x for x in self.include_dirs ]
 
         for lib in extra_libraries:
             if isinstance(lib, basestring):

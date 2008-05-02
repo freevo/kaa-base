@@ -29,8 +29,9 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallback', 'InProgressSignals',
-            'AsyncException', 'AsyncExceptionBase', 'make_exception_class' ]
+__all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallback',
+            'InProgressSignals', 'InProgressList', 'AsyncException',
+            'AsyncExceptionBase', 'make_exception_class' ]
 
 # python imports
 import sys
@@ -505,3 +506,25 @@ class InProgressSignals(InProgress):
             signal.disconnect(self.finish, num)
         self._signals = []
         return super(InProgressSignals, self).finish(result)
+
+
+class InProgressList(InProgress):
+    """
+    InProgress object that will finish when all InProgress objects given to
+    the constructor are finished. This object will never raise an exception
+    nor will it provide the results of the given InProgress objects. Use
+    get_result() on each InProgress object to get the required result.
+    """
+    def __init__(self, objects):
+        super(InProgressList, self).__init__()
+        self._counter = len(objects) or 1
+        for obj in objects:
+            obj.connect(self.finish)
+            obj.exception.connect(self.finish)
+        if not objects:
+            self.finish(None)
+
+    def finish(self, result):
+        self._counter -= 1
+        if not self._counter:
+            super(InProgressList, self).finish(None)

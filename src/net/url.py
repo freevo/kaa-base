@@ -90,7 +90,7 @@ class URLOpener(object):
             # FIXME: how to handle this.
             return e.code
         self.signals['header'].emit(fd.info())
-        if not len(self.signals['data']) and not len(self.signals['completed']):
+        if length and not len(self.signals['data']):
             # no callback connected, no need to read
             return
         if not length:
@@ -105,8 +105,7 @@ class URLOpener(object):
             if not data:
                 # no data (done)
                 return True
-            if not len(self.signals['data']) and not \
-                   len(self.signals['completed']):
+            if not len(self.signals['data']):
                 # no callback listening anymore
                 return False
 

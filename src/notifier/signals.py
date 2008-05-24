@@ -239,8 +239,25 @@ class Signal(object):
         if _python_shutting_down == False:
             self._disconnect(callback, (), {})
 
+
     def count(self):
         return len(self._callbacks)
+
+
+    def async(self):
+        """
+        Convenience function which returns an InProgressCallback for this
+        signal.  The returned InProgress object is finished when this signal is
+        emitted.
+
+        For example, if you want to block while waiting for the signal to be
+        emitted from another thread or coroutine, you could do:
+
+           signal.async().wait()
+
+        """
+        from async import InProgressCallback
+        return InProgressCallback(self)
 
 
 class Signals(dict):

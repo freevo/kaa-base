@@ -843,9 +843,9 @@ class Database:
                     terms_list.append((attrs[name], 1.0, attr_split or split, ivtidx))
 
             if ivtidx in attrs and ivtidx not in type_attrs:
-                # Attribute named after an inverted index is given, but
-                # that ivtidx is not a named attribute (which would be handled
-                # in the for loop just above).
+                # Attribute named after an inverted index is given in kwagrs,
+                # but that ivtidx is not a registered attribute (which would be
+                # handled in the for loop just above).
                 terms_list.append((attrs[ivtidx], 1.0, split, ivtidx))
 
             terms = self._score_terms(terms_list)
@@ -1243,10 +1243,9 @@ class Database:
         Scores the terms given in terms_list, which is a list of tuples (terms,
         coeff, split, ivtidx), where terms is the string or sequence of
         terms to be scored, coeff is the weight to give each term in this part
-        (1.0 is normal), split is the functionh or regular expression used to
+        (1.0 is normal), split is the function or regular expression used to
         split terms (only used if a string is given for terms), and ivtidx is
         the name of inverted index we're scoring for.
-        
         
         Terms are either unicode objects or strings, or sequences of unicode or
         string objects.  In the case of strings, they are passed through
@@ -1258,8 +1257,10 @@ class Database:
         Counts are relative to the given object, not all objects in the
         database.
 
-        Returns a dict of terms whose values hold the score caclulated as
-        above.
+        Returns a dict of term->score.  Terms (the keys) are converted to
+        unicode objects, but their case is preserved as given (if term is
+        given more than once, the case of the first occurence is used), and
+        score (the values) are calculated as described above.
         """
         terms_scores = {}
         total_terms = 0
@@ -1285,21 +1286,23 @@ class Database:
                 if not term or (ivtidx['max'] and len(term) > ivtidx['max']) or \
                    (ivtidx['min'] and len(term) < ivtidx['min']):
                     continue
-                term = str_to_unicode(term).lower()
 
-                if ivtidx['ignore'] and term in ivtidx['ignore']:
+                term = str_to_unicode(term)
+                lower_term = term.lower()
+
+                if ivtidx['ignore'] and lower_term in ivtidx['ignore']:
                     continue
-                if term not in terms_scores:
-                    terms_scores[term] = coeff
+                if lower_term not in terms_scores:
+                    terms_scores[lower_term] = [term, coeff]
                 else:
-                    terms_scores[term] += coeff
+                    terms_scores[lower_term][1] += coeff
                 total_terms += 1
 
         # Score based on term frequency in document.  (Add weight for
         # non-dictionary terms?  Or longer terms?)
-        for term, score in terms_scores.items():
-            terms_scores[term] = math.sqrt(terms_scores[term] / total_terms)
-        return terms_scores
+        for lower_term, score in terms_scores.items():
+            terms_scores[lower_term][1] = math.sqrt(terms_scores[lower_term][1] / total_terms)
+        return dict(terms_scores.values())
 
 
     def _delete_object_inverted_index_terms(self, (object_type, object_id), ivtidx):
@@ -1345,7 +1348,7 @@ class Database:
         # with their id and count.
         db_terms_count = {}
 
-        terms_list = _list_to_printable(terms.keys())
+        terms_list = _list_to_printable([ t.lower() for t in terms.keys() ])
         q = "SELECT id,term,count FROM ivtidx_%s_terms WHERE term IN %s" % (ivtidx, terms_list)
         rows = self._db_query(q)
         for row in rows:
@@ -1355,6 +1358,7 @@ class Database:
         update_list, map_list = [], []
 
         for term, score in terms.items():
+            term = term.lower()
             if term not in db_terms_count:
                 # New term, so insert it now.
                 self._db_query('INSERT OR REPLACE INTO ivtidx_%s_terms VALUES(NULL, ?, 1)' % ivtidx, (term,))

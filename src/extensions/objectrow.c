@@ -69,6 +69,7 @@ typedef struct {
     PyObject *desc,         // Cursor description for this row
              *row,          // Row tuple from sqlite
              *db,           // Weakref to kaa.db.Database instance
+             *object_types, // Object types dict from Database instance
              *attrs,        // Dict of attributes for this type
              *type_name,    // String object of object type name
              *pickle,       // Dict of pickled attributes.
@@ -85,14 +86,14 @@ PyObject *ObjectRow_PyObject__items(ObjectRow_PyObject *, PyObject *, PyObject *
 
 int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    PyObject *cursor, *row, *db, *o_types, *o_type, *pickle_dict = 0;
+    PyObject *cursor, *row, *o_type, *pickle_dict = 0;
     if (!PyArg_ParseTuple(args, "OO|O", &cursor, &row, &pickle_dict))
         return -1;
 
-    if (row == Py_None || cursor == Py_None) {
+    if (pickle_dict) {
         /* If row or cursor weren't specified, then we require the third arg
          * (pickle_dict) be a dictionary, and we basically pass behave as this
-         * dict.  We do this for example when pickling an ObjectRow.
+         * dict.  We do this for example from Database.add_object()
          */
         if (pickle_dict == 0 || !PyDict_Check(pickle_dict)) {
             PyErr_Format(PyExc_ValueError, "pickle dict must be specified when cursor or row is None");
@@ -100,27 +101,42 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
         }
         self->pickle = pickle_dict;
         Py_INCREF(self->pickle);
+        self->row = Py_None;
+        Py_INCREF(self->row);
+        self->desc = Py_None;
+        Py_INCREF(self->desc);
         return 0;
     }
 
-    self->row = row;
-    Py_INCREF(self->row);
+    if (PyTuple_Check(cursor)) {
+        self->desc = PySequence_GetItem(cursor, 0); // new ref
+        self->object_types = PySequence_GetItem(cursor, 1); // new ref
+    } else if (!PyObject_HasAttrString(cursor, "_db")) {
+        PyErr_Format(PyExc_ValueError, "First argument is not a Cursor or tuple object");
+        return -1;
+    } else {
+        PyObject *weak_db = PyObject_GetAttrString(cursor, "_db"); // new ref
+        PyObject *db = PyWeakref_GetObject(weak_db); // borrowed ref
+        self->object_types = PyObject_GetAttrString(db, "_object_types"); // new ref
+        self->desc = PyObject_GetAttrString(cursor, "description"); // new ref
+        Py_XDECREF(weak_db);
+    }
 
-    self->desc = PyObject_GetAttrString(cursor, "description"); // new ref
-    self->db = PyObject_GetAttrString(cursor, "_db"); // new ref
+    self->row = row;
+
     self->type_name = PySequence_GetItem(row, 0); // new ref
     if (!PyString_Check(self->type_name) && !PyUnicode_Check(self->type_name)) {
+        Py_XDECREF(self->desc);
+        Py_XDECREF(self->object_types);
         PyErr_Format(PyExc_ValueError, "First element of row must be object type");
         return -1;
     }
 
-
-    db = PyWeakref_GetObject(self->db); // borrowed ref
-
-    o_types = PyObject_GetAttrString(db, "_object_types"); // new ref
-    o_type = PyDict_GetItem(o_types, self->type_name); // borrowed ref
+    o_type = PyDict_GetItem(self->object_types, self->type_name); // borrowed ref
     self->attrs = PySequence_GetItem(o_type, 1); // new ref
     if (!self->attrs) {
+        Py_XDECREF(self->desc);
+        Py_XDECREF(self->object_types);
         PyErr_Format(PyExc_ValueError, "Object type '%s' not defined.", PyString_AsString(self->type_name));
         return -1;
     }
@@ -188,14 +204,14 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
          */
         pos = 0;
         self->query_info->type_names = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, free);
-        while (PyDict_Next(o_types, &pos, &key, &value)) {
+        while (PyDict_Next(self->object_types, &pos, &key, &value)) {
             PyObject *type_id = PySequence_Fast_GET_ITEM(value, 0);
             char *skey = PyString_AsString(key);
             g_hash_table_insert(self->query_info->type_names, (void *)PyInt_AsLong(type_id), g_strdup(skey));
         }
         g_hash_table_insert(queries, self->desc, self->query_info);
     }
-    Py_DECREF(o_types);
+
     self->query_info->refcount++;
     if (self->query_info->pickle_idx >= 0) {
         // Pickle column included in row.  Set _pickle member to True which
@@ -208,6 +224,7 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
         self->pickle = Py_False;
 
     Py_INCREF(self->pickle);
+    Py_INCREF(self->row);
 
     if (pickle_dict && pickle_dict != Py_None) {
         Py_DECREF(self->pickle);
@@ -229,8 +246,8 @@ void ObjectRow_PyObject__dealloc(ObjectRow_PyObject *self)
             free(self->query_info);
         }
     }
+    Py_XDECREF(self->object_types);
     Py_XDECREF(self->type_name);
-    Py_XDECREF(self->db);
     Py_XDECREF(self->desc);
     Py_XDECREF(self->row);
     Py_XDECREF(self->pickle);
@@ -523,14 +540,14 @@ PyObject *ObjectRow_PyObject__items(ObjectRow_PyObject *self, PyObject *args, Py
 
 PyObject *ObjectRow_PyObject__get(ObjectRow_PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    PyObject *key, *value;
-    if (!PyArg_ParseTuple(args, "O", &key))
+    PyObject *key, *value, *def = Py_None;
+    if (!PyArg_ParseTuple(args, "O|O", &key, &def))
         return NULL;
     value = ObjectRow_PyObject__subscript(self, key);
     if (!value) {
         PyErr_Clear();
-        Py_INCREF(Py_None);
-        return Py_None;
+        Py_INCREF(def);
+        return def;
     }
     return value;
 }
@@ -567,6 +584,7 @@ static PyMemberDef ObjectRow_PyObject_members[] = {
     {"_row", T_OBJECT_EX, offsetof(ObjectRow_PyObject, row), 0, "pysqlite row"},
     {"_description", T_OBJECT_EX, offsetof(ObjectRow_PyObject, desc), 0, "pysqlite cursor description"},
     {"_pickle", T_OBJECT_EX, offsetof(ObjectRow_PyObject, pickle), 0, "Unpickled dictionary"},
+    {"_object_types", T_OBJECT_EX, offsetof(ObjectRow_PyObject, object_types), 0, "Database object types"},
     {NULL}
 };
 

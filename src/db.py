@@ -195,12 +195,22 @@ class QExpr(object):
 # Register handlers for pickling ObjectRow objects.
 
 def _pickle_ObjectRow(o):
-    return _unpickle_ObjectRow, (o.items(),)
+    if o._description:
+        return _unpickle_ObjectRow, ((o._description, o._object_types), o._row)
+    else:
+        return _unpickle_ObjectRow, (None, None, dict(o.items()))
 
-def _unpickle_ObjectRow(items):
-    return ObjectRow(None, None, dict(items))
+def _unpickle_ObjectRow(*args):
+    return ObjectRow(*args)
+
+def _pickle_buffer(b):
+    return _unpickle_buffer, (str(b),)
+
+def _unpickle_buffer(s):
+    return buffer(s)
 
 copy_reg.pickle(ObjectRow, _pickle_ObjectRow, _unpickle_ObjectRow)
+copy_reg.pickle(buffer, _pickle_buffer, _unpickle_buffer)
 
 class RegexpCache(object):
     def __init__(self):
@@ -861,21 +871,15 @@ class Database:
         # Add id given by db, as well as object type.
         attrs["id"] = self._cursor.lastrowid
         attrs["type"] = object_type
+        if parent:
+            attrs['parent'] = (attrs['parent_type'], attrs['parent_id'])
+        else:
+            attrs['parent'] = (None, None)
 
         for ivtidx, terms in ivtidx_terms:
             self._add_object_inverted_index_terms((object_type, attrs['id']), ivtidx, terms)
             
-
-        class DummyCursor:
-            _db = _weakref.ref(self)
-            # List of non ATTR_SIMPLE attributes for this object type.
-            description = [None, None] + [ (x[0],) for x in type_attrs.items() if x[1][1] & ATTR_SEARCHABLE ]
-
-        # Create a row that matches the description order.
-        row = [object_type, self._get_type_id(object_type)] + \
-              [ attrs.pop(x[0], None) for x in DummyCursor.description[2:] ]
-        # Return the ObjectRow for this object.
-        return ObjectRow(DummyCursor(), row, attrs)
+        return ObjectRow(None, None, attrs)
 
 
     def update_object(self, obj, parent_obj = None, **attrs):

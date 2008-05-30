@@ -38,7 +38,7 @@ import logging
 import datetime
 
 import nf_wrapper as notifier
-from thread import MainThreadCallback, is_mainthread
+from thread import threaded, MAINTHREAD
 from kaa.weakref import weakref
 
 POLICY_ONCE = 'once'
@@ -136,10 +136,8 @@ class Timer(notifier.NotifierCallback):
         self.restart_when_active = restart
 
 
+    @threaded(MAINTHREAD)
     def start(self, interval):
-        if not is_mainthread():
-            return MainThreadCallback(self.start, interval)()
-
         if self.active():
             if not self.restart_when_active:
                 return
@@ -149,9 +147,8 @@ class Timer(notifier.NotifierCallback):
         self._interval = interval
 
 
+    @threaded(MAINTHREAD)
     def stop(self):
-        if not is_mainthread():
-            return MainThreadCallback(self.stop)()
         self.unregister()
 
 

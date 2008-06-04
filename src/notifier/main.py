@@ -57,6 +57,8 @@ log = logging.getLogger('notifier')
 _running_pid = None
 # Set if currently in shutdown() (to prevent reentrancy)
 _shutting_down = False
+# Lock preventing multiple threads from executing loop().
+_loop_lock = threading.Lock()
 
 def _step_signal_changed(signal, flag):
     if flag == Signal.SIGNAL_CONNECTED and signal.count() == 1:
@@ -86,6 +88,13 @@ def loop(condition, timeout = None):
     Executes the main loop until condition is met.  condition is either a
     callable, or value that is evaluated after each step of the main loop.
     """
+    if _loop_lock.locked():
+        # Loop may already be running.  First check to see if we've forked,
+        # and if so, clear the lock.
+        if _running_pid is not None and _running_pid != os.getpid():
+            _loop_lock.release()
+
+    _loop_lock.acquire()
     initial_mainloop = False
     if not is_running():
         # no mainloop is running, set this thread as mainloop and
@@ -124,6 +133,7 @@ def loop(condition, timeout = None):
             timeout.stop()
         if initial_mainloop:
             _set_running(False)
+        _loop_lock.release()
 
 
 def run(threaded=False):
@@ -221,7 +231,7 @@ def is_running():
     """
     Return if the main loop is currently running.
     """
-    return _running_pid == os.getpid()
+    return _running_pid == os.getpid() and _loop_lock.locked()
 
 
 def is_shutting_down():

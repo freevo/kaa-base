@@ -41,7 +41,7 @@ import logging
 import nf_wrapper as notifier
 from callback import Callback, WeakCallback
 from signals import Signals, Signal
-from thread import MainThreadCallback, ThreadCallback, is_mainthread, threaded
+from thread import MainThreadCallback, ThreadCallback, is_mainthread, threaded, MAINTHREAD
 from async import InProgress, InProgressCallback
 from kaa.utils import property
 from timer import OneShotTimer, timed, POLICY_ONCE
@@ -92,6 +92,9 @@ class WeakIOMonitor(notifier.WeakNotifierCallback, IOMonitor):
 # instead of doing so at the top of the file.
 from kaa.notifier import main
 
+class SocketError(Exception):
+    pass
+
 class Socket(object):
     """
     Notifier-aware socket class.
@@ -100,6 +103,7 @@ class Socket(object):
     def __init__(self, buffer_size=None, chunk_size=1024*1024):
         self.signals = Signals('closed', 'read', 'readline', 'new-client')
         self._socket = None
+        self._connecting = False
         self._write_buffer = []
         self._addr = None
         self._listening = False
@@ -151,11 +155,36 @@ class Socket(object):
 
 
     @property
+    def connecting(self):
+        """
+        True if the socket is in the process of establishing a connection
+        but is not yet connected.  Once the socket is connected, the
+        connecting property will be False, but the connected property
+        will be True.
+        """
+        return self._connecting
+
+
+    @property
     def connected(self):
         """
         Boolean representing the connected state of the socket.
         """
-        return self._socket != None
+        try:
+            # Will raise exception if socket is not connected.
+            self._socket.getpeername()
+            return True
+        except:
+            return False
+
+
+    @property
+    def alive(self):
+        """
+        Returns True if the socket is alive, and False otherwise.  A socket is
+        considered alive when it is connected or in the process of connecting.
+        """
+        return self.connected or self.connecting
 
 
     @property
@@ -212,12 +241,17 @@ class Socket(object):
         s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, size)
         
 
-    @timed(0, OneShotTimer, POLICY_ONCE)
     def _update_read_monitor(self, signal = None, change = None):
-        # Update read IOMonitor to register or unregister based on if there are
-        # any handlers attached to the read signals.  If there are no handlers,
-        # there is no point in reading data from the socket since it will go 
-        # nowhere.  This also allows us to push back the read buffer to the OS.
+        """
+        Update read IOMonitor to register or unregister based on if there are
+        any handlers attached to the read signals.  If there are no handlers,
+        there is no point in reading data from the socket since it will go 
+        nowhere.  This also allows us to push back the read buffer to the OS.
+
+        We must call this immediately after reading a block, and not defer
+        it until the end of the mainloop iteration via a timer in order not
+        to lose incoming data between read() calls.
+        """
         if not self._rmon or change == Signal.SIGNAL_DISCONNECTED:
             return
         elif not self._listening and len(self._read_signal) == len(self._readline_signal) == \
@@ -330,6 +364,24 @@ class Socket(object):
 
 
     @threaded()
+    def _connect(self, addr):
+        sock, addr = self._make_socket(addr)
+        try:
+            if type(addr) == str:
+                # Unix socket, just connect.
+                sock.connect(addr)
+            else:
+                host, port = addr
+                if not host.replace(".", "").isdigit():
+                    # Resolve the hostname.
+                    host = socket.gethostbyname(host)
+                sock.connect((host, port))
+        finally:
+            self._connecting = False
+
+        self.wrap(sock, addr)
+
+
     def connect(self, addr):
         """
         Connects to the host specified in addr.  If addr is a string in the
@@ -343,17 +395,8 @@ class Socket(object):
         is finished with no arguments.  If the connection cannot be established,
         an exception is thrown to the InProgress.
         """
-        sock, addr = self._make_socket(addr)
-        if type(addr) == str:
-            # Unix socket, just connect.
-            sock.connect(addr)
-        else:
-            host, port = addr
-            if not host.replace(".", "").isdigit():
-                # Resolve the hostname.
-                host = socket.gethostbyname(host)
-            sock.connect((host, port))
-        self.wrap(sock, addr)
+        self._connecting = True
+        return self._connect(addr)
 
 
     def wrap(self, sock, addr = None):
@@ -385,10 +428,15 @@ class Socket(object):
         
 
     def _async_read(self, signal):
-        if self._listening:
-            raise RuntimeError("Can't read on a listening socket.")
+        if not self._socket and not self._connecting:
+            # Socket is closed.  Return an InProgress pre-finished
+            # with None
+            return InProgress().finish(None)
 
-        return InProgressCallback(signal)
+        if self._listening:
+            raise SocketError("Can't read on a listening socket.")
+
+        return signal.async()
 
 
     def read(self):
@@ -396,6 +444,19 @@ class Socket(object):
         Reads a chunk of data from the socket.  This function returns an 
         InProgress object.  If the InProgress is finished with None, it
         means that no data was collected and the socket closed.
+
+        It is therefore possible to busy-loop by reading on a closed
+        socket:
+
+            while True:
+                socket.read().wait()
+
+        So the return value of read() should be checked.  Alternatively,
+        socket.isalive could be tested:
+
+            while socket.isalive:
+                socket.read().wait()
+
         """
         return self._async_read(self._read_signal)
 
@@ -445,8 +506,13 @@ class Socket(object):
             return self.close(immediate=True, expected=False)
 
         self.signals['read'].emit(data)
-        # FIXME: why do this here?
+        # Update read monitor if necessary.  If there are no longer any
+        # callbacks left on any of the read signals (most likely _read_signal
+        # or _readline_signal), we want to prevent _handle_read() from being
+        # called, otherwise next time read() or readline() is called, we will
+        # have lost that data.
         self._update_read_monitor()
+
 
         # TODO: parse input into separate lines and emit readline.
 
@@ -492,6 +558,17 @@ class Socket(object):
 
 
     def write(self, data):
+        """
+        Writes the given data to the socket.  Writes are performed
+        asynchronously, so when this method returns, the data has not yet been
+        transmitted.
+
+        If the socket is not connected (or not in the process of connecting),
+        an exception will be raised.
+        """
+        if not self._socket and not self._connecting:
+            raise SocketError("Can't write to disconnected socket")
+
         self._write_buffer.append(data)
         if self._socket and self._wmon and not self._wmon.active():
             self._wmon.register(self._socket.fileno(), IO_WRITE)

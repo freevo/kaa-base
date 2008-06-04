@@ -206,13 +206,16 @@ class InProgress(Signal):
         """
         This function should be called when the creating function is
         done and no longer in progress.
+
+        This method returns self, which makes it convenient to prime InProgress
+        objects with a finished value.
         """
         if self._finished:
             raise RuntimeError('%s already finished' % self)
         if isinstance(result, InProgress):
             # we are still not finished, link to this new InProgress
             self.link(result)
-            return
+            return self
 
         # store result
         self._finished = True
@@ -225,6 +228,7 @@ class InProgress(Signal):
         # cleanup
         self.disconnect_all()
         self.exception.disconnect_all()
+        return self
 
 
     def throw(self, type, value, tb):

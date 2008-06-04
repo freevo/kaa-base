@@ -246,7 +246,9 @@ def create_thread_notifier_pipe(new = True, purge = False):
         notifier.socket_remove(_thread_notifier_pipe[0])
 
     if purge:
+        _thread_notifier_lock.acquire()
         del _thread_notifier_queue[:]
+        _thread_notifier_lock.release()
 
     _thread_notifier_pipe = os.pipe()
     fcntl.fcntl(_thread_notifier_pipe[0], fcntl.F_SETFL, os.O_NONBLOCK)

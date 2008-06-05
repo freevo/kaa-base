@@ -452,9 +452,9 @@ class Socket(object):
                 socket.read().wait()
 
         So the return value of read() should be checked.  Alternatively,
-        socket.isalive could be tested:
+        socket.alive could be tested:
 
-            while socket.isalive:
+            while socket.alive:
                 socket.read().wait()
 
         """

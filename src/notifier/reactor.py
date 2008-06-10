@@ -29,6 +29,12 @@
 #
 # -----------------------------------------------------------------------------
 
+"""
+Twisted reactor to run the kaa mainloop as twisted reactor.
+"""
+
+__all__ = [ 'install' ]
+
 # get and install reactor
 from twisted.internet import threadedselectreactor
 

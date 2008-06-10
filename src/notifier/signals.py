@@ -251,7 +251,7 @@ class Signal(object):
         emitted.
 
         For example, if you want to block while waiting for the signal to be
-        emitted from another thread or coroutine, you could do:
+        emitted from another thread or coroutine, you could do::
 
            signal.async().wait()
 

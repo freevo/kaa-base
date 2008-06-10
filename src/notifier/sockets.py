@@ -446,13 +446,13 @@ class Socket(object):
         means that no data was collected and the socket closed.
 
         It is therefore possible to busy-loop by reading on a closed
-        socket:
+        socket::
 
             while True:
                 socket.read().wait()
 
         So the return value of read() should be checked.  Alternatively,
-        socket.alive could be tested:
+        socket.alive could be tested::
 
             while socket.alive:
                 socket.read().wait()

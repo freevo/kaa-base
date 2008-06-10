@@ -71,7 +71,18 @@ class Wrapper(object):
 
     def set_threaded(self, mainloop=None):
         """
-        Start the glib mainloop in a thread.
+        Start the gobject mainloop in a thread. This function should always
+        be used together with the generic notifier::
+
+          kaa.main.select_notifier('generic')
+          kaa.gobject_set_threaded()
+        
+        It is possible to jump between the gobject and the generic
+        mainloop with the threaded decorator.
+
+        @param mainloop: the mainloop object to use a mainloop based on gobject
+          like the gstreamer or clutter mainloop. The object provided here must
+          have a start and a stop function.
         """
         if self.init:
             raise RuntimeError('gobject loop already running')

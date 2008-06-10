@@ -30,6 +30,15 @@
 #
 # -----------------------------------------------------------------------------
 
+"""
+Control the mainloop
+
+This module provides basic functions to control the kaa mainloop.
+"""
+
+__all__ = [ 'run', 'stop', 'step', 'select_notifier', 'is_running', 'wakeup',
+            'set_as_mainthread', 'is_shutting_down', 'loop', 'signals' ]
+
 # python imports
 import sys
 import logging
@@ -45,9 +54,6 @@ from timer import OneShotTimer
 from popen import proclist as _proclist
 from thread import is_mainthread, wakeup, set_as_mainthread, threaded, MAINTHREAD
 from thread import killall as kill_jobserver
-
-__all__ = [ 'run', 'stop', 'step', 'select_notifier', 'is_running', 'wakeup',
-            'set_as_mainthread', 'is_shutting_down', 'loop' ]
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -66,16 +72,27 @@ def _step_signal_changed(signal, flag):
     elif flag == Signal.SIGNAL_DISCONNECTED and signal.count() == 0:
         notifier.dispatcher_remove(signals["step"].emit)
 
+
+#: mainloop signals to connect to
+#:  - exception: emited when an unhandled async exceptions occurs
+#:  - shutdown: emited on kaa shutdown
+#:  - step: emited on each step of the mainloop
 signals = {
     'exception': Signal(),
     'shutdown': Signal(),
     'step': Signal(changed_cb = _step_signal_changed),
 }
 
-
 def select_notifier(module, **options):
     """
     Initialize the specified notifier.
+
+    @param module: notifier implementation to use
+      - generic (Python based notifier, default)
+      - gtk (gtk mainloop)
+      - threaded (Python based notifier in an extra thread
+      - twisted (Twisted mainloop)
+    @param options: The options depend on the used notifier
     """
     if module in ('thread', 'twisted'):
         import nf_thread
@@ -211,7 +228,8 @@ def stop():
 
 def step(*args, **kwargs):
     """
-    Notifier step function with signal support.
+    Notifier step function with signal support. This function should not
+    be called directly to avoid recursion.
     """
     if not is_mainthread():
         # If step is being called from a thread, wake up the mainthread

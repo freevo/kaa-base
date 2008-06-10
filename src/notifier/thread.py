@@ -212,7 +212,9 @@ class synchronized(object):
 
 def is_mainthread():
     """
-    Return True if the caller is in the main thread right now.
+    Check if the current thread is the main thread
+
+    @return: True if the caller is in the main thread right now
     """
     # If threading module is None, assume main thread.  (Silences pointless
     # exceptions on shutdown.)
@@ -221,7 +223,8 @@ def is_mainthread():
 
 def wakeup():
     """
-    Wake up main thread.
+    Wake up main thread. A thread can use this function to wake up a mainloop
+    waiting on a select.
     """
     if _thread_notifier_pipe and len(_thread_notifier_queue) == 0:
         os.write(_thread_notifier_pipe[1], "1")
@@ -263,6 +266,10 @@ def create_thread_notifier_pipe(new = True, purge = False):
 
 
 def set_as_mainthread():
+    """
+    Set the current thread as mainthread. This function SHOULD NOT be called
+    from the outside, the loop function is setting the mainthread if needed.
+    """
     global _thread_notifier_mainthread
     _thread_notifier_mainthread = threading.currentThread()
     if not _thread_notifier_pipe:
@@ -515,6 +522,3 @@ class _JobServer(threading.Thread):
             job._execute()
         # server stopped
         log.debug('stop thread %s' % self.name)
-
-
-

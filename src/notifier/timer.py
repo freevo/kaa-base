@@ -132,12 +132,13 @@ class Timer(notifier.NotifierCallback):
         self._interval = None
 
 
-    def set_resart_when_active(self, restart):
-        self.restart_when_active = restart
-
-
     @threaded(MAINTHREAD)
     def start(self, interval):
+        """
+        Start the timer.
+        @param interval: interval in seconds
+        @note: this function will always be called from the mainthread
+        """
         if self.active():
             if not self.restart_when_active:
                 return
@@ -149,6 +150,10 @@ class Timer(notifier.NotifierCallback):
 
     @threaded(MAINTHREAD)
     def stop(self):
+        """
+        Stop a running timer.
+        @note: this function will always be called from the mainthread
+        """
         self.unregister()
 
 

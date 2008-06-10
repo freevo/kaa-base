@@ -55,11 +55,19 @@ IO_WRITE  = 1
 
 class IOMonitor(notifier.NotifierCallback):
     def __init__(self, callback, *args, **kwargs):
+        """
+        Creates an IOMonitor to monitor IO activity.
+        """
         super(IOMonitor, self).__init__(callback, *args, **kwargs)
         self.set_ignore_caller_args()
 
 
     def register(self, fd, condition = IO_READ):
+        """
+        Register the IOMonitor to a specific socket
+        @param fd: File descriptor or Python socket object
+        @param condition: IO_READ or IO_WRITE
+        """
         if self.active():
             if fd != self._id or condition != self._condition:
                 raise ValueError('Existing file descriptor already registered with this IOMonitor.')
@@ -73,6 +81,9 @@ class IOMonitor(notifier.NotifierCallback):
 
 
     def unregister(self):
+        """
+        Unregister the IOMonitor
+        """
         if not self.active():
             return
         if not is_mainthread():
@@ -83,6 +94,9 @@ class IOMonitor(notifier.NotifierCallback):
 
 
 class WeakIOMonitor(notifier.WeakNotifierCallback, IOMonitor):
+    """
+    IOMonitor using weak references for the callback.
+    """
     pass
 
 

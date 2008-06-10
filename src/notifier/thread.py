@@ -108,7 +108,6 @@ def threaded(name=None, priority=0, async=True, progress=False):
         progress = InProgress.Progress
 
     def decorator(func):
-
         def newfunc(*args, **kwargs):
             if progress:
                 args = [ progress(), ] + list(args)
@@ -130,13 +129,15 @@ def threaded(name=None, priority=0, async=True, progress=False):
             if progress:
                 in_progress.progress = args[0]
             return in_progress
-
         try:
             newfunc.func_name = func.func_name
         except TypeError:
             pass
         return newfunc
 
+    if 'epydoc' in sys.modules:
+        # hack because epydoc does not handle decorators in classes correct
+        return lambda func: func
     return decorator
 
 
@@ -147,6 +148,14 @@ class synchronized(object):
     inheriting from object must be provided.
     """
     def __init__(self, obj=None):
+        """
+        Create a synchronized object.
+        @param obj: object were all calls should be synchronized to.
+           If not provided it will be the object for member functions
+           or an RLock for functions.
+        @note: when used on classes a new member C{_kaa_synchronized_lock}
+        will be added to that class.
+        """
         if obj is None:
             # decorator in classes
             self._lock = None

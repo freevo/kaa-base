@@ -88,6 +88,7 @@ setup(
     version      = '0.4.0',
     license      = 'LGPL',
     summary      = 'Base module for all Kaa modules.',
+    epydoc       = [ 'doc/mainloop.epydoc' ],
     rpminfo      = {
         'requires':       'glib2 >= 2.6.0, python-sqlite2 >= 2.3.0, libxml2-python >= 2.6.0',
         'build_requires': 'glib2-devel >= 2.6.0, python-devel >= 2.4.0'

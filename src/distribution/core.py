@@ -37,6 +37,7 @@ import re
 import tempfile
 import time
 import distutils.core
+import distutils.cmd
 import distutils.sysconfig
 
 # internal imports
@@ -403,7 +404,23 @@ class EmptyExtensionsList(list):
         return True
 
 
-
+class Doc(distutils.cmd.Command):
+    """
+    Epydoc support
+    """
+    user_options = []
+    docfiles = []
+    
+    def initialize_options (self):
+        pass
+    
+    def finalize_options (self):
+        pass
+    
+    def run(self):
+        self.run_command('build')
+        for doc in self.docfiles:
+            os.system('epydoc --config=%s' % doc)
 
 def setup(**kwargs):
     """
@@ -521,6 +538,9 @@ def setup(**kwargs):
         kwargs['cmdclass'] = {}
     kwargs['cmdclass']['build_py'] = build_py
 
+    kwargs['cmdclass']['doc'] = Doc
+    Doc.docfiles = kwargs.pop('epydoc', [])
+        
     if len(sys.argv) > 1 and sys.argv[1] == 'bdist_rpm':
         dist = None
         kwargs['name'] = 'python-' + kwargs['name']

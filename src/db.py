@@ -881,7 +881,7 @@ class Database:
 
         # Populate dictionary with keys for this object type not specified in kwargs.
         attrs.update(dict.fromkeys([k for k in type_attrs if k not in attrs.keys() + ['pickle']]))
-            
+
         return ObjectRow(None, None, attrs)
 
 

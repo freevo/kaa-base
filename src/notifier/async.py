@@ -401,7 +401,7 @@ class InProgress(Signal):
         # Import modules here rather than globally to avoid circular importing.
         import main
         from thread import is_mainthread
-        if is_mainthread() or not main.is_running():
+        if is_mainthread():
             # We're waiting in the main thread, so we must keep the mainloop
             # alive by calling main.loop() until we're finished.
             main.loop(lambda: not self.is_finished(), timeout)

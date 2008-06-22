@@ -105,13 +105,13 @@ def loop(condition, timeout = None):
     Executes the main loop until condition is met.  condition is either a
     callable, or value that is evaluated after each step of the main loop.
     """
-    if _loop_lock.locked():
-        # Loop may already be running.  First check to see if we've forked,
-        # and if so, clear the lock.
-        if _running_pid is not None and _running_pid != os.getpid():
-            _loop_lock.release()
-
     _loop_lock.acquire()
+    if is_running() and not is_mainthread():
+        # race condition. Two threads started a mainloop and the other
+        # one is executed right now. Raise a RuntimeError
+        _loop_lock.release()
+        raise RuntimeError('loop running in a different thread')
+    
     initial_mainloop = False
     if not is_running():
         # no mainloop is running, set this thread as mainloop and
@@ -119,6 +119,8 @@ def loop(condition, timeout = None):
         initial_mainloop = True
         set_as_mainthread()
         _set_running(True)
+    # ok, that was the critical part
+    _loop_lock.release()
 
     if not callable(condition):
         condition = lambda: condition
@@ -150,7 +152,6 @@ def loop(condition, timeout = None):
             timeout.stop()
         if initial_mainloop:
             _set_running(False)
-        _loop_lock.release()
 
 
 def run(threaded=False):
@@ -249,7 +250,7 @@ def is_running():
     """
     Return if the main loop is currently running.
     """
-    return _running_pid == os.getpid() and _loop_lock.locked()
+    return _running_pid == os.getpid()
 
 
 def is_shutting_down():

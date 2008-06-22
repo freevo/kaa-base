@@ -405,6 +405,13 @@ class InProgress(Signal):
             # We're waiting in the main thread, so we must keep the mainloop
             # alive by calling main.loop() until we're finished.
             main.loop(lambda: not self.is_finished(), timeout)
+        elif main.is_running():
+            # Seems that no loop is running, try to loop
+            try:
+                main.loop(lambda: not self.is_finished(), timeout)
+            except RuntimeError:
+                # oops, there is something running, wait
+                self._finished_event.wait(timeout)
         else:
             # We're waiting in some other thread, so wait for some other
             # thread to wake us up.

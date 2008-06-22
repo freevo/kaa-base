@@ -870,7 +870,7 @@ class Database:
 
         # Add id given by db, as well as object type.
         attrs["id"] = self._cursor.lastrowid
-        attrs["type"] = object_type
+        attrs["type"] = unicode(object_type)
         if parent:
             attrs['parent'] = (attrs['parent_type'], attrs['parent_id'])
         else:
@@ -878,6 +878,9 @@ class Database:
 
         for ivtidx, terms in ivtidx_terms:
             self._add_object_inverted_index_terms((object_type, attrs['id']), ivtidx, terms)
+
+        # Populate dictionary with keys for this object type not specified in kwargs.
+        attrs.update(dict.fromkeys([k for k in type_attrs if k not in attrs.keys() + ['pickle']]))
             
         return ObjectRow(None, None, attrs)
 

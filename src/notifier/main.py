@@ -58,9 +58,8 @@ from thread import killall as kill_jobserver
 # get logging object
 log = logging.getLogger('notifier')
 
-# pid of the process running the notifier loop.  This lets run() know
-# if we've just forked and we want to run a new loop.
-_running_pid = None
+# Running state of the main loop, True if running, False otherwise.
+_running = False
 # Set if currently in shutdown() (to prevent reentrancy)
 _shutting_down = False
 # Lock preventing multiple threads from executing loop().
@@ -250,7 +249,7 @@ def is_running():
     """
     Return if the main loop is currently running.
     """
-    return _running_pid == os.getpid()
+    return _running
 
 
 def is_shutting_down():
@@ -264,11 +263,8 @@ def _set_running(status):
     """
     Set mainloop running status.
     """
-    global _running_pid
-    if status:
-        _running_pid = os.getpid()
-    else:
-        _running_pid = None
+    global _running
+    _running = status
 
 
 def _shutdown_check(*args):

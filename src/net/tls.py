@@ -193,6 +193,7 @@ class TLSSocket(kaa.Socket):
             if session is None:
                 session = Session()
             c = TLSConnection(self._socket)
+            c.ignoreAbruptClose = True
             self._rmon.unregister()
             yield c.handshakeClientCert(session=session, **kwargs)
             self._socket = c
@@ -216,6 +217,7 @@ class TLSSocket(kaa.Socket):
         try:
             self._handshake = True
             c = TLSConnection(self._socket)
+            c.ignoreAbruptClose = True
             self._rmon.unregister()
             yield c.handshakeServer(privateKey=key.key, certChain=key.chain, **kwargs)
             self._socket = c

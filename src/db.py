@@ -96,7 +96,7 @@ CREATE_IVTIDX_TEMPLATE = """
         frequency       FLOAT
     );
     CREATE INDEX ivtidx_%IDXNAME%_terms_map_idx ON ivtidx_%IDXNAME%_terms_map (term_id, rank, object_type, object_id);
-    CREATE INDEX ivtidx_%IDXNAME%_terms_map_object_idx ON ivtidx_%IDXNAME%_terms_map (object_id, object_type);
+    CREATE INDEX ivtidx_%IDXNAME%_terms_map_object_idx ON ivtidx_%IDXNAME%_terms_map (object_id, object_type, term_id);
     CREATE TRIGGER ivtidx_%IDXNAME%_delete_terms_map DELETE ON ivtidx_%IDXNAME%_terms_map
     BEGIN
         UPDATE ivtidx_%IDXNAME%_terms SET count=count-1 WHERE id=old.term_id;

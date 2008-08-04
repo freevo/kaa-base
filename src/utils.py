@@ -206,7 +206,7 @@ def set_process_name(name):
     _utils.set_process_name(name, len(cmdline))
 
 
-def get_num_processors():
+def get_num_cpus():
     """
     Returns the number of processors on the system, or raises RuntimeError
     if that value cannot be determined.

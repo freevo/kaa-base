@@ -222,12 +222,20 @@ class CoroutineInProgress(InProgress):
             result = None
         except Exception, e:
             # coroutine is done with exception
-            self.stop()
             self.throw(*sys.exc_info())
             return False
         self.stop()
         self.finish(result)
         return False
+
+
+    def throw(self, *args):
+        """
+        Hook InProgress.throw to stop before finishing.  Allows a
+        coroutine to be aborted asynchronously.
+        """
+        self.stop()
+        super(CoroutineInProgress, self).throw(*args)
 
 
     def set_interval(self, interval):

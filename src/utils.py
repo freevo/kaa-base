@@ -206,6 +206,24 @@ def set_process_name(name):
     _utils.set_process_name(name, len(cmdline))
 
 
+def get_num_processors():
+    """
+    Returns the number of processors on the system, or raises RuntimeError
+    if that value cannot be determined.
+    """
+    try:
+        if sys.platform == 'win32':
+            return int(os.environ['NUMBER_OF_PROCESSORS'])
+        elif sys.platform == 'darwin':
+            return int(os.popen('sysctl -n hw.ncpu').read())
+        else:
+            return os.sysconf('SC_NPROCESSORS_ONLN')
+    except (KeyError, ValueError, OSError, AttributeError):
+        pass
+
+    raise RuntimeError('Could not determine number of processors')
+
+
 def get_plugins(path, include_files=True, include_directories=True):
     """
     Get a list of plugins in the given plugin directory. The 'path' argument

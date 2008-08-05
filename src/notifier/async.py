@@ -440,10 +440,14 @@ class InProgress(Signal):
         return Signal._connect(self, callback, args, kwargs, True, weak, pos)
 
 
-    def connect_both(self, finished, exception):
+    def connect_both(self, finished, exception=None):
         """
         Connect a finished and an exception callback without extra arguments.
+        If exception is not passed, the finished function is also used as the
+        exception handler.
         """
+        if exception is None:
+            exception = finished
         self.connect(finished)
         self.exception.connect_once(exception)
 

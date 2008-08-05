@@ -58,6 +58,7 @@ __all__ = [ 'NotFinished', 'coroutine' ]
 import sys
 
 # kaa.notifier imports
+from kaa.utils import wraps
 from signals import Signal
 from timer import Timer
 from async import InProgress
@@ -102,6 +103,7 @@ def coroutine(interval = 0, synchronize = False, progress=False):
         progress = InProgress.Progress
 
     def decorator(func):
+        @wraps(func)
         def newfunc(*args, **kwargs):
             def wrap(obj):
                 if progress:
@@ -155,7 +157,6 @@ def coroutine(interval = 0, synchronize = False, progress=False):
 
         if synchronize:
             func._lock = None
-        newfunc.func_name = func.func_name
         return newfunc
 
     return decorator

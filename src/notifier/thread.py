@@ -65,6 +65,7 @@ import nf_wrapper as notifier
 from callback import Callback
 from signals import Signal
 from async import InProgress
+from kaa.utils import wraps
 
 # import python thread file
 from kaa.utils import sysimport
@@ -108,6 +109,7 @@ def threaded(name=None, priority=0, async=True, progress=False):
         progress = InProgress.Progress
 
     def decorator(func):
+        @wraps(func)
         def newfunc(*args, **kwargs):
             if progress:
                 args = [ progress(), ] + list(args)
@@ -129,10 +131,6 @@ def threaded(name=None, priority=0, async=True, progress=False):
             if progress:
                 in_progress.progress = args[0]
             return in_progress
-        try:
-            newfunc.func_name = func.func_name
-        except TypeError:
-            pass
         return newfunc
 
     if 'epydoc' in sys.modules:

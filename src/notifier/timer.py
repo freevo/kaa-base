@@ -40,6 +40,7 @@ import datetime
 import nf_wrapper as notifier
 from thread import threaded, MAINTHREAD
 from kaa.weakref import weakref
+from kaa.utils import wraps
 
 POLICY_ONCE = 'once'
 POLICY_MANY = 'many'
@@ -77,6 +78,7 @@ def timed(interval, timer=None, policy=POLICY_MANY):
         raise RunTimeError('Invalid @kaa.timed policy %s' % policy)
 
     def decorator(func):
+        @wraps(func)
         def newfunc(*args, **kwargs):
             if policy == POLICY_MANY:
                 # just start the timer
@@ -117,7 +119,6 @@ def timed(interval, timer=None, policy=POLICY_MANY):
             getattr(obj, name).start(interval)
             return True
 
-        newfunc.func_name = func.func_name
         return newfunc
 
     return decorator

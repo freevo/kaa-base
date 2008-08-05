@@ -36,6 +36,7 @@ import stat
 import time
 import imp
 import logging
+import inspect
 
 import kaa
 import _utils
@@ -326,3 +327,44 @@ def sysimport(name):
         # Since we may exit via an exception, close fp explicitly.
         if fp:
             fp.close()
+
+
+try:
+    from functools import update_wrapper
+except ImportError:
+    # update_wrapper is only available in 2.5+, so create our own for
+    # later versions of Python.
+    def update_wrapper(wrapper, wrapped):
+        for attr in ('__module__', '__name__', '__doc__'):
+            setattr(wrapper, attr, getattr(wrapped, attr))
+        wrapper.__dict__.update(wrapped.__dict__)
+
+
+def wraps(origfunc):
+    """
+    Decorator factory: used to create a decorator that assumes the same
+    attributes (name, docstring, signature) as its decorated function.
+    Preserving the function signature and docstring is particularly necessary
+    for documentation generators (such as epydoc) that use introspection to
+    construct the doc.
+
+    This logic is inspired from Michele Simionato's decorator module.
+
+        >>> def decorator(func):
+        ...     @wraps(func)
+        ...     def newfunc(*args, **kwargs):
+        ...             # custom logic here ...
+        ...             return func(*args, **kwargs)
+        ...     return newfunc
+
+    @param origfunc: the original function being decorated which is to be 
+        wrapped.
+    @return: a decorator which has the attributes of the decorated function.
+    """
+    sig = inspect.formatargspec(*inspect.getargspec(origfunc))[1:-1]
+    src = 'lambda %s: __kaa_call_(%s)' % (sig, sig)
+    def decorator(func):
+        dec_func = eval(src, {'__kaa_call_': func})
+        return update_wrapper(dec_func, origfunc)
+    return decorator
+

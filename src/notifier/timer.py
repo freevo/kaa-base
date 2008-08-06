@@ -89,7 +89,6 @@ def timed(interval, timer=None, policy=POLICY_MANY):
             store = decorator_data_store(func, newfunc, args)
 
             # check current timer
-            existing_timer = getattr(store, 'timer', None)
             if 'timer' in store and store.timer.active():
                 if policy == POLICY_ONCE:
                     # timer already running and not override

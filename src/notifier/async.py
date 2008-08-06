@@ -304,6 +304,12 @@ class InProgress(Signal):
         self.disconnect_all()
         self.exception.disconnect_all()
 
+        # We return False here so that if we've received a thrown exception
+        # from another InProgress we've linked with, we essentially inherit
+        # the exception from it and indicate to it that we'll handle it
+        # from here on.  (Otherwise the linked InProgress would figure
+        # nobody handled it and would dump out an unhandled async exception.)
+        return False
 
     @classmethod
     def _log_exception(cls, weakref, trace, exc):

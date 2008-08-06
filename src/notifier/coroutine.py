@@ -223,8 +223,9 @@ class CoroutineInProgress(InProgress):
             result = None
         except Exception, e:
             # coroutine is done with exception
-            self.throw(*sys.exc_info())
-            return False
+            print "COROUTINE RAISED", sys.exc_info()
+            print self.exception._callbacks
+            return self.throw(*sys.exc_info())
         self.stop()
         self.finish(result)
         return False
@@ -236,7 +237,7 @@ class CoroutineInProgress(InProgress):
         coroutine to be aborted asynchronously.
         """
         self.stop()
-        super(CoroutineInProgress, self).throw(*args)
+        return super(CoroutineInProgress, self).throw(*args)
 
 
     def set_interval(self, interval):

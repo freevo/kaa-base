@@ -65,7 +65,7 @@ import nf_wrapper as notifier
 from callback import Callback
 from signals import Signal
 from async import InProgress
-from kaa.utils import wraps
+from kaa.utils import wraps, decorator_data_store
 
 # import python thread file
 from kaa.utils import sysimport
@@ -193,22 +193,12 @@ class synchronized(object):
             """
             lock = self._lock
             if lock is None:
-                # Try to find out if the function is actually an instance method.
-                # The decorator only sees a function object, even for methods, so
-                # this kludge compares the code object of call (this wrapper)
-                # with the code object of the first argument's attribute of the
-                # function's name.  If they're the same, then we must be decorating
-                # a method, and we can attach the timer object to the instance
-                # instead of the function.
-                if args and call.func_code == \
-                       getattr(getattr(args[0], func.func_name, None), 'func_code', None):
-                    # first parameter is self, link lock to self
-                    obj = args[0]
-                else:
-                    obj = func
-                if not hasattr(obj, '_kaa_synchronized_lock'):
-                    obj._kaa_synchronized_lock = threading.RLock()
-                lock = obj._kaa_synchronized_lock
+                # Lock not specified, use one attached to decorated function.
+                store = decorator_data_store(func, call, args)
+                if 'synchronized_lock' not in store:
+                    store.synchronized_lock = threading.RLock()
+                lock = store.synchronized_lock
+
             lock.acquire()
             try:
                 return func(*args, **kwargs)

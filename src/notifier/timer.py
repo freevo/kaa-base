@@ -40,7 +40,7 @@ import datetime
 import nf_wrapper as notifier
 from thread import threaded, MAINTHREAD
 from kaa.weakref import weakref
-from kaa.utils import wraps
+from kaa.utils import wraps, decorator_data_store
 
 POLICY_ONCE = 'once'
 POLICY_MANY = 'many'
@@ -86,37 +86,21 @@ def timed(interval, timer=None, policy=POLICY_MANY):
                 t.start(interval)
                 return True
 
-            # Object to save the timer in; the function itself for non-methods,
-            # or the instance object for methods.
-            # object to save the timer in
-            obj = func
-            # name of the attribute in the object
-            name = '__kaa_timer_decorator'
-
-            # Try to find out if the function is actually an instance method.
-            # The decorator only sees a function object, even for methods, so
-            # this kludge compares the code object of newfunc (this wrapper)
-            # with the code object of the first argument's attribute of the
-            # function's name.  If they're the same, then we must be decorating
-            # a method, and we can attach the timer object to the instance
-            # instead of the function.
-            if args and newfunc.func_code == \
-                        getattr(getattr(args[0], func.func_name, None), 'func_code', None):
-                obj  = args[0]
-                name = '%s__%s' % (name, func.func_name)
+            store = decorator_data_store(func, newfunc, args)
 
             # check current timer
-            if getattr(obj, name, None) and getattr(obj, name).active():
+            existing_timer = getattr(store, 'timer', None)
+            if 'timer' in store and store.timer.active():
                 if policy == POLICY_ONCE:
                     # timer already running and not override
                     return False
                 # stop old timer
-                getattr(obj, name).stop()
+                store.timer.stop()
 
-            # create new timer, set it to the object and start it
+            # create new timer, store it in the object and start it
             t = (timer or Timer)(func, *args, **kwargs)
-            setattr(obj, name, weakref(t))
-            getattr(obj, name).start(interval)
+            store.timer = weakref(t)
+            t.start(interval)
             return True
 
         return newfunc

@@ -368,3 +368,44 @@ def wraps(origfunc):
         return update_wrapper(dec_func, origfunc)
     return decorator
 
+
+def decorator_data_store(func, newfunc, newfunc_args):
+    """
+    A utility function for decorators that sets or gets a value to/from a
+    decorated function.  This function returns a proxy object whose
+    attributes can be get or set or deleted.
+
+    The object to which the data is attached is either the function itself for
+    non-method, or the instance object for methods.
+    """
+    # Object the data will be stored in.
+    target = func
+
+    # This kludge compares the code object of newfunc (this wrapper) with the
+    # code object of the first argument's attribute of the function's name.  If
+    # they're the same, then we must be decorating a method, and we can attach
+    # the timer object to the instance instead of the function.
+    method = newfunc_args and getattr(newfunc_args[0], func.func_name, None)
+    if method and newfunc.func_code == method.func_code:
+        # Decorated function is a method, so store data in the instance.
+        target = newfunc_args[0]
+
+    hash = lambda key: '__kaa_decorator_data_%s_%s' % (key, func.func_name)
+
+    class DataProxy:
+        def __getattr__(self, key):
+            return getattr(target, hash(key))
+        
+        def __setattr__(self, key, value):
+            return setattr(target, hash(key), value)
+
+        def __hasattr__(self, key):
+            return hasattr(target, hash(key))
+
+        def __contains__(self, key):
+            return hasattr(target, hash(key))
+
+        def __delattr__(self, key):
+            return delattr(target, hash(key))
+
+    return DataProxy()

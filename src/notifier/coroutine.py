@@ -223,7 +223,6 @@ class CoroutineInProgress(InProgress):
             result = None
         except Exception, e:
             # coroutine is done with exception
-            print self.exception._callbacks
             return self.throw(*sys.exc_info())
         self.stop()
         self.finish(result)

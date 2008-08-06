@@ -495,12 +495,17 @@ class InProgressCallback(InProgress):
 
 class InProgressSignals(InProgress):
     """
-    InProgress object that will be finished if one of the provided
-    signals is emited. The return value is the number of the signal
-    starting with 0. A second interface is to provide a dict of signals
-    as first parameter and the dict keys after that. E.g.
-    InProgressSignals(object.signals['completed'], object.signals['failed'])
-    InProgressSignals(object.signals, 'completed', 'failed')
+    InProgress object that will be finished if one of the provided signals is
+    emited. The return value is is a 2-tuple containing the number of the
+    signal (offset from 0) that emitted first, and a tuple of arguments passed
+    to the signal.
+    
+    A second interface is to provide a dict of signals as first parameter and
+    the dict keys after that. 
+    
+        >>> InProgressSignals(object.signals['completed'], object.signals['failed'])
+        >>> InProgressSignals(object.signals, 'completed', 'failed')
+
     """
     def __init__(self, *signals):
         assert(signals)
@@ -516,11 +521,10 @@ class InProgressSignals(InProgress):
         """
         Callback when one signal is emited.
         """
-        self.signal_args = args
         for num, signal in enumerate(self._signals):
             signal.disconnect(self.finish, num)
         self._signals = []
-        return super(InProgressSignals, self).finish(result)
+        return super(InProgressSignals, self).finish((result, args))
 
 
 class InProgressList(InProgress):

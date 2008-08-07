@@ -44,6 +44,7 @@ directly from the kaa namespace.
 # list is needed for epydoc to know what members this module has
 __all__ = [ 'Callback', 'WeakCallback', 'Signal', 'Signals', 'TimeoutException',
             'InProgress', 'InProgressCallback', 'InProgressSignals',
+            'InProgressAny', 'InProgressAll',
             'InProgressList', 'MainThreadCallback', 'NamedThreadCallback',
             'ThreadCallback', 'is_mainthread', 'threaded', 'MAINTHREAD',
             'synchronized', 'Timer', 'WeakTimer', 'OneShotTimer',
@@ -63,7 +64,7 @@ from signals import Signal, Signals
 
 # InProgress class
 from async import TimeoutException, InProgress, InProgressCallback, \
-     InProgressSignals, InProgressList
+     InProgressSignals, InProgressList, InProgressAny, InProgressAll
 
 # Thread callbacks, helper functions and decorators
 from thread import MainThreadCallback, NamedThreadCallback, ThreadCallback, \

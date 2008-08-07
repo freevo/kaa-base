@@ -31,6 +31,7 @@
 
 __all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallback',
             'InProgressSignals', 'InProgressList', 'AsyncException',
+            'InProgressAny', 'InProgressAll',
             'AsyncExceptionBase', 'make_exception_class' ]
 
 # python imports
@@ -198,8 +199,28 @@ class InProgress(Signal):
         self.exception = Signal()
         self._finished = False
         self._finished_event = threading.Event()
+        self._exception = None
         self._unhandled_exception = None
         self.progress = None
+
+
+    @property
+    def finished(self):
+        return self._finished
+
+
+    @property
+    def result(self):
+        return self.get_result()
+
+
+    @property
+    def failed(self):
+        """
+        Returns True if an exception was thrown to the InProgress, False if
+        it was finished without error or if it is not yet finished.
+        """
+        return bool(self._exception)
 
 
     def finish(self, result):
@@ -212,7 +233,7 @@ class InProgress(Signal):
         """
         if self._finished:
             raise RuntimeError('%s already finished' % self)
-        if isinstance(result, InProgress):
+        if isinstance(result, InProgress) and result is not self:
             # we are still not finished, link to this new InProgress
             self.link(result)
             return self
@@ -470,7 +491,9 @@ class InProgressCallback(InProgress):
         InProgress.__init__(self)
         if func is not None:
             if isinstance(func, Signal):
-                func = func.connect_once
+                # Connect weakly so that if the we're destroyed we
+                # automatically disconnect from the signal.
+                func = func.connect_weak_once
             # connect self as callback
             func(self)
 
@@ -553,3 +576,75 @@ class InProgressList(InProgress):
         self._counter -= 1
         if not self._counter:
             super(InProgressList, self).finish(None)
+
+
+class InProgressAny(InProgress):
+    """
+    InProgress object that finishes when ANY of the supplied InProgress 
+    objects (in constructor) finish.  This functionality is useful when
+    building state machines using coroutines.
+
+    The InProgressAny object then finishes with a 2-tuple, whose first
+    element is the index (offset from 0) of the InProgress that finished,
+    and the second element is the result the InProgress was finished with.
+    """
+    def __init__(self, *objects):
+        super(InProgressAny, self).__init__()
+        # Keep a reference to the given InProgress objects while we're waiting
+        # for one of them.
+        self._objects = objects
+        for n, ip in enumerate(objects):
+            # We have references to the InProgress objects now, so connect
+            # weakly to them so as not to create a ref cycle.
+            ip.connect_weak(self.finish, n).set_user_args_first()
+            ip.exception.connect_weak(self.finish, n).set_user_args_first()
+
+    def finish(self, result, args):
+        """
+        Callback when one signal is emited.
+        """
+        # Free InProgress references
+        self._objects = None
+        return super(InProgressAny, self).finish((result, args))
+
+
+class InProgressAll(InProgress):
+    """
+    InProgress object that finishes only when ALL of the supplied InProgress
+    objects (in constructor) finish.  This functionality is useful when
+    building state machines using coroutines.
+
+    The InProgressAll object then finishes with itself (which is really only
+    useful when using the Python 2.5 feature of yield return values).  The
+    finished InProgressAll is useful to fetch the results of the individual
+    InProgress objects.  It can be treated as an iterator, and can be indexed.
+    """
+    def __init__(self, *objects):
+        super(InProgressAll, self).__init__()
+        self._objects = objects
+        self._counter = len(objects) or 1
+
+        for ip in objects:
+            ip.connect_weak_once(self.finish)
+            ip.exception.connect_weak_once(self.finish)
+
+        if not objects:
+            self.finish(None)
+
+
+    def finish(self, args):
+        """
+        Callback when one signal is emited.
+        """
+        self._counter -= 1
+        if self._counter == 0:
+            #self._objects = None
+            super(InProgressAll, self).finish(self)
+
+
+    def __iter__(self):
+        return iter(self._objects)
+
+
+    def __getitem__(self, idx):
+        return self._objects[idx]

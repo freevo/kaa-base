@@ -237,6 +237,7 @@ class Signal(object):
 
     def _weakref_destroyed(self, weakref, callback):
         if _python_shutting_down == False:
+            print "weakref destroyed, disconnecting", self
             self._disconnect(callback, (), {})
 
 
@@ -257,7 +258,9 @@ class Signal(object):
 
         """
         from async import InProgressCallback
-        return InProgressCallback(self)
+        # Have the InProgress callback connect weakly to us, so that if it
+        # goes away the callback is automatically disconnected.
+        return InProgressCallback(self.connect_weak_once)
 
 
 class Signals(dict):
@@ -284,6 +287,32 @@ class Signals(dict):
         self and the signals specified in the arguments.
         """
         return Signals(self, *signals)
+
+
+    def subset(self, *names):
+        """
+        Returns a new Signals object by taking a subset of the supplied
+        signals.
+
+            >>> yield signals.subset('pass', 'fail).any()
+        """
+        return Signals(dict([(k, self[k]) for k in names]))
+
+
+    def any(self):
+        """
+        Returns an InProgressAny object with all signals in self.
+        """
+        from async import InProgressAny
+        return InProgressAny(*[s.async() for s in self.values()])
+        
+
+    def all(self):
+        """
+        Returns an InProgressAll object with all signals in self.
+        """
+        from async import InProgressAll
+        return InProgressAll(*[s.async() for s in self.values()])
 
 
     def __getattr__(self, attr):

@@ -237,7 +237,6 @@ class Signal(object):
 
     def _weakref_destroyed(self, weakref, callback):
         if _python_shutting_down == False:
-            print "weakref destroyed, disconnecting", self
             self._disconnect(callback, (), {})
 
 

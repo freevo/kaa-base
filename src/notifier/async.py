@@ -491,9 +491,12 @@ class InProgressCallback(InProgress):
         InProgress.__init__(self)
         if func is not None:
             if isinstance(func, Signal):
-                # Connect weakly so that if the we're destroyed we
-                # automatically disconnect from the signal.
-                func = func.connect_weak_once
+                # We should connect weakly so that if the we're destroyed we
+                # automatically disconnect from the signal. But that doesn't
+                # work somehow and beacon stops working. So we just connect.
+                # This special case is about the be removed so we can ignore
+                # the missing disconnect.
+                func = func.connect_once
             # connect self as callback
             func(self)
 

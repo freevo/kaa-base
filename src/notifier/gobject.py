@@ -51,9 +51,10 @@ try:
     gobject = sysimport('gobject')
 except ImportError:
     gobject = None
-    
+
 # get notifier thread module
 import thread as thread_support
+import main as main_module
 
 # object for kaa.threaded decorator
 GOBJECT = object()
@@ -76,7 +77,7 @@ class Wrapper(object):
 
           kaa.main.select_notifier('generic')
           kaa.gobject_set_threaded()
-        
+
         It is possible to jump between the gobject and the generic
         mainloop with the threaded decorator.
 
@@ -90,8 +91,9 @@ class Wrapper(object):
             return
         self.thread = True
         if gobject is not None:
-            self._finished_event = threading.Event()
             self.loop(mainloop)
+            # make sure we get a clean shutdown
+            main_module.signals['shutdown'].connect_once(self.stop, True)
 
     @thread_support.threaded()
     def loop(self, mainloop):
@@ -104,7 +106,6 @@ class Wrapper(object):
             mainloop = gobject.MainLoop()
         self._loop = mainloop
         self._loop.run()
-        self._finished_event.set()
 
     def add(self, callback):
         """
@@ -125,22 +126,25 @@ class Wrapper(object):
             self._loop.quit()
         return False
 
-    def stop(self):
+    def stop(self, wait=False):
         """
         Stop the glib thread.
         """
-        if self.stopped:
-            return
-        self.stopped = True
-        if self.thread:
-            self.add(None)
+        if not self.stopped:
+            self.stopped = True
+            if self.thread:
+                self.add(None)
+        if wait:
+            # wait until the thread is done
+            self.join()
 
     def join(self):
         """
         Wait until the thread is done.
         """
         if self.thread:
-            self._finished_event.wait()
+            # join the thread
+            self.thread.join()
 
 # create object and expose set_threaded
 gobject_set_threaded = Wrapper().set_threaded

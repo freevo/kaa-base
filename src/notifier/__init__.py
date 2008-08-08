@@ -70,9 +70,6 @@ from async import TimeoutException, InProgress, InProgressCallback, \
 from thread import MainThreadCallback, NamedThreadCallback, ThreadCallback, \
      is_mainthread, threaded, synchronized, MAINTHREAD
 
-# special gobject thread support
-from gobject import GOBJECT, gobject_set_threaded
-
 # Timer classes and decorators
 from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, \
      OneShotAtTimer, timed, POLICY_ONCE, POLICY_MANY, POLICY_RESTART
@@ -88,3 +85,6 @@ from coroutine import NotFinished, coroutine
 
 # process management
 from popen import Process
+
+# special gobject thread support
+from gobject import GOBJECT, gobject_set_threaded

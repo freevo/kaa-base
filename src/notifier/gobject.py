@@ -91,6 +91,8 @@ class Wrapper(object):
             return
         self.thread = True
         if gobject is not None:
+            # init thread support in the module importing gobject
+            gobject.threads_init()
             self.loop(mainloop)
             # make sure we get a clean shutdown
             main_module.signals['shutdown'].connect_once(self.stop, True)
@@ -101,7 +103,6 @@ class Wrapper(object):
         Glib thread.
         """
         self.thread = threading.currentThread()
-        gobject.threads_init()
         if mainloop is None:
             mainloop = gobject.MainLoop()
         self._loop = mainloop

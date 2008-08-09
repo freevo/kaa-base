@@ -52,7 +52,7 @@ __all__ = [ 'Callback', 'WeakCallback', 'Signal', 'Signals', 'TimeoutException',
             'POLICY_ONCE', 'POLICY_MANY', 'POLICY_RESTART', 'IOMonitor',
             'WeakIOMonitor', 'Socket', 'IO_READ', 'IO_WRITE', 'Event',
             'EventHandler', 'WeakEventHandler', 'NotFinished', 'coroutine',
-            'Process', 'GOBJECT', 'gobject_set_threaded' ]
+            'delay', 'Process', 'GOBJECT', 'gobject_set_threaded' ]
 
 # Import all classes, functions and decorators that are part of the API
 
@@ -64,7 +64,7 @@ from signals import Signal, Signals
 
 # InProgress class
 from async import TimeoutException, InProgress, InProgressCallback, \
-     InProgressSignals, InProgressList, InProgressAny, InProgressAll
+     InProgressSignals, InProgressList, InProgressAny, InProgressAll, delay
 
 # Thread callbacks, helper functions and decorators
 from thread import MainThreadCallback, NamedThreadCallback, ThreadCallback, \

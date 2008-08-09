@@ -32,7 +32,8 @@
 __all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallback',
             'InProgressSignals', 'InProgressList', 'AsyncException',
             'InProgressAny', 'InProgressAll',
-            'AsyncExceptionBase', 'make_exception_class' ]
+            'AsyncExceptionBase', 'make_exception_class', 'inprogress', 
+            'delay' ]
 
 # python imports
 import sys
@@ -63,6 +64,39 @@ def make_exception_class(name, bases, dict):
         return e
 
     return create
+
+
+def inprogress(obj):
+    """
+    Returns a suitable InProgress for the given object.  This function simply
+    calls __inprogress__ of the given obj if one exists, and if not will raise
+    an exception.  In this sense, it behaves quite similar to len() and
+    __len__.
+
+    It is safe to call this function on InProgress objects.  (The InProgress
+    object given will simply be returned.
+
+    @param obj: object to represent as an InProgress.
+    @rtype: L{InProgress}
+    """
+    try:
+        return obj.__inprogress__()
+    except AttributeError:
+        raise TypeError("object of type '%s' has no inprogress()" % obj.__class__.__name__)
+
+
+def delay(seconds):
+    """
+    Returns an InProgress that finishes after the given time in seconds.
+
+    @param seconds: number of seconds to wait before the returned InProgress
+        finishes.
+    @rtype: L{InProgress}
+    """
+    from timer import OneShotTimer
+    ip = InProgressCallback()
+    OneShotTimer(ip).start(seconds)
+    return ip
 
 
 class AsyncExceptionBase(Exception):
@@ -204,6 +238,14 @@ class InProgress(Signal):
         self.progress = None
 
 
+    def __inprogress__(self):
+        """
+        We subclass Signal which implements this method, but as we are already
+        an InProgress, we simply return self.
+        """
+        return self
+
+
     @property
     def finished(self):
         return self._finished
@@ -234,8 +276,8 @@ class InProgress(Signal):
         if self._finished:
             raise RuntimeError('%s already finished' % self)
         if isinstance(result, InProgress) and result is not self:
-            # we are still not finished, link to this new InProgress
-            self.link(result)
+            # we are still not finished, wait for this new InProgress
+            self.waitfor(result)
             return self
 
         # store result
@@ -326,7 +368,7 @@ class InProgress(Signal):
         self.exception.disconnect_all()
 
         # We return False here so that if we've received a thrown exception
-        # from another InProgress we've linked with, we essentially inherit
+        # from another InProgress we're waiting on, we essentially inherit
         # the exception from it and indicate to it that we'll handle it
         # from here on.  (Otherwise the linked InProgress would figure
         # nobody handled it and would dump out an unhandled async exception.)
@@ -396,7 +438,7 @@ class InProgress(Signal):
                 if callback:
                     callback()
                 async.throw(TimeoutException, TimeoutException('timeout'), None)
-        async.link(self)
+        async.waitfor(self)
         OneShotTimer(trigger).start(timeout)
         return async
 
@@ -450,9 +492,9 @@ class InProgress(Signal):
         return self.get_result()
 
 
-    def link(self, in_progress):
+    def waitfor(self, in_progress):
         """
-        Links with another InProgress object.  When the supplied in_progress
+        Connects to another InProgress object.  When the supplied in_progress
         object finishes (or throws), we do too.
         """
         in_progress.connect_both(self.finish, self.throw)
@@ -491,12 +533,8 @@ class InProgressCallback(InProgress):
         InProgress.__init__(self)
         if func is not None:
             if isinstance(func, Signal):
-                # We should connect weakly so that if the we're destroyed we
-                # automatically disconnect from the signal. But that doesn't
-                # work somehow and beacon stops working. So we just connect.
-                # This special case is about the be removed so we can ignore
-                # the missing disconnect.
-                func = func.connect_once
+                log.warning("Don't pass Signals to InProgressCallback; yield signals directly instead")
+                func = func.connect_weak_once
             # connect self as callback
             func(self)
 
@@ -541,10 +579,11 @@ class InProgressSignals(InProgress):
     """
     def __init__(self, *signals):
         assert(signals)
+        log.warning('InProgressSignals is deprecated; use Signals.any() instead')
         if isinstance(signals[0], dict):
             signals = [ signals[0][key] for key in signals[1:] ]
         for num, signal in enumerate(signals):
-            signal.connect_once(self.finish, num).set_user_args_first()
+            signal.connect_weak_once(self.finish, num).set_user_args_first()
         self._signals = signals
         super(InProgressSignals, self).__init__()
 
@@ -568,6 +607,7 @@ class InProgressList(InProgress):
     """
     def __init__(self, objects):
         super(InProgressList, self).__init__()
+        log.warning('InProgressList is deprecated; use InProgressAll instead')
         self._counter = len(objects) or 1
         for obj in objects:
             obj.connect(self.finish)
@@ -595,19 +635,25 @@ class InProgressAny(InProgress):
         super(InProgressAny, self).__init__()
         # Keep a reference to the given InProgress objects while we're waiting
         # for one of them.
-        self._objects = objects
-        for n, ip in enumerate(objects):
+        self._objects = [ inprogress(o) for o in objects ]
+
+        for n, ip in enumerate(self._objects):
             # We have references to the InProgress objects now, so connect
             # weakly to them so as not to create a ref cycle.
             ip.connect_weak(self.finish, n).set_user_args_first()
             ip.exception.connect_weak(self.finish, n).set_user_args_first()
 
+
     def finish(self, result, args):
         """
         Callback when one signal is emited.
         """
-        # Free InProgress references
+        # Cleanup and free InProgress references.
+        for ip in self._objects:
+            ip.disconnect(self.finish)
+            ip.exception.disconnect(self.finish)
         self._objects = None
+
         return super(InProgressAny, self).finish((result, args))
 
 
@@ -624,10 +670,10 @@ class InProgressAll(InProgress):
     """
     def __init__(self, *objects):
         super(InProgressAll, self).__init__()
-        self._objects = objects
+        self._objects = [ inprogress(o) for o in objects ]
         self._counter = len(objects) or 1
 
-        for ip in objects:
+        for ip in self._objects:
             ip.connect_weak_once(self.finish)
             ip.exception.connect_weak_once(self.finish)
 
@@ -641,7 +687,6 @@ class InProgressAll(InProgress):
         """
         self._counter -= 1
         if self._counter == 0:
-            #self._objects = None
             super(InProgressAll, self).finish(self)
 
 

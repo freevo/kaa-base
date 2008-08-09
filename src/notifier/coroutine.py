@@ -61,11 +61,14 @@ import sys
 from kaa.utils import wraps
 from signals import Signal
 from timer import Timer
-from async import InProgress
+from async import InProgress, inprogress
 
 # object to signal that the function whats to continue
 NotFinished = object()
 
+# Currently running (not stopped) CoroutineInProgress objects.  See
+# CoroutineInProgress.__init__ for rational.
+_active_coroutines = set()
 
 # variable to detect if send is possible with a generator
 _python25 = sys.hexversion >= 0x02050000
@@ -137,18 +140,24 @@ def coroutine(interval = 0, synchronize = False, progress=False):
                     ip = InProgress()
                     ip.throw(*sys.exc_info())
                     return wrap(ip)
-                if isinstance(result, InProgress):
-                    if result.is_finished():
-                        # InProgress return that is already finished, go on
+
+                try:
+                    result = inprogress(result)
+                except TypeError:
+                    if result is not NotFinished:
+                        # Result cannot be represented as InProgress, so we're
+                        # done and can return a finished InProgress.
+                        return wrap(InProgress().finish(result))
+                else:
+                    # result is an InProgress.
+                    if result.finished:
+                        # coroutine yielded a finished InProgress, we can
+                        # step back into the coroutine immediately.
                         async = result
                         continue
-                elif result is not NotFinished:
-                    # everything went fine, return result in an InProgress
-                    ip = InProgress()
-                    ip.finish(result)
-                    return wrap(ip)
+
                 # we need a CoroutineInProgress to finish this later
-                # result is either NotFinished or InProgress
+                # Here, result is either NotFinished or InProgress
                 ip = CoroutineInProgress(function, interval, result)
                 if synchronize:
                     func._lock = ip
@@ -179,6 +188,26 @@ class CoroutineInProgress(InProgress):
         self._interval = interval
         self._async = None
         self._valid = True
+
+        # This object (self) represents a coroutine that is in progress: that
+        # is, at some point in the coroutine, it has yielded and expects
+        # to be reentered at some point.  Even if there are no outside
+        # references to this CoroutineInProgress object, the coroutine must
+        # resume.
+        #
+        # Here, an "outside reference" refers to a reference kept by the
+        # caller of the API (that is, not refs kept by kaa internally).
+        #
+        # For other types of InProgress objects, when there are no outside
+        # references to them, clearly nobody is interested in the result, so
+        # they can be destroyed.  For CoroutineInProgress, we mustn't rely
+        # on outside references to keep the coroutine alive, so we keep refs
+        # for active CoroutineInProgress objects in a global set called
+        # _active_coroutines.  We then then remove ourselves from this set when
+        # stopped.
+        #
+        _active_coroutines.add(self)
+
         if progress is NotFinished:
             # coroutine was stopped NotFinished, start the step timer
             self._timer.start(interval)
@@ -205,19 +234,29 @@ class CoroutineInProgress(InProgress):
         try:
             while True:
                 result = _process(self._coroutine, self._async)
-                if isinstance(result, InProgress):
-                    self._async = result
-                    if not result.is_finished():
-                        # continue when InProgress is done
-                        self._async = result
-                        result.connect_both(self._continue, self._continue)
-                        return False
-                elif result is NotFinished:
-                    # schedule next interation with the timer
-                    return True
-                else:
-                    # coroutine is done
-                    break
+                try:
+                    result = inprogress(result)
+                except TypeError:
+                    # Return value cannot be coerced to InProgress
+                    if result is NotFinished:
+                        # Schedule next iteration with the timer
+                        return True
+                    else:
+                        # Coroutine is done.
+                        break
+
+                # result is an InProgress
+                self._async = result
+                if not result.finished:
+                    # Coroutine yielded an unfinished InProgress, so continue
+                    # when it is finished.
+                    result.connect_both(self._continue, self._continue)
+                    return False
+
+                # If we're here, then the coroutine had yielded a finished
+                # InProgress, so we can iterate immediately and step back
+                # into the coroutine.
+
         except StopIteration:
             # coroutine is done without result
             result = None
@@ -254,6 +293,9 @@ class CoroutineInProgress(InProgress):
         """
         if self._timer and self._timer.active():
             self._timer.stop()
+        if self in _active_coroutines:
+            _active_coroutines.remove(self)
+
         # if this object waits for another CoroutineInProgress, stop
         # that one, too.
         if isinstance(self._async, CoroutineInProgress):

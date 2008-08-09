@@ -237,6 +237,7 @@ class Signal(object):
 
     def _weakref_destroyed(self, weakref, callback):
         if _python_shutting_down == False:
+            #print "Weakref destroyed, disconnect", self, weakref, callback
             self._disconnect(callback, (), {})
 
 
@@ -244,22 +245,16 @@ class Signal(object):
         return len(self._callbacks)
 
 
-    def async(self):
+    def __inprogress__(self):
         """
-        Convenience function which returns an InProgressCallback for this
-        signal.  The returned InProgress object is finished when this signal is
-        emitted.
-
-        For example, if you want to block while waiting for the signal to be
-        emitted from another thread or coroutine, you could do::
-
-           signal.async().wait()
-
+        Returns an InProgressCallback for this signal.  The returned InProgress
+        object is finished when this signal is emitted.  The InProgress is
+        connected weakly to us, so when the InProgress is destroyed, the
+        callback is automatically disconnected.
         """
         from async import InProgressCallback
-        # Have the InProgress callback connect weakly to us, so that if it
-        # goes away the callback is automatically disconnected.
         return InProgressCallback(self.connect_weak_once)
+
 
 
 class Signals(dict):
@@ -303,7 +298,7 @@ class Signals(dict):
         Returns an InProgressAny object with all signals in self.
         """
         from async import InProgressAny
-        return InProgressAny(*[s.async() for s in self.values()])
+        return InProgressAny(*self.values())
         
 
     def all(self):
@@ -311,7 +306,7 @@ class Signals(dict):
         Returns an InProgressAll object with all signals in self.
         """
         from async import InProgressAll
-        return InProgressAll(*[s.async() for s in self.values()])
+        return InProgressAll(*self.values())
 
 
     def __getattr__(self, attr):

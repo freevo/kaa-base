@@ -248,6 +248,14 @@ class Process(object):
                 # Resource temporarily unavailable -- trying to write too
                 # much data.
                 return
+        except OSError, (errno, msg):
+            if errno == 32 and self.stopping:
+                # Broken pipe.  Child is dead while we are trying to
+                # issue stop command.  Safe to ignore.
+                pass
+            else:
+                # Reraise exception.
+                raise
 
         if not self._write_buffer:
             if self._close_stdin:

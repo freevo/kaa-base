@@ -259,20 +259,45 @@ class Signal(object):
 
 class Signals(dict):
     """
-    Dict of Signal object.
+    Dict of Signal object.  This dict preserves the order of keys.
     """
     def __init__(self, *signals):
         dict.__init__(self)
+        # Preserve order of keys.
+        self._keys = []
         for s in signals:
             if isinstance(s, dict):
                 # parameter is a dict/Signals object
                 self.update(s)
+                self._keys.extend(s.keys())
             elif isinstance(s, str):
                 # parameter is a string
                 self[s] = Signal()
+                self._keys.append(s)
+            elif isinstance(s, (tuple, list)) and len(s) == 2:
+                # In form (key, value)
+                if isinstance(s[0], basestring) and isinstance(s[1], Signal):
+                    self[s[0]] = s[1]
+                    self._keys.append(s[0])
+                else:
+                    raise TypeError('With form (k, v), key must be string and v must be Signal')
+
             else:
                 # parameter is something else, bad
-                raise AttributeError('signal key must be string')
+                raise TypeError('signal key must be string')
+
+ 
+    def __delitem__(self, key):
+        super(Signals, self).__delitem__(key)
+        self._keys.remove(key)
+
+
+    def keys(self):
+        return self._keys
+
+
+    def values(self):
+        return [ self[k] for k in self._keys ]
 
 
     def add(self, *signals):
@@ -286,11 +311,12 @@ class Signals(dict):
     def subset(self, *names):
         """
         Returns a new Signals object by taking a subset of the supplied
-        signals.
+        signals.  The keys of the new Signals object are ordered as specified
+        in the names parameter.
 
             >>> yield signals.subset('pass', 'fail).any()
         """
-        return Signals(dict([(k, self[k]) for k in names]))
+        return Signals(*[(k, self[k]) for k in names])
 
 
     def any(self):

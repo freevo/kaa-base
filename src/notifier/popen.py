@@ -101,6 +101,10 @@ class Process(object):
         self._close_stdin = False
 
 
+    def __inprogress__(self):
+        return self.in_progress
+
+
     def _normalize_cmd(self, cmd):
         """
         Converts a command string into a list while honoring quoting, or

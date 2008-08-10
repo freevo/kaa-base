@@ -58,6 +58,13 @@ else:
 a.writable = a.readonly / 2
 assert(a.writable == 21)
 
+try:
+    del a.writable
+except AttributeError:
+    pass
+else:
+    raise AttributeError('del a.writable did not raise exception as expected')
+
 assert(A.readonly.__doc__ == 'readonly docstring')
 
 b = B()

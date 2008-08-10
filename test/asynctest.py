@@ -1,8 +1,11 @@
 import time
 import os
 import sys
+import gc
 import kaa
 import kaa.rpc
+
+sig = kaa.Signals('one', 'two', 'three')
 
 class Server(object):
     def __init__(self):
@@ -40,7 +43,7 @@ class Server(object):
 
     @kaa.rpc.expose('test6')
     def test6(self, x):
-        raise ValueError
+        raise ValueError('This exception is expected')
 
     @kaa.rpc.expose('shutdown')
     def shutdown(self):
@@ -205,6 +208,32 @@ def foo():
     yield x                             # print 19
     print x.get_result()                           # 20
     
+    # Test InProgressCallback destruction cleans up signal connection.
+    ip = kaa.inprogress(sig['one'])
+    assert(len(sig['one']) == 1)
+    del ip
+    gc.collect()
+    assert(len(sig['one']) == 0)
+    print 'InProgressCallback cleanup ok'
+
+    # Test InProgressAny via Signals.any()
+    kaa.OneShotTimer(sig['three'].emit, 'worked').start(0.5)
+    print 'Testing InProgressAny, should return in 0.5s'
+    n, args = yield sig.subset('one', 'three').any()
+    # Force InProgressCallbacks implicitly created by any() to be deleted.
+    gc.collect()
+    # Verify that they _are_ deleted and detached from the signal.
+    assert(len(sig['one']) == 0)
+    assert(n == 1)
+    print 'InProgressAny returned:', n, args
+
+    # Test InProgressAll via Signals.all()
+    kaa.OneShotTimer(sig['one'].emit, 'result for sig one').start(0.5)
+    kaa.OneShotTimer(sig['two'].emit, 'result for sig two').start(0.2)
+    print 'Testing InProgressAll, should return in 0.5s'
+    ip = yield sig.subset('one', 'two').all()
+    print 'InProgressAll returned: %s -- %s' % (ip[0].result, ip[1].result)
+
     # normal rpc, we don't care about the answer
     c.rpc('shutdown')
     yield 21

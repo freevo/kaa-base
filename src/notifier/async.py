@@ -30,8 +30,7 @@
 # -----------------------------------------------------------------------------
 
 __all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallback',
-            'InProgressSignals', 'InProgressList', 'AsyncException',
-            'InProgressAny', 'InProgressAll',
+            'AsyncException', 'InProgressAny', 'InProgressAll',
             'AsyncExceptionBase', 'make_exception_class', 'inprogress', 
             'delay' ]
 
@@ -561,64 +560,6 @@ class InProgressCallback(InProgress):
             # return as list
             return self.finish(args)
         return self.finish(None)
-
-
-class InProgressSignals(InProgress):
-    """
-    InProgress object that will be finished if one of the provided signals is
-    emited. The return value is is a 2-tuple containing the number of the
-    signal (offset from 0) that emitted first, and a tuple of arguments passed
-    to the signal.
-    
-    A second interface is to provide a dict of signals as first parameter and
-    the dict keys after that. 
-    
-        >>> InProgressSignals(object.signals['completed'], object.signals['failed'])
-        >>> InProgressSignals(object.signals, 'completed', 'failed')
-
-    """
-    def __init__(self, *signals):
-        assert(signals)
-        log.warning('InProgressSignals is deprecated; use Signals.any() instead')
-        if isinstance(signals[0], dict):
-            signals = [ signals[0][key] for key in signals[1:] ]
-        for num, signal in enumerate(signals):
-            signal.connect_weak_once(self.finish, num).set_user_args_first()
-        self._signals = signals
-        super(InProgressSignals, self).__init__()
-
-
-    def finish(self, result, *args):
-        """
-        Callback when one signal is emited.
-        """
-        for num, signal in enumerate(self._signals):
-            signal.disconnect(self.finish, num)
-        self._signals = []
-        return super(InProgressSignals, self).finish((result, args))
-
-
-class InProgressList(InProgress):
-    """
-    InProgress object that will finish when all InProgress objects given to
-    the constructor are finished. This object will never raise an exception
-    nor will it provide the results of the given InProgress objects. Use
-    get_result() on each InProgress object to get the required result.
-    """
-    def __init__(self, objects):
-        super(InProgressList, self).__init__()
-        log.warning('InProgressList is deprecated; use InProgressAll instead')
-        self._counter = len(objects) or 1
-        for obj in objects:
-            obj.connect(self.finish)
-            obj.exception.connect(self.finish)
-        if not objects:
-            self.finish(None)
-
-    def finish(self, result):
-        self._counter -= 1
-        if not self._counter:
-            super(InProgressList, self).finish(None)
 
 
 class InProgressAny(InProgress):

@@ -59,7 +59,7 @@ import nf_wrapper as notifier
 from callback import Callback
 from signals import Signal
 from thread import MainThreadCallback, is_mainthread
-from async import InProgress, InProgressSignals
+from async import InProgress, inprogress
 from sockets import IOMonitor, IO_WRITE
 
 # get logging object
@@ -281,7 +281,7 @@ class Process(object):
         Returns an InProgress which finishes when the process stops.
         """
         if self.stopping:
-            return InProgressSignals(self.signals['completed'])
+            return inprogress(self.signals['completed'])
 
         if not is_mainthread():
             return MainThreadCallback(self.stop, cmd)()
@@ -303,7 +303,7 @@ class Process(object):
                 cb = Callback( self.__kill, 15 )
                 self.__kill_timer = notifier.timer_add( 0, cb )
 
-        return InProgressSignals(self.signals['completed'])
+        return inprogress(self.signals['completed'])
 
 
     def __kill( self, signal ):

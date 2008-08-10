@@ -43,9 +43,9 @@ directly from the kaa namespace.
 # List of all classes, functions and variables in kaa.notifier. This
 # list is needed for epydoc to know what members this module has
 __all__ = [ 'Callback', 'WeakCallback', 'Signal', 'Signals', 'TimeoutException',
-            'InProgress', 'InProgressCallback', 'InProgressSignals',
+            'InProgress', 'InProgressCallback',
             'InProgressAny', 'InProgressAll', 'inprogress',
-            'InProgressList', 'MainThreadCallback', 'NamedThreadCallback',
+            'MainThreadCallback', 'NamedThreadCallback',
             'ThreadCallback', 'is_mainthread', 'threaded', 'MAINTHREAD',
             'synchronized', 'Timer', 'WeakTimer', 'OneShotTimer',
             'WeakOneShotTimer', 'AtTimer', 'OneShotAtTimer', 'timed',
@@ -64,8 +64,7 @@ from signals import Signal, Signals
 
 # InProgress class
 from async import TimeoutException, InProgress, InProgressCallback, \
-     InProgressSignals, InProgressList, InProgressAny, InProgressAll, \
-     inprogress, delay
+     InProgressAny, InProgressAll, inprogress, delay
 
 # Thread callbacks, helper functions and decorators
 from thread import MainThreadCallback, NamedThreadCallback, ThreadCallback, \

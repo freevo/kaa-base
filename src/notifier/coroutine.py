@@ -66,8 +66,8 @@ from async import InProgress, inprogress
 # object to signal that the function whats to continue
 NotFinished = object()
 
-# Currently running (not stopped) CoroutineInProgress objects.  See
-# CoroutineInProgress.__init__ for rational.
+# Currently running (not stopped) CoroutineLockedInProgress objects.  See
+# CoroutineLockedInProgress.__init__ for rational.
 _active_coroutines = set()
 
 # variable to detect if send is possible with a generator
@@ -127,7 +127,7 @@ def coroutine(interval = 0, synchronize = False, progress=False):
             function = result
             if synchronize and func._lock is not None and not func._lock.is_finished():
                 # Function is currently called by someone else
-                return wrap(CoroutineInProgressLock(func, function, interval))
+                return wrap(CoroutineLockedInProgressLock(func, function, interval))
             async = None
             while True:
                 try:
@@ -135,33 +135,29 @@ def coroutine(interval = 0, synchronize = False, progress=False):
                 except StopIteration:
                     # no return with yield, but done, return None
                     result = None
-                except Exception, e:
+                except:
                     # exception handling, return finished InProgress
                     ip = InProgress()
                     ip.throw(*sys.exc_info())
                     return wrap(ip)
 
-                try:
-                    result = inprogress(result)
-                except TypeError:
-                    if result is not NotFinished:
-                        # Result cannot be represented as InProgress, so we're
-                        # done and can return a finished InProgress.
-                        return wrap(InProgress().finish(result))
-                else:
-                    # result is an InProgress.
+                if isinstance(result, InProgress):
                     if result.finished:
                         # coroutine yielded a finished InProgress, we can
                         # step back into the coroutine immediately.
                         async = result
                         continue
+                elif result is not NotFinished:
+                    # Coroutine yielded a value, so we're done and can return a
+                    # finished InProgress.
+                    return wrap(InProgress().finish(result))
 
-                # we need a CoroutineInProgress to finish this later
+                # we need a CoroutineLockedInProgress to finish this later
                 # Here, result is either NotFinished or InProgress
-                ip = CoroutineInProgress(function, interval, result)
+                ip = CoroutineLockedInProgress(function, interval, result)
                 if synchronize:
                     func._lock = ip
-                # return the CoroutineInProgress
+                # return the CoroutineLockedInProgress
                 return wrap(ip)
 
         if synchronize:
@@ -175,7 +171,7 @@ def coroutine(interval = 0, synchronize = False, progress=False):
 # Internal classes
 # -----------------------------------------------------------------------------
 
-class CoroutineInProgress(InProgress):
+class CoroutineLockedInProgress(InProgress):
     """
     InProgress class that runs a generator function. This is also the return value
     for coroutine if it takes some more time. progress can be either NotFinished
@@ -192,7 +188,7 @@ class CoroutineInProgress(InProgress):
         # This object (self) represents a coroutine that is in progress: that
         # is, at some point in the coroutine, it has yielded and expects
         # to be reentered at some point.  Even if there are no outside
-        # references to this CoroutineInProgress object, the coroutine must
+        # references to this CoroutineLockedInProgress object, the coroutine must
         # resume.
         #
         # Here, an "outside reference" refers to a reference kept by the
@@ -200,9 +196,9 @@ class CoroutineInProgress(InProgress):
         #
         # For other types of InProgress objects, when there are no outside
         # references to them, clearly nobody is interested in the result, so
-        # they can be destroyed.  For CoroutineInProgress, we mustn't rely
+        # they can be destroyed.  For CoroutineLockedInProgress, we mustn't rely
         # on outside references to keep the coroutine alive, so we keep refs
-        # for active CoroutineInProgress objects in a global set called
+        # for active CoroutineLockedInProgress objects in a global set called
         # _active_coroutines.  We then then remove ourselves from this set when
         # stopped.
         #
@@ -234,16 +230,12 @@ class CoroutineInProgress(InProgress):
         try:
             while True:
                 result = _process(self._coroutine, self._async)
-                try:
-                    result = inprogress(result)
-                except TypeError:
-                    # Return value cannot be coerced to InProgress
-                    if result is NotFinished:
-                        # Schedule next iteration with the timer
-                        return True
-                    else:
-                        # Coroutine is done.
-                        break
+                if result is NotFinished:
+                    # Schedule next iteration with the timer
+                    return True
+                elif not isinstance(result, InProgress):
+                    # Coroutine is done.
+                    break
 
                 # result is an InProgress
                 self._async = result
@@ -251,6 +243,9 @@ class CoroutineInProgress(InProgress):
                     # Coroutine yielded an unfinished InProgress, so continue
                     # when it is finished.
                     result.connect_both(self._continue, self._continue)
+                    # Return False to stop the step timer.  It will be
+                    # restarted when this newly returned InProgress is
+                    # finished.
                     return False
 
                 # If we're here, then the coroutine had yielded a finished
@@ -260,9 +255,12 @@ class CoroutineInProgress(InProgress):
         except StopIteration:
             # coroutine is done without result
             result = None
-        except Exception, e:
+        except:
             # coroutine is done with exception
             return self.throw(*sys.exc_info())
+
+        # Coroutine is done, stop and finish with its result (which may be
+        # None if no result was explicitly yielded).
         self.stop()
         self.finish(result)
         return False
@@ -274,7 +272,7 @@ class CoroutineInProgress(InProgress):
         coroutine to be aborted asynchronously.
         """
         self.stop()
-        return super(CoroutineInProgress, self).throw(*args)
+        return super(CoroutineLockedInProgress, self).throw(*args)
 
 
     def set_interval(self, interval):
@@ -296,9 +294,9 @@ class CoroutineInProgress(InProgress):
         if self in _active_coroutines:
             _active_coroutines.remove(self)
 
-        # if this object waits for another CoroutineInProgress, stop
+        # if this object waits for another CoroutineLockedInProgress, stop
         # that one, too.
-        if isinstance(self._async, CoroutineInProgress):
+        if isinstance(self._async, CoroutineLockedInProgress):
             self._async.stop()
         # Remove the internal timer, the async result and the
         # generator function to remove bad circular references.
@@ -316,12 +314,12 @@ class CoroutineInProgress(InProgress):
         return InProgress.timeout(self, timeout, callback=self.stop)
 
 
-class CoroutineInProgressLock(CoroutineInProgress):
+class CoroutineLockedInProgressLock(CoroutineLockedInProgress):
     """
-    CoroutineInProgress for handling locked coroutine functions.
+    CoroutineLockedInProgress for handling locked coroutine functions.
     """
     def __init__(self, original_function, function, interval):
-        CoroutineInProgress.__init__(self, function, interval)
+        CoroutineLockedInProgress.__init__(self, function, interval)
         self._func = original_function
         self._func._lock.connect_both(self._try_again, self._try_again)
 

@@ -85,7 +85,7 @@ def _process(func, async=None):
     return func.next()
 
 
-def coroutine(interval = 0, synchronize = False, progress=False):
+def coroutine(interval=0, synchronize=False, progress=False):
     """
     Functions with this decorator uses yield to break and to return the
     results. Special yield values for break are NotFinished or
@@ -230,6 +230,9 @@ class CoroutineInProgress(InProgress):
         try:
             while True:
                 result = _process(self._coroutine, self._async)
+                # Clear _async so that if we proceed to stop() it knows the
+                # coroutine is done.
+                self._async = None
                 if result is NotFinished:
                     # Schedule next iteration with the timer
                     return True
@@ -237,7 +240,7 @@ class CoroutineInProgress(InProgress):
                     # Coroutine is done.
                     break
 
-                # result is an InProgress
+                # Result is an InProgress, so there's more work to do.
                 self._async = result
                 if not result.finished:
                     # Coroutine yielded an unfinished InProgress, so continue
@@ -255,6 +258,8 @@ class CoroutineInProgress(InProgress):
         except StopIteration:
             # coroutine is done without result
             result = None
+            # Clear _async so stop() knows the coroutine has completed.
+            self._async = None
         except:
             # coroutine is done with exception
             return self.throw(*sys.exc_info())
@@ -289,8 +294,12 @@ class CoroutineInProgress(InProgress):
         """
         Stop the function, no callbacks called.
         """
+        was_active = bool(self._async)
+
         if self._timer and self._timer.active():
+            was_active = True
             self._timer.stop()
+
         if self in _active_coroutines:
             _active_coroutines.remove(self)
 
@@ -298,11 +307,23 @@ class CoroutineInProgress(InProgress):
         # that one, too.
         if isinstance(self._async, CoroutineInProgress):
             self._async.stop()
-        # Remove the internal timer, the async result and the
-        # generator function to remove bad circular references.
-        self._timer = None
-        self._coroutine = None
-        self._async = None
+
+        try:
+            if was_active and _python25:
+                # This was an active coroutine that expects to be reentered and
+                # we are aborting it prematurely.  For Python 2.5, we call the
+                # generator's close() method, which raises GeneratorExit inside
+                # the coroutine where it last yielded.  This allows the
+                # coroutine to perform any cleanup if necessary.  New
+                # exceptions raised inside the coroutine are bubbled up through
+                # close().
+                self._coroutine.close()
+        finally:
+            # Remove the internal timer, the async result and the
+            # generator function to remove bad circular references.
+            self._timer = None
+            self._coroutine = None
+            self._async = None
 
 
     def timeout(self, timeout):

@@ -361,8 +361,21 @@ def wraps(origfunc):
         wrapped.
     @return: a decorator which has the attributes of the decorated function.
     """
-    sig = inspect.formatargspec(*inspect.getargspec(origfunc))[1:-1]
-    src = 'lambda %s: __kaa_call_(%s)' % (sig, sig)
+    # The idea here is to turn an origfunc with a signature like:
+    #    origfunc(a, b, c=42, *args, **kwargs)
+    # into:
+    #    lambda a, b, c=42, *args, **kwargs: func(a, b, c=c, *args, **kwargs)
+    spec = inspect.getargspec(origfunc)
+    sig = callspec = inspect.formatargspec(*spec)[1:-1]
+    if spec[-1]:
+        # For the call spec, change defaults from the kwarg defaults to
+        # the name of the kwarg.  e.g. c=42 in the argspec will be translated
+        # to c=c in the callspec.  We still want these args to be kwargs,
+        # but don't want to override the value passed in the call.
+        spec = spec[:3] + (spec[0][-len(spec[3]):],)
+        callspec = inspect.formatargspec(formatvalue=lambda v: '=%s' % v, *spec)[1:-1]
+    src = 'lambda %s: __kaa_call_(%s)' % (sig, callspec)
+
     def decorator(func):
         dec_func = eval(src, {'__kaa_call_': func})
         return update_wrapper(dec_func, origfunc)

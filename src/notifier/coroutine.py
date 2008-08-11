@@ -230,9 +230,6 @@ class CoroutineInProgress(InProgress):
         try:
             while True:
                 result = _process(self._coroutine, self._async)
-                # Clear _async so that if we proceed to stop() it knows the
-                # coroutine is done.
-                self._async = None
                 if result is NotFinished:
                     # Schedule next iteration with the timer
                     return True
@@ -258,15 +255,13 @@ class CoroutineInProgress(InProgress):
         except StopIteration:
             # coroutine is done without result
             result = None
-            # Clear _async so stop() knows the coroutine has completed.
-            self._async = None
         except:
             # coroutine is done with exception
             return self.throw(*sys.exc_info())
 
         # Coroutine is done, stop and finish with its result (which may be
         # None if no result was explicitly yielded).
-        self.stop()
+        self._stop(finished=True)
         self.finish(result)
         return False
 
@@ -276,7 +271,7 @@ class CoroutineInProgress(InProgress):
         Hook InProgress.throw to stop before finishing.  Allows a
         coroutine to be aborted asynchronously.
         """
-        self.stop()
+        self._stop(finished=True)
         return super(CoroutineInProgress, self).throw(*args)
 
 
@@ -291,13 +286,15 @@ class CoroutineInProgress(InProgress):
 
 
     def stop(self):
+        if self._coroutine:
+            return self._stop()
+
+
+    def _stop(self, finished=False):
         """
         Stop the function, no callbacks called.
         """
-        was_active = bool(self._async)
-
         if self._timer and self._timer.active():
-            was_active = True
             self._timer.stop()
 
         if self in _active_coroutines:
@@ -306,18 +303,30 @@ class CoroutineInProgress(InProgress):
         # if this object waits for another CoroutineInProgress, stop
         # that one, too.
         if isinstance(self._async, CoroutineInProgress):
+            # Disconnect from the coroutine we're waiting on.  In case ours is
+            # unfinished, we don't need to hear back about the GeneratorExit
+            # exception we're about to throw it.
+            self._async.disconnect(self._continue)
+            self._async.exception.disconnect(self._continue)
             self._async.stop()
 
         try:
-            if was_active and _python25:
-                # This was an active coroutine that expects to be reentered and
-                # we are aborting it prematurely.  For Python 2.5, we call the
-                # generator's close() method, which raises GeneratorExit inside
-                # the coroutine where it last yielded.  This allows the
-                # coroutine to perform any cleanup if necessary.  New
-                # exceptions raised inside the coroutine are bubbled up through
-                # close().
-                self._coroutine.close()
+            if not finished:
+                # Throw a GeneratorExit exception so that any callbacks
+                # attached to us get notified that we've aborted.
+                if len(self.exception):
+                    super(CoroutineInProgress, self).\
+                        throw(GeneratorExit, GeneratorExit('Coroutine aborted'), None)
+
+                if _python25:
+                    # This was an active coroutine that expects to be reentered
+                    # and we are aborting it prematurely.  For Python 2.5, we
+                    # call the generator's close() method, which raises
+                    # GeneratorExit inside the coroutine where it last yielded.
+                    # This allows the coroutine to perform any cleanup if
+                    # necessary.  New exceptions raised inside the coroutine
+                    # are bubbled up through close().
+                    self._coroutine.close()
         finally:
             # Remove the internal timer, the async result and the
             # generator function to remove bad circular references.

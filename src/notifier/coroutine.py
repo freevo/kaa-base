@@ -230,6 +230,7 @@ class CoroutineInProgress(InProgress):
         try:
             while True:
                 result = _process(self._coroutine, self._async)
+                self._async = None
                 if result is NotFinished:
                     # Schedule next iteration with the timer
                     return True

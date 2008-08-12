@@ -65,7 +65,7 @@ import nf_wrapper as notifier
 from callback import Callback
 from signals import Signal
 from async import InProgress
-from kaa.utils import wraps, decorator_data_store
+from kaa.utils import wraps, DecoratorDataStore
 
 # import python thread file
 from kaa.utils import sysimport
@@ -194,7 +194,7 @@ class synchronized(object):
             lock = self._lock
             if lock is None:
                 # Lock not specified, use one attached to decorated function.
-                store = decorator_data_store(func, call, args)
+                store = DecoratorDataStore(func, call, args)
                 if 'synchronized_lock' not in store:
                     store.synchronized_lock = threading.RLock()
                 lock = store.synchronized_lock

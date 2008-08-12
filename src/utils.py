@@ -382,43 +382,57 @@ def wraps(origfunc):
     return decorator
 
 
-def decorator_data_store(func, newfunc, newfunc_args):
+class DecoratorDataStore(object):
     """
-    A utility function for decorators that sets or gets a value to/from a
-    decorated function.  This function returns a proxy object whose
-    attributes can be get or set or deleted.
+    A utility class for decorators that sets or gets a value to/from a
+    decorated function.  Attributes of instances of this class can be get, set,
+    or deleted, and those attributes are associated with the decorated
+    function.
 
     The object to which the data is attached is either the function itself for
     non-method, or the instance object for methods.
+
+    There are two possible perspectives of using the data store: from inside
+    the decorator, and from outside the decorator.  This allows, for example, a
+    method to access data stored by one of its decorators.
     """
-    # Object the data will be stored in.
-    target = func
+    def __init__(self, func, newfunc=None, newfunc_args=None):
+        # Object the data will be stored in.
+        target = func
+        if hasattr(func, 'im_self'):
+            # Data store requested for a specific method.
+            target = func.im_self
 
-    # This kludge compares the code object of newfunc (this wrapper) with the
-    # code object of the first argument's attribute of the function's name.  If
-    # they're the same, then we must be decorating a method, and we can attach
-    # the timer object to the instance instead of the function.
-    method = newfunc_args and getattr(newfunc_args[0], func.func_name, None)
-    if method and newfunc.func_code == method.func_code:
-        # Decorated function is a method, so store data in the instance.
-        target = newfunc_args[0]
+        # This kludge compares the code object of newfunc (this wrapper) with the
+        # code object of the first argument's attribute of the function's name.  If
+        # they're the same, then we must be decorating a method, and we can attach
+        # the timer object to the instance instead of the function.
+        method = newfunc_args and getattr(newfunc_args[0], func.func_name, None)
+        if method and newfunc.func_code == method.func_code:
+            # Decorated function is a method, so store data in the instance.
+            target = newfunc_args[0]
 
-    hash = lambda key: '__kaa_decorator_data_%s_%s' % (key, func.func_name)
+        self.__target = target
+        self.__name = func.func_name
+    
+    def __hash(self, key):
+        return '__kaa_decorator_data_%s_%s' % (key, self.__name)
 
-    class DataProxy:
-        def __getattr__(self, key):
-            return getattr(target, hash(key))
-        
-        def __setattr__(self, key, value):
-            return setattr(target, hash(key), value)
+    def __getattr__(self, key):
+        if key.startswith('_DecoratorDataStore__'):
+            return super(DecoratorDataStore, self).__getattr__(key)
+        return getattr(self.__target, self.__hash(key))
+    
+    def __setattr__(self, key, value):
+        if key.startswith('_DecoratorDataStore__'):
+            return super(DecoratorDataStore, self).__setattr__(key, value)
+        return setattr(self.__target, self.__hash(key), value)
 
-        def __hasattr__(self, key):
-            return hasattr(target, hash(key))
+    def __hasattr__(self, key):
+        return hasattr(self.__target, self.__hash(key))
 
-        def __contains__(self, key):
-            return hasattr(target, hash(key))
+    def __contains__(self, key):
+        return hasattr(self.__target, self.__hash(key))
 
-        def __delattr__(self, key):
-            return delattr(target, hash(key))
-
-    return DataProxy()
+    def __delattr__(self, key):
+        return delattr(self.__target, self.__hash(key))

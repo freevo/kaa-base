@@ -40,7 +40,7 @@ import datetime
 import nf_wrapper as notifier
 from thread import threaded, MAINTHREAD
 from kaa.weakref import weakref
-from kaa.utils import wraps, decorator_data_store
+from kaa.utils import wraps, DecoratorDataStore
 
 POLICY_ONCE = 'once'
 POLICY_MANY = 'many'
@@ -86,7 +86,7 @@ def timed(interval, timer=None, policy=POLICY_MANY):
                 t.start(interval)
                 return True
 
-            store = decorator_data_store(func, newfunc, args)
+            store = DecoratorDataStore(func, newfunc, args)
 
             # check current timer
             if 'timer' in store and store.timer.active():

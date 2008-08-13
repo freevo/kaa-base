@@ -1,6 +1,6 @@
 import kaa
 
-@kaa.coroutine(synchronize = True)
+@kaa.coroutine(policy=kaa.POLICY_SYNCHRONIZED)
 def f(x):
     print 'in', x
     yield kaa.NotFinished

@@ -94,7 +94,7 @@ def _process(func, async=None):
     return func.next()
 
 
-def coroutine(interval=0, policy=None, progress=False, synchronize=False):
+def coroutine(interval=0, policy=None, progress=False):
     """
     Functions with this decorator uses yield to break and to return the
     results. Special yield values for break are NotFinished or
@@ -122,11 +122,6 @@ def coroutine(interval=0, policy=None, progress=False, synchronize=False):
     """
     if progress is True:
         progress = InProgress.Progress
-
-    # Handle deprecated API
-    if synchronize or policy is True:
-        log.warning('@coroutine(): use of deprecated API; use policy=POLICY_SYNCHRONIZED')
-        policy = POLICY_SYNCHRONIZED
 
     def decorator(func):
         @wraps(func)

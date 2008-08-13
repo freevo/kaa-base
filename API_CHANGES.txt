@@ -13,7 +13,7 @@ Changes for 0.3.0
    kaa.notifier.shutdown() is kaa.main.stop()
    kaa.notifier.running is kaa.main.is_running()
    kaa.notifier.signals (shutdown/step) are now kaa.main.signals
-   
+
    kaa.main can be accessed by importing kaa, you can NOT import
    kaa.main directly.
 
@@ -35,12 +35,12 @@ Changes for 0.3.0
    InProgress object.
 
 5. Rename exception_handler in InProgress into exception and the
-   exception callback function to throw. Add a convenience function 
+   exception callback function to throw. Add a convenience function
    connect_both. The member variable is_finished is now a function.
 
 6. yield_execution decorator: lock kwarg was renamed to synchronize
 
-7. All exception handlers now take three arguments (instead of one): 
+7. All exception handlers now take three arguments (instead of one):
    exception type, exception value, traceback.
 
 8. yield_execution now always returns an InProgress object. This
@@ -52,7 +52,7 @@ Changes for 0.3.0
 Changes for 0.4.0
 -----------------
 
-1. MainThreadCallback.set_async() is removed.  Calling a 
+1. MainThreadCallback.set_async() is removed.  Calling a
    MainThreadCallback will return an InProgress object, and the
    new approach now is to wait() on this InProgress.
 
@@ -73,3 +73,12 @@ Changes for 0.4.0
    Rename YieldCallback to InProgressCallback
    Remove YieldFunction from the API, the class is now only for
    internal use and may change without further notice.
+
+Changes for 0.5.0
+-----------------
+
+1. InProgressCallback does not support a signal as argument anymore,
+   yield inprogress(signal) instead.
+
+2. @kaa.coroutine does not support the keyword synchronize anymore,
+   use policy=kaa.POLICY_SYNCHRONIZED instead.

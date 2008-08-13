@@ -531,9 +531,6 @@ class InProgressCallback(InProgress):
     def __init__(self, func=None):
         InProgress.__init__(self)
         if func is not None:
-            if isinstance(func, Signal):
-                log.warning("Don't pass Signals to InProgressCallback; yield signals directly instead")
-                func = func.connect_weak_once
             # connect self as callback
             func(self)
 

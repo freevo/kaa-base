@@ -113,6 +113,7 @@ def coroutine(interval=0, policy=None, progress=False, synchronize=False):
             kwarg.  If no such CoroutineInProgress exists, the last kwarg will
             be None.  This is useful to chain multiple invocations of the
             coroutine together, but unlike POLICY_SYNCHRONIZED, the decorated
+            function is entered each invocation.
 
     A function decorated with this decorator will always return an
     InProgress object. It may already be finished. If it is not finished,

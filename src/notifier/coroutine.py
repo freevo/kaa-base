@@ -56,15 +56,24 @@ __all__ = [ 'NotFinished', 'coroutine' ]
 
 # python imports
 import sys
+import logging
 
 # kaa.notifier imports
-from kaa.utils import wraps
+from kaa.utils import wraps, DecoratorDataStore
 from signals import Signal
 from timer import Timer
 from async import InProgress, inprogress
 
+# get logging object
+log = logging.getLogger('notifier')
+
 # object to signal that the function whats to continue
 NotFinished = object()
+
+# Coroutine policy constants; see coroutine() for details.
+POLICY_SYNCHRONIZED = 'synchronized'
+POLICY_SINGLETON = 'singleton'
+POLICY_PASS_LAST = 'passlast'
 
 # Currently running (not stopped) CoroutineInProgress objects.  See
 # CoroutineInProgress.__init__ for rational.
@@ -85,35 +94,85 @@ def _process(func, async=None):
     return func.next()
 
 
-def coroutine(interval=0, synchronize=False, progress=False):
+def coroutine(interval=0, policy=None, progress=False, synchronize=False):
     """
     Functions with this decorator uses yield to break and to return the
     results. Special yield values for break are NotFinished or
-    InProgress objects. If synchronize is True the function will
-    be protected against parallel calls, which can be used avoid
-    multithreading pitfalls such as deadlocks or race conditions.
-    If a decorated function is currently being executed, new
-    invocations will be queued. If progress is True, the first argument
-    to the function is an InProgress.Progress object to return execution
-    progress.
+    InProgress objects.
+
+    The policy arg is one of:
+
+        POLICY_SYNCHRONIZED: reentry into the coroutine is not permitted,
+            and multiple calls are queued so that they execute sequentially.
+        POLICY_SINGLETON: only one active instance of the coroutine is allowed
+            to exist.  If the coroutine is invoked while another is running,
+            the CoroutineInProgress object returned by the first invocation
+            until it finishes.
+        POLICY_PASS_LAST: passes the CoroutineInProgress of the most recently
+            called, unfinished invocation of this coroutine as the 'last'
+            kwarg.  If no such CoroutineInProgress exists, the last kwarg will
+            be None.  This is useful to chain multiple invocations of the
+            coroutine together, but unlike POLICY_SYNCHRONIZED, the decorated
 
     A function decorated with this decorator will always return an
     InProgress object. It may already be finished. If it is not finished,
     it has stop() and set_interval() member functions. If stop() is called,
-    the InProgress object will emit the finished signal.
+    the InProgress object will be thrown a GeneratorExit exception.
     """
     if progress is True:
         progress = InProgress.Progress
 
+    # Handle deprecated API
+    if synchronize or policy is True:
+        log.warning('@coroutine(): use of deprecated API; use policy=POLICY_SYNCHRONIZED')
+        policy = POLICY_SYNCHRONIZED
+
     def decorator(func):
         @wraps(func)
         def newfunc(*args, **kwargs):
+            if policy:
+                store = DecoratorDataStore(func, newfunc, args)
+                if 'last' not in store:
+                    store.last = []
+                last = store.last
+
+                if policy == POLICY_SINGLETON and last:
+                    # coroutine is still running, return original InProgress.
+                    return last[-1]
+                elif policy == POLICY_PASS_LAST:
+                    if last:
+                        kwargs['last'] = last[-1]
+                    else:
+                        kwargs['last'] = None
+
             def wrap(obj):
+                """
+                Finalizes the CoroutineInProgress return value for the
+                coroutine.
+                """
                 if progress:
                     obj.progress = args[0]
+
+                if policy in (POLICY_SINGLETON, POLICY_PASS_LAST) and not obj.finished:
+                    last.append(obj)
+
+                    # Attach a handler that removes the stored InProgress when it
+                    # finishes.
+                    def cb(*args, **kwargs):
+                        last.remove(obj)
+                        if args and args[0] == GeneratorExit:
+                            # Because we've attached to the exception signal
+                            # we'll hear about GeneratorExit exceptions.
+                            # Indicate those handled (by returning False) so as
+                            # to suppress the unhandled async exception.
+                            return False
+                    obj.connect_both(cb)
+
                 return obj
+
+
             if progress:
-                args = [ progress(), ] + list(args)
+                args = (progress(),) + args
             result = func(*args, **kwargs)
             if not hasattr(result, 'next'):
                 # Decorated function doesn't have a next attribute, which
@@ -125,9 +184,10 @@ def coroutine(interval=0, synchronize=False, progress=False):
                 raise ValueError('@coroutine decorated function is not a generator')
 
             function = result
-            if synchronize and func._lock is not None and not func._lock.is_finished():
+            if policy == POLICY_SYNCHRONIZED and func._lock is not None and not func._lock.is_finished():
                 # Function is currently called by someone else
                 return wrap(CoroutineLockedInProgress(func, function, interval))
+
             async = None
             while True:
                 try:
@@ -155,12 +215,12 @@ def coroutine(interval=0, synchronize=False, progress=False):
                 # we need a CoroutineInProgress to finish this later
                 # Here, result is either NotFinished or InProgress
                 ip = CoroutineInProgress(function, interval, result)
-                if synchronize:
+                if policy == POLICY_SYNCHRONIZED:
                     func._lock = ip
                 # return the CoroutineInProgress
                 return wrap(ip)
 
-        if synchronize:
+        if policy == POLICY_SYNCHRONIZED:
             func._lock = None
         return newfunc
 

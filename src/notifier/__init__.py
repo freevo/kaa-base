@@ -52,6 +52,7 @@ __all__ = [ 'Callback', 'WeakCallback', 'Signal', 'Signals', 'TimeoutException',
             'POLICY_ONCE', 'POLICY_MANY', 'POLICY_RESTART', 'IOMonitor',
             'WeakIOMonitor', 'Socket', 'IO_READ', 'IO_WRITE', 'Event',
             'EventHandler', 'WeakEventHandler', 'NotFinished', 'coroutine',
+            'POLICY_SYNCHRONIZED', 'POLICY_SINGLETON', 'POLICY_PASS_LAST',
             'delay', 'Process', 'GOBJECT', 'gobject_set_threaded' ]
 
 # Import all classes, functions and decorators that are part of the API
@@ -81,7 +82,8 @@ from sockets import IOMonitor, WeakIOMonitor, Socket, IO_READ, IO_WRITE
 from event import Event, EventHandler, WeakEventHandler
 
 # coroutine decorator and helper classes
-from coroutine import NotFinished, coroutine
+from coroutine import NotFinished, coroutine, \
+     POLICY_SYNCHRONIZED, POLICY_SINGLETON, POLICY_PASS_LAST
 
 # process management
 from popen import Process

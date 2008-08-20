@@ -162,6 +162,12 @@ class Signal(object):
     def connect_weak_first(self, callback, *args, **kwargs):
         return self._connect(callback, args, kwargs, weak = True, pos = 0)
 
+    def connect_first_once(self, callback, *args, **kwargs):
+        return self._connect(callback, args, kwargs, once = True, pos = 0)
+
+    def connect_weak_first_once(self, callback, *args, **kwargs):
+        return self._connect(callback, args, kwargs, weak = True, once = True, pos = 0)
+
     def _disconnect(self, callback, args, kwargs):
         assert(callable(callback))
         new_callbacks = []

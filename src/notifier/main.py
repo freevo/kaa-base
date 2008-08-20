@@ -65,13 +65,6 @@ _shutting_down = False
 # Lock preventing multiple threads from executing loop().
 _loop_lock = threading.Lock()
 
-def _step_signal_changed(signal, flag):
-    if flag == Signal.SIGNAL_CONNECTED and signal.count() == 1:
-        notifier.dispatcher_add(signals["step"].emit)
-    elif flag == Signal.SIGNAL_DISCONNECTED and signal.count() == 0:
-        notifier.dispatcher_remove(signals["step"].emit)
-
-
 #: mainloop signals to connect to
 #:  - exception: emited when an unhandled async exceptions occurs
 #:  - shutdown: emited on kaa shutdown
@@ -79,7 +72,7 @@ def _step_signal_changed(signal, flag):
 signals = {
     'exception': Signal(),
     'shutdown': Signal(),
-    'step': Signal(changed_cb = _step_signal_changed),
+    'step': Signal(),
 }
 
 def select_notifier(module, **options):
@@ -136,6 +129,7 @@ def loop(condition, timeout = None):
         while condition() and not abort:
             try:
                 notifier.step()
+                signals['step'].emit()
             except Exception, e:
                 if signals['exception'].emit(*sys.exc_info()) != False:
                     # Either there are no global exception handlers, or none of
@@ -241,6 +235,7 @@ def step(*args, **kwargs):
 
     try:
         notifier.step(*args, **kwargs)
+        signals['step'].emit()
     except (KeyboardInterrupt, SystemExit):
         raise SystemExit
 

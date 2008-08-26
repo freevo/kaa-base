@@ -215,7 +215,7 @@ class Signal(object):
                 if cb(*args, **kwargs) == False:
                     retval = False
             except (KeyboardInterrupt, SystemExit):
-                raise SystemExit
+                raise
             except Exception, e:
                 log.exception('signal.emit')
         return retval

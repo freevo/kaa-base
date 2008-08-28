@@ -89,7 +89,7 @@ def timed(interval, timer=None, policy=POLICY_MANY):
             store = DecoratorDataStore(func, newfunc, args)
 
             # check current timer
-            if 'timer' in store and store.timer.active():
+            if 'timer' in store and store.timer and store.timer.active():
                 if policy == POLICY_ONCE:
                     # timer already running and not override
                     return False

@@ -41,6 +41,7 @@ from tlslite.api import *
 
 # import tlslite.api to overwrite TLSConnection
 import tlslite.api
+import tlslite.errors
 
 # kaa imports
 import kaa
@@ -85,6 +86,16 @@ class TLSConnection(tlslite.api.TLSConnection):
             settings=settings, checker=checker, async=True)
         return self._iterate_handshake(handshake)
 
+    def handshakeClientSRP(self, username, password, session=None,
+                           settings=None, checker=None):
+        """
+        Perform a SRP-based handshake in the role of client.
+        """
+        handshake = tlslite.api.TLSConnection.handshakeClientSRP(
+            self, username=username, password=password, session=session,
+            settings=settings, checker=checker, async=True)
+        return self._iterate_handshake(handshake)
+
     def handshakeServer(self, sharedKeyDB=None, verifierDB=None, certChain=None,
                         privateKey=None, reqCert=None, sessionCache=None,
                         settings=None, checker=None):
@@ -120,19 +131,14 @@ class TLSSocket(kaa.Socket):
     connection is NOT encrypted, starttls_client and starttls_server
     must be called to encrypt the connection.
     """
+
+    # list of suuported TLS authentication mechanisms
+    supported_methods = [ 'X.509', 'SRP' ]
+
     def __init__(self):
         kaa.Socket.__init__(self)
         self.signals['tls'] = kaa.Signal()
         self._handshake = False
-
-    def _accept(self):
-        """
-        Accept a new connection and return a new Socket object.
-        """
-        sock, addr = self._socket.accept()
-        client_socket = TLSSocket()
-        client_socket.wrap(sock, addr)
-        self.signals['new-client'].emit(client_socket)
 
     def _update_read_monitor(self, signal = None, change = None):
         # FIXME: This function is broken in TLSSocket for two reasons:
@@ -177,25 +183,35 @@ class TLSSocket(kaa.Socket):
             return self.close(immediate=True, expected=False)
 
     @kaa.coroutine()
-    def starttls_client(self, session=None, key=None, **kwargs):
+    def starttls(self, session=None, key=None, srp=None, checker=None):
         """
         Start a certificate-based handshake in the role of a TLS client.
         Note: this function DOES NOT check the server key based on the
         key chain. Provide a checker callback to be called for verification.
         http://trevp.net/tlslite/docs/public/tlslite.Checker.Checker-class.html
         Every callable object can be used as checker.
+
+        @param session: tlslite.Session object to resume
+        @param key: TLSKey object for client authentication
+        @param srp: username, password pair for SRP authentication
+        @param checker: callback to check the credentials from the server
         """
         try:
-            if key:
-                kwargs['privateKey'] = key.key
-                kwargs['certChain'] = key.chain
             self._handshake = True
             if session is None:
                 session = Session()
             c = TLSConnection(self._socket)
             c.ignoreAbruptClose = True
             self._rmon.unregister()
-            yield c.handshakeClientCert(session=session, **kwargs)
+            if key:
+                yield c.handshakeClientCert(session=session, checker=checker,
+                          privateKey=key.key, certChain=key.chain)
+            elif srp:
+                yield c.handshakeClientSRP(session=session, checker=checker,
+                          username=srp[0], password=srp[1])
+                pass
+            else:
+                yield c.handshakeClientCert(session=session, checker=checker)
             self._socket = c
             self.signals['tls'].emit()
             self._rmon.register(self._socket.fileno(), kaa.IO_READ)
@@ -205,21 +221,41 @@ class TLSSocket(kaa.Socket):
             type, value, tb = sys.exc_info()
             raise type, value, tb
 
+
+class TLSServerSocket(TLSSocket):
+    """
+    TLSSocket for the TLS server
+    """
+
     @kaa.coroutine()
-    def starttls_server(self, key, **kwargs):
+    def starttls(self, session=None, key=None, request_cert=False, srp=None, checker=None):
         """
-        Start a certificate-based handshake in the role of a TLS server.
+        Start a certificate-based or SRP-based handshake in the role of a TLS server.
         Note: this function DOES NOT check the client key if requested,
         provide a checker callback to be called for verification.
         http://trevp.net/tlslite/docs/public/tlslite.Checker.Checker-class.html
         Every callable object can be used as checker.
+
+        @param session: tlslite.Session object to resume
+        @param key: TLSKey object for server authentication
+        @param request_cert: Request client certificate
+        @param srp: tlslite.VerifierDB for SRP authentication
+        @param checker: callback to check the credentials from the server
         """
         try:
             self._handshake = True
             c = TLSConnection(self._socket)
             c.ignoreAbruptClose = True
             self._rmon.unregister()
-            yield c.handshakeServer(privateKey=key.key, certChain=key.chain, **kwargs)
+            kwargs = {}
+            if key:
+                kwargs['privateKey'] = key.key
+                kwargs['certChain'] = key.chain
+            if srp:
+                kwargs['verifierDB'] = srp
+            if request_cert:
+                kwargs['reqCert'] = True
+            yield c.handshakeServer(**kwargs)
             self._socket = c
             self.signals['tls'].emit()
             self._rmon.register(self._socket.fileno(), kaa.IO_READ)
@@ -243,3 +279,6 @@ class TLSKey(object):
             x509.parse(open(cert).read())
             chain.append(x509)
         self.chain = X509CertChain(chain)
+
+#: Error to raise in the checker
+TLSAuthenticationError = tlslite.errors.TLSAuthenticationError

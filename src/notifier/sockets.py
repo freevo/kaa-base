@@ -489,7 +489,8 @@ class Socket(object):
         Accept a new connection and return a new Socket object.
         """
         sock, addr = self._socket.accept()
-        client_socket = Socket()
+        # create new Socket from the same class this object is
+        client_socket = self.__class__()
         client_socket.wrap(sock, addr)
         self.signals['new-client'].emit(client_socket)
 

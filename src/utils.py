@@ -340,7 +340,7 @@ except ImportError:
         wrapper.__dict__.update(wrapped.__dict__)
 
 
-def wraps(origfunc):
+def wraps(origfunc, lshift=0):
     """
     Decorator factory: used to create a decorator that assumes the same
     attributes (name, docstring, signature) as its decorated function.
@@ -359,20 +359,30 @@ def wraps(origfunc):
 
     @param origfunc: the original function being decorated which is to be 
         wrapped.
+    @param lshift: number of arguments to shift from the left of the original
+        function's call spec.  Wrapped function will have this nubmer of
+        arguments removed.
     @return: a decorator which has the attributes of the decorated function.
     """
     # The idea here is to turn an origfunc with a signature like:
     #    origfunc(a, b, c=42, *args, **kwargs)
     # into:
     #    lambda a, b, c=42, *args, **kwargs: func(a, b, c=c, *args, **kwargs)
-    spec = inspect.getargspec(origfunc)
+    spec = list(inspect.getargspec(origfunc))
+
+    # Wrapped function may need different callspec.  Currently we can just
+    # shift from the left of the args (e.g. for kaa.threaded progress arg).
+    # FIXME: doesn't work if the shifted arg is a kwarg.
+    if lshift:
+        spec[0] = spec[0][lshift:]
+
     sig = callspec = inspect.formatargspec(*spec)[1:-1]
     if spec[-1]:
         # For the call spec, change defaults from the kwarg defaults to
         # the name of the kwarg.  e.g. c=42 in the argspec will be translated
         # to c=c in the callspec.  We still want these args to be kwargs,
         # but don't want to override the value passed in the call.
-        spec = spec[:3] + (spec[0][-len(spec[3]):],)
+        spec = spec[:3] + [spec[0][-len(spec[3]):]]
         callspec = inspect.formatargspec(formatvalue=lambda v: '=%s' % v, *spec)[1:-1]
     src = 'lambda %s: __kaa_call_(%s)' % (sig, callspec)
 

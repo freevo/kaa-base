@@ -109,10 +109,10 @@ def threaded(name=None, priority=0, async=True, progress=False):
         progress = InProgress.Progress
 
     def decorator(func):
-        @wraps(func)
+        @wraps(func, lshift=int(not not progress))
         def newfunc(*args, **kwargs):
             if progress:
-                args = [ progress(), ] + list(args)
+                args = (progress(),) + args
             if name is MAINTHREAD:
                 if not async and is_mainthread():
                     # Fast-path case: mainthread synchronous call from the mainthread
@@ -133,9 +133,6 @@ def threaded(name=None, priority=0, async=True, progress=False):
             return in_progress
         return newfunc
 
-    if 'epydoc' in sys.modules:
-        # hack because epydoc does not handle decorators in classes correct
-        return lambda func: func
     return decorator
 
 

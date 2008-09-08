@@ -124,7 +124,7 @@ def coroutine(interval=0, policy=None, progress=False):
         progress = InProgress.Progress
 
     def decorator(func):
-        @wraps(func)
+        @wraps(func, lshift=int(not not progress))
         def newfunc(*args, **kwargs):
             if policy:
                 store = DecoratorDataStore(func, newfunc, args)

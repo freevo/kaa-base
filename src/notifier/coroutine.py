@@ -267,7 +267,7 @@ class CoroutineInProgress(InProgress):
             # continue when InProgress is done
             self._async = progress
             progress.connect_both(self._continue, self._continue)
-        else:
+        elif progress is not None:
             raise AttributeError('invalid progress %s' % progress)
 
 

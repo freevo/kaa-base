@@ -110,9 +110,13 @@ timer.stop()
 test(result, [42, 42, 42, 42, 42])
 
 result = []
+# Tests proper destruction of a weak timer.  We hold a weak ref to Cls().meth
+# and since there are no other refs, the weak timer never gets activated.
 timer = WeakTimer(Cls().meth, 42)
 timer.start(0)
-for i in range(5):
+# Notifier technically has nothing to do, so it may sleep for 30 seconds.
+print '(This could take 30 seconds or so.)'
+for i in range(2):
     kaa.main.step()
 test(result, [])
 test(timer.active(), False)

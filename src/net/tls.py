@@ -36,9 +36,6 @@
 import sys
 import logging
 
-# import tlslite API to the namespace of this module
-from tlslite.api import *
-
 # import tlslite.api to overwrite TLSConnection
 import tlslite.api
 import tlslite.errors
@@ -199,13 +196,13 @@ class TLSSocket(kaa.Socket):
         try:
             self._handshake = True
             if session is None:
-                session = Session()
+                session = tlslite.api.Session()
             c = TLSConnection(self._socket)
             c.ignoreAbruptClose = True
             self._rmon.unregister()
             if key:
                 yield c.handshakeClientCert(session=session, checker=checker,
-                          privateKey=key.key, certChain=key.chain)
+                          privateKey=key.private, certChain=key.certificate.chain)
             elif srp:
                 yield c.handshakeClientSRP(session=session, checker=checker,
                           username=srp[0], password=srp[1])
@@ -249,13 +246,13 @@ class TLSServerSocket(TLSSocket):
             self._rmon.unregister()
             kwargs = {}
             if key:
-                kwargs['privateKey'] = key.key
-                kwargs['certChain'] = key.chain
+                kwargs['privateKey'] = key.private
+                kwargs['certChain'] = key.certificate.chain
             if srp:
                 kwargs['verifierDB'] = srp
             if request_cert:
                 kwargs['reqCert'] = True
-            yield c.handshakeServer(**kwargs)
+            yield c.handshakeServer(checker=checker, **kwargs)
             self._socket = c
             self.signals['tls'].emit()
             self._rmon.register(self._socket.fileno(), kaa.IO_READ)
@@ -272,13 +269,15 @@ class TLSKey(object):
     This class can be used with TLSSocket as key.
     """
     def __init__(self, filename, private, *certs):
-        self.key = parsePEMKey(open(filename).read(), private=private)
+        self.private = tlslite.api.parsePEMKey(open(filename).read(), private=private)
+        self.certificate = tlslite.api.X509()
+        self.certificate.parse(open(filename).read())
         chain = []
         for cert in (filename, ) + certs:
-            x509 = X509()
+            x509 = tlslite.api.X509()
             x509.parse(open(cert).read())
             chain.append(x509)
-        self.chain = X509CertChain(chain)
+        self.certificate.chain = tlslite.api.X509CertChain(chain)
 
 #: Error to raise in the checker
 TLSAuthenticationError = tlslite.errors.TLSAuthenticationError

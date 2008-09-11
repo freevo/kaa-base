@@ -180,7 +180,7 @@ class TLSSocket(kaa.Socket):
             return self.close(immediate=True, expected=False)
 
     @kaa.coroutine()
-    def starttls(self, session=None, key=None, srp=None, checker=None):
+    def starttls_client(self, session=None, key=None, srp=None, checker=None):
         """
         Start a certificate-based handshake in the role of a TLS client.
         Note: this function DOES NOT check the server key based on the
@@ -218,14 +218,8 @@ class TLSSocket(kaa.Socket):
             type, value, tb = sys.exc_info()
             raise type, value, tb
 
-
-class TLSServerSocket(TLSSocket):
-    """
-    TLSSocket for the TLS server
-    """
-
     @kaa.coroutine()
-    def starttls(self, session=None, key=None, request_cert=False, srp=None, checker=None):
+    def starttls_server(self, session=None, key=None, request_cert=False, srp=None, checker=None):
         """
         Start a certificate-based or SRP-based handshake in the role of a TLS server.
         Note: this function DOES NOT check the client key if requested,

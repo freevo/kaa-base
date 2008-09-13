@@ -447,16 +447,18 @@ def setup(**kwargs):
     if 'module' not in kwargs:
         raise AttributeError('\'module\' not defined')
 
+    project = kwargs.pop('project', 'kaa')
+
     # create name
-    kwargs['name'] = 'kaa-' + kwargs['module']
+    kwargs['name'] = project + '-' + kwargs['module']
 
     # search for source files and add it package_dir and packages
     kwargs['package_dir'] = {}
     kwargs['packages']    = []
     if kwargs['module'] == 'base':
-        os.path.walk('src', _find_packages, (kwargs, 'kaa'))
+        os.path.walk('src', _find_packages, (kwargs, project))
     else:
-        os.path.walk('src', _find_packages, (kwargs, 'kaa.' + kwargs['module']))
+        os.path.walk('src', _find_packages, (kwargs, project + '.' + kwargs['module']))
 
     if 'plugins' in kwargs:
         del kwargs['plugins']

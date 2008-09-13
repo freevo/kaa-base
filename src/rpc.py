@@ -703,13 +703,16 @@ class Client(Channel):
         return 'client'
 
 
-def expose(command, add_client=False):
+def expose(command=None, add_client=False):
     """
     Decorator to expose a function. If add_client is True, the client
     object will be added to the command list as first argument.
     """
     def decorator(func):
-        func._kaa_rpc = command
+        if command is None:
+            func._kaa_rpc = func.func_name
+        else:
+            func._kaa_rpc = command
         func._kaa_rpc_param = ( add_client, )
         return func
     return decorator

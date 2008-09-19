@@ -357,7 +357,7 @@ def wraps(origfunc, lshift=0):
         ...             return func(*args, **kwargs)
         ...     return newfunc
 
-    @param origfunc: the original function being decorated which is to be 
+    @param origfunc: the original function being decorated which is to be
         wrapped.
     @param lshift: number of arguments to shift from the left of the original
         function's call spec.  Wrapped function will have this nubmer of
@@ -424,7 +424,7 @@ class DecoratorDataStore(object):
 
         self.__target = target
         self.__name = func.func_name
-    
+
     def __hash(self, key):
         return '__kaa_decorator_data_%s_%s' % (key, self.__name)
 
@@ -432,7 +432,7 @@ class DecoratorDataStore(object):
         if key.startswith('_DecoratorDataStore__'):
             return super(DecoratorDataStore, self).__getattr__(key)
         return getattr(self.__target, self.__hash(key))
-    
+
     def __setattr__(self, key, value):
         if key.startswith('_DecoratorDataStore__'):
             return super(DecoratorDataStore, self).__setattr__(key, value)
@@ -446,3 +446,35 @@ class DecoratorDataStore(object):
 
     def __delattr__(self, key):
         return delattr(self.__target, self.__hash(key))
+
+def utc2localtime(t):
+    """
+    Transform given seconds from UTC into localtime
+    """
+    if not t:
+        # no time value given
+        return 0
+    if time.daylight:
+        return t - time.altzone
+    else:
+        return t - time.timezone
+
+def localtime2utc(t):
+    """
+    Transform given seconds from localtime into UTC
+    """
+    if not t:
+        # no time value given
+        return 0
+    if time.daylight:
+        return t + time.altzone
+    else:
+        return t + time.timezone
+
+
+def utctime():
+    """
+    Return current time in seconds in UTC
+    """
+    return int(localtime2utc(time.time()))
+

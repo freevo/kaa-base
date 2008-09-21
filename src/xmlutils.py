@@ -60,9 +60,6 @@ except ImportError, e:
 # we can't use cStringIO since it doesn't support Unicode strings
 from StringIO import StringIO
 
-# kaa imports
-from utils import property
-
 class SaxTreeHandler(xml.sax.ContentHandler):
     """
     Handler for the SAX parser. The member function 'handle' will
@@ -194,18 +191,21 @@ class Node(object):
             node = node.parentNode
         return node
 
-    @property
-    def content(self):
+    def _get_content(self):
         if len(self.minidom.childNodes):
             return self.minidom.childNodes[0].data
         return u''
 
-    @content.setter
-    def content(self, value):
+    def _set_content(self, value):
         if not isinstance(value, (unicode, str)):
             value = str(value)
         node = self._minidom_document.createTextNode(value)
         self.minidom.appendChild(node)
+
+    # we can not use the property from util here because this file is
+    # needed by distribution and utils has many dependencies including
+    # the notifier that won't work in a non-installed version
+    content = property(_get_content, _set_content, None, 'cdata content')
 
     def add_child(self, name, content=None, **attributes):
         """

@@ -444,19 +444,22 @@ def setup(**kwargs):
             kwargs['packages'].append(python_dirname)
 
 
-    if 'module' not in kwargs:
+    if 'module' not in kwargs and 'name' not in kwargs:
         raise AttributeError('\'module\' not defined')
 
     project = kwargs.pop('project', 'kaa')
 
     # create name
-    kwargs['name'] = project + '-' + kwargs['module']
+    if not 'name' in kwargs:
+        kwargs['name'] = project + '-' + kwargs['module']
 
     # search for source files and add it package_dir and packages
     kwargs['package_dir'] = {}
     kwargs['packages']    = []
-    if kwargs['module'] == 'base':
+    if kwargs.get('module') == 'base':
         os.path.walk('src', _find_packages, (kwargs, project))
+    elif kwargs.get('module') == None:
+        os.path.walk('src', _find_packages, (kwargs, kwargs.get('name')))
     else:
         os.path.walk('src', _find_packages, (kwargs, project + '.' + kwargs['module']))
 
@@ -504,7 +507,7 @@ def setup(**kwargs):
         svn2log(kwargs['module'])
         
     # delete 'module' information, not used by distutils.setup
-    del kwargs['module']
+    kwargs.pop('module', None)
 
     # Write a version.py and add it to the list of files to
     # be installed.

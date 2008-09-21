@@ -37,6 +37,7 @@ import time
 import imp
 import logging
 import inspect
+import re
 
 import kaa
 import _utils
@@ -376,18 +377,32 @@ def wraps(origfunc, lshift=0):
     if lshift:
         spec[0] = spec[0][lshift:]
 
-    sig = callspec = inspect.formatargspec(*spec)[1:-1]
     if spec[-1]:
+        # For the lambda signature's kwarg defaults, remap them into values
+        # that can be referenced from the eval's local scope.  Otherwise only
+        # intrinsics could be used as kwarg defaults.
+        # Preserve old kwarg value list, to be passed into eval's locals scope.
+        kwarg_values = spec[-1]
+        # Changes (a=1, b=Foo) to a='__kaa_kw_defs[1]', b='__kaa_kw_defs[2]'
+        sigspec = spec[:3] + [[ '__kaa_kw_defs[%d]' % n for n in range(len(spec[-1])) ]]
+        sig = inspect.formatargspec(*sigspec)[1:-1]
+        # Removes the quotes between __kaa_kw_defs[x]
+        sig = re.sub(r"'(__kaa_kw_defs\[\d+\])'", '\\1', sig)
+
         # For the call spec, change defaults from the kwarg defaults to
         # the name of the kwarg.  e.g. c=42 in the argspec will be translated
         # to c=c in the callspec.  We still want these args to be kwargs,
         # but don't want to override the value passed in the call.
         spec = spec[:3] + [spec[0][-len(spec[3]):]]
         callspec = inspect.formatargspec(formatvalue=lambda v: '=%s' % v, *spec)[1:-1]
+    else:
+        sig = callspec = inspect.formatargspec(*spec)[1:-1]
+        kwarg_values = None
+
     src = 'lambda %s: __kaa_call_(%s)' % (sig, callspec)
 
     def decorator(func):
-        dec_func = eval(src, {'__kaa_call_': func})
+        dec_func = eval(src, {'__kaa_call_': func, '__kaa_kw_defs': kwarg_values})
         return update_wrapper(dec_func, origfunc)
     return decorator
 

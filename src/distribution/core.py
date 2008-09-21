@@ -52,7 +52,7 @@ except ImportError, e:
     print 'Please reinstall kaa by deleting all \'build\' subdirs'
     print 'for all kaa source modules and delete the kaa directory'
     print 'in the site-package directory'
-    raise e
+    raise
 
 __all__ = ['compile', 'check_library', 'get_library', 'setup', 'ConfigFile',
            'Extension', 'Library']

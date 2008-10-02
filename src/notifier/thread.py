@@ -77,7 +77,7 @@ log = logging.getLogger('notifier')
 # TODO: organize thread notifier stuff into its own namespace
 
 _thread_notifier_mainthread = threading.currentThread()
-_thread_notifier_lock = threading.Lock()
+_thread_notifier_lock = threading.RLock()
 _thread_notifier_queue = []
 
 # For MainThread* callbacks. The pipe will be created when it is used the first
@@ -294,7 +294,6 @@ def _thread_notifier_queue_callback(callback, args, kwargs, in_progress):
 
 
 def _thread_notifier_run_queue(fd):
-    global _thread_notifier_queue
     try:
         os.read(_thread_notifier_pipe[0], 1000)
     except socket.error, (err, msg):
@@ -305,17 +304,14 @@ def _thread_notifier_run_queue(fd):
             log.error("Thread notifier pipe woke but no data available.")
     except OSError:
         pass
-
+    _thread_notifier_lock.acquire()
     while _thread_notifier_queue:
-        _thread_notifier_lock.acquire()
         callback, args, kwargs, in_progress = _thread_notifier_queue.pop(0)
-        _thread_notifier_lock.release()
-
         try:
             in_progress.finish(callback(*args, **kwargs))
         except:
             in_progress.throw(*sys.exc_info())
-
+    _thread_notifier_lock.release()
     return True
 
 

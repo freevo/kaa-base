@@ -344,10 +344,9 @@ except ImportError:
 def wraps(origfunc, lshift=0):
     """
     Decorator factory: used to create a decorator that assumes the same
-    attributes (name, docstring, signature) as its decorated function.
-    Preserving the function signature and docstring is particularly necessary
-    for documentation generators (such as epydoc) that use introspection to
-    construct the doc.
+    attributes (name, docstring, signature) as its decorated function when
+    epydoc has been imported.  This is necessary because epydoc uses
+    introspection to construct the documentation.
 
     This logic is inspired from Michele Simionato's decorator module.
 
@@ -365,17 +364,23 @@ def wraps(origfunc, lshift=0):
         arguments removed.
     @return: a decorator which has the attributes of the decorated function.
     """
+    if 'epydoc' not in sys.modules:
+        # epydoc not imported, so return a decorator that passes the func through.
+        return lambda func: func
+    elif lshift == 0:
+        # Simple case, we don't need to munge args, so we can pass origfunc.
+        return lambda func: origfunc
+
     # The idea here is to turn an origfunc with a signature like:
-    #    origfunc(a, b, c=42, *args, **kwargs)
+    #    origfunc(progress, a, b, c=42, *args, **kwargs)
     # into:
-    #    lambda a, b, c=42, *args, **kwargs: func(a, b, c=c, *args, **kwargs)
+    #    lambda a, b, c=42, *args, **kwargs: log.error("...")
     spec = list(inspect.getargspec(origfunc))
 
-    # Wrapped function may need different callspec.  Currently we can just
+    # Wrapped function needs a different signature.  Currently we can just
     # shift from the left of the args (e.g. for kaa.threaded progress arg).
     # FIXME: doesn't work if the shifted arg is a kwarg.
-    if lshift:
-        spec[0] = spec[0][lshift:]
+    spec[0] = spec[0][lshift:]
 
     if spec[-1]:
         # For the lambda signature's kwarg defaults, remap them into values
@@ -388,21 +393,13 @@ def wraps(origfunc, lshift=0):
         sig = inspect.formatargspec(*sigspec)[1:-1]
         # Removes the quotes between __kaa_kw_defs[x]
         sig = re.sub(r"'(__kaa_kw_defs\[\d+\])'", '\\1', sig)
-
-        # For the call spec, change defaults from the kwarg defaults to
-        # the name of the kwarg.  e.g. c=42 in the argspec will be translated
-        # to c=c in the callspec.  We still want these args to be kwargs,
-        # but don't want to override the value passed in the call.
-        spec = spec[:3] + [spec[0][-len(spec[3]):]]
-        callspec = inspect.formatargspec(formatvalue=lambda v: '=%s' % v, *spec)[1:-1]
     else:
-        sig = callspec = inspect.formatargspec(*spec)[1:-1]
+        sig = inspect.formatargspec(*spec)[1:-1]
         kwarg_values = None
 
-    src = 'lambda %s: __kaa_call_(%s)' % (sig, callspec)
-
+    src = 'lambda %s: __kaa_log_.error("epydoc mode: decorated function \'%s\' was called")' % (sig, origfunc.__name__)
     def decorator(func):
-        dec_func = eval(src, {'__kaa_call_': func, '__kaa_kw_defs': kwarg_values})
+        dec_func = eval(src, {'__kaa_log_': log, '__kaa_kw_defs': kwarg_values})
         return update_wrapper(dec_func, origfunc)
     return decorator
 

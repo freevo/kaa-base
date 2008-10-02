@@ -305,13 +305,15 @@ def _thread_notifier_run_queue(fd):
     except OSError:
         pass
     _thread_notifier_lock.acquire()
-    while _thread_notifier_queue:
-        callback, args, kwargs, in_progress = _thread_notifier_queue.pop(0)
-        try:
-            in_progress.finish(callback(*args, **kwargs))
-        except:
-            in_progress.throw(*sys.exc_info())
-    _thread_notifier_lock.release()
+    try:
+        while _thread_notifier_queue:
+            callback, args, kwargs, in_progress = _thread_notifier_queue.pop(0)
+            try:
+                in_progress.finish(callback(*args, **kwargs))
+            except:
+                in_progress.throw(*sys.exc_info())
+    finally:
+        _thread_notifier_lock.release()
     return True
 
 

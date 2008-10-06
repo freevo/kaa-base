@@ -571,31 +571,75 @@ class InProgressAny(InProgress):
     """
     def __init__(self, *objects):
         super(InProgressAny, self).__init__()
-        # Keep a reference to the given InProgress objects while we're waiting
-        # for one of them.
+        # Generate InProgress objects for anything that was passed.
         self._objects = [ inprogress(o) for o in objects ]
 
-        for n, ip in enumerate(self._objects):
-            # We have references to the InProgress objects now, so connect
-            # weakly to them so as not to create a ref cycle.
-            ip.connect_weak(self.finish, n).set_user_args_first()
-            ip.exception.connect_weak(self.finish, n).set_user_args_first()
+
+    def _get_connect_args(self, ip, n):
+        """
+        Called for each InProgress we connect to, and returns arguments to be
+        passed to self.finish if that InProgress finishes.
+        """
+        return (n,)
+
+
+    def _finalize_connect(self, prefinished):
+        """
+        Called after we connect to all given InProgress.  prefinished is a list
+        of indexes (relative to self._objects) that were already finished when
+        we tried to connect to them.
+        """
+        if prefinished:
+            # If any IP was already finished, we're also done.  We can't know
+            # which one actually finished first, so we'll finish with the
+            # first index.
+            idx = prefinished[0]
+            # FIXME: if the IP failed with exception, we'll end up raising here
+            # due to accessing its result.
+            self.finish(idx, self._objects[idx].result)
+        
+
+    def _changed(self, action):
+        """
+        Called when a callback connects or disconnects from us.
+        """
+        if len(self) == 1:
+            # Someone wants to know when we finish, so now we connect to the
+            # underlying InProgress objects to find out when they finish.
+            prefinished = []
+            for n, ip in enumerate(self._objects):
+                if ip.finished:
+                    # This one is finished already, no need to connect to it.
+                    prefinished.append(n)
+                    continue
+                args = self._get_connect_args(ip, n)
+                ip.connect(self.finish, *args).set_user_args_first()
+                ip.exception.connect(self.finish, *args).set_user_args_first()
+
+            self._finalize_connect(prefinished)
+        else:
+            for ip in self._objects:
+                ip.disconnect(self.finish)
+                ip.exception.disconnect(self.finish)
+
+        return super(InProgressAny, self)._changed(action)
 
 
     def finish(self, result, args):
         """
-        Callback when one signal is emited.
+        Invoked when any one of the InProgress objects passed to the 
+        constructor have finished.
         """
-        # Cleanup and free InProgress references.
-        for ip in self._objects:
-            ip.disconnect(self.finish)
-            ip.exception.disconnect(self.finish)
+        super(InProgressAny, self).finish((result, args))
+        # We're done with the underlying IP objects so unref them.  In the
+        # case of InProgressCallbacks connected weakly to signals (which
+        # happens when signals are given to us on the constructor), they'll
+        # get deleted and disconnected from the signals.
         self._objects = None
 
-        return super(InProgressAny, self).finish((result, args))
 
 
-class InProgressAll(InProgress):
+class InProgressAll(InProgressAny):
     """
     InProgress object that finishes only when ALL of the supplied InProgress
     objects (in constructor) finish.  This functionality is useful when
@@ -607,25 +651,36 @@ class InProgressAll(InProgress):
     InProgress objects.  It can be treated as an iterator, and can be indexed.
     """
     def __init__(self, *objects):
-        super(InProgressAll, self).__init__()
-        self._objects = [ inprogress(o) for o in objects ]
+        super(InProgressAll, self).__init__(*objects)
         self._counter = len(objects) or 1
-
-        for ip in self._objects:
-            ip.connect_weak_once(self.finish)
-            ip.exception.connect_weak_once(self.finish)
 
         if not objects:
             self.finish(None)
 
 
+    def _get_connect_args(self, ip, n):
+        return ()
+
+
+    def _finalize_connect(self, prefinished):
+        if len(prefinished) == len(self._objects):
+            # All underlying InProgress objects are already finished so we're
+            # done.  Prime counter to 1 to force finish() to actually finish
+            # when we call it next.
+            self._counter = 1
+            self.finish(None)
+
+
     def finish(self, args):
-        """
-        Callback when one signal is emited.
-        """
         self._counter -= 1
         if self._counter == 0:
-            super(InProgressAll, self).finish(self)
+            super(InProgressAny, self).finish(self)
+        # Unlike InProgressAny, we don't unref _objects because the caller
+        # may want to access them by iterating us.  That's fine, because 
+        # unlike InProgressAny where we'd prefer not to have useless
+        # transient InProgressCallbacks connected to any provided signals,
+        # here we know we won't because they will all have been emitted
+        # in order for us to be here.
 
 
     def __iter__(self):

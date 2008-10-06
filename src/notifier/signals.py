@@ -133,8 +133,7 @@ class Signal(object):
             pos = len(self._callbacks)
 
         self._callbacks.insert(pos, callback)
-        if self._changed_cb:
-            self._changed_cb(self, Signal.SIGNAL_CONNECTED)
+        self._changed(Signal.SIGNAL_CONNECTED)
 
         if self._deferred_args:
             for args, kwargs in self._deferred_args:
@@ -179,11 +178,20 @@ class Signal(object):
 
         if len(new_callbacks) != len(self._callbacks):
             self._callbacks = new_callbacks
-            if self._changed_cb:
-                self._changed_cb(self, Signal.SIGNAL_DISCONNECTED)
+            self._changed(Signal.SIGNAL_DISCONNECTED)
             return True
 
         return False
+
+
+    def _changed(self, action):
+        """
+        Called when a callback was connected or disconnected.
+
+        @param action: SIGNAL_CONNECTED or SIGNAL_DISCONNECTED.
+        """
+        if self._changed_cb:
+            self._changed_cb(self, action)
 
 
     def disconnect(self, callback, *args, **kwargs):

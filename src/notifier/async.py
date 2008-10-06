@@ -617,7 +617,7 @@ class InProgressAny(InProgress):
                 ip.exception.connect(self.finish, *args).set_user_args_first()
 
             self._finalize_connect(prefinished)
-        else:
+        elif len(self) == 0:
             for ip in self._objects:
                 ip.disconnect(self.finish)
                 ip.exception.disconnect(self.finish)

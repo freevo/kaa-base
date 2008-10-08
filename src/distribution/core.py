@@ -504,7 +504,7 @@ def setup(**kwargs):
         # FIXME: find a better way to detect if we need to create a
         # ChangeLog file or not.
         print 'generate ChangeLog'
-        svn2log(kwargs['module'])
+        svn2log(kwargs.get('module', kwargs.get('name')))
         
     # delete 'module' information, not used by distutils.setup
     kwargs.pop('module', None)

@@ -421,6 +421,8 @@ class Doc(distutils.cmd.Command):
         self.run_command('build')
         for doc in self.docfiles:
             os.system('epydoc --config=%s' % doc)
+        if os.path.isfile('doc/Makefile'):
+            os.system('(cd doc; make clean; make html)')
 
 def setup(**kwargs):
     """

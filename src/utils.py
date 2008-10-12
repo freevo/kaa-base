@@ -364,7 +364,7 @@ def wraps(origfunc, lshift=0):
         arguments removed.
     @return: a decorator which has the attributes of the decorated function.
     """
-    if 'epydoc' not in sys.modules:
+    if 'epydoc' not in sys.modules and 'sphinx.builder' not in sys.modules:
         # epydoc not imported, so return a decorator that passes the func through.
         return lambda func: func
     elif lshift == 0:

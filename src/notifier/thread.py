@@ -362,8 +362,12 @@ class ThreadInProgress(InProgress):
         else:
             if type(result) == types.GeneratorType or isinstance(result, InProgress):
                 # Looks like the callback is yielding something, or callback is a
-                # coroutine-decorated function.  Not supported (yet?).
-                log.warning('NYI: threads cannot yet be coroutines.')
+                # coroutine-decorated function.  Not supported (yet?).  In the
+                # case of coroutines, the first entry will execute in the
+                # thread, but subsequent entries (via the generator's next())
+                # will be from the mainthread, which is almost certainly _not_
+                # what is intended by threading a coroutine.
+                log.warning('NYI: coroutines cannot (yet) be executed in threads.')
             MainThreadCallback(self.finish)(result)
         self._callback = None
 

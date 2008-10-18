@@ -17,6 +17,7 @@ import sys, os
 # is relative to the documentation root, use os.path.abspath to make it
 # absolute, like shown here.
 sys.path.append(os.path.abspath('../build/lib.linux-i686-2.5'))
+from kaa.version import VERSION
 
 # General configuration
 # ---------------------
@@ -43,9 +44,9 @@ copyright = '2005-2008, Dirk Meyer, Jason Tackaberry'
 # other places throughout the built documents.
 #
 # The short X.Y version.
-version = '0.5.0'
+version = str(VERSION)
 # The full version, including alpha/beta/rc tags.
-release = '0.5.0'
+release = str(VERSION)
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:

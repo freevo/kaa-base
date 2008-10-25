@@ -173,7 +173,7 @@ class TLSSocket(kaa.Socket):
         """
         try:
             return super(TLSSocket, self)._handle_read()
-        except TLSAbruptCloseError, e:
+        except tlslite.errors.TLSAbruptCloseError, e:
             log.error('TLSAbruptCloseError')
             self._read_signal.emit(None)
             self._readline_signal.emit(None)

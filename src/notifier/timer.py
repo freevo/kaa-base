@@ -75,7 +75,7 @@ def timed(interval, timer=None, policy=POLICY_MANY):
     subsequent calls will be discarded.
     """
     if not policy in (POLICY_MANY, POLICY_ONCE, POLICY_RESTART):
-        raise RunTimeError('Invalid @kaa.timed policy %s' % policy)
+        raise RuntimeError('Invalid @kaa.timed policy %s' % policy)
 
     def decorator(func):
         @wraps(func)

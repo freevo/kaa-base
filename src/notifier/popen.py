@@ -48,6 +48,7 @@ __all__ = [ 'Process', 'proclist' ]
 
 # python imports
 import os
+import sys
 import fcntl
 import popen2
 import glob

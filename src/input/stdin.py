@@ -33,7 +33,6 @@ __all__ = [ 'signal' ]
 
 # python imports
 import sys
-import tty
 import termios
 import os
 import atexit

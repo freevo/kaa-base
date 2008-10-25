@@ -31,7 +31,6 @@
 __all__ = [ 'convert' ]
 
 # python imports
-import sys
 import pprint
 
 # use minidom because it is part of the python distribution.

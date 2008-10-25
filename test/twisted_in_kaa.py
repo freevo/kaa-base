@@ -1,4 +1,4 @@
-import sys
+# import sys
 import kaa
 
 # install special kaa reactor

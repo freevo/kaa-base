@@ -1,4 +1,4 @@
-from kaa import timed, Timer, OneShotTimer, main, \
+from kaa import timed, OneShotTimer, main, \
      is_mainthread, threaded, MAINTHREAD, POLICY_ONCE, POLICY_RESTART
 
 

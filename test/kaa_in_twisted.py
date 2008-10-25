@@ -1,4 +1,3 @@
-import sys
 import kaa
 
 # method can be either

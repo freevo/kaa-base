@@ -60,9 +60,8 @@ import logging
 
 # kaa.notifier imports
 from kaa.utils import wraps, DecoratorDataStore
-from signals import Signal
 from timer import Timer
-from async import InProgress, inprogress
+from async import InProgress
 
 # get logging object
 log = logging.getLogger('notifier')

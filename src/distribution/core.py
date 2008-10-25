@@ -31,9 +31,6 @@
 # python imports
 import os
 import sys
-import math
-import stat
-import re
 import tempfile
 import time
 import distutils.core

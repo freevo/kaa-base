@@ -41,7 +41,6 @@ import traceback
 import time
 import _weakref
 import threading
-import types
 
 # kaa.notifier imports
 from callback import Callback

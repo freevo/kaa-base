@@ -63,7 +63,6 @@ import types
 # notifier imports
 import nf_wrapper as notifier
 from callback import Callback
-from signals import Signal
 from async import InProgress
 from kaa.utils import wraps, DecoratorDataStore
 

@@ -1,6 +1,6 @@
 # -*- coding: iso-8859-1 -*-
 
-from kaa.config import Var, Group, Dict, List, Config, VarProxy
+from kaa.config import Var, Group, Dict, Config
 
 config = Config(desc='mplayer configuration', schema=[
 

@@ -35,7 +35,6 @@ __all__ = [ 'Callback', 'WeakCallback' ]
 # Python imports
 import _weakref
 import types
-import sys
 import logging
 import atexit
 

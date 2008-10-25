@@ -80,9 +80,7 @@ __all__ = [ 'Server', 'Client', 'expose', 'ConnectError' ]
 # python imports
 import types
 import socket
-import errno
 import logging
-import os
 import cPickle
 import pickle
 import struct

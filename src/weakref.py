@@ -35,7 +35,6 @@ __all__ = [ 'weakref' ]
 
 # python imports
 from _weakref import ref
-import types
 
 
 class NoneProxy(object):

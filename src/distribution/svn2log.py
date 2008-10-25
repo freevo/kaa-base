@@ -29,7 +29,6 @@
 # -----------------------------------------------------------------------------
 
 # python imports
-import sys
 import os
 import textwrap
 import popen2

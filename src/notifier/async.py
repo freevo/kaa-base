@@ -668,6 +668,11 @@ class InProgressAll(InProgressAny):
             # when we call it next.
             self._counter = 1
             self.finish(None)
+        elif len(prefinished):
+            # Some underlying InProgress objects are already finished so we
+            # need to substract them from the number of objects we are still
+            # waiting for.
+            self._counter = len(self._objects) - len(prefinished)
 
 
     def finish(self, args):

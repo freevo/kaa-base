@@ -314,6 +314,10 @@ class Signals(dict):
         return [ self[k] for k in self._keys ]
 
 
+    def __add__(self, signals):
+        return Signals(self, *signals)
+
+
     def add(self, *signals):
         """
         Creates a new Signals object by merging all signals defined in

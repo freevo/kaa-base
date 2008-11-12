@@ -236,15 +236,17 @@ class IODescriptor(object):
             return
         self._set_non_blocking()
 
+        if self._rmon:
+            self._rmon.unregister()
+            self._rmon = None
+        if self._wmon:
+            self._wmon.unregister()
+            self._wmon = None
+
         if self._mode & IO_READ:
-            if self._rmon:
-                self._rmon.unregister()
             self._rmon = IOMonitor(self._handle_read)
             self._update_read_monitor()
-
         if self._mode & IO_WRITE:
-            if self._wmon:
-                self._wmon.unregister()
             self._wmon = IOMonitor(self._handle_write)
             if self._write_queue:
                 self._wmon.register(self.fileno, IO_WRITE)

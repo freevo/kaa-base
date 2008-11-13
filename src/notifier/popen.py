@@ -61,7 +61,7 @@ from callback import Callback
 from signals import Signal
 from thread import MainThreadCallback, is_mainthread
 from async import InProgress, inprogress
-from sockets import IOMonitor, IO_WRITE
+from io import IOMonitor, IO_WRITE
 
 # get logging object
 log = logging.getLogger('notifier')

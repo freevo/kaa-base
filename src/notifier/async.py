@@ -468,6 +468,16 @@ class InProgress(Signal):
         # Import modules here rather than globally to avoid circular importing.
         import main
         from thread import is_mainthread
+
+        # Connect a dummy handler to ourselves.  This is a bit kludgy, but
+        # solves a particular problem with InProgress(Any|All), which don't
+        # actually finish unless something wants to know.  Normally, without
+        # wait, we are yielded to the coroutine wrapper which implicitly
+        # connects to us.  Here, with wait(), in a sense we want to know when
+        # self finishes.
+        dummy = lambda *args, **kwargs: None
+        self.connect(dummy)
+
         if is_mainthread():
             # We're waiting in the main thread, so we must keep the mainloop
             # alive by calling main.loop() until we're finished.
@@ -485,6 +495,7 @@ class InProgress(Signal):
             self._finished_event.wait(timeout)
 
         if not self.is_finished():
+            self.disconnect(dummy)
             raise TimeoutException
 
         return self.get_result()
@@ -564,12 +575,17 @@ class InProgressAny(InProgress):
     objects (in constructor) finish.  This functionality is useful when
     building state machines using coroutines.
 
-    The InProgressAny object then finishes with a 2-tuple, whose first
-    element is the index (offset from 0) of the InProgress that finished,
-    and the second element is the result the InProgress was finished with.
+    If pass_index is True, the InProgressAny object then finishes with a
+    2-tuple, whose first element is the index (offset from 0) of the InProgress
+    that finished, and the second element is the result the InProgress was
+    finished with.
+    
+    If pass_index is False, the InProgressAny is finished with just the result
+    and not the index.
     """
-    def __init__(self, *objects):
+    def __init__(self, *objects, **kwargs):
         super(InProgressAny, self).__init__()
+        self._pass_index = kwargs.get('pass_index', True)
         # Generate InProgress objects for anything that was passed.
         self._objects = [ inprogress(o) for o in objects ]
 
@@ -629,7 +645,12 @@ class InProgressAny(InProgress):
         Invoked when any one of the InProgress objects passed to the 
         constructor have finished.
         """
-        super(InProgressAny, self).finish((result, args))
+        if self._pass_index:
+            data = (result, args)
+        else:
+            data = args
+        super(InProgressAny, self).finish(data)
+
         # We're done with the underlying IP objects so unref them.  In the
         # case of InProgressCallbacks connected weakly to signals (which
         # happens when signals are given to us on the constructor), they'll

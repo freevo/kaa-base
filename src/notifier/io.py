@@ -30,7 +30,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'IO_READ', 'IO_WRITE', 'IOMonitor', 'WeakIOMonitor', 'IODescriptor' ]
+__all__ = [ 'IO_READ', 'IO_WRITE', 'IOMonitor', 'WeakIOMonitor', 'IOChannel' ]
 
 import sys
 import os
@@ -105,14 +105,13 @@ class WeakIOMonitor(notifier.WeakNotifierCallback, IOMonitor):
 # instead of doing so at the top of the file.
 from kaa.notifier import main
 
-
-class IODescriptor(object):
+class IOChannel(object):
     """
     Base class for read-only, write-only or read-write descriptors such as
     Socket and Process.  Implements logic common to communication over
-    descriptors such as async read/writes and read/write buffering.
+    such channels such as async read/writes and read/write buffering.
     """
-    def __init__(self, fd=None, mode=IO_READ|IO_WRITE, chunk_size=1024*1024):
+    def __init__(self, channel=None, mode=IO_READ|IO_WRITE, chunk_size=1024*1024):
         self.signals = Signals('closed', 'read', 'readline', 'write')
         self._write_queue = []
         self._queue_close = False
@@ -129,42 +128,42 @@ class IODescriptor(object):
         self.signals['readline'].changed_cb = cb
 
         # These variables hold the IOMonitors for monitoring; we only allocate
-        # a monitor when the fd is connected to avoid a ref cycle so that
-        # disconnected fds will get properly deleted when they are not
+        # a monitor when the channel is connected to avoid a ref cycle so that
+        # disconnected channels will get properly deleted when they are not
         # referenced.
         self._rmon = None
         self._wmon = None
 
-        self.wrap(fd, mode)
+        self.wrap(channel, mode)
 
 
     @property
     def alive(self):
         """
-        Returns True if the fd exists and is open.
+        Returns True if the channel exists and is open.
         """
-        # If the fd is closed, self._fd will be None.
-        return self._fd != None
+        # If the channel is closed, self._channel will be None.
+        return self._channel != None
 
 
     @property
     def fileno(self):
         """
-        Returns the integer for this file descriptor, or None if no descriptor
-        has been set.
+        Returns the file descriptor (integer) for this channel, or None if no
+        channel has been set.
         """
         try:
-            return self._fd.fileno()
+            return self._channel.fileno()
         except AttributeError:
-            return self._fd
+            return self._channel
 
 
     @property
     def chunk_size(self):
         """
-        Number of bytes to attempt to read from the fd at a time.  The
+        Number of bytes to attempt to read from the channel at a time.  The
         default is 1M.  A 'read' signal is emitted for each chunk read from the
-        fd.  (The number of bytes read at a time may be less than the chunk
+        channel.  (The number of bytes read at a time may be less than the chunk
         size, but will never be more.)
         """
         return self._chunk_size
@@ -181,7 +180,7 @@ class IODescriptor(object):
     def write_queue_size(self):
         """
         Returns the number of bytes queued in memory to be written to the
-        descriptor.
+        channel.
         """
         # XXX: this is not terribly efficient when the write queue has
         # many elements.  We may decide to keep a separate counter.
@@ -200,7 +199,7 @@ class IODescriptor(object):
         """
         Update read IOMonitor to register or unregister based on if there are
         any handlers attached to the read signals.  If there are no handlers,
-        there is no point in reading data from the descriptor since it will go 
+        there is no point in reading data from the channel since it will go 
         nowhere.  This also allows us to push back the read buffer to the OS.
 
         We must call this immediately after reading a block, and not defer
@@ -217,20 +216,21 @@ class IODescriptor(object):
 
     def _set_non_blocking(self):
         """
-        Low-level call to set the fd non-blocking.  Can be overridden by
+        Low-level call to set the channel non-blocking.  Can be overridden by
         subclasses.
         """
         flags = fcntl.fcntl(self.fileno, fcntl.F_GETFL)
         fcntl.fcntl(self.fileno, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 
 
-    def wrap(self, fd, mode):
+    def wrap(self, channel, mode):
         """
-        Wraps an existing file descriptor.
+        Wraps an existing channel.  Assumes a file-like object or a file
+        descriptor (int).
         """
-        self._fd = fd
+        self._channel = channel
         self._mode = mode
-        if not fd:
+        if not channel:
             return
         self._set_non_blocking()
 
@@ -255,9 +255,9 @@ class IODescriptor(object):
 
     def _is_readable(self):
         """
-        Low-level call to read from fd.  Can be overridden by subclasses.
+        Low-level call to read from channel.  Can be overridden by subclasses.
         """
-        return self._fd != None
+        return self._channel != None
 
 
     def _async_read(self, signal):
@@ -265,9 +265,9 @@ class IODescriptor(object):
         Common implementation for read() and readline().
         """
         if not (self._mode & IO_READ):
-            raise IOError(9, 'Cannot read on a write-only descriptor')
+            raise IOError(9, 'Cannot read on a write-only channel')
         if not self._is_readable():
-            # fd is not readable.  Return an InProgress pre-finished
+            # channel is not readable.  Return an InProgress pre-finished
             # with None
             return InProgress().finish(None)
 
@@ -276,21 +276,21 @@ class IODescriptor(object):
 
     def read(self):
         """
-        Reads a chunk of data from the fd.  This function returns an 
+        Reads a chunk of data from the channel.  This function returns an 
         InProgress object.  If the InProgress is finished with None, it
-        means that no data was collected and the fd closed.
+        means that no data was collected and the channel closed.
 
         It is therefore possible to busy-loop by reading on a closed
-        fd::
+        channel::
 
             while True:
-                fd.read().wait()
+                channel.read().wait()
 
         So the return value of read() should be checked.  Alternatively,
-        fd.alive could be tested::
+        channel.alive could be tested::
 
-            while fd.alive:
-                fd.read().wait()
+            while channel.alive:
+                channel.read().wait()
 
         """
         return self._async_read(self._read_signal)
@@ -298,7 +298,7 @@ class IODescriptor(object):
 
     def readline(self):
         """
-        Reads a line from the fd (with newline stripped).  The function
+        Reads a line from the channel (with newline stripped).  The function
         returns an InProgress object.  If the InProgress is finished with None
         or the empty string, it means that no data was collected and the socket
         closed.
@@ -308,7 +308,7 @@ class IODescriptor(object):
 
     def _read(self, size):
         """
-        Low-level call to read from fd.  Can be overridden by subclasses.
+        Low-level call to read from channel.  Can be overridden by subclasses.
         Must return a string of at most size bytes, or the empty string or
         None if no data is available.
         """
@@ -317,7 +317,7 @@ class IODescriptor(object):
 
     def _handle_read(self):
         """
-        IOMonitor callback when there is data to be read from the fd.
+        IOMonitor callback when there is data to be read from the channel.
         
         This callback is only registered when we know the user is interested in
         reading data (by connecting to the read or readline signals, or calling
@@ -333,7 +333,7 @@ class IODescriptor(object):
             # If we're here, then the socket is likely disconnected.
             data = None
         except:
-            log.exception('%s._handle_read failed with unknown exception, closing socket', self.__class__.__name__)
+            log.exception('%s._handle_read failed, closing socket', self.__class__.__name__)
             data = None
 
         # _read_signal is for InProgress objects waiting on the next read().
@@ -358,35 +358,35 @@ class IODescriptor(object):
 
     def _write(self, data):
         """
-        Low-level call to write to the fd  Can be overridden by subclasses.
-        Must return number of bytes written to the file descriptor.
+        Low-level call to write to the channel  Can be overridden by subclasses.
+        Must return number of bytes written to the channel.
         """
         return os.write(self.fileno, data)
 
 
     def write(self, data):
         """
-        Writes the given data to the fd.  This method returns an InProgress
+        Writes the given data to the channel.  This method returns an InProgress
         object which is finished when the given data is fully written to the
-        file descriptor.
+        channel.
 
-        It is not required that the descriptor be open in order to write to it.
-        Written data is queued until the descriptor open and then flushed.  As
+        It is not required that the channel be open in order to write to it.
+        Written data is queued until the channel open and then flushed.  As
         writes are asynchronous, all written data is queued.  It is the
         caller's responsibility to ensure the internal write queue does not
         exceed the desired size by waiting for past write() InProgress to
         finish before writing more data.
 
-        If a write does not complete because the file descriptor was closed
+        If a write does not complete because the channel was closed
         prematurely, an IOError is thrown to the InProgress.
         """
         if not (self._mode & IO_WRITE):
-            raise IOError(9, 'Cannot write to a read-only descriptor')
+            raise IOError(9, 'Cannot write to a read-only channel')
 
         inprogress = InProgress()
         if data:
             self._write_queue.append((data, inprogress))
-            if self._fd and self._wmon and not self._wmon.active():
+            if self._channel and self._wmon and not self._wmon.active():
                 self._wmon.register(self.fileno, IO_WRITE)
         else:
             # We're writing the null string, nothing really to do.  We're
@@ -397,7 +397,7 @@ class IODescriptor(object):
 
     def _handle_write(self):
         """
-        IOMonitor callback when the fd is writable.  This callback is not
+        IOMonitor callback when the channel is writable.  This callback is not
         registered then the write queue is empty, so we only get called when
         there is something to write.
         """
@@ -452,19 +452,19 @@ class IODescriptor(object):
 
     def _close(self):
         """
-        Low-level call to close the fd  Can be overridden by subclasses.
+        Low-level call to close the channel.  Can be overridden by subclasses.
         """
         try:
-            self._fd.close()
+            self._channel.close()
         except AttributeError:
             os.close(self.fileno)
 
 
     def close(self, immediate=False, expected=True):
         """
-        Closes the fd.  If immediate is False and there is data in the
-        write buffer, the fd is closed once the write buffer is emptied.
-        Otherwise the fd is closed immediately and the 'closed' signal
+        Closes the channel.  If immediate is False and there is data in the
+        write buffer, the channel is closed once the write buffer is emptied.
+        Otherwise the channel is closed immediately and the 'closed' signal
         is emitted.
         """
         if not immediate and self._write_queue:
@@ -491,18 +491,18 @@ class IODescriptor(object):
             if len(inprogress):
                 # Somebody cares about this InProgress, so we need to finish
                 # it.
-                inprogress.throw(IOError, IOError(9, "Descriptor closed prematurely"), None)
+                inprogress.throw(IOError, IOError(9, 'Channel closed prematurely'), None)
         del self._write_queue[:]
 
         try:
             self._close()
         except (IOError, socket.error), (errno, msg):
-            # Descriptor may already be closed, which is ok.
+            # Channel may already be closed, which is ok.
             if errno != 9:
                 # It isn't, this is some other error, so reraise exception.
                 raise
         finally:
-            self._fd = None
+            self._channel = None
 
             self.signals['closed'].emit(expected)
             main.signals['shutdown'].disconnect(self.close)

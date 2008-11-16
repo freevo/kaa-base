@@ -104,12 +104,14 @@ class TLSConnection(tlslite.api.TLSConnection):
             sessionCache, settings, checker)
         return self._iterate_handshake(handshake)
 
+
     def fileno(self):
         """
         Return socket descriptor. This makes this class feel like a normal
         socket to the IOMonitor.
         """
         return self.sock.fileno()
+
 
     def close(self):
         """
@@ -134,38 +136,31 @@ class TLSSocket(kaa.Socket):
 
     def __init__(self):
         kaa.Socket.__init__(self)
-        self.signals['tls'] = kaa.Signal()
+        self.signals += ('tls',)
         self._handshake = False
 
-    def _update_read_monitor(self, signal = None, change = None):
-        # FIXME: This function is broken in TLSSocket for two reasons:
-        # 1. auto-reconnect while doing a tls handshake is wrong
-        #    This could be fixed using self._handshake
-        # 2. Passing self._socket to register does not work,
-        #    self._socket.fileno() is needed. Always using fileno()
-        #    does not work for some strange reason.
-        return
+    def _is_read_connected(self):
+        """
+        Returns True if we're interested in read events.
+        """
+        # During the handshake stage, we handle all reads internally.  So
+        # if self._handshake is True, we are always interested in read
+        # events.  If it's False, we defer to the default behaviour.
+        #
+        # We can't simply always return True, because then read() and
+        # readline() may not work correctly (due to a race condition
+        # described in IOChannel._handle_read)
+        return self._handshake or super(TLSSocket, self)._is_read_connected()
 
-    def wrap(self, sock, addr = None):
-        """
-        Wraps an existing low-level socket object.  addr specifies the address
-        corresponding to the socket.
-        """
-        super(TLSSocket, self).wrap(sock, addr)
-        # since _update_read_monitor is deactivated we need to always register
-        # the rmon to the notifier.
-        if not self._rmon.active():
-            self._rmon.register(self._socket.fileno(), kaa.IO_READ)
 
-    def write(self, data):
-        """
-        Write data to the socket. The data will be delayed while the socket
-        is doing the TLS handshake.
-        """
+    def _handle_write(self):
         if self._handshake:
-            # do not send data while doing a handshake
-            return self._write_buffer.append(data)
-        return super(TLSSocket, self).write(data)
+            # During the handshake stage, we don't want to write user data
+            # to the socket.  It's still queued; we return immediately
+            # and retry later.
+            return
+        return super(TLSSocket, self)._handle_write()
+
 
     def _handle_read(self):
         """
@@ -178,6 +173,7 @@ class TLSSocket(kaa.Socket):
             self._read_signal.emit(None)
             self._readline_signal.emit(None)
             return self.close(immediate=True, expected=False)
+
 
     @kaa.coroutine()
     def starttls_client(self, session=None, key=None, srp=None, checker=None):
@@ -193,11 +189,13 @@ class TLSSocket(kaa.Socket):
         @param srp: username, password pair for SRP authentication
         @param checker: callback to check the credentials from the server
         """
+        if not self._rmon:
+            raise RuntimeError('Socket not connected')
         try:
             self._handshake = True
             if session is None:
                 session = tlslite.api.Session()
-            c = TLSConnection(self._socket)
+            c = TLSConnection(self._channel)
             c.ignoreAbruptClose = True
             self._rmon.unregister()
             if key:
@@ -209,14 +207,12 @@ class TLSSocket(kaa.Socket):
                 pass
             else:
                 yield c.handshakeClientCert(session=session, checker=checker)
-            self._socket = c
+            self._channel  = c
             self.signals['tls'].emit()
-            self._rmon.register(self._socket.fileno(), kaa.IO_READ)
+            self._update_read_monitor()
+        finally:
             self._handshake = False
-        except:
-            self._handshake = False
-            type, value, tb = sys.exc_info()
-            raise type, value, tb
+
 
     @kaa.coroutine()
     def starttls_server(self, session=None, key=None, request_cert=False, srp=None, checker=None):
@@ -235,7 +231,7 @@ class TLSSocket(kaa.Socket):
         """
         try:
             self._handshake = True
-            c = TLSConnection(self._socket)
+            c = TLSConnection(self._channel)
             c.ignoreAbruptClose = True
             self._rmon.unregister()
             kwargs = {}
@@ -247,14 +243,11 @@ class TLSSocket(kaa.Socket):
             if request_cert:
                 kwargs['reqCert'] = True
             yield c.handshakeServer(checker=checker, **kwargs)
-            self._socket = c
+            self._channel  = c
             self.signals['tls'].emit()
-            self._rmon.register(self._socket.fileno(), kaa.IO_READ)
+            self._update_read_monitor()
+        finally:
             self._handshake = False
-        except:
-            self._handshake = False
-            type, value, tb = sys.exc_info()
-            raise type, value, tb
 
 
 class TLSKey(object):

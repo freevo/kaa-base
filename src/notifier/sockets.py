@@ -41,7 +41,7 @@ import time
 import nf_wrapper as notifier
 from thread import threaded
 from async import InProgress
-from io import IO_READ, IO_WRITE, IODescriptor
+from io import IO_READ, IO_WRITE, IOChannel
 from kaa.utils import property
 from kaa.tmpfile import tempfile
 
@@ -51,7 +51,7 @@ log = logging.getLogger('notifier')
 class SocketError(Exception):
     pass
 
-class Socket(IODescriptor):
+class Socket(IOChannel):
     """
     Notifier-aware socket class, implementing fully asynchronous reads
     and writes.
@@ -68,9 +68,10 @@ class Socket(IODescriptor):
 
 
     def __repr__(self):
-        if not self._fd:
-            return '<kaa.Socket - disconnected>'
-        return '<kaa.Socket fd=%d>' % self.fileno
+        clsname = self.__class__.__name__
+        if not self._channel:
+            return '<kaa.%s - disconnected>' % clsname
+        return '<kaa.%s fd=%d>' % (clsname, self.fileno)
 
 
     @property
@@ -112,7 +113,7 @@ class Socket(IODescriptor):
         """
         try:
             # Will raise exception if socket is not connected.
-            self._fd.getpeername()
+            self._channel.getpeername()
             return True
         except:
             return False
@@ -142,8 +143,8 @@ class Socket(IODescriptor):
     @buffer_size.setter
     def buffer_size(self, size):
         self._buffer_size = size
-        if self._fd and size:
-            self._set_buffer_size(self._fd, size)
+        if self._channel and size:
+            self._set_buffer_size(self._channel, size)
 
 
     def _set_buffer_size(self, s, size):
@@ -298,26 +299,26 @@ class Socket(IODescriptor):
 
 
     def _set_non_blocking(self):
-        self._fd.setblocking(False)
+        self._channel.setblocking(False)
 
 
     def _is_readable(self):
-        return self._fd and not self._connecting
+        return self._channel and not self._connecting
 
 
     def _read(self, size):
-        return self._fd.recv(size)
+        return self._channel.recv(size)
 
 
     def _write(self, data):
-        return self._fd.send(data)
+        return self._channel.send(data)
 
 
     def _accept(self):
         """
         Accept a new connection and return a new Socket object.
         """
-        sock, addr = self._fd.accept()
+        sock, addr = self._channel.accept()
         # create new Socket from the same class this object is
         client_socket = self.__class__()
         client_socket.wrap(sock, addr)

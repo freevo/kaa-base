@@ -162,19 +162,6 @@ class TLSSocket(kaa.Socket):
         return super(TLSSocket, self)._handle_write()
 
 
-    def _handle_read(self):
-        """
-        Callback for new data on the socket.
-        """
-        try:
-            return super(TLSSocket, self)._handle_read()
-        except tlslite.errors.TLSAbruptCloseError, e:
-            log.error('TLSAbruptCloseError')
-            self._read_signal.emit(None)
-            self._readline_signal.emit(None)
-            return self.close(immediate=True, expected=False)
-
-
     @kaa.coroutine()
     def starttls_client(self, session=None, key=None, srp=None, checker=None):
         """

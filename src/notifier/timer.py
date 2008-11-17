@@ -102,6 +102,7 @@ def timed(interval, timer=None, policy=POLICY_MANY):
             t.start(interval)
             return True
 
+        newfunc.func_name = func.func_name
         return newfunc
 
     return decorator

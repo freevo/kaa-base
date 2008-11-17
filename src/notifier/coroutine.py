@@ -217,6 +217,7 @@ def coroutine(interval=0, policy=None, progress=False):
 
         if policy == POLICY_SYNCHRONIZED:
             func._lock = None
+        newfunc.func_name = func.func_name
         return newfunc
 
     return decorator

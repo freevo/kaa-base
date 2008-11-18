@@ -39,8 +39,9 @@ Depending on what you currently use, some small steps need to be made
 to make the notifier loop running. If you aren't using a main loop
 right now, you should use the kaa main loop.
 
-GTK
----
+
+GObject / GTK Integration
+-------------------------
 
 The generic notifier is compatible with the GTK/Glib mainloop and kaa
 notifier has a special handler to hook itself into the GTK/Glib
@@ -48,8 +49,8 @@ mainloop. Kaa notifier will use the GTK/Glib mainloop when gtk or
 gobject is imported once the mainloop is active. But it is possible to
 force the notifier loop to use GTK/Glib by calling init::
 
-    import kaa.notifier
-    kaa.notifier.init('gtk')
+    import kaa
+    kaa.main.select_notifier('gtk')
 
 This will the the GTK mainloop (the GTK mainloop is based on the glib
 mainloop but is a bit different). If you want the glib and not the GTK
@@ -58,29 +59,60 @@ based mainloop add x11 = False to init.
 If pyNotifier is installed it will be used to run the mainloop; usage
 of packages requiring pyNotifier and not kaa.notifier is possible.
 
-Twisted
--------
+A different approuch is to use the generic mainloop and start the
+gobject mainloop in a thread. This may be useful when one loop is
+extremly timing depended and it is a bad idea to block for even a
+short time. As an example, kaa.candy uses this to keep the gobject
+loop small and the animations alive even when the real mainloop is
+very busy.
+
+.. autofunction:: kaa.gobject_set_threaded
+
+Note that callbacks from the gobject mainloop are called in that loop
+and not the kaa mainloop. Make sure you decorate the mainloop with the
+threaded decorator if necessary. For details about thread support see
+:ref:`threads`. The `threaded` decorator can be used to force
+execution of a function in the gobject mainloop. Use `kaa.GOBJECT` as
+thread name::
+
+  import kaa
+
+  @kaa.threaded(kaa.MAINTHREAD)
+  def executed_in_kaa_mainloop():
+      ...
+
+  @kaa.threaded(kaa.GOBJECT)
+  def executed_in_gobject_mainloop():
+      ...
+
+  kaa.main.select_notifier('generic')
+  kaa.gobject_set_threaded()
+  kaa.main.run()
+
+
+Twisted Integration
+-------------------
 
 Kaa.notifier defines a Twisted reactor to integrate the Twisted
 mainloop into the kaa mainloop. After installing the reactor you can
-either run kaa.main() or reactor.run() to start the mainloop. Due to
-the internal design of Twisted you can not stop the mainloop from
-Twisted callbacks by calling sys.exit() or kaa.notifier.shutdown(),
-you need to call reactor.stop(). From kaa callbacks sys.exit() and
-kaa.notifier.stop() is supported::
+either run kaa.main.run() or reactor.run() to start the mainloop. Due
+to the internal design of Twisted you can not stop the mainloop from
+Twisted callbacks by calling sys.exit() or kaa.main.shutdown(), you
+need to call reactor.stop(). From kaa callbacks sys.exit() and
+kaa.main.stop() is supported::
 
     # install special kaa reactor
     import kaa.notifier.reactor
     kaa.notifier.reactor.install()
-    
+
     # get reactor
     from twisted.internet import reactor
-    
+
     # add callbacks to Twisted or kaa.notifier
     # see test/twisted_in_kaa.py in the kaa.base package
-    
-    # you can either call kaa.main() or reactor.run()
-    kaa.main()
+
+    # you can either call kaa.main.run() or reactor.run()
+    kaa.main.run()
 
 The Twisted reactor will work with any kaa.notifier backend (generic
 and gtk).
@@ -91,15 +123,16 @@ described below and will not use an external pyNotifier installation::
 
     # get reactor
     from twisted.internet import reactor
-    
-    import kaa.notifier
-    kaa.notifier.init('twisted')
-    
+
+    import kaa
+    kaa.main.select_notifier('twisted')
+
     # add callbacks to Twisted or kaa.notifier
     # see test/kaa_in_twisted.py in the kaa.base package
-    
+
     # run Twisted mainloop
     reactor.run()
+
 
 Other mainloops
 ---------------
@@ -122,19 +155,19 @@ will be called.
 
 The following example will integrate the kaa mainloop in the normal
 Twisted reactor. In this case the Twisted mainloop is running,
-kaa.main() should not be called::
+kaa.main.run() should not be called::
 
     # get reactor
     from twisted.internet import reactor
-    
+
     # start thread based mainloop and add Twisted callback
     import kaa.notifier
-    kaa.notifier.init('thread', handler = reactor.callFromThread, 
+    kaa.notifier.init('thread', handler = reactor.callFromThread,
                       shutdown = reactor.stop)
-    
+
     # add callbacks to Twisted or kaa.notifier
     # see test/kaa_in_twisted.py in the kaa.base package
-    
+
     # run Twisted mainloop
     reactor.run()
 

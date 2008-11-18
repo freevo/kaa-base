@@ -139,18 +139,18 @@ def threaded(name=None, priority=0, async=True, progress=False):
 
 class synchronized(object):
     """
-    synchronized decorator and with statement similar to synchronized
+    synchronized decorator and `with` statement similar to synchronized
     in Java. When decorating a non-member function, a lock or any class
-    inheriting from object must be provided.
+    inheriting from object may be provided.
+
+    :param obj: object were all calls should be synchronized to.
+      if not provided it will be the object for member functions
+      or an RLock for functions.
     """
     def __init__(self, obj=None):
         """
-        Create a synchronized object.
-        @param obj: object were all calls should be synchronized to.
-           If not provided it will be the object for member functions
-           or an RLock for functions.
-        @note: when used on classes a new member C{_kaa_synchronized_lock}
-        will be added to that class.
+        Create a synchronized object. Note: when used on classes a new
+        member _kaa_synchronized_lock will be added to that class.
         """
         if obj is None:
             # decorator in classes
@@ -207,9 +207,7 @@ class synchronized(object):
 
 def is_mainthread():
     """
-    Check if the current thread is the main thread
-
-    @return: True if the caller is in the main thread right now
+    Return True if the current thread is the main thread
     """
     # If threading module is None, assume main thread.  (Silences pointless
     # exceptions on shutdown.)

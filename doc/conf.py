@@ -16,7 +16,9 @@ import sys, os
 # If your extensions are in another directory, add it here. If the directory
 # is relative to the documentation root, use os.path.abspath to make it
 # absolute, like shown here.
-sys.path.append(os.path.abspath('../build/lib.linux-i686-2.5'))
+for _lib in os.listdir('../build'):
+    if _lib.startswith('lib.'):
+        sys.path.insert(0, os.path.abspath('../build/' + _lib))
 from kaa.version import VERSION
 
 # General configuration

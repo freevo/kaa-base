@@ -81,7 +81,7 @@ class Wrapper(object):
         It is possible to jump between the gobject and the generic
         mainloop with the threaded decorator.
 
-        @param mainloop: the mainloop object to use a mainloop based on gobject
+        :param mainloop: the mainloop object to use a mainloop based on gobject
           like the gstreamer or clutter mainloop. The object provided here must
           have a start and a stop function.
         """

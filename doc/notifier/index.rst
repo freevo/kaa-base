@@ -12,3 +12,13 @@ Contents:
 
    async
    mainloop
+   signals
+   timer
+   threads
+   io
+
+The following features are missing in the documentation:
+
+ * Default kaa.signals
+
+ * kaa.Event and kaa.Eventhandler

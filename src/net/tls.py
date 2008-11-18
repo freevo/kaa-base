@@ -150,8 +150,7 @@ class TLSSocket(kaa.Socket):
         # We can't simply always return True, because then read() and
         # readline() may not work correctly (due to a race condition
         # described in IOChannel._handle_read)
-        return self._handshake or super(TLSSocket, self)._is_read_connected()
-
+        return not self._handshake and super(TLSSocket, self)._is_read_connected()
 
     def _handle_write(self):
         if self._handshake:
@@ -160,18 +159,6 @@ class TLSSocket(kaa.Socket):
             # and retry later.
             return
         return super(TLSSocket, self)._handle_write()
-
-    def _update_read_monitor(self, signal=None, change=None):
-        """
-        Update read IOMonitor to register or unregister based on if there are
-        any handlers attached to the read signals.  If there are no handlers,
-        there is no point in reading data from the channel since it will go 
-        nowhere.  This function will deactivate this functionality while
-        performing the TLS handshake.
-        """
-        if self._handshake:
-            return
-        return super(TLSSocket, self)._update_read_monitor(signal, change)
 
     @kaa.coroutine()
     def starttls_client(self, session=None, key=None, srp=None, checker=None):

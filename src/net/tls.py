@@ -143,13 +143,11 @@ class TLSSocket(kaa.Socket):
         """
         Returns True if we're interested in read events.
         """
-        # During the handshake stage, we handle all reads internally.  So
-        # if self._handshake is True, we are always interested in read
-        # events.  If it's False, we defer to the default behaviour.
-        #
-        # We can't simply always return True, because then read() and
-        # readline() may not work correctly (due to a race condition
-        # described in IOChannel._handle_read)
+        # During the handshake stage, we handle all reads internally (within
+        # TLSConnection).  So if self._handshake is True, we return False here
+        # to prevent the IOChannel from responding to reads and passing data
+        # from the TLS handshake back to the user.  If it's True, we defer to
+        # the default behaviour.
         return not self._handshake and super(TLSSocket, self)._is_read_connected()
 
     def _handle_write(self):

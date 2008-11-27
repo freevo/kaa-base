@@ -138,6 +138,7 @@ class TLSSocket(kaa.Socket):
         kaa.Socket.__init__(self)
         self.signals += ('tls',)
         self._handshake = False
+        self._pre_handshake_write_queue = []
 
     def _is_read_connected(self):
         """
@@ -152,11 +153,43 @@ class TLSSocket(kaa.Socket):
 
     def _handle_write(self):
         if self._handshake:
-            # During the handshake stage, we don't want to write user data
-            # to the socket.  It's still queued; we return immediately
-            # and retry later.
-            return
-        return super(TLSSocket, self)._handle_write()
+            # Before starting the TLS handshake we created a new write
+            # queue. The data send before TLS was started
+            # (_pre_handshake_write_queue) must be send, after that we
+            # give control over the socket to the TLS layer. Data
+            # written while doing the handshake is send after it.
+            if not self._pre_handshake_write_queue:
+                # No data to send before the handshake
+                return
+            try:
+                # Switch queues and send pre handshake data
+                queue = self._write_queue
+                self._write_queue = self._pre_handshake_write_queue
+                super(TLSSocket, self)._handle_write()
+            finally:
+                self._write_queue = queue
+        else:
+            # normal operation
+            super(TLSSocket, self)._handle_write()
+
+    @kaa.coroutine()
+    def _prepare_tls(self):
+        """
+        Prepare TLS handshake. Flush the data currently in the write buffer
+        and return the TLS connection object
+        """
+        self._handshake = True
+        # Store current write queue and create a new one
+        self._pre_handshake_write_queue = self._write_queue
+        self._write_queue = []
+        if self._pre_handshake_write_queue:
+            # flush pre handshake write data
+            yield self._pre_handshake_write_queue[-1][1]
+        # create TLS connection object and unregister the read monitor
+        c = TLSConnection(self._channel)
+        c.ignoreAbruptClose = True
+        self._rmon.unregister()
+        yield c
 
     @kaa.coroutine()
     def starttls_client(self, session=None, key=None, srp=None, checker=None):
@@ -175,22 +208,19 @@ class TLSSocket(kaa.Socket):
         if not self._rmon:
             raise RuntimeError('Socket not connected')
         try:
-            self._handshake = True
             if session is None:
                 session = tlslite.api.Session()
-            c = TLSConnection(self._channel)
-            c.ignoreAbruptClose = True
-            self._rmon.unregister()
+            tlscon = yield self._prepare_tls()
             if key:
-                yield c.handshakeClientCert(session=session, checker=checker,
+                yield tlscon.handshakeClientCert(session=session, checker=checker,
                           privateKey=key.private, certChain=key.certificate.chain)
             elif srp:
-                yield c.handshakeClientSRP(session=session, checker=checker,
+                yield tlscon.handshakeClientSRP(session=session, checker=checker,
                           username=srp[0], password=srp[1])
                 pass
             else:
-                yield c.handshakeClientCert(session=session, checker=checker)
-            self._channel  = c
+                yield tlscon.handshakeClientCert(session=session, checker=checker)
+            self._channel  = tlscon
             self.signals['tls'].emit()
             self._update_read_monitor()
         finally:
@@ -213,10 +243,7 @@ class TLSSocket(kaa.Socket):
         @param checker: callback to check the credentials from the server
         """
         try:
-            self._handshake = True
-            c = TLSConnection(self._channel)
-            c.ignoreAbruptClose = True
-            self._rmon.unregister()
+            tlscon = yield self._prepare_tls()
             kwargs = {}
             if key:
                 kwargs['privateKey'] = key.private
@@ -225,8 +252,8 @@ class TLSSocket(kaa.Socket):
                 kwargs['verifierDB'] = srp
             if request_cert:
                 kwargs['reqCert'] = True
-            yield c.handshakeServer(checker=checker, **kwargs)
-            self._channel  = c
+            yield tlscon.handshakeServer(checker=checker, **kwargs)
+            self._channel  = tlscon
             self.signals['tls'].emit()
             self._update_read_monitor()
         finally:

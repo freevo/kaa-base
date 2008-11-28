@@ -33,6 +33,7 @@
 __all__ = [ 'Socket', 'SocketError' ]
 
 import sys
+import errno
 import os
 import socket
 import logging

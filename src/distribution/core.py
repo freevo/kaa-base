@@ -357,13 +357,20 @@ class Extension(object):
             include_dirs.extend(lib.include_dirs)
             libraries.extend(lib.libraries)
 
-        return distutils.core.Extension(self.output, self.files,
-                                        library_dirs=library_dirs,
-                                        include_dirs=include_dirs,
-                                        libraries=libraries,
-                                        extra_compile_args=self.extra_compile_args)
+        ext = distutils.core.Extension(self.output, self.files,
+                                       library_dirs=library_dirs,
+                                       include_dirs=include_dirs,
+                                       libraries=libraries,
+                                       extra_compile_args=self.extra_compile_args)
 
-    def __del__(self):
+        # Keep a reference to self in the distutils Extension object, so that
+        # after distutils.setup() is run, we can clean() the kaa Extension 
+        # object.
+        ext._kaa_ext = self
+        return ext
+
+
+    def clean(self):
         """
         Delete the config file.
         """
@@ -588,4 +595,7 @@ def setup(**kwargs):
         del kwargs['rpminfo']
 
     # run the distutils.setup function
-    return distutils.core.setup(**kwargs)
+    result = distutils.core.setup(**kwargs)
+    # Run cleanup on extensions (for example to delete config.h)
+    for ext in kwargs['ext_modules']:
+        ext._kaa_ext.clean()

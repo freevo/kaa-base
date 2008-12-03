@@ -511,6 +511,12 @@ def setup(**kwargs):
         # ChangeLog file or not.
         print 'generate ChangeLog'
         svn2log(kwargs.get('module', kwargs.get('name')))
+        if os.path.isfile('doc/Makefile'):
+            # FIXME: this does not work in some cases. Sphinx requires the
+            # files in build to generate the doc files. The build directory
+            # itself is not required for sdist.
+            print 'generate doc'
+            os.system('(cd doc; make clean; make html)')
         
     # delete 'module' information, not used by distutils.setup
     kwargs.pop('module', None)

@@ -46,7 +46,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'MainThreadCallback', 'ThreadCallback', 'is_mainthread', 
+__all__ = [ 'MainThreadCallback', 'ThreadCallback', 'is_mainthread',
             'wakeup', 'set_as_mainthread', 'create_thread_notifier_pipe',
             'threaded', 'MAINTHREAD', 'synchronized' ]
 
@@ -271,7 +271,7 @@ def set_as_mainthread():
         # connected correctly. If someone calls step() without loop() and
         # without set_as_mainthread inter-thread communication does not work.
         create_thread_notifier_pipe()
- 
+
 
 def killall():
     """
@@ -392,7 +392,7 @@ class ThreadCallback(Callback):
     using the notifier main loop because of the shared _thread_notifier_pipe.
     """
     _daemon = False
-    
+
     def wait_on_exit(self, wait=False):
         """
         Wait for the thread on application exit. Default is True.

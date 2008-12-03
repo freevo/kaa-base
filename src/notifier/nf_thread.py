@@ -118,7 +118,7 @@ class TwistedLoop(ThreadLoop):
         reactor.addSystemEventTrigger('after', 'shutdown', self.stop)
         super(TwistedLoop, self).__init__(reactor.callFromThread, reactor.stop)
 
-        
+
 class Wakeup(object):
     """
     Wrapper around a function to wakeup the sleeping notifier loop

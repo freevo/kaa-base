@@ -39,7 +39,7 @@ try:
     from xmlutils import SaxTreeHandler
 except ImportError:
     from kaa.xmlutils import SaxTreeHandler
-    
+
 class Entry(object):
     def __init__(self, author, date):
         self.author = author
@@ -79,7 +79,7 @@ class Entry(object):
                 writer.write('\t' + '\n\t'.join(textwrap.wrap(msg)))
             writer.write('\n')
         writer.write('\n')
-        
+
 class LogParser(SaxTreeHandler):
 
     def __init__(self, writer, prefix, user):
@@ -89,7 +89,7 @@ class LogParser(SaxTreeHandler):
         self._entry = None
         self._user = user
         self._writer = writer
-        
+
     def handle(self, node):
         revision = node.getattr('revision')
         date = msg = author = ''
@@ -126,7 +126,7 @@ class LogParser(SaxTreeHandler):
                     for path in c.children:
                         print path.content
                     print
-                    
+
         if self._entry and (self._entry.author != author or self._entry.date != date):
             self._entry.write(self._writer)
             self._entry = None
@@ -152,7 +152,7 @@ def svn2log(module):
     # make sure that module2 is higher in the last than module itself
     prefix.sort()
     prefix.reverse()
-    
+
     # Create a parser
     parser = xml.sax.make_parser()
 

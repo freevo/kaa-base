@@ -5,7 +5,7 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2006 Dirk Meyer, Jason Tackaberry
+# Copyright (C) 2006-2008 Dirk Meyer, Jason Tackaberry
 #
 # First Edition: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
@@ -84,7 +84,7 @@ class Parser(object):
                 schema.append(child)
         return schema
 
-    
+
     def parse(self, node, fd, deep=''):
         fd.write('%s(' % node.nodeName.capitalize())
         first = True
@@ -102,7 +102,7 @@ class Parser(object):
             else:
                 fd.write('desc=\'%s\'' % desc)
         getattr(self, '_parse_%s' % node.nodeName.lower())(node, fd, deep, first)
-    
+
 
     def _parse_var(self, node, fd, deep, first):
         default = node.getAttribute('default')
@@ -126,10 +126,10 @@ class Parser(object):
             break
         fd.write(')')
 
-    
+
     def _parse_config(self, node, fd, deep, first):
         self._parse_group(node, fd, deep, first)
-        
+
 
     def _parse_group(self, node, fd, deep, first):
         if not first:
@@ -144,8 +144,8 @@ class Parser(object):
         if node.nodeName == 'config':
             fd.write(", module='%s.config'" % self._package)
         fd.write(')')
-    
-    
+
+
     def _parse_list(self, node, fd, deep, first):
         if not first:
             fd.write(', ')
@@ -170,23 +170,23 @@ class Parser(object):
             defaults[var.getAttribute('key')] = value
         if defaults:
             fd.write(', defaults=%s' % pprint.pformat(defaults).strip())
-            
+
         fd.write(')')
 
 
     def _parse_dict(self, node, fd, deep, first):
         self._parse_list(node, fd, deep, first)
-        
+
 
 
 def convert(xml, python, package):
     tree = minidom.parse(xml).firstChild
     if tree.nodeName != 'config':
         raise RuntimeError('%s is no valid cxml file' % xml)
-    
+
     # out = sys.__stdout__
     out = open(python, 'w')
-    
+
     out.write('# auto generated file\n\n')
     out.write('from kaa.config import Var, Group, Dict, List, Config\n\n')
     out.write('config = ')

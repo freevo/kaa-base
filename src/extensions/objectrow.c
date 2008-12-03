@@ -215,7 +215,7 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
     self->query_info->refcount++;
     if (self->query_info->pickle_idx >= 0) {
         // Pickle column included in row.  Set _pickle member to True which
-        // indicates the pickle data was fetched, but just hasn't yet been 
+        // indicates the pickle data was fetched, but just hasn't yet been
         // unpickled.
         if (PySequence_Fast_GET_ITEM(self->row, self->query_info->pickle_idx) != Py_None)
             self->has_pickle = 1;

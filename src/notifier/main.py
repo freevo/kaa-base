@@ -103,7 +103,7 @@ def loop(condition, timeout = None):
         # one is executed right now. Raise a RuntimeError
         _loop_lock.release()
         raise RuntimeError('loop running in a different thread')
-    
+
     initial_mainloop = False
     if not is_running():
         # no mainloop is running, set this thread as mainloop and
@@ -133,7 +133,7 @@ def loop(condition, timeout = None):
             except Exception, e:
                 if signals['exception'].emit(*sys.exc_info()) != False:
                     # Either there are no global exception handlers, or none of
-                    # them explicitly returned False to abort mainloop 
+                    # them explicitly returned False to abort mainloop
                     # termination.  So abort the main loop.
                     type, value, tb = sys.exc_info()
                     raise type, value, tb
@@ -289,6 +289,6 @@ if threading.enumerate()[0] == threading.currentThread():
     signal.signal(signal.SIGINT, signal_handler)
 else:
     log.info('kaa imported from thread, disable SIGTERM handler')
-    
+
 # check to make sure we really call our shutdown function
 atexit.register(_shutdown_check)

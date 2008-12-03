@@ -242,7 +242,7 @@ class Var(Base):
                         allowed = '%d-%d' % (self._type[0], self._type[-1])
                     else:
                         allowed = ', '.join([ str(x) for x in self._type ])
-                    allowed = textwrap.wrap(allowed, 78, 
+                    allowed = textwrap.wrap(allowed, 78,
                                           initial_indent = '# | Allowed values: ',
                                           subsequent_indent = '# |' + 17 * ' ')
                     desc += '\n'.join(allowed) + '\n'
@@ -449,7 +449,7 @@ class Group(Base):
     def __iter__(self):
         return self._vars.__iter__()
 
-    
+
 class Dict(Base):
     """
     A config dict.
@@ -469,7 +469,7 @@ class Dict(Base):
             # dict or group in dict?
             var = self._cfg_get(key)
             var._default = var._value = value
-            
+
 
 
     def keys(self):
@@ -539,7 +539,7 @@ class Dict(Base):
                 ret.append('')
             ret.append(cfgstr)
             if space_vars:
-                # Separate multi-line subgroups with newline. 
+                # Separate multi-line subgroups with newline.
                 ret.append('')
 
         if print_desc:
@@ -740,7 +740,7 @@ class Config(Group):
         has changed since last write.
         """
         local_encoding = get_encoding()
-        if filename: 
+        if filename:
             filename = os.path.expanduser(filename)
         if not filename:
             if not self._filename:
@@ -884,7 +884,7 @@ class Config(Group):
                 self._inotify = INotify()
             except SystemError:
                 pass
-            
+
         assert(self._filename)
         if self._watch_mtime == 0:
             self.load()
@@ -955,7 +955,7 @@ def set_default(var, value):
 def get_default(var):
     if isinstance(var, VarProxy):
         return var._item._default
-    
+
 
 def get_description(var):
     """
@@ -974,15 +974,15 @@ def get_type(var):
     if isinstance(var, VarProxy):
         return var._item._type
     return type(var)
-    
+
 
 def get_config(filename, module = None):
     """
     Returns a Config object representing the config file provided in
     'filenane'.  If module is None, the specified config file must have the
     module specified (in the "-*- module: ... -*-" metadata), otherwise the
-    supplied module (string) is used.  The module must be importable.  
-    
+    supplied module (string) is used.  The module must be importable.
+
     If the config module cannot be determined and one is not specified,
     will raise ValueError.  If import fails, will raise ImportError.
     Otherwise will return the Config object.

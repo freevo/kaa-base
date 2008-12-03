@@ -37,11 +37,8 @@ import errno
 import os
 import socket
 import logging
-import time
 
-import nf_wrapper as notifier
 from thread import threaded
-from async import InProgress
 from io import IO_READ, IO_WRITE, IOChannel
 from kaa.utils import property
 from kaa.tmpfile import tempfile
@@ -154,7 +151,7 @@ class Socket(IOChannel):
         """
         s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, size)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, size)
-        
+
 
     def _normalize_address(self, addr):
         """
@@ -331,7 +328,7 @@ class Socket(IOChannel):
             return self._accept()
 
         return super(Socket, self)._handle_read()
-        
+
 
     def close(self, immediate=False, expected=True):
         super(Socket, self).close(immediate, expected)

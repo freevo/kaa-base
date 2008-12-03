@@ -4,6 +4,9 @@
 # -----------------------------------------------------------------------------
 # $Id$
 #
+# All classes, functions and variables of this module can be accessed
+# directly from the kaa namespace.
+#
 # -----------------------------------------------------------------------------
 # kaa.notifier - Mainloop and callbacks
 # Copyright (C) 2005-2008 Dirk Meyer, Jason Tackaberry, et al.
@@ -29,31 +32,6 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
-
-"""
-Generic mainloop
-
-All classes, functions and variables of this module can be accessed
-directly from the kaa namespace.
-
-@var MAINTHREAD: Variable to use the mainthread with @threaded
-@var GOBJECT: Variable to use the gobject mainloop with @threaded
-"""
-
-# List of all classes, functions and variables in kaa.notifier. This
-# list is needed for epydoc to know what members this module has
-__all__ = [ 'Callback', 'WeakCallback', 'Signal', 'Signals', 'TimeoutException',
-            'InProgress', 'InProgressCallback',
-            'InProgressAny', 'InProgressAll', 'inprogress',
-            'MainThreadCallback', 'NamedThreadCallback',
-            'ThreadCallback', 'is_mainthread', 'threaded', 'MAINTHREAD',
-            'synchronized', 'Timer', 'WeakTimer', 'OneShotTimer',
-            'WeakOneShotTimer', 'AtTimer', 'OneShotAtTimer', 'timed',
-            'POLICY_ONCE', 'POLICY_MANY', 'POLICY_RESTART', 'IOMonitor',
-            'WeakIOMonitor', 'Socket', 'IO_READ', 'IO_WRITE', 'Event',
-            'EventHandler', 'WeakEventHandler', 'NotFinished', 'coroutine',
-            'POLICY_SYNCHRONIZED', 'POLICY_SINGLETON', 'POLICY_PASS_LAST',
-            'delay', 'Process', 'GOBJECT', 'gobject_set_threaded' ]
 
 # Import all classes, functions and decorators that are part of the API
 

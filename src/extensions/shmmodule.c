@@ -1,21 +1,21 @@
 /****************************************************************************
  *
  * « shmmodule.c © 1997, 1998 by INRIA. All rights reserved.
- *   
+ *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the "Software"),
  * to deal in the Software without restriction, including without limitation
  * the rights to use, copy, modify, merge, publish, distribute, sublicense,
  * and/or sell copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following conditions:
- *   
+ *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- *   
+ *
  * THIS SOFTWARE IS PROVIDED "AS IS" AND ANY WARRANTIES, EXPRESS OR IMPLIED,
  * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
  * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- *   
+ *
  * IN NO EVENT SHALL THE INRIA OR THE AUTHORS BE LIABLE FOR ANY DIRECT,
  * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES,
  * INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
@@ -23,7 +23,7 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT,
  * INCLUDING NEGLIGENCE OR OTHERWISE, ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. »
- *   
+ *
  ***************************************************************************/
 /*
  *  If you have questions regarding this software, contact:
@@ -110,7 +110,7 @@ Semaphore Objects:
 - s.setundo(0|1) --> None
 - s.setval(int Value) --> None
 
-*/ 
+*/
 
 /* Uncomment the following line if <sys/sem.h> defines "union semun" */
 
@@ -198,7 +198,7 @@ static PyObject *sem_dict = NULL;
 /************************************************************/
 /*                       Memory Objects                     */
 /************************************************************/
-  
+
 /* This is to check the validity of a Python memory object
    (and to refresh its data status structure). Notably, we
    have to check that the real memory segment it points to
@@ -208,7 +208,7 @@ static PyObject *sem_dict = NULL;
    fine as far as the segment (1) has the same id and size,
    and (2) is accessible via shmctl. If you have a better
    test, you're welcome :-) */
-   
+
 static int
 check_memory_identity(
     PyShmObj *o)
@@ -260,7 +260,7 @@ PyShmMemory_attach(
     PyObject *args)
 {
     unsigned long address = 0;
-    int mode = 0;    
+    int mode = 0;
     void *addr, *old_addr;
 
     if (!PyArg_ParseTuple(args, "|li", &address, &mode))
@@ -450,12 +450,12 @@ PyShmMemory_write(
 	sprintf(buf, "write() argument%s exceed%s upper memory limit",
 		offset ? "s" : "", offset ? "" : "s");
 	PyErr_SetString(PyShm_Error, buf);
-	return NULL;	
+	return NULL;
     }
     addr = (void *)((unsigned long)self->addr + offset);
     memcpy(addr, data, n);
     Py_INCREF(Py_None);
-    return Py_None;    
+    return Py_None;
 }
 
 /* List of methods for shared memory objects */
@@ -658,7 +658,7 @@ PyShmSemaphore_P(
     op[0].sem_num = 0;
     op[0].sem_op = -1;
     op[0].sem_flg = self->opflag;
-    
+
     if (!PyArg_NoArgs(args))
 	return NULL;
     refresh_semaphore_status(self);
@@ -684,7 +684,7 @@ PyShmSemaphore_V(
     op[0].sem_num = 0;
     op[0].sem_op = 1;
     op[0].sem_flg = self->opflag;
-    
+
     if (!PyArg_NoArgs(args))
 	return NULL;
     refresh_semaphore_status(self);
@@ -710,7 +710,7 @@ PyShmSemaphore_Z(
     op[0].sem_num = 0;
     op[0].sem_op = 0;
     op[0].sem_flg = self->opflag;
-    
+
     if (!PyArg_NoArgs(args))
 	return NULL;
     refresh_semaphore_status(self);
@@ -740,7 +740,7 @@ PyShmSemaphore_setblocking(
     else
 	self->opflag |= IPC_NOWAIT;
     Py_INCREF(Py_None);
-    return Py_None;   
+    return Py_None;
 }
 
 /*
@@ -808,7 +808,7 @@ PyShmSemaphore_setuid(
 {
     long newuid, olduid;
     semctl_arg arg;
-    
+
     if (!PyArg_ParseTuple(args, "l", &newuid))
 	return NULL;
     refresh_semaphore_status(self);
@@ -842,7 +842,7 @@ PyShmSemaphore_setundo(
     else
 	self->opflag &= ~SEM_UNDO;
     Py_INCREF(Py_None);
-    return Py_None;   
+    return Py_None;
 }
 
 /*
@@ -864,7 +864,7 @@ PyShmSemaphore_setval(
     if (semctl(self->semid, 0, SETVAL, arg) == -1)
 	return PyShm_Err();
     Py_INCREF(Py_None);
-    return Py_None;   
+    return Py_None;
 }
 
 /* List of methods for semaphore objects */
@@ -1012,7 +1012,7 @@ PyShm_ftok(
     char *path;
     char id;
     key_t key;
-    
+
     if (!PyArg_ParseTuple(args, "sb", &path, &id))
 	return NULL;
     key = ftok(path, id);
@@ -1056,7 +1056,7 @@ PyShm_memory_haskey(
 {
     long key;
     int shmid;
-    
+
     if (!PyArg_ParseTuple(args, "l", &key))
 	return NULL;
     shmid = shmget((key_t)key, 0, 0);
@@ -1195,7 +1195,7 @@ PyShm_semaphore_haskey(
 {
     long key;
     int semid;
-    
+
     if (!PyArg_ParseTuple(args, "l", &key))
 	return NULL;
     semid = semget((key_t)key, 0, 0);
@@ -1371,7 +1371,7 @@ set_member_type(
     }
     sxm_memberlist[index].type = t;
 };
-  
+
 void
 initshm(void)
 {

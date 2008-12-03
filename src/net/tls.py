@@ -33,7 +33,6 @@
 # -----------------------------------------------------------------------------
 
 # python imports
-import sys
 import logging
 
 # import tlslite.api to overwrite TLSConnection

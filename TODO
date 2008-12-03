@@ -11,7 +11,8 @@ TODO before 1.0:
   is better to do that now than after 1.0 :)
 - Rewrite of Process class
 - Complete documentation
-
+- Adjust kaa.distribution to not import anything from kaa itself. Right now
+  svn2log.py imports kaa.xmlutils
 
 TODO either before or after 1.0:
 - Unit testing suite (preferably before)

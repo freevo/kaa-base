@@ -101,7 +101,7 @@ class Signal(object):
     def _connect(self, callback, args = (), kwargs = {}, once = False, weak = False, pos = -1):
         """
         Connects a new callback to the signal.  args and kwargs will be bound
-        to the callback and merged with the args and kwargs passed during 
+        to the callback and merged with the args and kwargs passed during
         emit().  If weak is True, a WeakCallback will be created.  If once is
         True, the callback will be automatically disconnected after the next
         emit().
@@ -300,7 +300,7 @@ class Signals(dict):
                 # parameter is something else, bad
                 raise TypeError('signal key must be string')
 
- 
+
     def __delitem__(self, key):
         super(Signals, self).__delitem__(key)
         self._keys.remove(key)
@@ -343,7 +343,7 @@ class Signals(dict):
         """
         from async import InProgressAny
         return InProgressAny(*self.values())
-        
+
 
     def all(self):
         """
@@ -363,7 +363,7 @@ class Signals(dict):
         callback.set_user_args_first(True)
         return callback
 
-    
+
     def _callattr(self, attr, signal, *args, **kwargs):
         """
         Call attribute function from Signal().

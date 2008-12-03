@@ -31,7 +31,7 @@
 
 __all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallback',
             'AsyncException', 'InProgressAny', 'InProgressAll',
-            'AsyncExceptionBase', 'make_exception_class', 'inprogress', 
+            'AsyncExceptionBase', 'make_exception_class', 'inprogress',
             'delay' ]
 
 # python imports
@@ -454,7 +454,7 @@ class InProgress(Signal):
             self.finish(result)
         return self
 
-    
+
     def wait(self, timeout = None):
         """
         Waits for the result (or exception) of the InProgress object.  The
@@ -571,7 +571,7 @@ class InProgressCallback(InProgress):
 
 class InProgressAny(InProgress):
     """
-    InProgress object that finishes when ANY of the supplied InProgress 
+    InProgress object that finishes when ANY of the supplied InProgress
     objects (in constructor) finish.  This functionality is useful when
     building state machines using coroutines.
 
@@ -579,7 +579,7 @@ class InProgressAny(InProgress):
     2-tuple, whose first element is the index (offset from 0) of the InProgress
     that finished, and the second element is the result the InProgress was
     finished with.
-    
+
     If pass_index is False, the InProgressAny is finished with just the result
     and not the index.
     """
@@ -612,7 +612,7 @@ class InProgressAny(InProgress):
             # FIXME: if the IP failed with exception, we'll end up raising here
             # due to accessing its result.
             self.finish(idx, self._objects[idx].result)
-        
+
 
     def _changed(self, action):
         """
@@ -642,7 +642,7 @@ class InProgressAny(InProgress):
 
     def finish(self, result, args):
         """
-        Invoked when any one of the InProgress objects passed to the 
+        Invoked when any one of the InProgress objects passed to the
         constructor have finished.
         """
         if self._pass_index:
@@ -701,7 +701,7 @@ class InProgressAll(InProgressAny):
         if self._counter == 0:
             super(InProgressAny, self).finish(self)
         # Unlike InProgressAny, we don't unref _objects because the caller
-        # may want to access them by iterating us.  That's fine, because 
+        # may want to access them by iterating us.  That's fine, because
         # unlike InProgressAny where we'd prefer not to have useless
         # transient InProgressCallbacks connected to any provided signals,
         # here we know we won't because they will all have been emitted

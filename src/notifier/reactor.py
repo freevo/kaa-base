@@ -57,7 +57,8 @@ class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
         Callback when Twisted wants to stop.
         """
         if not kaa.is_mainthread():
-            return kaa.MainThreadCallback(twisted_stop)() # FIXME: where shall twisted_stop come from?
+            # FIXME: where shall twisted_stop come from?
+            return kaa.MainThreadCallback(twisted_stop)()
         kaa.OneShotTimer(kaa.main.stop).start(0)
         kaa.main.signals['shutdown'].disconnect(self.stop)
 

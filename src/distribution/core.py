@@ -5,7 +5,7 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2006 Dirk Meyer, Jason Tackaberry
+# Copyright (C) 2005-2008 Dirk Meyer, Jason Tackaberry
 #
 # First Edition: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
@@ -132,7 +132,7 @@ class Library(object):
         a = [ x.zfill(maxlen) for x in a.split('.') ]
         b = [ x.zfill(maxlen) for x in b.split('.') ]
         # TODO: special handling of rc and beta (others?) suffixes, so
-        # that 1.0.0 > 1.0.0rc1 
+        # that 1.0.0 > 1.0.0rc1
         return cmp(a, b)
 
 
@@ -344,7 +344,7 @@ class Extension(object):
         """
         return os.path.exists(os.path.join(distutils.sysconfig.get_python_inc(), 'Python.h'))
 
-        
+
     def convert(self):
         """
         Convert Extension into a distutils.core.Extension.
@@ -364,7 +364,7 @@ class Extension(object):
                                        extra_compile_args=self.extra_compile_args)
 
         # Keep a reference to self in the distutils Extension object, so that
-        # after distutils.setup() is run, we can clean() the kaa Extension 
+        # after distutils.setup() is run, we can clean() the kaa Extension
         # object.
         ext._kaa_ext = self
         return ext
@@ -414,13 +414,13 @@ class Doc(distutils.cmd.Command):
     """
     user_options = []
     docfiles = []
-    
+
     def initialize_options (self):
         pass
-    
+
     def finalize_options (self):
         pass
-    
+
     def run(self):
         self.run_command('build')
         for doc in self.docfiles:
@@ -442,7 +442,7 @@ def setup(**kwargs):
                 break
         else:
             python_dirname = prefix + dirname[3:].replace('/', '.')
-            # Anything under module/src/extensions/foo gets translated to 
+            # Anything under module/src/extensions/foo gets translated to
             # kaa.module.foo.
             python_dirname = python_dirname.replace(".extensions.", ".")
         if '__init__.py' in files or python_dirname.endswith('plugins'):
@@ -471,7 +471,7 @@ def setup(**kwargs):
 
     if 'plugins' in kwargs:
         del kwargs['plugins']
-        
+
     # convert Extensions
     if kwargs.get('ext_modules'):
         kaa_ext_modules = kwargs['ext_modules']
@@ -504,7 +504,7 @@ def setup(**kwargs):
                         write_version = False
                     break
             f.close()
-           
+
     if len(sys.argv) > 1 and sys.argv[1] in ('bdist_rpm', 'sdist') and \
            os.path.isfile('ChangeLog.in'):
         # FIXME: find a better way to detect if we need to create a
@@ -517,7 +517,7 @@ def setup(**kwargs):
             # itself is not required for sdist.
             print 'generate doc'
             os.system('(cd doc; make clean; make html)')
-        
+
     # delete 'module' information, not used by distutils.setup
     kwargs.pop('module', None)
 
@@ -557,7 +557,7 @@ def setup(**kwargs):
 
     kwargs['cmdclass']['doc'] = Doc
     Doc.docfiles = kwargs.pop('epydoc', [])
-        
+
     if len(sys.argv) > 1 and sys.argv[1] == 'bdist_rpm':
         dist = None
         kwargs['name'] = 'python-' + kwargs['name']
@@ -585,7 +585,7 @@ def setup(**kwargs):
         sys.argv.append('--release=%s' % release)
 
         if 'rpminfo' in kwargs:
-            # Grab rpm metadata from setup kwargs and expose as cmdline 
+            # Grab rpm metadata from setup kwargs and expose as cmdline
             # parameters to distutils.
             rpminfo = kwargs['rpminfo']
             if dist in rpminfo:

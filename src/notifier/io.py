@@ -42,7 +42,7 @@ import fcntl
 import nf_wrapper as notifier
 from callback import WeakCallback
 from signals import Signals, Signal
-from thread import MainThreadCallback, is_mainthread, threaded
+from thread import MainThreadCallback, is_mainthread
 from async import InProgress, inprogress
 from kaa.utils import property
 

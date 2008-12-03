@@ -106,7 +106,7 @@ class Avahi(object):
         self._nextid = 0
         self._sync_running = False
         self._sync_required = False
-        
+
     def provide(self, name, type, port, txt):
         """
         Provide a service with the given name and type listening on the given
@@ -136,7 +136,7 @@ class Avahi(object):
             self._provided.pop(id)
             self._sync_required = True
             self._sync()
-        
+
     def get_type(self, service):
         """
         Get a ServiceList object for the given type.
@@ -159,7 +159,7 @@ class Avahi(object):
         self._entrygroup = dbus.Interface(
             self._bus.get_object( avahi.DBUS_NAME, self._avahi.EntryGroupNew()),
             avahi.DBUS_INTERFACE_ENTRY_GROUP)
-        
+
     @kaa.threaded(kaa.GOBJECT)
     def _sync(self):
         """
@@ -196,7 +196,7 @@ class Avahi(object):
             log.error(error)
         self._sync_running = False
         self._sync()
-            
+
     @kaa.threaded(kaa.GOBJECT)
     def _service_add_browser(self, service):
         """
@@ -216,7 +216,7 @@ class Avahi(object):
                                  avahi.DBUS_INTERFACE_SERVICE_BROWSER)
         browser.connect_to_signal('ItemNew', self._service_new)
         browser.connect_to_signal('ItemRemove', self._service_remove)
-        
+
     @kaa.threaded(kaa.MAINTHREAD)
     def _service_remove(self, interface, protocol, name, type, domain, flags):
         """

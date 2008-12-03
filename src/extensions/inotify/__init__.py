@@ -34,6 +34,8 @@ import struct
 import logging
 import fcntl
 import select
+import errno
+import socket
 
 # kaa imports
 import kaa
@@ -191,7 +193,7 @@ class INotify(object):
         while True:
             if len(self._read_buffer) < event_len:
                 if self._move_state:
-                    # We received a MOVED_FROM event with no matching 
+                    # We received a MOVED_FROM event with no matching
                     # MOVED_TO.  If we don't get a matching MOVED_TO in 0.1
                     # seconds, emit the MOVED_FROM event.
                     self._moved_timer.start(0.1)
@@ -218,7 +220,7 @@ class INotify(object):
 
             if self._move_state:
                 # Last event was a MOVED_FROM. So if this is a MOVED_TO and the
-                # cookie matches, emit once specifying both paths. If not, 
+                # cookie matches, emit once specifying both paths. If not,
                 # emit two signals.
                 if mask & INotify.MOVED_TO and cookie == self._move_state[2]:
                     # Great, they match. Fire a MOVE signal with both paths.
@@ -232,7 +234,7 @@ class INotify(object):
                     self._moved_timer.stop()
                     continue
 
-                # No match, fire the earlier MOVED_FROM signal now 
+                # No match, fire the earlier MOVED_FROM signal now
                 # with no target.
                 self._emit_last_move()
 

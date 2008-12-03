@@ -31,7 +31,7 @@
 # -----------------------------------------------------------------------------
 
 __all__ = [ 'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer',
-            'AtTimer', 'OneShotAtTimer', 'POLICY_ONCE', 'POLICY_MANY', 
+            'AtTimer', 'OneShotAtTimer', 'POLICY_ONCE', 'POLICY_MANY',
             'POLICY_RESTART' ]
 
 import logging

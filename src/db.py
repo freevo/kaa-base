@@ -134,7 +134,7 @@ def split_path(s):
     dirname, filename = os.path.split(s)
     fname_noext, ext = os.path.splitext(filename)
     levels = dirname.strip('/').split(os.path.sep)[2:][-2:]
-    return PATH_SPLIT.split(' '.join(levels + [fname_noext])) 
+    return PATH_SPLIT.split(' '.join(levels + [fname_noext]))
 
 
 def _list_to_printable(value):
@@ -216,7 +216,7 @@ class RegexpCache(object):
     def __init__(self):
         self.last_item = None
         self.last_expr = None
-        
+
     def __call__(self, expr, item):
         if item is None:
             return 0
@@ -357,9 +357,9 @@ class Database:
 
         Note: currently indexes and attributes can only be added, not removed.
         That is, once an attribute or indexes is added, it lives forever.
-        
+
         type_name is the name of the type the attributes and indexes apply to
-        (e.g. 'dir' or 'image'). 
+        (e.g. 'dir' or 'image').
 
         indexes is a list of tuples, where each tuple contains 2 or more strings,
         where each string references a registered attribute.  This is used for
@@ -443,9 +443,9 @@ class Database:
                    cur_type_attrs[attr_name][1] & (ATTR_SEARCHABLE | ATTR_SIMPLE):
                    raise ValueError, "Unsupported attempt to convert attribute '%s' " \
                                      "between ATTR_SIMPLE and ATTR_SEARCHABLE" % attr_name
-                    
+
                 if attr_name not in cur_type_attrs or cur_type_attrs[attr_name] != attr_defn:
-                    # There is a new attribute specified for this type, or an 
+                    # There is a new attribute specified for this type, or an
                     # existing one has changed.
                     new_attrs[attr_name] = attr_defn
                     changed = True
@@ -542,7 +542,7 @@ class Database:
         self._load_object_types()
 
         if new_attrs:
-            # Migrate rows from old table to new temporary one.  Here we copy only 
+            # Migrate rows from old table to new temporary one.  Here we copy only
             # ATTR_SEARCHABLE columns that exist in both old and new definitions.
             columns = filter(lambda x: cur_type_attrs[x][1] & ATTR_SEARCHABLE and \
                                        x in attrs and attrs[x][1] & ATTR_SEARCHABLE, cur_type_attrs.keys())
@@ -556,7 +556,7 @@ class Database:
         # Rename temporary table.
         self._db_query('ALTER TABLE %s_tmp RENAME TO %s' % (table_name, table_name))
 
-        # Create a trigger that reduces the objectcount for each applicable 
+        # Create a trigger that reduces the objectcount for each applicable
         # inverted index when a row is deleted.
         inverted_indexes = self._get_type_inverted_indexes(type_name)
         if inverted_indexes:
@@ -593,7 +593,7 @@ class Database:
         and max specify the minimum and maximum length of terms to index.  Any
         terms of length smaller than min or larger than max will not be
         indexed.  If neither is specified, terms of all sizes will be indexed.
-        
+
         split is either a callable or a regular expression (or a string in
         which case it is compiled as a regexp) and is used to parse
         string-based attributes using this inverted index into individual
@@ -615,7 +615,7 @@ class Database:
                                   (name, object_name)
 
         if split is None:
-            # Default split regexp is to split words on 
+            # Default split regexp is to split words on
             # alphanumeric/digits/underscore boundaries.
             split = re.compile("[\W_\d]+", re.U)
         elif isinstance(split, basestring):
@@ -639,12 +639,12 @@ class Database:
             'ignore': ignore,
         }
 
-        self._db_query("INSERT OR REPLACE INTO inverted_indexes VALUES(?, 'definition', ?)", 
+        self._db_query("INSERT OR REPLACE INTO inverted_indexes VALUES(?, 'definition', ?)",
                        (name, buffer(cPickle.dumps(defn, 2))))
 
         defn['objectcount'] = 0
         self._inverted_indexes[name] = defn
-        
+
 
     def _load_inverted_indexes(self):
         for name, attr, value in self._db_query("SELECT * from inverted_indexes"):
@@ -840,7 +840,7 @@ class Database:
             self._db_query("UPDATE inverted_indexes SET value=value+1 WHERE attr='objectcount' AND name IN %s" % \
                            _list_to_printable(inverted_indexes))
 
-        
+
         # Process inverted index maps for this row
         ivtidx_terms = []
         for ivtidx in inverted_indexes:
@@ -921,7 +921,7 @@ class Database:
             if flags & ATTR_SIMPLE and name in attrs:
                 # Simple attribute needs pickle
                 get_pickle = True
-        
+
         # TODO: if ObjectRow is supplied, don't need to fetch columns
         # that are available in the ObjectRow.  (Of course this assumes
         # the object wasn't changed via elsewhere during the life of the
@@ -1130,24 +1130,24 @@ class Database:
                 if missing:
                     raise ValueError, "One or more requested attributes %s are not available for type '%s'" % \
                                       (str(missing), type_name)
-                # If any of the requested attributes are ATTR_SIMPLE or 
+                # If any of the requested attributes are ATTR_SIMPLE or
                 # ATTR_INDEXED_IGNORE_CASE then we need the pickle.
-                pickled = [ x for x in columns if type_attrs[x][1] & (ATTR_SIMPLE | ATTR_INDEXED_IGNORE_CASE) in 
+                pickled = [ x for x in columns if type_attrs[x][1] & (ATTR_SIMPLE | ATTR_INDEXED_IGNORE_CASE) in
                                                                      (ATTR_SIMPLE, ATTR_INDEXED_IGNORE_CASE)]
                 if pickled:
                     # One or more attributes from pickle are requested in attrs list,
                     # so we need to grab the pickle column.
                     if 'pickle' not in columns:
                         columns.append('pickle')
-                    # Remove the list of pickled attributes so we don't 
+                    # Remove the list of pickled attributes so we don't
                     # request them as sql columns.
                     columns = list(set(columns).difference(pickled))
             else:
                 columns = all_columns
 
             # Now construct a query based on the supplied attributes for this
-            # object type.  
-            
+            # object type.
+
             # If any of the attribute names aren't valid for this type, then we
             # don't bother matching, since this an AND query and there won't be
             # any matches.
@@ -1237,7 +1237,7 @@ class Database:
                 break
 
         # If ivtidx search was done, sort results based on score (highest
-        # score first). 
+        # score first).
         if ivtidx_results:
             results.sort(lambda a, b: cmp(ivtidx_results[(b[1], b[2])], ivtidx_results[(a[1], a[2])]))
 
@@ -1253,7 +1253,7 @@ class Database:
         (1.0 is normal), split is the function or regular expression used to
         split terms (only used if a string is given for terms), and ivtidx is
         the name of inverted index we're scoring for.
-        
+
         Terms are either unicode objects or strings, or sequences of unicode or
         string objects.  In the case of strings, they are passed through
         str_to_unicode() to try to decode them intelligently.
@@ -1553,7 +1553,7 @@ class Database:
                 #
                 # end loop over terms
 
-                
+
                 for r in reduce(lambda a, b: set(a).intersection(b), results.values()):
                     all_results[r] = 0
                     for id in ids:
@@ -1610,7 +1610,7 @@ class Database:
             sql_limit *= 10
 
         # end loop while not finished
-        log.info('%d results, did %d subqueries, %.04f seconds (%.04f overhead)', 
+        log.info('%d results, did %d subqueries, %.04f seconds (%.04f overhead)',
                  len(all_results), nqueries, time.time()-t0, t1-t0)
         return all_results
 
@@ -1619,7 +1619,7 @@ class Database:
         """
         Obtains terms for the given inverted index name.  If associated is
         None, all terms for the inverted index are returned.  The return
-        value is a list of 2-tuples, where each tuple is (term, count). 
+        value is a list of 2-tuples, where each tuple is (term, count).
         Count is the total number of objects that term is mapped to.
 
         Otherwise, associated is a specified list of terms, and only those
@@ -1627,7 +1627,7 @@ class Database:
         terms will be returned.  The return value is as above, except that
         count reflects the number of objects which have that term plus all
         of the given associated terms.
-        
+
         For example, given an otherwise empty database, if you have an object
         with terms ['vacation', 'hawaii'] and two other object with terms
         ['vacation', 'spain'] and the associated list passed is ['vacation'],
@@ -1651,7 +1651,7 @@ class Database:
             where_values = ()
 
         if not associated:
-            return self._db_query('''SELECT term, count 
+            return self._db_query('''SELECT term, count
                                       FROM ivtidx_%s_terms AS terms
                                         %s
                                   ORDER BY count DESC''' % (ivtidx, where_clause), where_values)
@@ -1663,7 +1663,7 @@ class Database:
         if len(term_ids) < len(associated):
             return []
 
-        query = '''SELECT term, COUNT(*) AS total 
+        query = '''SELECT term, COUNT(*) AS total
                      FROM ivtidx_%s_terms_map AS t0''' % ivtidx
         for n, term_id in enumerate(term_ids):
             query += ''' JOIN ivtidx_%s_terms_map t%d
@@ -1679,7 +1679,7 @@ class Database:
                  ORDER BY total DESC ''' % \
                  (ivtidx, _list_to_printable(term_ids), where_clause)
         return self._db_query(query, where_values)
-        
+
 
     def get_db_info(self):
         """

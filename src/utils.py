@@ -277,33 +277,42 @@ class Singleton(object):
         return getattr(self._singleton, attr)
 
 
-class property(property):
-    """
-    Replaces built-in property function to extend it as per
-    http://bugs.python.org/issue1416
-    """
-    def __init__(self, fget = None, fset = None, fdel = None, doc = None):
-        super(property, self).__init__(fget, fset, fdel)
-        self.__doc__ = doc or fget.__doc__
+# Python 2.6 and later has the enhanced property decorator (supports
+# setters and deleters), but earlier versions don't, so for < 2.6
+# we replace the built-in property to mimic the behaviour in 2.6+.
+if sys.hexversion >= 0x02060000:
+    # Bind built-in property to global name that we export.  So for 2.6+
+    # kaa.utils.property is the built-in property.
+    property = property
+else:
 
-    def _add_doc(self, prop, doc = None):
-        prop.__doc__ = doc or self.__doc__
-        return prop
+    class property(property):
+        """
+        Replaces built-in property function to extend it as per
+        http://bugs.python.org/issue1416
+        """
+        def __init__(self, fget = None, fset = None, fdel = None, doc = None):
+            super(property, self).__init__(fget, fset, fdel)
+            self.__doc__ = doc or fget.__doc__
 
-    def setter(self, fset):
-        if isinstance(fset, property):
-            # Wrapping another property, use deleter.
-            self, fset = fset, fset.fdel
-        return self._add_doc(property(self.fget, fset, self.fdel))
+        def _add_doc(self, prop, doc = None):
+            prop.__doc__ = doc or self.__doc__
+            return prop
 
-    def deleter(self, fdel):
-        if isinstance(fdel, property):
-            # Wrapping another property, use setter.
-            self, fdel = fdel, fdel.fset
-        return self._add_doc(property(self.fget, self.fset, fdel))
+        def setter(self, fset):
+            if isinstance(fset, property):
+                # Wrapping another property, use deleter.
+                self, fset = fset, fset.fdel
+            return self._add_doc(property(self.fget, fset, self.fdel))
 
-    def getter(self, fget):
-        return self._add_doc(property(fget, self.fset, self.fdel), fget.__doc__ or self.fget.__doc__)
+        def deleter(self, fdel):
+            if isinstance(fdel, property):
+                # Wrapping another property, use setter.
+                self, fdel = fdel, fdel.fset
+            return self._add_doc(property(self.fget, self.fset, fdel))
+
+        def getter(self, fget):
+            return self._add_doc(property(fget, self.fset, self.fdel), fget.__doc__ or self.fget.__doc__)
 
 
 def sysimport(name):

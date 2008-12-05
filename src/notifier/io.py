@@ -58,7 +58,7 @@ class IOMonitor(notifier.NotifierCallback):
         Creates an IOMonitor to monitor IO activity.
         """
         super(IOMonitor, self).__init__(callback, *args, **kwargs)
-        self.set_ignore_caller_args()
+        self.ignore_caller_args = True
 
 
     def register(self, fd, condition = IO_READ):

@@ -74,6 +74,7 @@ Changes for 0.4.0
    Remove YieldFunction from the API, the class is now only for
    internal use and may change without further notice.
 
+
 Changes for 0.5.0
 -----------------
 
@@ -82,3 +83,12 @@ Changes for 0.5.0
 
 2. @kaa.coroutine does not support the keyword synchronize anymore,
    use policy=kaa.POLICY_SYNCHRONIZED instead.
+
+
+Changes for 0.6.0
+-----------------
+
+1. The methods set_ignore_caller_args and set_user_args_first in
+   Callback are replaced by variables ignore_caller_args and
+   user_args_first. get_user_args is now called _get_user_args.
+

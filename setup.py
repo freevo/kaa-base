@@ -85,7 +85,7 @@ else:
 # call setup
 setup(
     module       = 'base',
-    version      = '0.5.0',
+    version      = '0.6.0',
     license      = 'LGPL',
     summary      = 'Base module for all Kaa modules.',
     rpminfo      = {

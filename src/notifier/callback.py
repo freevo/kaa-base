@@ -58,7 +58,7 @@ def weakref_data(data, destroy_cb = None):
         cb = WeakCallback(data)
         if destroy_cb:
             cb.set_weakref_destroyed_cb(destroy_cb)
-            cb.set_ignore_caller_args()
+            cb.ignore_caller_args = True
         return cb
     elif type(data) in (list, tuple):
         d = []
@@ -116,44 +116,27 @@ class Callback(object):
     def __init__(self, callback, *args, **kwargs):
         """
         Create a new callback
-        @param callback: callable function or object
-        @param args: arguments for the callback
-        @param kwargs: keyword arguments for the callback
+        :param callback: callable function or object
+        :param args: arguments for the callback
+        :param kwargs: keyword arguments for the callback
         """
         assert(callable(callback))
         self._callback = callback
         self._args = args
         self._kwargs = kwargs
-        self._ignore_caller_args = False
-        self._user_args_first = False
+        # Ignore the caller arguments and only provide the user arguments
+        # provided at __init__ to the callback. Default value is not to
+        # ignore the caller arguments.
+        self.ignore_caller_args = False
+        # Set flag to add the user arguments first when calling the callback.
+        # Default is that the provided arguments will be appended to the
+        # arguments provided with __call__.
+        self.user_args_first = False
 
 
-    def set_ignore_caller_args(self, flag = True):
-        """
-        Ignore the caller arguments and only provide the user arguments
-        provided at __init__ to the callback. Default value is not to
-        ignore the caller arguments.
-        @warning: this function will be replaced by a variable in a future
-           version of kaa.base.
-        """
-        self._ignore_caller_args = flag
-
-
-    def set_user_args_first(self, flag = True):
-        """
-        Set flag to add the user arguments first when calling the callback.
-        Default is that the provided arguments will be appended to the
-        arguments provided with __call__.
-        @warning: this function will be replaced by a variable in a future
-           version of kaa.base.
-        """
-        self._user_args_first = flag
-
-
-    def get_user_args(self):
+    def _get_user_args(self):
         """
         Return the arguments provided by the user on __init__.
-        @warning: this function will be hidden in a future version of kaa.base.
         """
         return self._args, self._kwargs
 
@@ -163,11 +146,11 @@ class Callback(object):
 
 
     def _merge_args(self, args, kwargs):
-        user_args, user_kwargs = self.get_user_args()
-        if self._ignore_caller_args:
+        user_args, user_kwargs = self._get_user_args()
+        if self.ignore_caller_args:
             cb_args, cb_kwargs = user_args, user_kwargs
         else:
-            if self._user_args_first:
+            if self.user_args_first:
                 cb_args, cb_kwargs = user_args + args, kwargs
                 cb_kwargs.update(user_kwargs)
             else:
@@ -248,7 +231,7 @@ class WeakCallback(Callback):
         else:
             return self._callback
 
-    def get_user_args(self):
+    def _get_user_args(self):
         return unweakref_data(self._args), unweakref_data(self._kwargs)
 
     def __call__(self, *args, **kwargs):

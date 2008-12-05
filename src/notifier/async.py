@@ -628,8 +628,8 @@ class InProgressAny(InProgress):
                     prefinished.append(n)
                     continue
                 args = self._get_connect_args(ip, n)
-                ip.connect(self.finish, *args).set_user_args_first()
-                ip.exception.connect(self.finish, *args).set_user_args_first()
+                ip.connect(self.finish, *args).user_args_first = True
+                ip.exception.connect(self.finish, *args).user_args_first = True
 
             self._finalize_connect(prefinished)
         elif len(self) == 0:

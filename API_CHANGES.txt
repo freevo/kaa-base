@@ -92,3 +92,4 @@ Changes for 0.6.0
    Callback are replaced by variables ignore_caller_args and
    user_args_first. get_user_args is now called _get_user_args.
 
+2. Timer.get_interval() is now Timer.interval

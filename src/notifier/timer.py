@@ -30,7 +30,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer',
+__all__ = [ 'timed', 'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer',
             'AtTimer', 'OneShotAtTimer', 'POLICY_ONCE', 'POLICY_MANY',
             'POLICY_RESTART' ]
 
@@ -85,9 +85,7 @@ def timed(interval, timer=None, policy=POLICY_MANY):
                 t = (timer or Timer)(func, *args, **kwargs)
                 t.start(interval)
                 return True
-
             store = DecoratorDataStore(func, newfunc, args)
-
             # check current timer
             if 'timer' in store and store.timer and store.timer.active():
                 if policy == POLICY_ONCE:
@@ -95,13 +93,11 @@ def timed(interval, timer=None, policy=POLICY_MANY):
                     return False
                 # stop old timer
                 store.timer.stop()
-
             # create new timer, store it in the object and start it
             t = (timer or Timer)(func, *args, **kwargs)
             store.timer = weakref(t)
             t.start(interval)
             return True
-
         newfunc.func_name = func.func_name
         return newfunc
 
@@ -110,56 +106,52 @@ def timed(interval, timer=None, policy=POLICY_MANY):
 
 
 class Timer(notifier.NotifierCallback):
-
+    """
+    Timer callback called every 'interval' seconds.
+    """
     def __init__(self, callback, *args, **kwargs):
         super(Timer, self).__init__(callback, *args, **kwargs)
         self.restart_when_active = True
-        self._interval = None
-
+        self.interval = None
 
     @threaded(MAINTHREAD)
     def start(self, interval):
         """
         Start the timer.
-        @param interval: interval in seconds
-        @note: this function will always be called from the mainthread
+        :param interval: interval in seconds
         """
         if self.active():
             if not self.restart_when_active:
                 return
             self.unregister()
-
         self._id = notifier.timer_add(int(interval * 1000), self)
-        self._interval = interval
-
+        self.interval = interval
 
     @threaded(MAINTHREAD)
     def stop(self):
         """
         Stop a running timer.
-        @note: this function will always be called from the mainthread
         """
         self.unregister()
 
-
     def unregister(self):
+        """
+        Unregister / remove callback
+        """
         if self.active():
             notifier.timer_remove(self._id)
             super(Timer, self).unregister()
 
-
-    def get_interval(self):
-        return self._interval
-
-
     def __call__(self, *args, **kwargs):
+        """
+        Run the callback
+        """
         if not self.active():
             # This happens if previous timer that has been called during the
             # same notifier step has stopped us. The new notifier could
             # should prevent this.
             log.error('calling callback on inactive timer (%s)' % repr(self))
             return False
-
         return super(Timer, self).__call__(*args, **kwargs)
 
 
@@ -176,12 +168,21 @@ class OneShotTimer(Timer):
         return False
 
 
-
 class WeakTimer(notifier.WeakNotifierCallback, Timer):
+    """
+    Timer with weak references. It will auto-disconnect when the
+    objects are deleted by the gc.
+    """
     pass
+
 
 class WeakOneShotTimer(notifier.WeakNotifierCallback, OneShotTimer):
+    """
+    OneShotTimer with weak references. It will auto-disconnect when
+    the objects are deleted by the gc.
+    """
     pass
+
 
 class OneShotAtTimer(OneShotTimer):
     """

@@ -54,7 +54,7 @@ from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, \
      OneShotAtTimer, timed, POLICY_ONCE, POLICY_MANY, POLICY_RESTART
 
 # IO/Socket handling
-from io import IOMonitor, WeakIOMonitor, IO_READ, IO_WRITE
+from io import IOMonitor, WeakIOMonitor, IO_READ, IO_WRITE, IOChannel
 from sockets import Socket, SocketError
 
 # Event and event handler classes

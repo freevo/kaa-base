@@ -40,7 +40,7 @@ import datetime
 import nf_wrapper as notifier
 from thread import threaded, MAINTHREAD
 from kaa.weakref import weakref
-from kaa.utils import wraps, DecoratorDataStore
+from kaa.utils import wraps, DecoratorDataStore, property
 
 POLICY_ONCE = 'once'
 POLICY_MANY = 'many'
@@ -109,10 +109,12 @@ class Timer(notifier.NotifierCallback):
     """
     Timer callback called every 'interval' seconds.
     """
+
+    __interval = None
+
     def __init__(self, callback, *args, **kwargs):
         super(Timer, self).__init__(callback, *args, **kwargs)
         self.restart_when_active = True
-        self.interval = None
 
     @threaded(MAINTHREAD)
     def start(self, interval):
@@ -125,7 +127,14 @@ class Timer(notifier.NotifierCallback):
                 return
             self.unregister()
         self._id = notifier.timer_add(int(interval * 1000), self)
-        self.interval = interval
+        self.__interval = interval
+
+    @property
+    def interval(self):
+        """
+        Timer interval when the timer is running, None if not
+        """
+        return self.__interval
 
     @threaded(MAINTHREAD)
     def stop(self):
@@ -141,6 +150,7 @@ class Timer(notifier.NotifierCallback):
         if self.active():
             notifier.timer_remove(self._id)
             super(Timer, self).unregister()
+        self.__interval = None
 
     def __call__(self, *args, **kwargs):
         """

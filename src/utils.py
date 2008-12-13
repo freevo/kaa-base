@@ -475,7 +475,9 @@ def utc2localtime(t):
     if not t:
         # no time value given
         return 0
-    if time.daylight:
+    # FIXME: maybe cache this value
+    # time.daylight does not do what we want
+    if time.localtime(time.time())[8]:
         return t - time.altzone
     else:
         return t - time.timezone
@@ -487,7 +489,9 @@ def localtime2utc(t):
     if not t:
         # no time value given
         return 0
-    if time.daylight:
+    # FIXME: maybe cache this value
+    # time.daylight does not do what we want
+    if time.localtime(time.time())[8]:
         return t + time.altzone
     else:
         return t + time.timezone

@@ -47,6 +47,7 @@ from pysqlite2 import dbapi2 as sqlite
 # kaa base imports
 from strutils import str_to_unicode
 from _objectrow import ObjectRow
+from notifier import main
 
 if sqlite.version < '2.1.0':
     raise ImportError('pysqlite 2.1.0 or higher required')
@@ -260,10 +261,7 @@ class Database:
         self._dbfile = os.path.realpath(dbfile)
         self._lock = threading.RLock()
         self._open_db()
-
-
-    def __del__(self):
-        self.commit()
+        main.signals['shutdown'].connect_weak(self.commit)
 
 
     def _open_db(self):

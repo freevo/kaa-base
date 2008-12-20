@@ -58,8 +58,11 @@ from thread import killall as kill_jobserver
 # get logging object
 log = logging.getLogger('notifier')
 
-# Running state of the main loop, True if running, False otherwise.
-_running = False
+# Running state of the main loop.  Possible values are:
+#  True: running
+#  False: was running, but is now shutdown
+#  None: not yet started
+_running = None
 # Set if currently in shutdown() (to prevent reentrancy)
 _shutting_down = False
 # Lock preventing multiple threads from executing loop().
@@ -242,16 +245,26 @@ def step(*args, **kwargs):
 
 def is_running():
     """
-    Return if the main loop is currently running.
+    Return True if the main loop is currently running.
     """
-    return _running
+    return _running == True
 
 
 def is_shutting_down():
     """
-    Return if the mainloop is currently inside stop()
+    Return True if the main loop is currently inside stop()
     """
     return _shutting_down
+
+
+def is_stopped():
+    """
+    Returns True if the main loop used to be running but is now shutdown.
+    This is useful for worker tasks running a thread that need to live for
+    the life of the application, but are started before kaa.main.run() is
+    called.  These threads can loop until kaa.main.is_stopped()
+    """
+    return _running == False
 
 
 def _set_running(status):

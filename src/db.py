@@ -40,6 +40,7 @@ import math
 import cPickle
 import copy_reg
 import _weakref
+import threading
 #from sets import Set
 from pysqlite2 import dbapi2 as sqlite
 
@@ -49,8 +50,8 @@ from _objectrow import ObjectRow
 
 if sqlite.version < '2.1.0':
     raise ImportError('pysqlite 2.1.0 or higher required')
-if sqlite.sqlite_version < '3.3.0':
-    raise ImportError('sqlite 3.3.0 or higher required')
+if sqlite.sqlite_version < '3.3.1':
+    raise ImportError('sqlite 3.3.1 or higher required')
 
 # get logging object
 log = logging.getLogger('db')
@@ -257,6 +258,7 @@ class Database:
         self._inverted_indexes = {}
 
         self._dbfile = os.path.realpath(dbfile)
+        self._lock = threading.RLock()
         self._open_db()
 
 
@@ -265,7 +267,7 @@ class Database:
 
 
     def _open_db(self):
-        self._db = sqlite.connect(self._dbfile)
+        self._db = sqlite.connect(self._dbfile, check_same_thread=False)
 
         # Create the function "regexp" for the REGEXP operator of SQLite
         self._db.create_function("regexp", 2, RegexpCache())
@@ -299,6 +301,7 @@ class Database:
 
     def _db_query(self, statement, args = (), cursor = None, many = False):
         #t0=time.time()
+        self._lock.acquire()
         if not cursor:
             cursor = self._cursor
         if many:
@@ -306,6 +309,7 @@ class Database:
         else:
             cursor.execute(statement, args)
         rows = cursor.fetchall()
+        self._lock.release()
         #t1=time.time()
         #print "QUERY [%.04f%s]: %s" % (t1-t0, ('', ' (many)')[many], statement), args
         return rows
@@ -624,7 +628,9 @@ class Database:
         if name not in self._inverted_indexes:
             self._db_query('INSERT INTO inverted_indexes VALUES(?, "objectcount", 0)', (name,))
             # Create the tables needed by the inverted index.
+            self._lock.acquire()
             self._db.executescript(CREATE_IVTIDX_TEMPLATE.replace('%IDXNAME%', name))
+            self._lock.release()
         else:
             defn = self._inverted_indexes[name]
             if min == defn['min'] and max == defn['max'] and split == defn['split'] and \
@@ -995,7 +1001,9 @@ class Database:
 
 
     def commit(self):
+        self._lock.acquire()
         self._db.commit()
+        self._lock.release()
 
 
     def query(self, **attrs):

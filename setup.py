@@ -28,6 +28,7 @@
 
 # python imports
 import sys
+import os
 import time
 
 # We require python 2.4 or later, so complain if that isn't satisfied.
@@ -41,46 +42,55 @@ sys.path.append("src")
 # ... and now import it.
 from distribution.core import Extension, setup
 
-ext = Extension('kaa.shmmodule', ['src/extensions/shmmodule.c'])
-if not ext.has_python_h():
+extensions = []
+
+shm_ext = Extension('kaa.shmmodule', ['src/extensions/shmmodule.c'])
+if not shm_ext.has_python_h():
     print "---------------------------------------------------------------------"
     print "Python headers not found; please install python development package."
     print "kaa.db, shm and inotify support will be unavailable"
     print "---------------------------------------------------------------------"
     time.sleep(2)
-    extensions = [ ]
 
 else:
-    extensions = [ ext ]
-
-    objectrow = Extension('kaa._objectrow', ['src/extensions/objectrow.c'])
-    if objectrow.check_library("glib-2.0", "2.4.0"):
-        extensions.append(objectrow)
+    osname = os.popen('uname -s').read().strip().lower()
+    if osname == 'darwin':
+        print '- kaa.shm not supported on Darwin, not building'
     else:
-        print "glib >= 2.4.0 not found; kaa.db will be unavailable"
+        extensions.append(shm_ext)
 
-    inotify_ext = Extension("kaa.inotify._inotify",
-                            ["src/extensions/inotify/inotify.c"],
-                            config='src/extensions/inotify/config.h')
-
-    if not inotify_ext.check_cc(["<sys/inotify.h>"], "inotify_init();"):
-        if not inotify_ext.check_cc(["<sys/syscall.h>"], "syscall(0);"):
-            print "inotify not enabled: doesn't look like a Linux system."
-        else:
-            print "inotify not supported in glibc; no problem, using built-in support instead."
-            inotify_ext.config("#define USE_FALLBACK")
-            extensions.append(inotify_ext)
-
+    objectrow_ext = Extension('kaa._objectrow', ['src/extensions/objectrow.c'])
+    if objectrow_ext.check_library("glib-2.0", "2.4.0"):
+        print '+ glib >= 2.4.0 found; building kaa.db'
+        extensions.append(objectrow_ext)
     else:
-        print "inotify supported by glibc; good."
-        extensions.append(inotify_ext)
+        print "- glib >= 2.4.0 not found; kaa.db will be unavailable"
 
     utils_ext = Extension('kaa._utils', ['src/extensions/utils.c'], config='src/extensions/config.h')
     extensions.append(utils_ext)
-    if inotify_ext.check_cc(['<sys/prctl.h>'], 'prctl(PR_SET_NAME, "x");'):
+    if utils_ext.check_cc(['<sys/prctl.h>'], 'prctl(PR_SET_NAME, "x");'):
         utils_ext.config('#define HAVE_PRCTL')
+
+    if osname == 'linux':
+        inotify_ext = Extension("kaa.inotify._inotify",
+                                ["src/extensions/inotify/inotify.c"],
+                                config='src/extensions/inotify/config.h')
+        
+
+        if not inotify_ext.check_cc(["<sys/inotify.h>"], "inotify_init();"):
+            if not inotify_ext.check_cc(["<sys/syscall.h>"], "syscall(0);"):
+                print "- inotify not enabled; are system headers not installed?"
+            else:
+                print "+ inotify not supported in glibc; no problem, using built-in support instead."
+                inotify_ext.config("#define USE_FALLBACK")
+                extensions.append(inotify_ext)
+        else:
+            print "+ inotify supported by glibc; good."
+            extensions.append(inotify_ext)
+
     else:
-        print 'Disabling Linux-specific features.'
+        print '- Linux-specific features not being built (inotify, set_process_name)'
+
 
 # call setup
 setup(

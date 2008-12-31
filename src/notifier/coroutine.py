@@ -188,12 +188,8 @@ def coroutine(interval=0, policy=None, progress=False):
                 try:
                     result = _process(function, async)
                 except StopIteration:
-                    # no return with yield, but done.  If we were chained to
-                    # another InProgress, finish with that result.  
-                    if async:
-                        result = async.result
-                    else:
-                        result = None
+                    # no return with yield, but done, return None
+                    result = None
                 except:
                     # exception handling, return finished InProgress
                     ip = InProgress()
@@ -314,12 +310,8 @@ class CoroutineInProgress(InProgress):
                 # into the coroutine.
 
         except StopIteration:
-            # coroutine is done without result.  If we were chained to another
-            # InProgress, finish with that result.  
-            if self._async:
-                result = self._async.result
-            else:
-                result = None
+            # coroutine is done without result
+            result = None
         except:
             # coroutine is done with exception
             return self.throw(*sys.exc_info())

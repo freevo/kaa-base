@@ -575,6 +575,8 @@ class InProgressAny(InProgress):
     objects (in constructor) finish.  This functionality is useful when
     building state machines using coroutines.
 
+    The initializer can take two optional kwargs: pass_index and filter.
+
     If pass_index is True, the InProgressAny object then finishes with a
     2-tuple, whose first element is the index (offset from 0) of the InProgress
     that finished, and the second element is the result the InProgress was
@@ -582,12 +584,20 @@ class InProgressAny(InProgress):
 
     If pass_index is False, the InProgressAny is finished with just the result
     and not the index.
+
+    If filter is specified, it is a callable that receives two arguments,
+    the index and finished result (as described above).  If the callable
+    returns True AND if there are other underlying InProgress objects that
+    could yet be finished, then this InProgressAny is _not_ finished.
     """
     def __init__(self, *objects, **kwargs):
         super(InProgressAny, self).__init__()
         self._pass_index = kwargs.get('pass_index', True)
+        self._filter = kwargs.get('filter')
+
         # Generate InProgress objects for anything that was passed.
         self._objects = [ inprogress(o) for o in objects ]
+        self._counter = len(objects) or 1
 
 
     def _get_connect_args(self, ip, n):
@@ -645,6 +655,12 @@ class InProgressAny(InProgress):
         Invoked when any one of the InProgress objects passed to the
         constructor have finished.
         """
+        self._counter -= 1
+        if self._filter and self._filter(args) and self._counter > 0:
+            # Result is filtered and there are other InProgress candidates,
+            # so we'll wait for them.
+            return
+
         if self._pass_index:
             data = (result, args)
         else:
@@ -672,7 +688,6 @@ class InProgressAll(InProgressAny):
     """
     def __init__(self, *objects):
         super(InProgressAll, self).__init__(*objects)
-        self._counter = len(objects) or 1
 
         if not objects:
             self.finish(None)

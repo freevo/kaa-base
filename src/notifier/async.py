@@ -618,7 +618,7 @@ class InProgressAny(InProgress):
             # One or more IP was already finished.  We pass each one to 
             # self.finish until we're actually finished (because the prefinished
             # IP may get filtered).
-            while not self.finished:
+            while not self.finished and prefinished:
                 idx = prefinished.pop(0)
                 # FIXME: if the IP failed with exception, we'll end up raising here
                 # due to accessing its result.

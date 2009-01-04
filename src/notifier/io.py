@@ -40,14 +40,14 @@ import time
 import fcntl
 
 import nf_wrapper as notifier
-from callback import WeakCallback
+from callback import WeakCallback, Callback
 from signals import Signals, Signal
 from thread import MainThreadCallback, is_mainthread
 from async import InProgress, inprogress
 from kaa.utils import property
 
 # get logging object
-log = logging.getLogger('notifier')
+log = logging.getLogger('notifier.io')
 
 IO_READ   = 1
 IO_WRITE  = 2
@@ -147,6 +147,26 @@ class IOChannel(object):
 
 
     @property
+    def readable(self):
+        """
+        Returns True if the channel is open, or if the channel is closed
+        but a read call would still succeed (due to buffered data).
+        """
+        # FIXME: update this when read buffering support is added (which is needed for readline)
+        return self._channel != None
+
+
+    @property
+    def writable(self):
+        """
+        Returns True if the channel if a write() call will succeed.
+        """
+        # By default, this is always True because of write-buffering, but
+        # subclasses may want to override.
+        return True
+
+
+    @property
     def fileno(self):
         """
         Returns the file descriptor (integer) for this channel, or None if no
@@ -189,11 +209,17 @@ class IOChannel(object):
 
     def _is_read_connected(self):
         """
-        Returns True if we're interested in read events.
+        Returns True if an outside caller is interested in reads (not readlines).
         """
-        return not len(self._read_signal) == len(self._readline_signal) == \
-                   len(self.signals['read']) == len(self.signals['readline']) == 0
-        
+        return not len(self._read_signal) == len(self.signals['read']) == 0
+
+
+    def _is_readline_connected(self):
+        """
+        Returns True if an outside caller is interested in readlines (not reads).
+        """
+        return not len(self._readline_signal) == len(self.signals['readline']) == 0
+
 
     def _update_read_monitor(self, signal=None, change=None):
         """
@@ -208,7 +234,7 @@ class IOChannel(object):
         """
         if not (self._mode & IO_READ) or not self._rmon or change == Signal.SIGNAL_DISCONNECTED:
             return
-        elif not self._is_read_connected():
+        elif not self._is_read_connected() and not self._is_readline_connected():
             self._rmon.unregister()
         elif not self._rmon.active():
             self._rmon.register(self.fileno, IO_READ)
@@ -228,6 +254,11 @@ class IOChannel(object):
         Wraps an existing channel.  Assumes a file-like object or a file
         descriptor (int).
         """
+        if hasattr(self, '_channel') and self._channel:
+            # Wrapping a new channel while an existing one is open, so close
+            # the existing one.
+            self.close(immediate=True)
+
         self._channel = channel
         self._mode = mode
         if not channel:
@@ -249,15 +280,8 @@ class IOChannel(object):
             if self._write_queue:
                 self._wmon.register(self.fileno, IO_WRITE)
 
-        # Disconnect socket and remove socket file (if unix socket) on shutdown
+        # Disconnect channel on shutdown.
         main.signals['shutdown'].connect_weak(self.close)
-
-
-    def _is_readable(self):
-        """
-        Low-level call to read from channel.  Can be overridden by subclasses.
-        """
-        return self._channel != None
 
 
     def _async_read(self, signal):
@@ -266,7 +290,7 @@ class IOChannel(object):
         """
         if not (self._mode & IO_READ):
             raise IOError(9, 'Cannot read on a write-only channel')
-        if not self._is_readable():
+        if not self.readable:
             # channel is not readable.  Return an InProgress pre-finished
             # with None
             return InProgress().finish(None)
@@ -278,7 +302,8 @@ class IOChannel(object):
         """
         Reads a chunk of data from the channel.  This function returns an 
         InProgress object.  If the InProgress is finished with None, it
-        means that no data was collected and the channel closed.
+        means that no data was collected and the channel was closed (or the
+        channel was already closed when read() was called).
 
         It is therefore possible to busy-loop by reading on a closed
         channel::
@@ -287,9 +312,9 @@ class IOChannel(object):
                 channel.read().wait()
 
         So the return value of read() should be checked.  Alternatively,
-        channel.alive could be tested::
+        channel.readable could be tested::
 
-            while channel.alive:
+            while channel.readable:
                 channel.read().wait()
 
         """
@@ -312,7 +337,10 @@ class IOChannel(object):
         Must return a string of at most size bytes, or the empty string or
         None if no data is available.
         """
-        return os.read(self.fileno, size)
+        try:
+            return self._channel.read(size)
+        except AttributeError:
+            return os.read(self.fileno, size)
 
 
     def _handle_read(self):
@@ -325,6 +353,7 @@ class IOChannel(object):
         """
         try:
             data = self._read(self._chunk_size)
+            log.debug("IOChannel read data: channel=%s fd=%s len=%d" % (self._channel, self.fileno, len(data)))
         except (IOError, socket.error), (errno, msg):
             if errno == 11:
                 # Resource temporarily unavailable -- we are trying to read
@@ -345,15 +374,18 @@ class IOChannel(object):
             return self.close(immediate=True, expected=False)
 
         self.signals['read'].emit(data)
+ 
+
+        if len(self._readline_signal) or len(self.signals['readline']):
+            # TODO: implement readline
+            self._readline_signal.emit(data)
+
         # Update read monitor if necessary.  If there are no longer any
         # callbacks left on any of the read signals (most likely _read_signal
         # or _readline_signal), we want to prevent _handle_read() from being
         # called, otherwise next time read() or readline() is called, we will
         # have lost that data.
         self._update_read_monitor()
-
-
-        # TODO: parse input into separate lines and emit readline.
 
 
     def _write(self, data):
@@ -382,6 +414,8 @@ class IOChannel(object):
         """
         if not (self._mode & IO_WRITE):
             raise IOError(9, 'Cannot write to a read-only channel')
+        if not self.writable:
+            raise IOError(9, 'Channel is not writable')
 
         inprogress = InProgress()
         if data:
@@ -467,6 +501,7 @@ class IOChannel(object):
         Otherwise the channel is closed immediately and the 'closed' signal
         is emitted.
         """
+        log.debug('IOChannel closed: channel=%s, immediate=%s, fd=%s', self, immediate, self.fileno)
         if not immediate and self._write_queue:
             # Immediate close not requested and we have some data left
             # to be written, so defer close until after write queue
@@ -485,6 +520,10 @@ class IOChannel(object):
         self._rmon = None
         self._wmon = None
         self._queue_close = False
+
+        # Finish any InProgress waiting on read() or readline()
+        self._read_signal.emit(None)
+        self._readline_signal.emit(None)
 
         # Throw IOError to any pending InProgress in the write queue
         for data, inprogress in self._write_queue:

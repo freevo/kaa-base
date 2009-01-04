@@ -126,6 +126,16 @@ class Socket(IOChannel):
         return self.connected or self.connecting
 
 
+    @IOChannel.readable.getter
+    def readable(self):
+        """
+        Returns True if the socket is readable, and False otherwise.  A socket is
+        considered readable when it is listening or alive.
+        """
+        # Note: this property is used in superclass's _update_read_monitor()
+        return self._listening or self.alive
+
+
     @property
     def buffer_size(self):
         """
@@ -298,10 +308,6 @@ class Socket(IOChannel):
 
     def _set_non_blocking(self):
         self._channel.setblocking(False)
-
-
-    def _is_readable(self):
-        return self._channel and not self._connecting
 
 
     def _read(self, size):

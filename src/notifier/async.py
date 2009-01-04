@@ -615,20 +615,21 @@ class InProgressAny(InProgress):
         we tried to connect to them.
         """
         if prefinished:
-            # If any IP was already finished, we're also done.  We can't know
-            # which one actually finished first, so we'll finish with the
-            # first index.
-            idx = prefinished[0]
-            # FIXME: if the IP failed with exception, we'll end up raising here
-            # due to accessing its result.
-            self.finish(idx, self._objects[idx].result)
+            # One or more IP was already finished.  We pass each one to 
+            # self.finish until we're actually finished (because the prefinished
+            # IP may get filtered).
+            while not self.finished:
+                idx = prefinished.pop(0)
+                # FIXME: if the IP failed with exception, we'll end up raising here
+                # due to accessing its result.
+                self.finish(idx, self._objects[idx].result)
 
 
     def _changed(self, action):
         """
         Called when a callback connects or disconnects from us.
         """
-        if len(self) == 1:
+        if len(self) == 1 and action == Signal.SIGNAL_CONNECTED and not self.finished:
             # Someone wants to know when we finish, so now we connect to the
             # underlying InProgress objects to find out when they finish.
             prefinished = []
@@ -642,7 +643,8 @@ class InProgressAny(InProgress):
                 ip.exception.connect(self.finish, *args).user_args_first = True
 
             self._finalize_connect(prefinished)
-        elif len(self) == 0:
+
+        elif len(self) == 0 and action == Signal.SIGNAL_DISCONNECTED:
             for ip in self._objects:
                 ip.disconnect(self.finish)
                 ip.exception.disconnect(self.finish)

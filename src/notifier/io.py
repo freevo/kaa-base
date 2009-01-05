@@ -117,7 +117,8 @@ class IOChannel(object):
 
     Writes may be performed to an IOChannel that is not yet open.  These writes
     will be queued until the queue size limit (controlled by the queue_size
-    property) is reached, after which an exception will be raised.
+    property) is reached, after which an exception will be raised.  The write
+    queue will be written to the channel once it becomes writable.
 
     Reads are asynchronous and non-blocking, and may be performed using two
     possible approaches:
@@ -127,7 +128,7 @@ class IOChannel(object):
            objects.
 
     It is not possible to use both approaches with readline.  (That is, it
-    is not permitted to connect a callback to the 'readline' signals and
+    is not permitted to connect a callback to the 'readline' signal and
     subsequently invoke the readline() method when the callback is still
     connected.)
 
@@ -142,9 +143,15 @@ class IOChannel(object):
     This is necessary for flow control.
 
     Data is read from the channel in chunks, with the maximum chunk being
-    defined by the chunk_size property.  In order for readline to work
-    properly, a read queue is maintained, which may grow up to queue_size.
-    See the readline() method for more details.
+    defined by the chunk_size property.  Unlike other APIs, read() does not
+    block and will not consume all data to the end of the channel, but rather
+    returns between 0 and chunk_size bytes when it becomes available.  If
+    read() returns a zero-byte string, it means the channel is closed.  (Here,
+    "returns X" means the InProgress read() actually returns is finished with
+    X.)
+
+    In order for readline to work properly, a read queue is maintained, which
+    may grow up to queue_size.  See the readline() method for more details.
     """
     def __init__(self, channel=None, mode=IO_READ|IO_WRITE, chunk_size=1024*1024, delimiter='\n'):
         self.signals = Signals('closed', 'read', 'readline')

@@ -157,8 +157,7 @@ class IOChannel(object):
         self.signals = Signals('closed', 'read', 'readline')
         self.delimiter = delimiter
         self._write_queue = []
-        # Read queue used only for read() and readline() (and not for 'read'
-        # and 'readline' signals).
+        # Read queue used for read() and readline(), and 'readline' signal.
         self._read_queue = cStringIO.StringIO()
         # Number of bytes each queue (read and write) are limited to.
         self._queue_size = 1024*1024

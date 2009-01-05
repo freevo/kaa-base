@@ -38,6 +38,7 @@ import socket
 import logging
 import time
 import fcntl
+import cStringIO
 
 import nf_wrapper as notifier
 from callback import WeakCallback, Callback
@@ -110,12 +111,52 @@ class IOChannel(object):
     Base class for read-only, write-only or read-write descriptors such as
     Socket and Process.  Implements logic common to communication over
     such channels such as async read/writes and read/write buffering.
+
+    It may also be used directly with file descriptors or file-like objects.
+    e.g. IOChannel(file('somefile'))
+
+    Writes may be performed to an IOChannel that is not yet open.  These writes
+    will be queued until the queue size limit (controlled by the queue_size
+    property) is reached, after which an exception will be raised.
+
+    Reads are asynchronous and non-blocking, and may be performed using two
+    possible approaches:
+
+        1. Connecting a callback to the 'read' or 'readline' signals.
+        2. Invoking the read() or readline() methods, which return InProgress
+           objects.
+
+    It is not possible to use both approaches with readline.  (That is, it
+    is not permitted to connect a callback to the 'readline' signals and
+    subsequently invoke the readline() method when the callback is still
+    connected.)
+
+    However, read() and readline() will work predictably when a callback is
+    connected to the 'read' signal. Such a callback always receives all data
+    from the channel once connected, but will not interfere with (or "steal"
+    data from) calls to read() or readline().
+
+    Data is not consumed from the channel if no one is interested in reads
+    (that is, when there are no read() or readline() calls in progress, and
+    there are no callbacks connected to the 'read' and 'readline' signals).
+    This is necessary for flow control.
+
+    Data is read from the channel in chunks, with the maximum chunk being
+    defined by the chunk_size property.  In order for readline to work
+    properly, a read queue is maintained, which may grow up to queue_size.
+    See the readline() method for more details.
     """
-    def __init__(self, channel=None, mode=IO_READ|IO_WRITE, chunk_size=1024*1024):
-        self.signals = Signals('closed', 'read', 'readline', 'write')
+    def __init__(self, channel=None, mode=IO_READ|IO_WRITE, chunk_size=1024*1024, delimiter='\n'):
+        self.signals = Signals('closed', 'read', 'readline')
+        self.delimiter = delimiter
         self._write_queue = []
-        self._queue_close = False
+        # Read queue used only for read() and readline() (and not for 'read'
+        # and 'readline' signals).
+        self._read_queue = cStringIO.StringIO()
+        # Number of bytes each queue (read and write) are limited to.
+        self._queue_size = 1024*1024
         self._chunk_size = chunk_size
+        self._queue_close = False
     
         # Internal signals for read() and readline()  (these are different from
         # the same-named public signals as they get emitted even when data is
@@ -140,7 +181,7 @@ class IOChannel(object):
     @property
     def alive(self):
         """
-        Returns True if the channel exists and is open.
+        True if the channel exists and is open.
         """
         # If the channel is closed, self._channel will be None.
         return self._channel != None
@@ -149,17 +190,21 @@ class IOChannel(object):
     @property
     def readable(self):
         """
-        Returns True if the channel is open, or if the channel is closed
-        but a read call would still succeed (due to buffered data).
+        True if the channel is open, or if the channel is closed but a read
+        call would still succeed (due to buffered data).
+
+        Note that a value of True does not mean there _is_ data available, but
+        rather that there could be and that a read() call is possible (however
+        that read() call may return None, in which case the readable property
+        will subsequently be False).
         """
-        # FIXME: update this when read buffering support is added (which is needed for readline)
-        return self._channel != None
+        return self._channel != None or self._read_queue.tell() > 0
 
 
     @property
     def writable(self):
         """
-        Returns True if the channel if a write() call will succeed.
+        True if the channel if a write() call will succeed.
         """
         # By default, this is always True because of write-buffering, but
         # subclasses may want to override.
@@ -169,8 +214,8 @@ class IOChannel(object):
     @property
     def fileno(self):
         """
-        Returns the file descriptor (integer) for this channel, or None if no
-        channel has been set.
+        The file descriptor (integer) for this channel, or None if no channel
+        has been set.
         """
         try:
             return self._channel.fileno()
@@ -183,8 +228,8 @@ class IOChannel(object):
         """
         Number of bytes to attempt to read from the channel at a time.  The
         default is 1M.  A 'read' signal is emitted for each chunk read from the
-        channel.  (The number of bytes read at a time may be less than the chunk
-        size, but will never be more.)
+        channel.  (The number of bytes read at a time may be less than the
+        chunk size, but will never be more.)
         """
         return self._chunk_size
 
@@ -194,17 +239,40 @@ class IOChannel(object):
         self._chunk_size = size
 
 
-    # TODO: settable write_queue_max property
+    @property
+    def queue_size(self):
+        """
+        The size limit in bytes for the read and write queues.  Each queue can
+        consume at most this size plus the chunk size.
+
+        Setting a value does not affect any data currently in any of the the
+        queues.
+        """
+        return self._queue_size
+
+
+    @queue_size.setter
+    def queue_size(self, value):
+        self._queue_size = value
+
 
     @property
-    def write_queue_size(self):
+    def write_queue_used(self):
         """
-        Returns the number of bytes queued in memory to be written to the
-        channel.
+        The number of bytes queued in memory to be written to the channel.
         """
         # XXX: this is not terribly efficient when the write queue has
         # many elements.  We may decide to keep a separate counter.
         return sum(len(data) for data, inprogress in self._write_queue)
+
+
+    @property
+    def read_queue_used(self):
+        """
+        The number of bytes in the read queue.  The read queue is only used if
+        either readline() or the readline signal is.
+        """
+        return self._read_queue.tell()
 
 
     def _is_read_connected(self):
@@ -284,6 +352,26 @@ class IOChannel(object):
         main.signals['shutdown'].connect_weak(self.close)
 
 
+    def _clear_read_queue(self):
+        self._read_queue.seek(0)
+        self._read_queue.truncate()
+
+
+    def _pop_line_from_read_queue(self):
+        """
+        Pops a line (plus delimiter) from the read queue.  If the delimiter
+        is not found in the queue, returns None.
+        """
+        s = self._read_queue.getvalue()
+        idx = s.find(self.delimiter)
+        if idx < 0:
+            return
+ 
+        self._clear_read_queue()
+        self._read_queue.write(s[idx + len(self.delimiter):])
+        return s[:idx + len(self.delimiter)]
+
+
     def _async_read(self, signal):
         """
         Common implementation for read() and readline().
@@ -300,10 +388,10 @@ class IOChannel(object):
 
     def read(self):
         """
-        Reads a chunk of data from the channel.  This function returns an 
-        InProgress object.  If the InProgress is finished with None, it
-        means that no data was collected and the channel was closed (or the
-        channel was already closed when read() was called).
+        Reads a chunk of data from the channel.  This function returns an
+        InProgress object.  If the InProgress is finished with the empty
+        string, it means that no data was collected and the channel was closed
+        (or the channel was already closed when read() was called).
 
         It is therefore possible to busy-loop by reading on a closed
         channel::
@@ -318,16 +406,43 @@ class IOChannel(object):
                 channel.read().wait()
 
         """
+        if self._read_queue.tell() > 0:
+            s = self._read_queue.getvalue()
+            self._clear_read_queue()
+            return InProgress().finish(s)
+
         return self._async_read(self._read_signal)
 
 
     def readline(self):
         """
-        Reads a line from the channel (with newline stripped).  The function
-        returns an InProgress object.  If the InProgress is finished with None
-        or the empty string, it means that no data was collected and the socket
-        closed.
+        Reads a line from the channel.  The line delimiter is included in the
+        string to avoid ambiguity.  If no delimiter is present then either the
+        read queue became full or the channel was closed before a delimiter was
+        received.
+
+        The function returns an InProgress object.  If the InProgress is
+        finished the empty string, it means that no data was collected and the
+        socket closed.
+
+        Data from the channel is read and queued in until the delimiter (\n by
+        default, but may be changed by the delimiter attribute) is found.  If
+        the read queue size exceeds the queue limit, then the InProgress
+        returned here will be finished prematurely with whatever is in the read
+        queue, and the read queue will be purged.
+
+        This method may not be called when a callback is connected to the
+        IOChannel's readline signal.  You must use either one approach or the
+        other.
         """
+        if self._is_readline_connected() and len(self._readline_signal) == 0:
+            # Connecting to 'readline' signal _and_ calling readline() is
+            # not supported.  It's unclear how to behave in this case.
+            raise RuntimeError('Callback currently connected to readline signal')
+
+        line = self._pop_line_from_read_queue()
+        if line:
+            return InProgress().finish(line)
         return self._async_read(self._readline_signal)
 
 
@@ -365,20 +480,46 @@ class IOChannel(object):
             log.exception('%s._handle_read failed, closing socket', self.__class__.__name__)
             data = None
 
-        # _read_signal is for InProgress objects waiting on the next read().
-        # For these we must emit even when data is None.
-        self._read_signal.emit(data)
-
         if not data:
-            self._readline_signal.emit(data)
+            # No data, channel is closed.  IOChannel.close will emit signals
+            # used for read() and readline() with any data left in the read
+            # queue in order to finish any InProgress waiting.
             return self.close(immediate=True, expected=False)
 
+        # _read_signal is for InProgress objects waiting on the next read().
+        self._read_signal.emit(data)
         self.signals['read'].emit(data)
  
+        if self._is_readline_connected():
+            if len(self._readline_signal) == 0:
+                # Callback is connected to the 'readline' signal, so loop
+                # through read queue and emit all lines individually.
+                lines = (self._read_queue.getvalue() + data).split(self.delimiter)
+                self._clear_read_queue()
+                if lines[-1] != '':
+                    # Queue did not end with delimiter, so push the remainder back.
+                    self._read_queue.write(lines[-1])
+                for line in lines[:-1]:
+                    self.signals['readline'].emit(line + self.delimiter)
 
-        if len(self._readline_signal) or len(self.signals['readline']):
-            # TODO: implement readline
-            self._readline_signal.emit(data)
+            else:
+                # No callbacks connected to 'readline' signal, here we handle
+                # a single readline() call.
+                if self.read_queue_used + len(data) > self._queue_size:
+                    # This data chunk would exceed the read queue limit.  We
+                    # instead emit whatever's in the read queue, and then start
+                    # it over with this chunk.
+                    # TODO: it's possible this chunk contains the delimiter we've
+                    # been waiting for.  If so, we could salvage things.
+                    line = self._read_queue.getvalue()
+                    self._clear_read_queue()
+                    self._read_queue.write(data)
+                else:
+                    self._read_queue.write(data)
+                    line = self._pop_line_from_read_queue()
+
+                if line is not None:
+                    self._readline_signal.emit(line)
 
         # Update read monitor if necessary.  If there are no longer any
         # callbacks left on any of the read signals (most likely _read_signal
@@ -416,6 +557,8 @@ class IOChannel(object):
             raise IOError(9, 'Cannot write to a read-only channel')
         if not self.writable:
             raise IOError(9, 'Channel is not writable')
+        if self.write_queue_used + len(data) > self._queue_size:
+            raise ValueError('Data would exceed write queue limit')
 
         inprogress = InProgress()
         if data:
@@ -521,9 +664,12 @@ class IOChannel(object):
         self._wmon = None
         self._queue_close = False
 
-        # Finish any InProgress waiting on read() or readline()
-        self._read_signal.emit(None)
-        self._readline_signal.emit(None)
+        # Finish any InProgress waiting on read() or readline() with whatever
+        # is left in the read queue.
+        s = self._read_queue.getvalue() or ''
+        self._read_signal.emit(s)
+        self._readline_signal.emit(s)
+        self._clear_read_queue()
 
         # Throw IOError to any pending InProgress in the write queue
         for data, inprogress in self._write_queue:

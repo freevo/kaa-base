@@ -100,12 +100,6 @@ class WeakIOMonitor(notifier.WeakNotifierCallback, IOMonitor):
     pass
 
 
-# We need to import main for the signals dict (we add a handler to
-# shutdown to gracefully close sockets), but main itself imports us
-# for IOMonitor.  So we must import main _after_ declaring IOMonitor,
-# instead of doing so at the top of the file.
-from kaa.notifier import main
-
 class IOChannel(object):
     """
     Base class for read-only, write-only or read-write descriptors such as
@@ -210,11 +204,14 @@ class IOChannel(object):
     @property
     def writable(self):
         """
-        True if the channel if a write() call will succeed.
+        True if write() may be called.  (However, if you pass too much data to
+        write() such that the write queue limit is exceeded, the write will
+        fail.)
         """
-        # By default, this is always True because of write-buffering, but
-        # subclasses may want to override.
-        return True
+        # By default, this is always True regardless if the channel is open, so
+        # long as there is space available in the write queue, but subclasses
+        # may want to override.
+        return self.write_queue_used < self._queue_size
 
 
     @property
@@ -225,7 +222,9 @@ class IOChannel(object):
         """
         try:
             return self._channel.fileno()
-        except AttributeError:
+        except (ValueError, AttributeError):
+            # AttributeError: probably not a file object (doesn't have fileno() anyway)
+            # ValueError: probably "I/O operation on a closed file"
             return self._channel
 
 
@@ -333,6 +332,11 @@ class IOChannel(object):
             # the existing one.
             self.close(immediate=True)
 
+        if isinstance(channel, IOChannel):
+            # Given channel is itself another IOChannel.  Wrap its underlying
+            # channel (file descriptor or other file-like object).
+            channel = channel._channel
+
         self._channel = channel
         self._mode = mode
         if not channel:
@@ -354,7 +358,8 @@ class IOChannel(object):
             if self._write_queue:
                 self._wmon.register(self.fileno, IO_WRITE)
 
-        # Disconnect channel on shutdown.
+        # Disconnect channel on shutdown.  Import main late to avoid import cycles.
+        from kaa.notifier import main
         main.signals['shutdown'].connect_weak(self.close)
 
 
@@ -428,8 +433,8 @@ class IOChannel(object):
         received.
 
         The function returns an InProgress object.  If the InProgress is
-        finished the empty string, it means that no data was collected and the
-        socket closed.
+        finished with the empty string, it means that no data was collected and
+        the socket closed.
 
         Data from the channel is read and queued in until the delimiter (\n by
         default, but may be changed by the delimiter attribute) is found.  If
@@ -547,7 +552,9 @@ class IOChannel(object):
         """
         Writes the given data to the channel.  This method returns an InProgress
         object which is finished when the given data is fully written to the
-        channel.
+        channel.  The InProgress is finished with the number of bytes sent
+        in the last write required to commit the given data to the channel.
+        (This may not be the actual number of bytes of the given data.)
 
         It is not required that the channel be open in order to write to it.
         Written data is queued until the channel open and then flushed.  As
@@ -672,7 +679,7 @@ class IOChannel(object):
 
         # Finish any InProgress waiting on read() or readline() with whatever
         # is left in the read queue.
-        s = self._read_queue.getvalue() or ''
+        s = self._read_queue.getvalue()
         self._read_signal.emit(s)
         self._readline_signal.emit(s)
         self._clear_read_queue()
@@ -696,4 +703,6 @@ class IOChannel(object):
             self._channel = None
 
             self.signals['closed'].emit(expected)
+            # Import main late to avoid import cycles.
+            from kaa.notifier import main
             main.signals['shutdown'].disconnect(self.close)

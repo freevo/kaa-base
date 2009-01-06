@@ -246,11 +246,18 @@ class InProgress(Signal):
 
     @property
     def finished(self):
+        """
+        True if the InProgress is finished.
+        """
         return self._finished
 
 
     @property
     def result(self):
+        """
+        The result the InProgress was finished with.  If an exception was thrown
+        to the InProgress, accessing this property will raise that exception.
+        """
         return self.get_result()
 
 

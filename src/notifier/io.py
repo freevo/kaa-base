@@ -56,7 +56,9 @@ IO_WRITE  = 2
 class IOMonitor(notifier.NotifierCallback):
     def __init__(self, callback, *args, **kwargs):
         """
-        Creates an IOMonitor to monitor IO activity.
+        Creates an IOMonitor to monitor IO activity via the Notifier.  Once a
+        file descriptor is registered using the :meth:`~kaa.IOMonitor.register`
+        method, the given *callback* is invoked upon I/O activity.
         """
         super(IOMonitor, self).__init__(callback, *args, **kwargs)
         self.ignore_caller_args = True
@@ -65,8 +67,10 @@ class IOMonitor(notifier.NotifierCallback):
     def register(self, fd, condition = IO_READ):
         """
         Register the IOMonitor to a specific file descriptor
-        @param fd: File descriptor or Python socket object
-        @param condition: IO_READ or IO_WRITE
+
+        :param fd: The file descriptor to monitor.
+        :type fd: File descriptor or any file-like object
+        :param condition: IO_READ or IO_WRITE
         """
         if self.active():
             if fd != self._id or condition != self._condition:
@@ -109,47 +113,60 @@ class IOChannel(object):
     It may also be used directly with file descriptors or file-like objects.
     e.g. IOChannel(file('somefile'))
 
+    :param channel: file descriptor to wrap into an IOChannel
+    :type channel: integer file descriptor, file-like object, or other IOChannel
+    :param mode: indicates whether the channel is readable, writable, or both.
+    :type mode: bitmask of kaa.IO_READ and/or kaa.IO_WRITE
+    :param chunk_size: maximum number of bytes to be read in from the channel
+                       at a time; defaults to 1M.
+    :param delimiter: string used to split data for use with readline; defaults
+                      to '\\\\n'.
+
     Writes may be performed to an IOChannel that is not yet open.  These writes
-    will be queued until the queue size limit (controlled by the queue_size
-    property) is reached, after which an exception will be raised.  The write
-    queue will be written to the channel once it becomes writable.
+    will be queued until the queue size limit (controlled by the
+    :attr:`~kaa.IOChannel.queue_size` property) is reached, after which an
+    exception will be raised.  The write queue will be written to the channel
+    once it becomes writable.
 
     Reads are asynchronous and non-blocking, and may be performed using two
     possible approaches:
 
-        1. Connecting a callback to the 'read' or 'readline' signals.
-        2. Invoking the read() or readline() methods, which return InProgress
-           objects.
+        1. Connecting a callback to the *read* or *readline* signals.
+        2. Invoking the :meth:`~kaa.IOChannel.read` or
+           :meth:`~kaa.IOChannel.readline` methods, which return
+           :class:`kaa.InProgress` objects.
 
     It is not possible to use both approaches with readline.  (That is, it
-    is not permitted to connect a callback to the 'readline' signal and
-    subsequently invoke the readline() method when the callback is still
-    connected.)
+    is not permitted to connect a callback to the *readline* signal and
+    subsequently invoke the :meth:`~kaa.IOChannel.readline` method when the
+    callback is still connected.)
 
-    However, read() and readline() will work predictably when a callback is
-    connected to the 'read' signal. Such a callback always receives all data
-    from the channel once connected, but will not interfere with (or "steal"
-    data from) calls to read() or readline().
+    However, :meth:`~kaa.IOChannel.read` and :meth:`~kaa.IOChannel.readline`
+    will work predictably when a callback is connected to the *read* signal.
+    Such a callback always receives all data from the channel once connected,
+    but will not interfere with (or "steal" data from) calls to read() or
+    readline().
 
     Data is not consumed from the channel if no one is interested in reads
     (that is, when there are no read() or readline() calls in progress, and
-    there are no callbacks connected to the 'read' and 'readline' signals).
+    there are no callbacks connected to the *read* and *readline* signals).
     This is necessary for flow control.
 
     Data is read from the channel in chunks, with the maximum chunk being
-    defined by the chunk_size property.  Unlike other APIs, read() does not
-    block and will not consume all data to the end of the channel, but rather
-    returns between 0 and chunk_size bytes when it becomes available.  If
-    read() returns a zero-byte string, it means the channel is closed.  (Here,
-    "returns X" means the InProgress read() actually returns is finished with
-    X.)
+    defined by the :attr:`~kaa.IOChannel.queue_size` property.  Unlike other
+    APIs, read() does not block and will not consume all data to the end of the
+    channel, but rather returns between 0 and *chunk_size* bytes when it
+    becomes available.  If read() returns a zero-byte string, it means the
+    channel is closed.  (Here, "returns X" means the :class:`kaa.InProgress`
+    object read() actually returns is finished with X.)
 
     In order for readline to work properly, a read queue is maintained, which
-    may grow up to queue_size.  See the readline() method for more details.
+    may grow up to *queue_size*.  See the :meth:`~kaa.IOChannel.readline` method
+    for more details.
     """
     def __init__(self, channel=None, mode=IO_READ|IO_WRITE, chunk_size=1024*1024, delimiter='\n'):
         self.signals = Signals('closed', 'read', 'readline')
-        self.delimiter = delimiter
+        self._delimiter = delimiter
         self._write_queue = []
         # Read queue used for read() and readline(), and 'readline' signal.
         self._read_queue = cStringIO.StringIO()
@@ -279,6 +296,18 @@ class IOChannel(object):
         """
         return self._read_queue.tell()
 
+    @property
+    def delimiter(self):
+        """
+        String used to split data for use with :meth:`~kaa.IOChannel.readline`.
+        """
+        return self._delimiter
+
+
+    @delimiter.setter
+    def delimiter(self, value):
+        self._delimiter = value
+
 
     def _is_read_connected(self):
         """
@@ -324,8 +353,14 @@ class IOChannel(object):
 
     def wrap(self, channel, mode):
         """
-        Wraps an existing channel.  Assumes a file-like object or a file
-        descriptor (int).
+        Wraps an existing channel.
+        
+        :param channel: file descriptor to wrap into the IOChannel
+        :type channel: integer file descriptor, file-like object, or 
+                       other IOChannel
+        :param mode: indicates whether the channel is readable, writable,
+                     or both.
+        :type mode: bitmask of kaa.IO_READ and/or kaa.IO_WRITE
         """
         if hasattr(self, '_channel') and self._channel:
             # Wrapping a new channel while an existing one is open, so close
@@ -374,13 +409,13 @@ class IOChannel(object):
         is not found in the queue, returns None.
         """
         s = self._read_queue.getvalue()
-        idx = s.find(self.delimiter)
+        idx = s.find(self._delimiter)
         if idx < 0:
             return
  
         self._clear_read_queue()
-        self._read_queue.write(s[idx + len(self.delimiter):])
-        return s[:idx + len(self.delimiter)]
+        self._read_queue.write(s[idx + len(self._delimiter):])
+        return s[:idx + len(self._delimiter)]
 
 
     def _async_read(self, signal):
@@ -399,10 +434,12 @@ class IOChannel(object):
 
     def read(self):
         """
-        Reads a chunk of data from the channel.  This function returns an
-        InProgress object.  If the InProgress is finished with the empty
-        string, it means that no data was collected and the channel was closed
-        (or the channel was already closed when read() was called).
+        Reads a chunk of data from the channel.
+        
+        :returns: A :class:`kaa.InProgress` object. If the InProgress is
+                  finished with the empty string, it means that no data 
+                  was collected and the channel was closed (or the channel 
+                  was already closed when read() was called).
 
         It is therefore possible to busy-loop by reading on a closed
         channel::
@@ -432,12 +469,13 @@ class IOChannel(object):
         read queue became full or the channel was closed before a delimiter was
         received.
 
-        The function returns an InProgress object.  If the InProgress is
-        finished with the empty string, it means that no data was collected and
-        the socket closed.
+        :returns: A :class:`kaa.InProgress` object. If the InProgress is
+                  finished with the empty string, it means that no data 
+                  was collected and the channel was closed (or the channel 
+                  was already closed when readline() was called).
 
-        Data from the channel is read and queued in until the delimiter (\n by
-        default, but may be changed by the delimiter attribute) is found.  If
+        Data from the channel is read and queued in until the delimiter (\\\\n by
+        default, but may be changed by the delimiter property) is found.  If
         the read queue size exceeds the queue limit, then the InProgress
         returned here will be finished prematurely with whatever is in the read
         queue, and the read queue will be purged.
@@ -505,13 +543,13 @@ class IOChannel(object):
             if len(self._readline_signal) == 0:
                 # Callback is connected to the 'readline' signal, so loop
                 # through read queue and emit all lines individually.
-                lines = (self._read_queue.getvalue() + data).split(self.delimiter)
+                lines = (self._read_queue.getvalue() + data).split(self._delimiter)
                 self._clear_read_queue()
                 if lines[-1] != '':
                     # Queue did not end with delimiter, so push the remainder back.
                     self._read_queue.write(lines[-1])
                 for line in lines[:-1]:
-                    self.signals['readline'].emit(line + self.delimiter)
+                    self.signals['readline'].emit(line + self._delimiter)
 
             else:
                 # No callbacks connected to 'readline' signal, here we handle
@@ -550,11 +588,16 @@ class IOChannel(object):
 
     def write(self, data):
         """
-        Writes the given data to the channel.  This method returns an InProgress
-        object which is finished when the given data is fully written to the
-        channel.  The InProgress is finished with the number of bytes sent
-        in the last write required to commit the given data to the channel.
-        (This may not be the actual number of bytes of the given data.)
+        Writes the given data to the channel.
+        
+        :param data: the data to be written to the channel.
+        :type data: string
+
+        :returns: An :class:`kaa.InProgress` object which is finished when the
+                  given data is fully written to the channel.  The InProgress
+                  is finished with the number of bytes sent in the last write 
+                  required to commit the given data to the channel.  (This may
+                  not be the actual number of bytes of the given data.)
 
         It is not required that the channel be open in order to write to it.
         Written data is queued until the channel open and then flushed.  As
@@ -652,10 +695,13 @@ class IOChannel(object):
 
     def close(self, immediate=False, expected=True):
         """
-        Closes the channel.  If immediate is False and there is data in the
-        write buffer, the channel is closed once the write buffer is emptied.
-        Otherwise the channel is closed immediately and the 'closed' signal
-        is emitted.
+        Closes the channel.
+        
+        :param immediate: if False and there is data in the write buffer, the
+                          channel is closed once the write buffer is emptied.
+                          Otherwise the channel is closed immediately and the 
+                          *closed* signal is emitted.
+        :type immediate: bool
         """
         log.debug('IOChannel closed: channel=%s, immediate=%s, fd=%s', self, immediate, self.fileno)
         if not immediate and self._write_queue:

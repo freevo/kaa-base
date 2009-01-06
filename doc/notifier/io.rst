@@ -1,17 +1,23 @@
 I/O
 ===
 
+.. autoclass:: kaa.IOMonitor
+   :members:
+
+.. autoclass:: kaa.IOChannel
+   :members:
+
+
 Socket I/O
 ----------
 
-FIXME: this section is not yet written
-
 .. autoclass:: kaa.Socket
+   :members:
+   :inherited-members:
 
 
 Sub-Process I/O
 ---------------
 
-FIXME: this section is not yet written
-
-.. autoclass:: kaa.Process
+.. autoclass:: kaa.Process2
+   :members:

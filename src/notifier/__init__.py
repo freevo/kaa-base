@@ -66,6 +66,7 @@ from coroutine import NotFinished, coroutine, \
 
 # process management
 from popen import Process
+from process import Process2
 
 # special gobject thread support
 from gobject import GOBJECT, gobject_set_threaded

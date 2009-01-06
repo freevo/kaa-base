@@ -52,7 +52,6 @@ import nf_wrapper as notifier
 from signals import Signal
 from timer import OneShotTimer
 from popen import proclist as _proclist
-from process import supervisor
 from thread import is_mainthread, wakeup, set_as_mainthread, threaded, MAINTHREAD
 from thread import killall as kill_jobserver
 
@@ -205,7 +204,6 @@ def stop():
 
     _shutting_down = True
 
-    supervisor.stopall()
     _proclist.stop_all()
     signals["shutdown"].emit()
     signals["shutdown"].disconnect_all()
@@ -213,8 +211,6 @@ def stop():
 
     # Kill processes _after_ shutdown emits to give callbacks a chance to
     # close them properly.
-    supervisor.killall()
-
     _proclist.kill_all()
     while _proclist.check():
         # wait until all processes are stopped

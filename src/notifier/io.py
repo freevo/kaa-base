@@ -134,7 +134,7 @@ class IOChannel(object):
         1. Connecting a callback to the *read* or *readline* signals.
         2. Invoking the :meth:`~kaa.IOChannel.read` or
            :meth:`~kaa.IOChannel.readline` methods, which return
-           :class:`kaa.InProgress` objects.
+           :class:`~kaa.InProgress` objects.
 
     It is not possible to use both approaches with readline.  (That is, it
     is not permitted to connect a callback to the *readline* signal and
@@ -157,7 +157,7 @@ class IOChannel(object):
     APIs, read() does not block and will not consume all data to the end of the
     channel, but rather returns between 0 and *chunk_size* bytes when it
     becomes available.  If read() returns a zero-byte string, it means the
-    channel is closed.  (Here, "returns X" means the :class:`kaa.InProgress`
+    channel is closed.  (Here, "returns X" means the :class:`~kaa.InProgress`
     object read() actually returns is finished with X.)
 
     In order for readline to work properly, a read queue is maintained, which
@@ -436,7 +436,7 @@ class IOChannel(object):
         """
         Reads a chunk of data from the channel.
         
-        :returns: A :class:`kaa.InProgress` object. If the InProgress is
+        :returns: An :class:`~kaa.InProgress` object. If the InProgress is
                   finished with the empty string, it means that no data 
                   was collected and the channel was closed (or the channel 
                   was already closed when read() was called).
@@ -469,7 +469,7 @@ class IOChannel(object):
         read queue became full or the channel was closed before a delimiter was
         received.
 
-        :returns: A :class:`kaa.InProgress` object. If the InProgress is
+        :returns: An :class:`~kaa.InProgress` object. If the InProgress is
                   finished with the empty string, it means that no data 
                   was collected and the channel was closed (or the channel 
                   was already closed when readline() was called).
@@ -593,7 +593,7 @@ class IOChannel(object):
         :param data: the data to be written to the channel.
         :type data: string
 
-        :returns: An :class:`kaa.InProgress` object which is finished when the
+        :returns: An :class:`~kaa.InProgress` object which is finished when the
                   given data is fully written to the channel.  The InProgress
                   is finished with the number of bytes sent in the last write 
                   required to commit the given data to the channel.  (This may

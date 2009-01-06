@@ -599,6 +599,9 @@ class IOChannel(object):
                   required to commit the given data to the channel.  (This may
                   not be the actual number of bytes of the given data.)
 
+                  If the channel closes unexpectedly before the data was
+                  written, an IOError is thrown to the InProgress.
+
         It is not required that the channel be open in order to write to it.
         Written data is queued until the channel open and then flushed.  As
         writes are asynchronous, all written data is queued.  It is the

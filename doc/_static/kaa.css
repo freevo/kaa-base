@@ -1,9 +1,9 @@
 table.kaa.synopsis {
-    border-top: 1px solid #c69f71;
-    border-bottom: 1px solid #c69f71;
+    border-top: 1px solid #d2b089;
+    border-bottom: 1px solid #d2b089;
     width: 95%;
     margin: 0 auto;
-    background-color: #efdfcb;
+    background-color: #f8f0e6;
     padding: 5px;
     margin-bottom: 1em;
 }
@@ -11,12 +11,12 @@ table.kaa.synopsis {
 table.kaa.synopsis th{
 
     white-space: nowrap;
-    border-bottom: 1px solid #e7d0b5;
+    border-bottom: 1px solid #efddc8;
 }
 
 table.kaa.synopsis td {
     width: 100%;
-    border-bottom: 1px solid #e7d0b5;
+    border-bottom: 1px solid #efddc8;
 }
 
 p.hierarchy {

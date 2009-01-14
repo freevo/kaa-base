@@ -26,11 +26,10 @@ from kaa.version import VERSION
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = [ 'sphinx.ext.autodoc' ]
+extensions = [ 'sphinx.ext.autodoc', 'kaa.distribution.sphinxext' ]
 
 # Add any paths that contain templates here, relative to this directory.
-# templates_path = ['.templates']
-templates_path = []
+templates_path = ['_templates']
 
 # The suffix of source filenames.
 source_suffix = '.rst'
@@ -108,8 +107,7 @@ html_style = 'default.css'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-# html_static_path = ['.static']
-html_static_path = []
+html_static_path = ['_static']
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.

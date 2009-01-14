@@ -27,7 +27,7 @@ is emitted, we say that it is "finished."
 InProgress objects are emitted (they are Signal objects, remember)
 when finished, so handlers can retrieve the return value of the
 asynchronous task. There is also an exception member, which is itself
-a Signal, and is emitted when he asynchronous task raises an
+a Signal, and is emitted when the asynchronous task raises an
 exception. Exception handlers must accept three arguments: exception
 class, exception instance, and traceback object. InProgress objects
 have the following methods:

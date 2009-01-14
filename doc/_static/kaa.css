@@ -1,0 +1,19 @@
+table.kaa {
+    border-top: 1px solid #c69f71;
+    border-bottom: 1px solid #c69f71;
+    width: 95%;
+    margin: 0 auto;
+    background-color: #efdfcb;
+    padding: 5px;
+    margin-bottom: 1em;
+}
+
+table.kaa th {
+    white-space: nowrap;
+    border-bottom: 1px solid #e7d0b5;
+}
+
+table.kaa td {
+    width: 100%;
+    border-bottom: 1px solid #e7d0b5;
+}

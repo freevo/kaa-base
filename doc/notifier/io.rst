@@ -1,23 +1,45 @@
 I/O
 ===
 
+Monitoring I/O
+--------------
+
 .. autoclass:: kaa.IOMonitor
-   :members:
+
+   .. autosynopsis:: kaa.IOMonitor
+   .. automethods:: kaa.IOMonitor
+   .. autoproperties:: kaa.IOMonitor
+   .. autosignals:: kaa.IOMonitor
+
+
+Communication over I/O channels
+-------------------------------
 
 .. autoclass:: kaa.IOChannel
-   :members:
+
+   .. autosynopsis:: kaa.IOChannel
+   .. automethods:: kaa.IOChannel
+   .. autoproperties:: kaa.IOChannel
+   .. autosignals:: kaa.IOChannel
 
 
 Socket I/O
 ----------
 
 .. autoclass:: kaa.Socket
-   :members:
-   :inherited-members:
+
+   .. autosynopsis:: kaa.Socket
+   .. automethods:: kaa.Socket
+   .. autoproperties:: kaa.Socket
+   .. autosignals:: kaa.Socket
 
 
 Sub-Process I/O
 ---------------
 
 .. autoclass:: kaa.Process2
-   :members:
+
+   .. autosynopsis:: kaa.Process2
+   .. automethods:: kaa.Process2
+   .. autoproperties:: kaa.Process2
+   .. autosignals:: kaa.Process2

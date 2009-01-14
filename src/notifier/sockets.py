@@ -246,10 +246,11 @@ class Socket(IOChannel):
         """
         Sets the socket to listen.
 
-        The socket will listen on bind_info, which is either an integer
-        corresponding the port to listen to, or a 2-tuple of the IP and port.
-        In the case where only the port number is specified, the socket will be
-        bound to all interfaces.
+        :param bind_info: Binds the socket using this value.  If an int, this
+                          specifies a port that is bound on all interfaces; if
+                          a 2-tuple, specifies (ip, port) where ip is the
+                          single interface on which to bind.
+        :type bind_info: int or 2-tuple
 
         If the bind fails, an exception is raised.
 
@@ -295,11 +296,15 @@ class Socket(IOChannel):
     def connect(self, addr):
         """
         Connects to the host specified in address.
-        
-        If addr is a string in the form host:port, or a tuple the form (host,
-        port), a TCP socket is established.  Otherwise a Unix socket is
-        established and addr is treated as a filename.  In this case, if addr
-        does not start with a / character, a kaa tempfile is created.
+
+        :param addr: if a string in the form host:port, or a tuple 
+                     the form (host, port), a TCP socket is established.
+                     Otherwise a Unix socket is established and addr is treated
+                     as a filename.  In this case, if addr does not start with
+                     a / character, a kaa tempfile is created.
+        :type addr: str or 2-tuple
+
+        :returns: An :class:`~kaa.InProgress` object.
 
         This function is executed in a thread to avoid blocking.  It therefore
         returns an InProgress object.  If the socket is connected, the InProgress
@@ -358,6 +363,15 @@ class Socket(IOChannel):
 
 
     def close(self, immediate=False, expected=True):
+        """
+        Closes the channel.
+        
+        :param immediate: if False and there is data in the write buffer, the
+                          channel is closed once the write buffer is emptied.
+                          Otherwise the channel is closed immediately and the 
+                          *closed* signal is emitted.
+        :type immediate: bool
+        """
         super(Socket, self).close(immediate, expected)
         if self._listening and isinstance(self._addr, basestring) and self._addr.startswith('/'):
             # Remove unix socket if it exists.

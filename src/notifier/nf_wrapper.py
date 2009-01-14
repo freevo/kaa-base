@@ -63,6 +63,9 @@ class NotifierCallback(Callback):
 
 
     def active(self):
+        """
+        FIXME: This should be a property.
+        """
         # callback is active if id is not None and python is not shutting down
         # if python is in shutdown, notifier unregister could crash
         return self._id != None and _python_shutting_down == False

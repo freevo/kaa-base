@@ -27,6 +27,22 @@
 # -----------------------------------------------------------------------------
 import inspect
 
+def get_all_signals(cls):
+    """
+    Merge __kaasignals__ dict for the entire inheritance tree for the given
+    class.  Newer (most descended) __kaasignals__ will replace older ones if
+    there are conflicts.
+    """
+    signals = {}
+    for c in reversed(inspect.getmro(cls)):
+        if hasattr(c, '__kaasignals__'):
+            signals.update(c.__kaasignals__)
+
+    # Remove all signals whose value is None.
+    [ signals.pop(k) for k, v in signals.items() if v is None ]
+    return signals
+
+
 class Object(object):
     """
     Base class for kaa objects.
@@ -79,16 +95,7 @@ class Object(object):
         # descendants to be involved in inheritance diamonds.
         super(Object, self).__init__(*args, **kwargs)
 
-        # Merge __kaasignals__ dict for the entire inheritance tree.  Newer
-        # (most descended) __kaasignals__ will replace older ones if there
-        # are conflicts.
-        signals = {}
-        for cls in reversed(inspect.getmro(self.__class__,)):
-            if hasattr(cls, '__kaasignals__'):
-                signals.update(cls.__kaasignals__)
-
-        # Remove all signals whose value is None.
-        [ signals.pop(k) for k, v in signals.items() if v is None ]
+        signals = get_all_signals(self.__class__)
         if signals:
             # Import Signals late to allow circular importing.
             from signals import Signals

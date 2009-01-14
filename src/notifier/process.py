@@ -223,7 +223,7 @@ class Process2(object):
     @property
     def stdin(self):
         """
-        IOChannel of child process's stdin.
+        :class:`~kaa.IOChannel` of child process's stdin.
         
         This object is valid even when the child is not running.
         """
@@ -233,7 +233,7 @@ class Process2(object):
     @property
     def stdout(self):
         """
-        IOChannel of child process's stdout.
+        :class:`~kaa.IOChannel` of child process's stdout.
         
         This object is valid even when the child is not running, although it is
         obviously not readable until the child is started.
@@ -244,7 +244,7 @@ class Process2(object):
     @property
     def stderr(self):
         """
-        IOChannel of child process's stderr.
+        :class:`~kaa.IOChannel` of child process's stderr.
         
         This object is valid even when the child is not running, although it is
         obviously not readable until the child is started.

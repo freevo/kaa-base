@@ -1,4 +1,4 @@
-table.kaa {
+table.kaa.synopsis {
     border-top: 1px solid #c69f71;
     border-bottom: 1px solid #c69f71;
     width: 95%;
@@ -8,12 +8,27 @@ table.kaa {
     margin-bottom: 1em;
 }
 
-table.kaa th {
+table.kaa.synopsis th{
+
     white-space: nowrap;
     border-bottom: 1px solid #e7d0b5;
 }
 
-table.kaa td {
+table.kaa.synopsis td {
     width: 100%;
     border-bottom: 1px solid #e7d0b5;
+}
+
+p.hierarchy {
+        padding-left: 1em;
+}
+
+p.hierarchy .current {
+    background-color: #cfe3ff;
+    padding: 2px;
+    font-weight: normal;
+}
+
+p.hierarchy tt {
+    font-weight: normal;
 }

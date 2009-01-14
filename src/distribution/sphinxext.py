@@ -91,14 +91,29 @@ def normalize_class_name(mod, name):
     return '%s.%s' % (mod, name)
     
 
-def tree(list, cls, level=0):
+def tree(list, cls, level=0, clstree=None):
+    if clstree is None:
+        clstree = []
+
     name = normalize_class_name(cls.__module__, cls.__name__)
     if level > 0:
         name = ':class:`%s`' % name
-    list.append('%d %s' % (level, name), '')
+    else:
+        name = '!' + name
+
+    clstree.append((level, name))
+
     for c in cls.__bases__:
         if c != object:
-            tree(list, c, level+1)
+            tree(list, c, level+1, clstree)
+
+    if level == 0:
+        clstree = sorted(set(clstree), key=lambda x: -x[0])
+        depth = max(clstree, key=lambda x: x[0])[0]
+        for level, name in [ (abs(level-depth), cls) for level, cls in clstree ]:
+            list.append('%d %s' % (level, name), '')
+
+    return clstree
 
 
 def synopsis_directive(name, arguments, options, content, lineno,
@@ -177,16 +192,18 @@ def kaatable_depart(self, node):
     signals_filter = lambda name: link('signals.%s' % name, name)
 
 
+    self.body.append('<div class="kaa synopsis">')
     self.body.append('<h4>Synopsis</h4>')
-    self.body.append('<b>Hierarchy Tree (Inverted)</b>')
+    self.body.append('<div class="heading">Class Hierarchy</div>')
     self.body.append('<p class="hierarchy">')
     for line in tree.split('\n'):
         if not line:
             continue
         level, clsname = line.split(' ', 1)
-        if level == '0':
-            clsname = '<tt class="xref docutils literal current">%s</tt>' % clsname
-        self.body.append('%s+-- %s<br />' % ('&nbsp;' * 3 * int(level), clsname))
+        if clsname.startswith('!'):
+            clsname = '<tt class="xref docutils literal current">%s</tt>' % clsname[1:]
+        prefix = '%s%s' % ('&nbsp;' * 4 * (int(level)-1), ('', '&#9492;&#9472; ')[level != '0'])
+        self.body.append('%s%s<br />' % (prefix, clsname))
     self.body.append('</p>')
 
 
@@ -194,15 +211,16 @@ def kaatable_depart(self, node):
     for what in ('methods', 'properties', 'signals'):
         list = locals()[what]
         filter = locals()['%s_filter' % what]
-        self.body.append('<b>%s</b>' % what.title())
+        self.body.append('<div class="heading">%s</div>' % what.title())
         if not list:
             self.body.append('<p>This class has no %s.</p>' % what)
         else:
-            self.body.append('<table class="kaa synopsis %s">' % what)
+            self.body.append('<table>')
             for name, desc in list:
                 self.body.append('<tr><th>%s</th><td>%s</td></tr>' % (filter(name), desc))
             self.body.append('</table>')
 
+    self.body.append('</div>')
 
 
 def auto_directive(name, arguments, options, content, lineno,

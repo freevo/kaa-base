@@ -497,8 +497,9 @@ class IOChannel(Object):
                   was collected and the channel was closed (or the channel 
                   was already closed when read() was called).
 
-        It is therefore possible to busy-loop by reading on a closed
-        channel::
+        It is therefore possible to busy-loop by reading on a closed channel,
+        when calling :meth:`~kaa.InProgress.wait` on the returned InProgress
+        object::
 
             while True:
                 channel.read().wait()

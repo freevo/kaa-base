@@ -1,4 +1,4 @@
-table.kaa.synopsis {
+div.kaa.synopsis table {
     border-top: 1px solid #d2b089;
     border-bottom: 1px solid #d2b089;
     width: 95%;
@@ -8,22 +8,22 @@ table.kaa.synopsis {
     margin-bottom: 1em;
 }
 
-table.kaa.synopsis th{
-
+div.kaa.synopsis th {
     white-space: nowrap;
     border-bottom: 1px solid #efddc8;
+    padding-right: 2em;
 }
 
-table.kaa.synopsis td {
+div.kaa.synopsis td {
     width: 100%;
     border-bottom: 1px solid #efddc8;
 }
 
-p.hierarchy {
-        padding-left: 1em;
+div.kaa.synopsis p {
+        padding-left: 1.5em;
 }
 
-p.hierarchy .current {
+div.kaa.synopsis p.hierarchy .current {
     background-color: #cfe3ff;
     padding: 2px;
     font-weight: normal;
@@ -31,4 +31,11 @@ p.hierarchy .current {
 
 p.hierarchy tt {
     font-weight: normal;
+}
+
+div.kaa.synopsis div.heading {
+    font-weight: bold;
+    margin-top: 0.5em;
+    margin-bottom: 0.3em;
+
 }

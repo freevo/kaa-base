@@ -54,6 +54,17 @@ class Socket(IOChannel):
     Notifier-aware socket class, implementing fully asynchronous reads
     and writes.
     """
+    __kaasignals__ = {
+        'new-client':
+            '''
+            Emitted when a new client connects to a listening socket.
+
+            ``def callback(client, ...)``
+
+            :param client: the new client that just connected.
+            :type client: :class:`~kaa.Socket` object
+            '''
+    }
 
     def __init__(self, buffer_size=None, chunk_size=1024*1024):
         self._connecting = False
@@ -62,7 +73,6 @@ class Socket(IOChannel):
         self._buffer_size = buffer_size
 
         super(Socket, self).__init__(chunk_size=chunk_size)
-        self.signals += ('new-client',)
 
 
     def __repr__(self):
@@ -76,8 +86,9 @@ class Socket(IOChannel):
     def address(self):
         """
         Either a 2-tuple containing the (host, port) of the remote end of the
-        socket (host may be an IP address or hostname, but it always a string),
-        or a string in the case of a UNIX socket.
+        socket, or a string in the case of a UNIX socket.
+
+        host may be an IP address or hostname, but it is always a string.
 
         If this is a listening socket, it is a 2-tuple of the address
         the socket was bound to.
@@ -97,9 +108,10 @@ class Socket(IOChannel):
     def connecting(self):
         """
         True if the socket is in the process of establishing a connection
-        but is not yet connected.  Once the socket is connected, the
-        connecting property will be False, but the connected property
-        will be True.
+        but is not yet connected.
+        
+        Once the socket is connected, the connecting property will be False,
+        but the connected property will be True.
         """
         return self._connecting
 
@@ -120,8 +132,10 @@ class Socket(IOChannel):
     @property
     def alive(self):
         """
-        Returns True if the socket is alive, and False otherwise.  A socket is
-        considered alive when it is connected or in the process of connecting.
+        True if the socket is alive, and False otherwise.
+
+        A socket is considered alive when it is connected or in the process of
+        connecting.
         """
         return self.connected or self.connecting
 
@@ -129,8 +143,9 @@ class Socket(IOChannel):
     @IOChannel.readable.getter
     def readable(self):
         """
-        Returns True if the socket is readable, and False otherwise.  A socket is
-        considered readable when it is listening or alive.
+        True if the socket is readable, and False otherwise.
+        
+        A socket is considered readable when it is listening or alive.
         """
         # Note: this property is used in superclass's _update_read_monitor()
         return self._listening or self.alive
@@ -140,10 +155,12 @@ class Socket(IOChannel):
     def buffer_size(self):
         """
         Size of the send and receive socket buffers (SO_SNDBUF and SO_RCVBUF)
-        in bytes.  Setting this to higher values (say 1M) improves performance
-        when sending large amounts of data across the socket.  Note that the
-        upper bound may be restricted by the kernel.  (Under Linux, this can be
-        tuned by adjusting /proc/sys/net/core/[rw]mem_max)
+        in bytes.
+        
+        Setting this to higher values (say 1M) improves performance when
+        sending large amounts of data across the socket.  Note that the upper
+        bound may be restricted by the kernel.  (Under Linux, this can be tuned
+        by adjusting /proc/sys/net/core/[rw]mem_max)
         """
         return self._buffer_size
 
@@ -227,10 +244,12 @@ class Socket(IOChannel):
 
     def listen(self, bind_info, qlen=5):
         """
-        Sets the socket to listen on bind_info, which is either an integer
+        Sets the socket to listen.
+
+        The socket will listen on bind_info, which is either an integer
         corresponding the port to listen to, or a 2-tuple of the IP and port.
-        In the case where only the port number is specified, the socket will
-        be bound to all interfaces.
+        In the case where only the port number is specified, the socket will be
+        bound to all interfaces.
 
         If the bind fails, an exception is raised.
 
@@ -275,11 +294,12 @@ class Socket(IOChannel):
 
     def connect(self, addr):
         """
-        Connects to the host specified in addr.  If addr is a string in the
-        form host:port, or a tuple the form (host, port), a TCP socket is
-        established.  Otherwise a Unix socket is established and addr is
-        treated as a filename.  In this case, if addr does not start with a /
-        character, a kaa tempfile is created.
+        Connects to the host specified in address.
+        
+        If addr is a string in the form host:port, or a tuple the form (host,
+        port), a TCP socket is established.  Otherwise a Unix socket is
+        established and addr is treated as a filename.  In this case, if addr
+        does not start with a / character, a kaa tempfile is created.
 
         This function is executed in a thread to avoid blocking.  It therefore
         returns an InProgress object.  If the socket is connected, the InProgress
@@ -292,8 +312,9 @@ class Socket(IOChannel):
 
     def wrap(self, sock, addr=None):
         """
-        Wraps an existing low-level socket object.  addr specifies the address
-        corresponding to the socket.
+        Wraps an existing low-level socket object.
+        
+        addr specifies the address corresponding to the socket.
         """
         super(Socket, self).wrap(sock, IO_READ|IO_WRITE)
         self._addr = addr or self._addr

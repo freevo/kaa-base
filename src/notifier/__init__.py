@@ -35,6 +35,8 @@
 
 # Import all classes, functions and decorators that are part of the API
 
+from object import Object
+
 # Callback classes
 from callback import Callback, WeakCallback
 

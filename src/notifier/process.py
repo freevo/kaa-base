@@ -136,7 +136,8 @@ class Process2(object):
 
     def __init__(self, cmd, shell=False, dumpfile=None):
         """
-        Create a Process object.
+        Create a Process object.  The subprocess is not started until
+        :meth:`~kaa.Process2.start` is called.
 
         :param cmd: the command to be executed.
         :type cmd: string or list of strings
@@ -222,8 +223,9 @@ class Process2(object):
     @property
     def stdin(self):
         """
-        IOChannel of child process's stdin.  This object is valid even when
-        the child is not running.
+        IOChannel of child process's stdin.
+        
+        This object is valid even when the child is not running.
         """
         return self._stdin
 
@@ -231,9 +233,10 @@ class Process2(object):
     @property
     def stdout(self):
         """
-        IOChannel of child process's stdout.  This object is valid even when
-        the child is not running, although it is obviously not readable until
-        the child is started.
+        IOChannel of child process's stdout.
+        
+        This object is valid even when the child is not running, although it is
+        obviously not readable until the child is started.
         """
         return self._stdout
 
@@ -241,9 +244,10 @@ class Process2(object):
     @property
     def stderr(self):
         """
-        IOChannel of child process's stderr.  This object is valid even when
-        the child is not running, although it is obviously not readable until
-        the child is started.
+        IOChannel of child process's stderr.
+        
+        This object is valid even when the child is not running, although it is
+        obviously not readable until the child is started.
         """
         return self._stderr
 
@@ -259,17 +263,20 @@ class Process2(object):
     @property
     def status(self):
         """
-        The child's status code once it has terminate.  If the child is still
-        running or it has not yet been started, this value will be None.
+        The child's status code once it has terminate.
+        
+        If the child is still running or it has not yet been started, this
+        value will be None.
         """
 
     @property
     def running(self):
         """
-        True if the child process is running.  If the child process is
-        running, it may be written to.  A child that is in the process
-        of stopping is not considered running, however the pid property
-        will still be valid while it is stopping.
+        True if the child process is running.
+        
+        If the child process is running, it may be written to.  A child that is
+        in the process of stopping is not considered running, however the pid
+        property will still be valid while it is stopping.
 
         The converse however is not true: if the child process is
         not running, it still may be read from.  To test readability,
@@ -281,9 +288,11 @@ class Process2(object):
     @property
     def readable(self):
         """
-        True if either the child's stdout or stderr channels are still
-        open, or if they are both closed but a read call would succeed
-        anyway due to data remaining in the read queue.
+        True if it is possible to read data from the child.
+
+        The child is readable if either the child's stdout or stderr channels
+        are still open, or if they are both closed but a read call would
+        succeed anyway due to data remaining in the read queue.
         
         This doesn't necessarily mean the child is still running: a terminated
         child may still be read from (there may be data buffered in its stdout
@@ -296,10 +305,12 @@ class Process2(object):
     @property
     def stop_command(self):
         """
-        Stop command for this process.  The command can be either a callable or
-        a string.  The command is invoked (if it is a callback) or the command
-        is written to the child's stdin (if cmd is a string or unicode) when
-        the process is being terminated with a call to stop().
+        Stop command for this process.
+        
+        The command can be either a callable or a string.  The command is
+        invoked (if it is a callback) or the command is written to the child's
+        stdin (if cmd is a string or unicode) when the process is being
+        terminated with a call to stop().
 
         Shutdown handlers for the process should be set with this property.
         """
@@ -310,6 +321,9 @@ class Process2(object):
     def stop_command(self, cmd):
         assert(callable(cmd) or type(cmd) in (str, unicode) or cmd == None)
         self._stop_command = cmd
+
+
+    # TODO: delimiter property
 
 
     def _normalize_cmd(self, cmd):
@@ -393,9 +407,9 @@ class Process2(object):
             1. The stop command is written (or invoked) if one is specified,
                and up to *wait* seconds is given for the child to terminate.
             2. A SIGTERM is issued to the child process, and, again, we wait up
-               to *wait*\*2 seconds for the child to terminate.
-            3. A SIGKILL is issued to the child process, and, yet again,
-               we wait up to *wait* seconds.
+               to *wait* seconds for the child to terminate.
+            3. A SIGKILL is issued to the child process, and this time
+               we wait up to *wait*\*2 seconds.
 
         If after step 3 the child is still not dead, a SystemError exception
         is thrown to the InProgress, as well to the InProgress returned by
@@ -468,6 +482,7 @@ class Process2(object):
     def read(self):
         """
         Reads a chunk of data from either stdout or stderr of the process.
+
         There is no way to determine from which (stdout or stderr) the data
         was read; if you require this, use the stdout or stderr attributes
         directly (however see note below).
@@ -511,9 +526,11 @@ class Process2(object):
 
     def readline(self):
         """
-        Reads a line from either stdout or stderr
-        InProgress object.  If finished with None or the empty string, it means
-        that no data was read and the process exited.
+        Reads a line from either stdout or stderr, whichever is available
+        first.
+        
+        If finished with None or the empty string, it means that no data was
+        read and the process exited.
 
         :returns: A :class:`~kaa.InProgress`, finished with the data read.
                   If it is finished the empty string, it means the child's
@@ -529,8 +546,10 @@ class Process2(object):
 
     def write(self, data):
         """
-        Write data to child's stdin.  Returns an InProgress, which is finished
-        when the data has actually been written to the child's stdin.
+        Write data to child's stdin.
+        
+        Returns an InProgress, which is finished when the data has actually
+        been written to the child's stdin.
 
         :param data: the data to be written to the channel.
         :type data: string

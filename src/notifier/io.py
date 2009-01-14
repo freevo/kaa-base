@@ -46,6 +46,7 @@ from signals import Signals, Signal
 from thread import MainThreadCallback, is_mainthread
 from async import InProgress, inprogress
 from kaa.utils import property
+from object import Object
 
 # get logging object
 log = logging.getLogger('notifier.io')
@@ -56,9 +57,11 @@ IO_WRITE  = 2
 class IOMonitor(notifier.NotifierCallback):
     def __init__(self, callback, *args, **kwargs):
         """
-        Creates an IOMonitor to monitor IO activity via the Notifier.  Once a
-        file descriptor is registered using the :meth:`~kaa.IOMonitor.register`
-        method, the given *callback* is invoked upon I/O activity.
+        Creates an IOMonitor to monitor IO activity via the Notifier.
+        
+        Once a file descriptor is registered using the
+        :meth:`~kaa.IOMonitor.register` method, the given *callback* is invoked
+        upon I/O activity.
         """
         super(IOMonitor, self).__init__(callback, *args, **kwargs)
         self.ignore_caller_args = True
@@ -104,14 +107,14 @@ class WeakIOMonitor(notifier.WeakNotifierCallback, IOMonitor):
     pass
 
 
-class IOChannel(object):
+class IOChannel(Object):
     """
     Base class for read-only, write-only or read-write descriptors such as
     Socket and Process.  Implements logic common to communication over
     such channels such as async read/writes and read/write buffering.
 
     It may also be used directly with file descriptors or file-like objects.
-    e.g. IOChannel(file('somefile'))
+    e.g. ``IOChannel(file('somefile'))``
 
     :param channel: file descriptor to wrap into an IOChannel
     :type channel: integer file descriptor, file-like object, or other IOChannel
@@ -164,8 +167,54 @@ class IOChannel(object):
     may grow up to *queue_size*.  See the :meth:`~kaa.IOChannel.readline` method
     for more details.
     """
+    __kaasignals__ = {
+        'read':
+            '''
+            Emitted for each chunk of data read from the channel.
+
+            .. describe:: def callback(chunk, ...)
+
+               :param chunk: data read from the channel
+               :type chunk: str
+
+            When a callback is connected to the *read* signal, data is automatically
+            read from the channel as soon as it becomes available, and the signal
+            is emitted.
+
+            It is allowed to have a callback connected to the *read* signal
+            and simultaneously use the :meth:`~kaa.IOChannel.read` and
+            :meth:`~kaa.IOChannel.readline` methods.
+            ''',
+
+        'readline':
+            '''
+            Emitted for each line read from the channel.
+
+            .. describe:: def callback(line, ...)
+
+               :param line: line read from the channel
+               :type line: str
+
+            It is not allowed to have a callback connected to the *readline* signal
+            and simultaneously use the :meth:`~kaa.IOChannel.readline` method.
+
+            Refer to :meth:`~kaa.IOChannel.readline` for more details.
+            ''',
+
+        'closed':
+            '''
+            Emitted when the channel is closed.
+
+            .. describe:: def callback(expected, ...)
+
+               :param expected: True if the channel is closed because
+                                :meth:`~kaa.IOChannel.close` was called.
+               :type expected: bool
+            '''
+    }
+
     def __init__(self, channel=None, mode=IO_READ|IO_WRITE, chunk_size=1024*1024, delimiter='\n'):
-        self.signals = Signals('closed', 'read', 'readline')
+        super(IOChannel, self).__init__()
         self._delimiter = delimiter
         self._write_queue = []
         # Read queue used for read() and readline(), and 'readline' signal.
@@ -210,7 +259,7 @@ class IOChannel(object):
         True if the channel is open, or if the channel is closed but a read
         call would still succeed (due to buffered data).
 
-        Note that a value of True does not mean there _is_ data available, but
+        Note that a value of True does not mean there **is** data available, but
         rather that there could be and that a read() call is possible (however
         that read() call may return None, in which case the readable property
         will subsequently be False).
@@ -221,9 +270,10 @@ class IOChannel(object):
     @property
     def writable(self):
         """
-        True if write() may be called.  (However, if you pass too much data to
-        write() such that the write queue limit is exceeded, the write will
-        fail.)
+        True if write() may be called.
+        
+        (However, if you pass too much data to write() such that the write
+        queue limit is exceeded, the write will fail.)
         """
         # By default, this is always True regardless if the channel is open, so
         # long as there is space available in the write queue, but subclasses
@@ -248,9 +298,10 @@ class IOChannel(object):
     @property
     def chunk_size(self):
         """
-        Number of bytes to attempt to read from the channel at a time.  The
-        default is 1M.  A 'read' signal is emitted for each chunk read from the
-        channel.  (The number of bytes read at a time may be less than the
+        Number of bytes to attempt to read from the channel at a time.
+        
+        The default is 1M.  A 'read' signal is emitted for each chunk read from
+        the channel.  (The number of bytes read at a time may be less than the
         chunk size, but will never be more.)
         """
         return self._chunk_size
@@ -264,11 +315,10 @@ class IOChannel(object):
     @property
     def queue_size(self):
         """
-        The size limit in bytes for the read and write queues.  Each queue can
-        consume at most this size plus the chunk size.
-
-        Setting a value does not affect any data currently in any of the the
-        queues.
+        The size limit in bytes for the read and write queues.
+        
+        Each queue can consume at most this size plus the chunk size.  Setting
+        a value does not affect any data currently in any of the the queues.
         """
         return self._queue_size
 
@@ -291,8 +341,10 @@ class IOChannel(object):
     @property
     def read_queue_used(self):
         """
-        The number of bytes in the read queue.  The read queue is only used if
-        either readline() or the readline signal is.
+        The number of bytes in the read queue.
+        
+        The read queue is only used if either readline() or the readline signal
+        is.
         """
         return self._read_queue.tell()
 
@@ -353,7 +405,11 @@ class IOChannel(object):
 
     def wrap(self, channel, mode):
         """
-        Wraps an existing channel.
+        Make the IOChannel represent the given *channel*.
+        
+        This is implicitly called by the initializer.  If the IOChannel is
+        already wrapping another channel, it will be closed before the given
+        one is wrapped.
         
         :param channel: file descriptor to wrap into the IOChannel
         :type channel: integer file descriptor, file-like object, or 
@@ -464,10 +520,11 @@ class IOChannel(object):
 
     def readline(self):
         """
-        Reads a line from the channel.  The line delimiter is included in the
-        string to avoid ambiguity.  If no delimiter is present then either the
-        read queue became full or the channel was closed before a delimiter was
-        received.
+        Reads a line from the channel.
+        
+        The line delimiter is included in the string to avoid ambiguity.  If no
+        delimiter is present then either the read queue became full or the
+        channel was closed before a delimiter was received.
 
         :returns: An :class:`~kaa.InProgress` object. If the InProgress is
                   finished with the empty string, it means that no data 
@@ -475,10 +532,10 @@ class IOChannel(object):
                   was already closed when readline() was called).
 
         Data from the channel is read and queued in until the delimiter (\\\\n by
-        default, but may be changed by the delimiter property) is found.  If
-        the read queue size exceeds the queue limit, then the InProgress
-        returned here will be finished prematurely with whatever is in the read
-        queue, and the read queue will be purged.
+        default, but may be changed by the :attr:`~kaa.IOChannel.delimiter`
+        property) is found.  If the read queue size exceeds the queue limit,
+        then the InProgress returned here will be finished prematurely with
+        whatever is in the read queue, and the read queue will be purged.
 
         This method may not be called when a callback is connected to the
         IOChannel's readline signal.  You must use either one approach or the

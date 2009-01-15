@@ -1,6 +1,6 @@
 # -* -coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# tls.py - TLS support for kaa.notifier based on tlslite
+# tls.py - TLS support for the Kaa Framework based on tlslite
 # -----------------------------------------------------------------------------
 # $Id$
 #
@@ -50,23 +50,23 @@ class TLSConnection(tlslite.api.TLSConnection):
     """
     This class wraps a socket and provides TLS handshaking and data transfer.
     It enhances the tlslite version of the class with the same name with
-    kaa.notifier support.
+    kaa support.
     """
     @kaa.coroutine()
     def _iterate_handshake(self, handshake):
         """
         Iterate through the TLS handshake for asynchronous calls using
-        kaa.notifier IOMonitor and InProgressCallback.
+        kaa.IOMonitor and kaa.InProgressCallback.
         """
         try:
             while True:
                 n = handshake.next()
                 cb = kaa.InProgressCallback()
-                disp = kaa.notifier.IOMonitor(cb)
+                disp = kaa.IOMonitor(cb)
                 if n == 0:
-                    disp.register(self.sock.fileno(), kaa.notifier.IO_READ)
+                    disp.register(self.sock.fileno(), kaa.IO_READ)
                 if n == 1:
-                    disp.register(self.sock.fileno(), kaa.notifier.IO_WRITE)
+                    disp.register(self.sock.fileno(), kaa.IO_WRITE)
                 yield cb
                 disp.unregister()
         except StopIteration:

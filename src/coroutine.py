@@ -18,7 +18,7 @@
 # result of the function call. Instead it has to use yield to do this. Besides
 # a normal return, the function can also return 'NotFinished' in the yield
 # statement. In that case, the function call continues at this point in the
-# next notifier iteration. If the function itself has to wait for a result of
+# next main loop iteration. If the function itself has to wait for a result of
 # a function call (either another yield function are something else working
 # async with an InProgress object) and it can create a 'InProgressCallback'
 # object and use this as callback.
@@ -28,7 +28,7 @@
 # The default value is 0, the first iteration is always called without a timer.
 #
 # -----------------------------------------------------------------------------
-# kaa.notifier - Mainloop and callbacks
+# kaa.base - The Kaa Application Framework
 # Copyright (C) 2006-2008 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
@@ -58,13 +58,13 @@ __all__ = [ 'NotFinished', 'coroutine' ]
 import sys
 import logging
 
-# kaa.notifier imports
-from kaa.utils import wraps, DecoratorDataStore
+# kaa.base imports
+from utils import wraps, DecoratorDataStore
 from timer import Timer
 from async import InProgress
 
 # get logging object
-log = logging.getLogger('notifier')
+log = logging.getLogger('base')
 
 # object to signal that the function whats to continue
 NotFinished = object()

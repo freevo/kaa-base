@@ -13,7 +13,7 @@
 # that callbacks from glib are also called from the glib thread.
 #
 # -----------------------------------------------------------------------------
-# kaa.notifier - Mainloop and callbacks
+# kaa.base - The Kaa Application Framework
 # Copyright (C) 2008 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
@@ -45,7 +45,7 @@ import threading
 
 # get import helper since this file conflicts with the
 # global gobject module.
-from kaa.utils import sysimport
+from utils import sysimport
 try:
     # try to import gobject
     gobject = sysimport('gobject')

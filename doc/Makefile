@@ -27,7 +27,7 @@ clean:
 
 html:
 	mkdir -p html .build/doctrees
-	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) html
+	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) /orion/home/tack/public_html/kaa/
 	@echo
 	@echo "Build finished. The HTML pages are in doc/html."
 

@@ -13,7 +13,7 @@
 # url.fetch(length=0) -> InProgress object
 #
 # -----------------------------------------------------------------------------
-# kaa.notifier - Mainloop and callbacks
+# kaa.base - The Kaa Application Framework
 # Copyright (C) 2007 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
@@ -46,7 +46,7 @@ import urllib
 import urllib2
 
 # kaa.notifier imports
-from kaa.notifier import ThreadCallback, Signals, InProgress
+from kaa import ThreadCallback, Signals, InProgress
 
 # add password manager to urllib
 pm = urllib2.HTTPPasswordMgrWithDefaultRealm()

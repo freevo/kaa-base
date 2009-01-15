@@ -4,7 +4,7 @@
 # -----------------------------------------------------------------------------
 # $Id$
 # -----------------------------------------------------------------------------
-# kaa.notifier - Mainloop and callbacks
+# kaa.base - The Kaa Application Framework
 # Copyright (C) 2008 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Jason Tackaberry <tack@urandom.ca>

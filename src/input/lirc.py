@@ -116,7 +116,7 @@ def stop():
 
 def init(appname = None, cfg = None):
     """
-    Init pylirc and connect to the notifier.
+    Init pylirc and connect to the mainloop.
     """
     global _dispatcher
 

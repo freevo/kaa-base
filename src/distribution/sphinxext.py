@@ -10,7 +10,7 @@ from docutils import nodes
 from docutils.statemachine import ViewList
 from docutils.parsers.rst import directives
 
-from kaa.notifier.object import get_all_signals
+from kaa.object import get_all_signals
 
 
 DELIM = u'xyzzy' * 10

@@ -6,13 +6,13 @@
 #
 # Twisted reactor to run the kaa mainloop as twisted reactor.
 #
-# import kaa.notifier.reactor
-# kaa.notifier.reactor.install()
+# import kaa.reactor
+# kaa.reactor.install()
 #
 # You can start/stop the loop with (reactor|kaa.main).(start|stop)
 #
 # -----------------------------------------------------------------------------
-# kaa.notifier - Mainloop and callbacks
+# kaa.base - The Kaa Application Framework
 # Copyright (C) 2007-2008 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
@@ -47,7 +47,8 @@ if twisted.version.major < 8:
 from twisted.internet import _threadedselect as threadedselectreactor
 
 # kaa imports
-import kaa
+from thread import MainThreadCallback
+import main
 
 class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
     """
@@ -61,18 +62,18 @@ class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
         Callback from the Twisted thread kaa should execute from
         the mainloop.
         """
-        kaa.MainThreadCallback(func)()
+        MainThreadCallback(func)()
 
     def _twisted_stopped_callback(self):
         """
         Callback when Twisted wants to stop.
         """
-        if not kaa.is_mainthread():
-            return kaa.MainThreadCallback(self._twisted_stopped_callback)()
+        if not main.is_mainthread():
+            return MainThreadCallback(self._twisted_stopped_callback)()
         self._twisted_stopped = True
         # shut down kaa mainloop in case the reactor was shut down and
         # not kaa.main
-        kaa.main.stop()
+        main.stop()
 
     def _twisted_stop(self):
         """
@@ -82,7 +83,7 @@ class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
             return
         self.stop()
         while not self._twisted_stopped:
-            kaa.main.step()
+            main.step()
 
     def connect(self):
         """
@@ -90,13 +91,13 @@ class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
         """
         self.interleave(self._kaa_callback)
         self.addSystemEventTrigger('after', 'shutdown', self._twisted_stopped_callback)
-        kaa.main.signals['shutdown'].connect(self._twisted_stop)
+        main.signals['shutdown'].connect(self._twisted_stop)
 
     def run(self, installSignalHandlers=1):
         """
         Run the reactor by starting the notifier mainloop.
         """
-        kaa.main.run()
+        main.run()
 
 
 def install():

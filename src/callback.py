@@ -1,11 +1,11 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# callback.py - Callback classes for the notifier
+# callback.py - Callback classes
 # -----------------------------------------------------------------------------
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# kaa.notifier - Mainloop and callbacks
+# kaa.base - The Kaa Application Framework
 # Copyright (C) 2005-2008 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
@@ -39,7 +39,7 @@ import logging
 import atexit
 
 # get logging object
-log = logging.getLogger('notifier')
+log = logging.getLogger('base')
 
 # Variable that is set to True (via atexit callback) when python interpreter
 # is in the process of shutting down.  If we're interested if the interpreter
@@ -109,13 +109,15 @@ def unweakref_data(data):
 
 class Callback(object):
     """
-    Wrapper for functions calls with arguments inside the notifier. The
-    function passed to this objects get the parameter passed to this object
+    Wraps an existing callable, binding to it the given args and kwargs.
+
+    The function passed to this objects get the parameter passed to this object
     and after that the args and kwargs defined in the init function.
     """
     def __init__(self, callback, *args, **kwargs):
         """
-        Create a new callback
+        Create a new callback.
+
         :param callback: callable function or object
         :param args: arguments for the callback
         :param kwargs: keyword arguments for the callback

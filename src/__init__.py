@@ -28,9 +28,44 @@
 # import logger to update the Python logging module
 import logger
 
-# Import notifier functions into kaa namespace. The list of all classes, functions
-# and decorators can be found in notifier/__init__.py
-from kaa.notifier import *
+# Import all classes, functions and decorators that are part of the API
+from object import Object
+
+# Callback classes
+from callback import Callback, WeakCallback
+
+# Signal and dict of Signals
+from signals import Signal, Signals
+
+# InProgress class
+from async import TimeoutException, InProgress, InProgressCallback, \
+     InProgressAny, InProgressAll, inprogress, delay
+
+# Thread callbacks, helper functions and decorators
+from thread import MainThreadCallback, NamedThreadCallback, ThreadCallback, \
+     is_mainthread, threaded, synchronized, MAINTHREAD
+
+# Timer classes and decorators
+from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, \
+     OneShotAtTimer, timed, POLICY_ONCE, POLICY_MANY, POLICY_RESTART
+
+# IO/Socket handling
+from io import IOMonitor, WeakIOMonitor, IO_READ, IO_WRITE, IOChannel
+from sockets import Socket, SocketError
+
+# Event and event handler classes
+from event import Event, EventHandler, WeakEventHandler
+
+# coroutine decorator and helper classes
+from coroutine import NotFinished, coroutine, \
+     POLICY_SYNCHRONIZED, POLICY_SINGLETON, POLICY_PASS_LAST
+
+# process management
+from popen import Process
+from process import Process2
+
+# special gobject thread support
+from gobject import GOBJECT, gobject_set_threaded
 
 # Import the two important strutils functions
 from strutils import str_to_unicode, unicode_to_str
@@ -39,5 +74,5 @@ from strutils import str_to_unicode, unicode_to_str
 from tmpfile import tempfile
 
 # Expose main loop functions under kaa.main
-from kaa.notifier import main
-from kaa.notifier.main import signals
+import main
+from main import signals

@@ -1,11 +1,11 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# event.py - Event handling for the notifier
+# event.py - Event handling for the main loop
 # -----------------------------------------------------------------------------
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# kaa.notifier - Mainloop and callbacks
+# kaa.base - The Kaa Application Framework
 # Copyright (C) 2005-2007 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
@@ -35,13 +35,13 @@ __all__ = [ 'Event', 'EventHandler', 'WeakEventHandler' ]
 import copy
 import logging
 
-# kaa.notifier imports
+# kaa.base imports
 from nf_wrapper import NotifierCallback, WeakNotifierCallback
 from thread import MainThreadCallback, is_mainthread
 from timer import OneShotTimer
 
 # get logging object
-log = logging.getLogger('notifier')
+log = logging.getLogger('base')
 
 # manager object for eveny handling
 manager = None

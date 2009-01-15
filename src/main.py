@@ -5,7 +5,7 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# kaa.notifier - Mainloop and callbacks
+# kaa.base - The Kaa Application Framework
 # Copyright (C) 2005-2008 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
@@ -56,7 +56,7 @@ from thread import is_mainthread, wakeup, set_as_mainthread, threaded, MAINTHREA
 from thread import killall as kill_jobserver
 
 # get logging object
-log = logging.getLogger('notifier')
+log = logging.getLogger('base')
 
 # Running state of the main loop.  Possible values are:
 #  True: running

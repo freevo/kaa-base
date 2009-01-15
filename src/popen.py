@@ -19,7 +19,7 @@
 # to stop all running processes.
 #
 # -----------------------------------------------------------------------------
-# kaa.notifier - Mainloop and callbacks
+# kaa.base - The Kaa Application Framework
 # Copyright (C) 2005-2008 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
@@ -64,7 +64,7 @@ from async import InProgress, inprogress
 from io import IOMonitor, IO_WRITE
 
 # get logging object
-log = logging.getLogger('notifier')
+log = logging.getLogger('base')
 
 # FIXME: rewrite :)
 

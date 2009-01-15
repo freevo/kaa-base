@@ -47,7 +47,7 @@ from pysqlite2 import dbapi2 as sqlite
 # kaa base imports
 from strutils import str_to_unicode
 from _objectrow import ObjectRow
-from notifier import main
+import main
 
 if sqlite.version < '2.1.0':
     raise ImportError('pysqlite 2.1.0 or higher required')

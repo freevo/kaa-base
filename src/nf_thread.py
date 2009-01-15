@@ -5,7 +5,7 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# kaa.notifier - Mainloop and callbacks
+# kaa.base - The Kaa Application Framework
 # Copyright (C) 2007-2008 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
@@ -36,7 +36,7 @@ import threading
 import logging
 
 # kaa.notifier imports
-import kaa
+import main
 import nf_wrapper as notifier
 from main import _set_running as set_mainloop_running
 
@@ -81,17 +81,17 @@ class ThreadLoop(threading.Thread):
                 self.sleeping = True
                 notifier.step(simulate = True)
                 self.sleeping = False
-                if not kaa.main.is_running():
+                if not main.is_running():
                     break
                 self._call_mainloop(self.handle)
                 self._lock.acquire()
-                if not kaa.main.is_running():
+                if not main.is_running():
                     break
         except (KeyboardInterrupt, SystemExit):
             pass
         except Exception, e:
             log.exception('loop')
-        if kaa.main.is_running():
+        if main.is_running():
             # this loop stopped, call real mainloop stop. This
             # should never happen because we call no callbacks.
             log.warning('thread loop stopped')
@@ -105,8 +105,8 @@ class ThreadLoop(threading.Thread):
         """
         log.info('stop mainloop')
         set_mainloop_running(False)
-        kaa.main.wakeup()
-        kaa.main.stop()
+        main.wakeup()
+        main.stop()
 
 
 class TwistedLoop(ThreadLoop):
@@ -131,7 +131,7 @@ class Wakeup(object):
     def __call__(self, *args, **kwargs):
         ret = self.func(*args, **kwargs)
         if self.loop.sleeping:
-            kaa.main.wakeup()
+            main.wakeup()
         return ret
 
 
@@ -152,7 +152,7 @@ def init( module, handler = None, shutdown = None, **options ):
         # set specific shutdown function
         notifier.shutdown = shutdown
     # set main thread and init thread pipe
-    kaa.main.set_as_mainthread()
+    main.set_as_mainthread()
     # adding a timer or socket is not thread safe in general but
     # an additional wakeup we don't need does not hurt. And in
     # simulation mode the step function does not modify the

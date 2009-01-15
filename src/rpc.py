@@ -12,7 +12,7 @@
 # So wy use this module and not kaa.ipc? Well, kaa.ipc makes it very easy to
 # shoot yourself into the foot. It keeps references over ipc which could
 # confuse the garbage collector and a simple function call on an object can
-# result in many notifier steps incl. recursion inside the notifier.
+# result in many mainloop steps incl. recursion inside the mainloop.
 #
 #
 # Documentation:
@@ -91,9 +91,9 @@ import traceback
 
 # kaa imports
 import kaa
-from notifier.async import make_exception_class, AsyncExceptionBase
-from kaa.utils import property
-from notifier.object import Object
+from async import make_exception_class, AsyncExceptionBase
+from utils import property
+from object import Object
 
 # get logging object
 log = logging.getLogger('rpc')

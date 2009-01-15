@@ -1,11 +1,11 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# sockets.py - Notifier-aware TCP/Unix Socket
+# sockets.py - TCP/Unix Socket for the Kaa Framework
 # -----------------------------------------------------------------------------
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# kaa.notifier - Mainloop and callbacks
+# kaa.base - The Kaa Application Framework
 # Copyright (C) 2005-2008 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
@@ -40,11 +40,11 @@ import logging
 
 from thread import threaded
 from io import IO_READ, IO_WRITE, IOChannel
-from kaa.utils import property
-from kaa.tmpfile import tempfile
+from utils import property
+from tmpfile import tempfile
 
 # get logging object
-log = logging.getLogger('notifier')
+log = logging.getLogger('base')
 
 class SocketError(Exception):
     pass

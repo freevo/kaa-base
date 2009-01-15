@@ -39,11 +39,11 @@ import logging
 import inspect
 import re
 
-import kaa
 import _utils
+from tmpfile import tempfile
 
 # get logging object
-log = logging.getLogger('kaa')
+log = logging.getLogger('base')
 
 
 def which(file, path = None):
@@ -156,7 +156,7 @@ def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None,
 
     # Replace any existing thread notifier pipe, otherwise we'll be listening
     # to our parent's thread notifier.
-    from kaa.notifier.thread import create_thread_notifier_pipe
+    from thread import create_thread_notifier_pipe
     create_thread_notifier_pipe(new=False, purge=True)
 
     return lock
@@ -167,9 +167,9 @@ def is_running(name):
     Check if the program with the given name is running. The program
     must have called set_running itself. Returns the pid or 0.
     """
-    if not os.path.isfile(kaa.tempfile('run/' + name)):
+    if not os.path.isfile(tempfile('run/' + name)):
         return 0
-    run = open(kaa.tempfile('run/' + name))
+    run = open(tempfile('run/' + name))
     pid = run.readline().strip()
     cmdline = run.readline()
     run.close()
@@ -187,7 +187,7 @@ def set_running(name, modify = True):
     the process name is updated as described in set_process_name().
     """
     cmdline = open('/proc/%s/cmdline' % os.getpid()).readline()
-    run = open(kaa.tempfile('run/' + name), 'w')
+    run = open(tempfile('run/' + name), 'w')
     run.write(str(os.getpid()) + '\n')
     run.write(cmdline)
     run.close()

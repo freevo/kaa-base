@@ -1,6 +1,12 @@
 I/O
 ===
 
+.. autoclass:: kaa.WeakTimer
+
+   .. autosynopsis:: kaa.WeakTimer
+   .. automethods:: kaa.WeakTimer
+   .. autoproperties:: kaa.WeakTimer
+   .. autosignals:: kaa.WeakTimer
 
 Monitoring I/O
 --------------

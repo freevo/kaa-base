@@ -220,12 +220,13 @@ def foo():
     kaa.OneShotTimer(sig['three'].emit, 'worked').start(0.5)
     print 'Testing InProgressAny, should return in 0.5s'
     n, args = yield sig.subset('one', 'three').any()
+    print 'InProgressAny returned:', n, args
     # Force InProgressCallbacks implicitly created by any() to be deleted.
     gc.collect()
     # Verify that they _are_ deleted and detached from the signal.
+    print sig['one']._callbacks
     assert(len(sig['one']) == 0)
     assert(n == 1)
-    print 'InProgressAny returned:', n, args
 
     # Test InProgressAll via Signals.all()
     kaa.OneShotTimer(sig['one'].emit, 'result for sig one').start(0.5)

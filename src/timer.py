@@ -1,11 +1,11 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# timer.py - Timer classes for the notifier
+# timer.py - Timer classes for the main loop
 # -----------------------------------------------------------------------------
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# kaa.notifier - Mainloop and callbacks
+# kaa.base - The Kaa Application Framework
 # Copyright (C) 2005-2008 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
@@ -39,15 +39,15 @@ import datetime
 
 import nf_wrapper as notifier
 from thread import threaded, MAINTHREAD
-from kaa.weakref import weakref
-from kaa.utils import wraps, DecoratorDataStore, property
+from weakref import weakref
+from utils import wraps, DecoratorDataStore, property
 
 POLICY_ONCE = 'once'
 POLICY_MANY = 'many'
 POLICY_RESTART = 'restart'
 
 # get logging object
-log = logging.getLogger('notifier')
+log = logging.getLogger('base')
 
 
 def timed(interval, timer=None, policy=POLICY_MANY):

@@ -1,11 +1,11 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# thread.py - Thread module for the notifier
+# thread.py - Thread support for the Kaa Framework
 # -----------------------------------------------------------------------------
 # $Id$
 #
 # This module contains some wrapper classes for threading while running the
-# notifier main loop. It should only be used when non blocking handling is not
+# main loop. It should only be used when non blocking handling is not
 # possible. The main loop itself is not thread save, the the function called in
 # the thread should not touch any variables inside the application which are
 # not protected by by a lock.
@@ -21,7 +21,7 @@
 # wrap a function in a thread.
 #
 # -----------------------------------------------------------------------------
-# kaa.notifier - Mainloop and callbacks
+# kaa.base - The Kaa Application Framework
 # Copyright (C) 2005-2008 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
@@ -60,18 +60,17 @@ import socket
 import errno
 import types
 
-# notifier imports
+# kaa imports
 import nf_wrapper as notifier
 from callback import Callback
 from async import InProgress
-from kaa.utils import wraps, DecoratorDataStore
+from utils import wraps, DecoratorDataStore, sysimport
 
 # import python thread file
-from kaa.utils import sysimport
 LockType = sysimport('thread').LockType
 
 # get logging object
-log = logging.getLogger('notifier')
+log = logging.getLogger('base')
 
 # TODO: organize thread notifier stuff into its own namespace
 

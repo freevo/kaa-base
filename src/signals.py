@@ -5,7 +5,7 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# kaa.notifier - Mainloop and callbacks
+# kaa.base - The Kaa Application Framework
 # Copyright (C) 2005-2008 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
@@ -36,12 +36,12 @@ __all__ = [ 'Signal', 'Signals' ]
 import logging
 import atexit
 
-# callbacks from kaa.notifier
+# kaa imports
 from callback import Callback, WeakCallback
-from kaa.utils import property
+from utils import property
 
 # get logging object
-log = logging.getLogger('notifier')
+log = logging.getLogger('base')
 
 # Variable that is set to True (via atexit callback) when python interpreter
 # is in the process of shutting down.  If we're interested if the interpreter

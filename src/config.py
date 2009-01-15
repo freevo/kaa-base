@@ -43,7 +43,8 @@ from new import classobj
 
 # kaa.base modules
 from strutils import str_to_unicode, unicode_to_str, get_encoding
-from kaa import Callback, WeakCallback, WeakTimer, WeakOneShotTimer
+from callback import Callback, WeakCallback
+from timer import WeakTimer, WeakOneShotTimer
 from kaa.inotify import INotify
 
 # get logging object

@@ -5,7 +5,7 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# kaa.notifier - Mainloop and callbacks
+# kaa.base - The Kaa Application Framework
 # Copyright (C) 2006-2008 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
@@ -42,13 +42,13 @@ import time
 import _weakref
 import threading
 
-# kaa.notifier imports
+# kaa.base imports
 from callback import Callback
 from signals import Signal
-from kaa.utils import property
+from utils import property
 
 # get logging object
-log = logging.getLogger('notifier.async')
+log = logging.getLogger('base.async')
 
 
 def make_exception_class(name, bases, dict):

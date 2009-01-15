@@ -1,11 +1,11 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# io.py - Supporting classes for notifier-aware I/O
+# io.py - I/O management for the Kaa Framework
 # -----------------------------------------------------------------------------
 # $Id: io.py 3661 2008-11-12 02:31:59Z tack $
 #
 # -----------------------------------------------------------------------------
-# kaa.notifier - Mainloop and callbacks
+# kaa.base - The Kaa Application Framework
 # Copyright (C) 2005-2008 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
@@ -45,11 +45,11 @@ from callback import WeakCallback, Callback
 from signals import Signals, Signal
 from thread import MainThreadCallback, is_mainthread
 from async import InProgress, inprogress
-from kaa.utils import property
+from utils import property
 from object import Object
 
 # get logging object
-log = logging.getLogger('notifier.io')
+log = logging.getLogger('base.io')
 
 IO_READ   = 1
 IO_WRITE  = 2
@@ -57,7 +57,7 @@ IO_WRITE  = 2
 class IOMonitor(notifier.NotifierCallback):
     def __init__(self, callback, *args, **kwargs):
         """
-        Creates an IOMonitor to monitor IO activity via the Notifier.
+        Creates an IOMonitor to monitor IO activity via the mainloop.
         
         Once a file descriptor is registered using the
         :meth:`~kaa.IOMonitor.register` method, the given *callback* is invoked
@@ -451,7 +451,7 @@ class IOChannel(Object):
                 self._wmon.register(self.fileno, IO_WRITE)
 
         # Disconnect channel on shutdown.  Import main late to avoid import cycles.
-        from kaa.notifier import main
+        import main
         main.signals['shutdown'].connect_weak(self.close)
 
 
@@ -811,5 +811,5 @@ class IOChannel(Object):
 
             self.signals['closed'].emit(expected)
             # Import main late to avoid import cycles.
-            from kaa.notifier import main
+            import main
             main.signals['shutdown'].disconnect(self.close)

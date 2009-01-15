@@ -71,7 +71,7 @@ from gobject import GOBJECT, gobject_set_threaded
 from strutils import str_to_unicode, unicode_to_str
 
 # Add tempfile support.
-from tmpfile import tempfile
+from utils import tempfile
 
 # Expose main loop functions under kaa.main
 import main

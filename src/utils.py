@@ -5,7 +5,7 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2006 Dirk Meyer, Jason Tackaberry
+# Copyright (C) 2006-2009 Dirk Meyer, Jason Tackaberry
 #
 # First Edition: Jason Tackaberry <tack@urandom.ca>
 # Maintainer:    Jason Tackaberry <tack@urandom.ca>
@@ -38,12 +38,42 @@ import imp
 import logging
 import inspect
 import re
+from tempfile import mktemp
 
 import _utils
-from tmpfile import tempfile
 
 # get logging object
 log = logging.getLogger('base')
+
+# create tmp directory for the user
+TEMP = '/tmp/kaa-%s' % os.getuid()
+if os.environ.get('TMPDIR'):
+    TEMP = os.path.join(os.environ['TMPDIR'], 'kaa-%s' % os.getuid())
+if os.path.isdir(TEMP):
+    # temp dir is already there, check permissions
+    if os.path.islink(TEMP):
+        raise IOError('Security Error: %s is a link, aborted' % TEMP)
+    if stat.S_IMODE(os.stat(TEMP)[stat.ST_MODE]) % 01000 != 0700:
+        raise IOError('Security Error: %s has wrong permissions, aborted' % TEMP)
+    if os.stat(TEMP)[stat.ST_UID] != os.getuid():
+        raise IOError('Security Error: %s does not belong to you, aborted' % TEMP)
+else:
+    os.mkdir(TEMP, 0700)
+
+
+def tempfile(name, unique=False):
+    """
+    Return a filename in the secure kaa tmp directory with the given name.
+    Name can also be a relative path in the temp directory, directories will
+    be created if missing. If unique is set, it will return a unique name based
+    on the given name.
+    """
+    name = os.path.join(TEMP, name)
+    if not os.path.isdir(os.path.dirname(name)):
+        os.mkdir(os.path.dirname(name))
+    if not unique:
+        return name
+    return mktemp(prefix=os.path.basename(name), dir=os.path.dirname(name))
 
 
 def which(file, path = None):

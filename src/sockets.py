@@ -40,8 +40,7 @@ import logging
 
 from thread import threaded
 from io import IO_READ, IO_WRITE, IOChannel
-from utils import property
-from tmpfile import tempfile
+from utils import property, tempfile
 
 # get logging object
 log = logging.getLogger('base')

@@ -77,7 +77,7 @@ def get_first_line(docstr):
 
 def get_class(fullname):
     mod, clsname = fullname.rsplit('.', 1)
-    cls = getattr(__import__(mod), clsname)
+    cls = getattr(__import__(mod, None, None, ['']), clsname)
     return cls, clsname
 
 def normalize_class_name(mod, name):
@@ -183,7 +183,7 @@ def kaatable_depart(self, node):
         if name == desc == '</p>\n<p>':
             all.pop(0)
         elif all[0] is properties:
-            perm, desc = desc.strip().split(' ', 1)
+            perm, desc = (desc.strip().split(' ', 1) + [''])[:2]
             perm = {'r': 'read only', 'w': 'write only', 'rw': 'read/write'}[perm]
             all[0].append((name.strip(), perm, desc))
         else:

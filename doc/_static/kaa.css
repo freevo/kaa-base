@@ -20,6 +20,7 @@ div.kaa.synopsis td {
     padding-left: 0.5em;
     padding-right: 0.5em;
     vertical-align: top;
+    white-space: nowrap;
 }
 
 div.kaa.synopsis td.desc {

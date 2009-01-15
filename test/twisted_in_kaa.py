@@ -2,8 +2,8 @@
 import kaa
 
 # install special kaa reactor
-import kaa.notifier.reactor
-kaa.notifier.reactor.install()
+import kaa.reactor
+kaa.reactor.install()
 
 # get reactor
 from twisted.internet import reactor

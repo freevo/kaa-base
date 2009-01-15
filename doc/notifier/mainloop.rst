@@ -57,7 +57,7 @@ mainloop but is a bit different). If you want the glib and not the GTK
 based mainloop add x11 = False to init.
 
 If pyNotifier is installed it will be used to run the mainloop; usage
-of packages requiring pyNotifier and not kaa.notifier is possible.
+of packages requiring pyNotifier and not kaa is possible.
 
 A different approuch is to use the generic mainloop and start the
 gobject mainloop in a thread. This may be useful when one loop is
@@ -93,7 +93,7 @@ thread name::
 Twisted Integration
 -------------------
 
-Kaa.notifier defines a Twisted reactor to integrate the Twisted
+Kaa defines a Twisted reactor to integrate the Twisted
 mainloop into the kaa mainloop. After installing the reactor you can
 either run kaa.main.run() or reactor.run() to start the mainloop. Due
 to the internal design of Twisted you can not stop the mainloop from
@@ -102,19 +102,19 @@ need to call reactor.stop(). From kaa callbacks sys.exit() and
 kaa.main.stop() is supported::
 
     # install special kaa reactor
-    import kaa.notifier.reactor
-    kaa.notifier.reactor.install()
+    import kaa.reactor
+    kaa.reactor.install()
 
     # get reactor
     from twisted.internet import reactor
 
-    # add callbacks to Twisted or kaa.notifier
+    # add callbacks to Twisted or kaa
     # see test/twisted_in_kaa.py in the kaa.base package
 
     # you can either call kaa.main.run() or reactor.run()
     kaa.main.run()
 
-The Twisted reactor will work with any kaa.notifier backend (generic
+The Twisted reactor will work with any kaa notifier backend (generic
 and gtk).
 
 There is also the reverse option putting the kaa mainloop into Twisted
@@ -127,7 +127,7 @@ described below and will not use an external pyNotifier installation::
     import kaa
     kaa.main.select_notifier('twisted')
 
-    # add callbacks to Twisted or kaa.notifier
+    # add callbacks to Twisted or kaa
     # see test/kaa_in_twisted.py in the kaa.base package
 
     # run Twisted mainloop
@@ -139,18 +139,18 @@ Other mainloops
 
 PyNotifier has wrappers for qt and wxwindows but they may not work as
 expected with other kaa modules. For that reasons they can not be
-selected. It is always possible to run the kaa.notifier mainloop in a
+selected. It is always possible to run the kaa mainloop in a
 thread but that also means that kaa modules and other parts of the
 code have a different idea what the mainloop is.
 
-A different solution is the thread based notifier in kaa.notifier. In
+A different solution is the thread based notifier in kaa. In
 this mode the kaa mainloop will run in an extra thread and will call a
 callback to the real mainloop that should be called from the real main
 thead. The other mainloop only needs to support a callback function
 that will be called from a thread and will execute the argument (a
 function without parameter) from the mainloop. An extra argument can
 be provided for a clean shutdown if the kaa mainloop whats to shut
-down the system. If not callback is provided, kaa.notifier.shutdown
+down the system. If not callback is provided, kaa.main.shutdown
 will be called.
 
 The following example will integrate the kaa mainloop in the normal
@@ -161,20 +161,20 @@ kaa.main.run() should not be called::
     from twisted.internet import reactor
 
     # start thread based mainloop and add Twisted callback
-    import kaa.notifier
-    kaa.notifier.init('thread', handler = reactor.callFromThread,
-                      shutdown = reactor.stop)
+    import kaa
+    kaa.main.select_notifier('thread', handler = reactor.callFromThread,
+                             shutdown = reactor.stop)
 
-    # add callbacks to Twisted or kaa.notifier
+    # add callbacks to Twisted or kaa
     # see test/kaa_in_twisted.py in the kaa.base package
 
     # run Twisted mainloop
     reactor.run()
 
-Note: the notifier step signal will only be called every step the kaa
+Note: the step signal will only be called every step the kaa
 mainloop does and does not affect steps the real mainloop does. Future
-version of kaa.notifier may fix that problem.
+version of kaa may fix that problem.
 
-If you create a wrapper to use kaa.notifier with a different notifier
+If you create a wrapper to use kaa with a different notifier
 using this solution please send us an example so we can include
 support for that mainloop in the kaa distribution.

@@ -55,7 +55,7 @@ import glob
 import re
 import logging
 
-# notifier imports
+# kaa imports
 import nf_wrapper as notifier
 from callback import Callback
 from signals import Signal

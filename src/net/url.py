@@ -45,7 +45,7 @@ import stat
 import urllib
 import urllib2
 
-# kaa.notifier imports
+# kaa imports
 from kaa import ThreadCallback, Signals, InProgress
 
 # add password manager to urllib

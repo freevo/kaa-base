@@ -406,7 +406,7 @@ class IOChannel(Object):
 
     def wrap(self, channel, mode):
         """
-        Make the IOChannel represent the given *channel*.
+        Make the IOChannel represent a new descriptor or file-like object.
         
         This is implicitly called by the initializer.  If the IOChannel is
         already wrapping another channel, it will be closed before the given

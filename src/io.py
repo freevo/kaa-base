@@ -450,8 +450,7 @@ class IOChannel(Object):
             if self._write_queue:
                 self._wmon.register(self.fileno, IO_WRITE)
 
-        # Disconnect channel on shutdown.  Import main late to avoid import cycles.
-        import main
+        # Disconnect channel on shutdown.
         main.signals['shutdown'].connect_weak(self.close)
 
 
@@ -813,3 +812,7 @@ class IOChannel(Object):
             # Import main late to avoid import cycles.
             import main
             main.signals['shutdown'].disconnect(self.close)
+
+
+# Import main late to avoid import cycles.
+import main

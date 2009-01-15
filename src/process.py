@@ -63,8 +63,23 @@ class _Supervisor(object):
     """
     def __init__(self):
         self.processes = {}
-        # FIXME: this has bad side-effects with interrupted system calls
-        # signal.signal(signal.SIGCHLD, self._sigchld_handler)
+
+        signal.signal(signal.SIGCHLD, self._sigchld_handler)
+        # Set SA_RESTART bit for the signal, which restarts any interrupt
+        # system calls.
+        try:
+            # Python 2.6+
+            signal.siginterrupt(signal.SIGCHLD, False)
+        except AttributeError:
+            try:
+                # Python 2.5
+                import ctypes
+                ctypes.CDLL("libc.so.6").siginterrupt(signal.SIGCHLD, 0)
+            except (ImportError, OSError):
+                # Python 2.4-
+                log.warning('Detaching SIGCHLD handler due to old Python version')
+                signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+
 
     def register(self, process):
         log.debug('Supervisor now monitoring %s', process)

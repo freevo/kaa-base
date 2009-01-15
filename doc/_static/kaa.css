@@ -50,3 +50,14 @@ div.kaa.synopsis div.heading {
     margin-bottom: 0.3em;
 
 }
+
+dl.class > dt:first-child {
+    font-size: 105%;
+    border: 1px solid #dbb1ea;
+    padding: 3px 0.5em;
+    background-color: #f3e6f8;
+}
+
+dt:target, .highlight {
+    background-color: #fbe54e !important;
+}

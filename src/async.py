@@ -51,7 +51,7 @@ from utils import property
 # problems, signal.py can only import async, not InProgress itself.
 from signals import Signal
 
-# We have more recursive imports: main, thared, and timer. It is hard
+# We have more recursive imports: main, thread, and timer. It is hard
 # to fix, but unlike Signal, InProgress needs this during runtime, not
 # for class creation. So we import them at the end of this module.
 

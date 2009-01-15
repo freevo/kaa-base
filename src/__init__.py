@@ -31,7 +31,7 @@ import logger
 # We have some problems with recursive imports. One is InProgress from
 # async. It is a Signal, but Signal itself has an __inprogress__
 # function. To avoid any complications, we import async first. This
-# will import other file that require InProgress. Too avoid problems,
+# will import other file that require InProgress. To avoid problems,
 # these modules only import async as complete module, not InProgress
 # inside async because it does not exist yet.
 

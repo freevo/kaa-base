@@ -206,8 +206,8 @@ class Process2(Object):
         self._child = None
         # Weakref of self used to invoke Process._cleanup callback on finalization.
         self._cleanup_weakref = None
-        # The status code returned by the child once it completes.
-        self._status = None
+        # The exit code returned by the child once it completes.
+        self._exitcode = None
 
         if dumpfile:
             # Dumpfile specified, create IOChannel which we'll later pass to
@@ -305,13 +305,15 @@ class Process2(Object):
             return self._child.pid
 
     @property
-    def status(self):
+    def exitcode(self):
         """
-        The child's status code once it has terminate.
+        The child's exit code once it has terminated.
         
         If the child is still running or it has not yet been started, this
         value will be None.
         """
+        return self._exitcode
+
 
     @property
     def running(self):
@@ -422,7 +424,7 @@ class Process2(Object):
         self._stderr.wrap(self._child.stderr, IO_READ)
 
         self._in_progress = InProgress()
-        self._status = None
+        self._exitcode = None
         self._state = Process2.STATE_RUNNING
 
         return self
@@ -666,9 +668,9 @@ class Process2(Object):
 
         # Should be safe to wait() to collect zombies.  We shouldn't be here
         # unless the process actually is done.
-        self._status = self._child.wait()
+        self._exitcode = self._child.wait()
 
-        log.debug('Child terminated, process=%s status=%d', self, self._status)
+        log.debug('Child terminated, process=%s exitcode=%d', self, self._exitcode)
 
         # We can close stdin since the child is dead.  But stdout and stderr
         # need to remain open, in case there is data buffered in them that the
@@ -688,7 +690,7 @@ class Process2(Object):
         supervisor.unregister(self)
 
         self._state = Process2.STATE_STOPPED
-        self._in_progress.finish(self._status)
-        self.signals['finished'].emit(self._status)
+        self._in_progress.finish(self._exitcode)
+        self.signals['finished'].emit(self._exitcode)
 
 

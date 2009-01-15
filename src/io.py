@@ -41,12 +41,13 @@ import fcntl
 import cStringIO
 
 import nf_wrapper as notifier
-from callback import WeakCallback, Callback
-from signals import Signals, Signal
+from callback import WeakCallback
+from signals import Signal
 from thread import MainThreadCallback, is_mainthread
 from async import InProgress, inprogress
 from utils import property
 from object import Object
+# Note: recursive imports are handled at the end of this module.
 
 # get logging object
 log = logging.getLogger('base.io')
@@ -809,10 +810,11 @@ class IOChannel(Object):
             self._channel = None
 
             self.signals['closed'].emit(expected)
-            # Import main late to avoid import cycles.
-            import main
             main.signals['shutdown'].disconnect(self.close)
 
 
-# Import main late to avoid import cycles.
+# We have have a problem with recursive imports. We need main here,
+# but main depends (through various other modules) on io.py. Since we
+# only need main during runtime, we import it at the end of this
+# module.
 import main

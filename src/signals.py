@@ -40,6 +40,10 @@ import atexit
 from callback import Callback, WeakCallback
 from utils import property
 
+# Recursive import. async itself exists, but not the async.InProgress*
+# objects we need. When we need to access them, they are available.
+import async
+
 # get logging object
 log = logging.getLogger('base')
 
@@ -266,8 +270,7 @@ class Signal(object):
         connected weakly to us, so when the InProgress is destroyed, the
         callback is automatically disconnected.
         """
-        from async import InProgressCallback
-        return InProgressCallback(self.connect_weak_once)
+        return async.InProgressCallback(self.connect_weak_once)
 
 
 
@@ -341,16 +344,14 @@ class Signals(dict):
         """
         Returns an InProgressAny object with all signals in self.
         """
-        from async import InProgressAny
-        return InProgressAny(*self.values())
+        return async.InProgressAny(*self.values())
 
 
     def all(self):
         """
         Returns an InProgressAll object with all signals in self.
         """
-        from async import InProgressAll
-        return InProgressAll(*self.values())
+        return async.InProgressAll(*self.values())
 
 
     def __getattr__(self, attr):

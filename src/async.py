@@ -6,7 +6,7 @@
 #
 # -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
-# Copyright (C) 2006-2008 Dirk Meyer, Jason Tackaberry, et al.
+# Copyright (C) 2006-2009 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
@@ -44,8 +44,16 @@ import threading
 
 # kaa.base imports
 from callback import Callback
-from signals import Signal
 from utils import property
+
+# Recursive imports. The Signal requires InProgress which does not
+# exist at this point. But async itself does exist. To avoid any
+# problems, signal.py can only import async, not InProgress itself.
+from signals import Signal
+
+# We have more recursive imports: main, thared, and timer. It is hard
+# to fix, but unlike Signal, InProgress needs this during runtime, not
+# for class creation. So we import them at the end of this module.
 
 # get logging object
 log = logging.getLogger('base.async')
@@ -91,7 +99,6 @@ def delay(seconds):
         finishes.
     @rtype: L{InProgress}
     """
-    from timer import OneShotTimer
     ip = InProgressCallback()
     OneShotTimer(ip).start(seconds)
     return ip
@@ -389,7 +396,6 @@ class InProgress(Signal):
             # exception.  Rather than logging it, we reraise it in the main
             # loop so that the main loop exception handler can act
             # appropriately.
-            import main
             def reraise():
                 raise exc
             return main.signals['step'].connect_once(reraise)
@@ -433,8 +439,6 @@ class InProgress(Signal):
         will not affect this InProgress object. If callback is given, the
         callback will be called just before TimeoutException is raised.
         """
-        # Import modules here rather than globally to avoid circular importing.
-        from timer import OneShotTimer
         async = InProgress()
         def trigger():
             self.disconnect(async.finish)
@@ -472,10 +476,6 @@ class InProgress(Signal):
         (which may be fractional).  If wait times out, a TimeoutException is
         raised.
         """
-        # Import modules here rather than globally to avoid circular importing.
-        import main
-        from thread import is_mainthread
-
         # Connect a dummy handler to ourselves.  This is a bit kludgy, but
         # solves a particular problem with InProgress(Any|All), which don't
         # actually finish unless something wants to know.  Normally, without
@@ -622,7 +622,7 @@ class InProgressAny(InProgress):
         we tried to connect to them.
         """
         if prefinished:
-            # One or more IP was already finished.  We pass each one to 
+            # One or more IP was already finished.  We pass each one to
             # self.finish until we're actually finished (because the prefinished
             # IP may get filtered).
             while not self.finished and prefinished:
@@ -738,3 +738,12 @@ class InProgressAll(InProgressAny):
 
     def __getitem__(self, idx):
         return self._objects[idx]
+
+# We have some additional modules InProgress needs during
+# runtime. They are imported here at the end because these modules
+# require InProgress again. Yes, we know, it is a mess. But at least
+# we are not importing inside a function which could get us into
+# trouble when using threads.
+import main
+from timer import OneShotTimer
+from thread import is_mainthread

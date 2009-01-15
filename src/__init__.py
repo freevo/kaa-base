@@ -28,6 +28,17 @@
 # import logger to update the Python logging module
 import logger
 
+# We have some problems with recursive imports. One is InProgress from
+# async. It is a Signal, but Signal itself has an __inprogress__
+# function. To avoid any complications, we import async first. This
+# will import other file that require InProgress. Too avoid problems,
+# these modules only import async as complete module, not InProgress
+# inside async because it does not exist yet.
+
+# InProgress class
+from async import TimeoutException, InProgress, InProgressCallback, \
+     InProgressAny, InProgressAll, inprogress, delay
+
 # Import all classes, functions and decorators that are part of the API
 from object import Object
 
@@ -36,10 +47,6 @@ from callback import Callback, WeakCallback
 
 # Signal and dict of Signals
 from signals import Signal, Signals
-
-# InProgress class
-from async import TimeoutException, InProgress, InProgressCallback, \
-     InProgressAny, InProgressAll, inprogress, delay
 
 # Thread callbacks, helper functions and decorators
 from thread import MainThreadCallback, NamedThreadCallback, ThreadCallback, \

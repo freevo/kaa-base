@@ -5,7 +5,7 @@
 # $Id$
 # -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
-# Copyright (C) 2008 Dirk Meyer, Jason Tackaberry, et al.
+# Copyright (C) 2009 Dirk Meyer, Jason Tackaberry, et al.
 #
 # First Version: Jason Tackaberry <tack@urandom.ca>
 # Maintainer:    Jason Tackaberry <tack@urandom.ca>
@@ -25,7 +25,12 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+
+# python imports
 import inspect
+
+# kaa imports
+from signals import Signals
 
 def get_all_signals(cls):
     """
@@ -97,8 +102,6 @@ class Object(object):
 
         signals = get_all_signals(self.__class__)
         if signals:
-            # Import Signals late to allow circular importing.
-            from signals import Signals
             # Construct the kaa.Signals object and attach the docstrings to
             # each signal in the Signal object's __doc__ attribute.
             self.signals = Signals(*signals.keys())

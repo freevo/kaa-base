@@ -142,6 +142,7 @@ class Server(Object):
             Emitted when a new RPC client connects to this RPC server.
 
             .. describe:: def callback(client, ...)
+
                :param client: the new client that just connected
                :type client: :class:`~kaa.rpc.Client` object
 

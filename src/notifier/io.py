@@ -134,7 +134,8 @@ class IOChannel(Object):
     Reads are asynchronous and non-blocking, and may be performed using two
     possible approaches:
 
-        1. Connecting a callback to the *read* or *readline* signals.
+        1. Connecting a callback to the :attr:`~kaa.IOChannel.signals.read` 
+           or :attr:`~kaa.IOChannel.signals.readline` signals.
         2. Invoking the :meth:`~kaa.IOChannel.read` or
            :meth:`~kaa.IOChannel.readline` methods, which return
            :class:`~kaa.InProgress` objects.

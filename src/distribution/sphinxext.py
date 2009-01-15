@@ -230,6 +230,7 @@ def kaatable_depart(self, node):
 
 def auto_directive(name, arguments, options, content, lineno,
                        content_offset, block_text, state, state_machine):
+    env = state.document.settings.env
     inherited_signals = 'inherited-signals' in options
     add_signals = options.get('add-signals', [])
     remove_signals = options.get('remove-signals', [])
@@ -269,7 +270,17 @@ def auto_directive(name, arguments, options, content, lineno,
         for child in section.children:
             if isinstance(child, sphinx.addnodes.desc) and child.children:
                 signame = str(child.children[0][0].children[0])
-                child.children[0]['ids'] = [u'%s.signals.%s' % (arguments[0], signame)]
+                new_id = u'%s.signals.%s' % (arguments[0], signame)
+
+                if child.children[0]['ids']:
+                    # Replace the descref previously created with the old id
+                    # (kaa.Foo.sig) with the new id (kaa.Foo.signals.sig) so
+                    # that references to the signal may be resolved.
+                    id = child.children[0]['ids'][0]
+                    env.descrefs[new_id] = env.descrefs[id]
+                    del env.descrefs[id]
+
+                child.children[0]['ids'] = [new_id]
 
     return [section]
 

@@ -297,6 +297,13 @@ def members_option(arg):
     return [ x.strip() for x in arg.split(',') ]
 
 
+# Directive options are keyed on handler function, so we need a separate
+# function for autosignals since it has different options from automethods
+# and autoproperties.
+def autosignals_directive(*args, **kwargs):
+    return auto_directive(*args, **kwargs)
+
+
 def setup(app):
     synopsis_options = {
         'inherited-members': directives.flag,
@@ -324,4 +331,4 @@ def setup(app):
     app.add_directive('autosynopsis', synopsis_directive, 1, (0, 1, 1), **synopsis_options)
     app.add_directive('autoproperties', auto_directive, 1, (0, 1, 1), **members_options)
     app.add_directive('automethods', auto_directive, 1, (0, 1, 1), **members_options)
-    app.add_directive('autosignals', auto_directive, 1, (0, 1, 1), **signals_options)
+    app.add_directive('autosignals', autosignals_directive, 1, (0, 1, 1), **signals_options)

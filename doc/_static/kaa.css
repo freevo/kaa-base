@@ -11,12 +11,21 @@ div.kaa.synopsis table {
 div.kaa.synopsis th {
     white-space: nowrap;
     border-bottom: 1px solid #efddc8;
-    padding-right: 2em;
+    padding-right: 1em;
+    vertical-align: top;
 }
 
 div.kaa.synopsis td {
-    width: 100%;
     border-bottom: 1px solid #efddc8;
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+    vertical-align: top;
+}
+
+div.kaa.synopsis td.desc {
+    padding-left: 1em;
+    width: 100%;
+    vertical-align: top;
 }
 
 div.kaa.synopsis p {

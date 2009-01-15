@@ -147,7 +147,8 @@ def synopsis_directive(name, arguments, options, content, lineno,
     append('', '')
 
     for name, prop in get_properties(cls, inherited_members, add_members, remove_members):
-        append(name, get_first_line(prop.__doc__))
+        perm = ('r', '')[prop.fget is None] + ('w', '')[prop.fset is None]
+        append(name, perm + ' ' + get_first_line(prop.__doc__))
     append('', '')
 
     for name, method in get_methods(cls, inherited_members, add_members, remove_members):
@@ -181,6 +182,10 @@ def kaatable_depart(self, node):
     for name, desc in re.findall(r'%s(.*?)%s(.*?)%s' % (DELIM, DELIM, DELIM), html, re.S):
         if name == desc == '</p>\n<p>':
             all.pop(0)
+        elif all[0] is properties:
+            perm, desc = desc.strip().split(' ', 1)
+            perm = {'r': 'read only', 'w': 'write only', 'rw': 'read/write'}[perm]
+            all[0].append((name.strip(), perm, desc))
         else:
             all[0].append((name.strip(), desc.strip()))
  
@@ -206,8 +211,6 @@ def kaatable_depart(self, node):
         self.body.append('%s%s<br />' % (prefix, clsname))
     self.body.append('</p>')
 
-
-
     for what in ('methods', 'properties', 'signals'):
         list = locals()[what]
         filter = locals()['%s_filter' % what]
@@ -216,8 +219,10 @@ def kaatable_depart(self, node):
             self.body.append('<p>This class has no %s.</p>' % what)
         else:
             self.body.append('<table>')
-            for name, desc in list:
-                self.body.append('<tr><th>%s</th><td>%s</td></tr>' % (filter(name), desc))
+            for row in list:
+                self.body.append('<tr><th>%s</th>' % filter(row[0]))
+                self.body.append(''.join(['<td>%s</td>' % col for col in row[1:-1]]))
+                self.body.append('<td class="desc">%s</td></tr>' % row[-1])
             self.body.append('</table>')
 
     self.body.append('</div>')

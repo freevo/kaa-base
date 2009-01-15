@@ -27,6 +27,7 @@ div.kaa.synopsis td.desc {
     padding-left: 1em;
     width: 100%;
     vertical-align: top;
+    white-space: normal;
 }
 
 div.kaa.synopsis p {

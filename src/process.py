@@ -63,7 +63,8 @@ class _Supervisor(object):
     """
     def __init__(self):
         self.processes = {}
-        signal.signal(signal.SIGCHLD, self._sigchld_handler)
+        # FIXME: this has bad side-effects with interrupted system calls
+        # signal.signal(signal.SIGCHLD, self._sigchld_handler)
 
     def register(self, process):
         log.debug('Supervisor now monitoring %s', process)

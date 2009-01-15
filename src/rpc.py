@@ -93,6 +93,7 @@ import traceback
 import kaa
 from notifier.async import make_exception_class, AsyncExceptionBase
 from kaa.utils import property
+from notifier.object import Object
 
 # get logging object
 log = logging.getLogger('rpc')
@@ -122,7 +123,7 @@ class RemoteException(AsyncExceptionBase):
         return "Exception during RPC call '%s'; remote traceback follows:" % self._kaa_exc_args[0]
 
 
-class Server(object):
+class Server(Object):
     """
     RPC server class.  RPC servers accept incoming connections from client,
     however RPC calls can be issued in either direction.
@@ -135,14 +136,24 @@ class Server(object):
 
     See kaa.Socket.buffer_size docstring for information on buffer_size.
     """
-    def __init__(self, address, auth_secret = '', buffer_size=None):
+    __kaasignals__ = {
+        'client_connected':
+            '''
+            Emitted when a new RPC client connects to this RPC server.
 
+            .. describe:: def callback(client, ...)
+               :param client: the new client that just connected
+               :type client: :class:`~kaa.rpc.Client` object
+
+            '''
+    }
+    def __init__(self, address, auth_secret = '', buffer_size=None):
+        super(Server, self).__init__()
         self._auth_secret = auth_secret
         self._socket = kaa.Socket(buffer_size=buffer_size)
         self._socket.listen(address)
         self._socket.signals['new-client'].connect_weak(self._new_connection)
 
-        self.signals = kaa.Signals('client_connected')
         self.objects = []
 
     def _new_connection(self, client_sock):
@@ -183,14 +194,30 @@ class Server(object):
             pass
 
 
-class Channel(object):
+class Channel(Object):
     """
     Channel object for two point communication, implementing the kaa.rpc
     protocol. The server creates a Channel object for each incoming client
     connection.  Client itself is also a Channel.
     """
+    __kaasignals__ = {
+        'closed':
+            '''
+            Emitted when the RPC channel is closed.
+
+            .. describe:: def callback(...)
+            ''',
+        
+        'authenticated':
+            '''
+            Emitted when the RPC channel has successfully authenticated.
+
+            .. describe:: def callback(...)
+            '''
+    }
 
     def __init__(self, sock, auth_secret):
+        super(Channel, self).__init__()
         self._socket = sock
 
         self._authenticated = False
@@ -206,7 +233,6 @@ class Channel(object):
         self._auth_secret = auth_secret
         self._pending_challenge = None
 
-        self.signals = kaa.Signals('closed', 'authenticated')
         # Creates a circular reference so that RPC channels survive even when
         # there is no reference to them.  (Servers do not hold references to
         # clients channels.)  As long as the socket is connected, the channel
@@ -694,7 +720,7 @@ class Client(Channel):
         except socket.error, e:
             raise ConnectError(*e.args)
 
-        Channel.__init__(self, sock, auth_secret)
+        super(Client, self).__init__(sock, auth_secret)
 
 
     def _get_channel_type(self):

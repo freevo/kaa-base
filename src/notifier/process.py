@@ -45,6 +45,7 @@ from async import InProgress, InProgressAny, delay
 from callback import Callback, WeakCallback
 from coroutine import coroutine, POLICY_SINGLETON
 from kaa.utils import property
+from object import Object
 
 # get logging object
 log = logging.getLogger('notifier.process')
@@ -127,13 +128,61 @@ class IOSubChannel(IOChannel):
 
 
 
-class Process2(object):
+class Process2(Object):
 
     STATE_STOPPED = 0  # Idle state, no child.
     STATE_RUNNING = 1  # start() was called and child is running
     STATE_STOPPING = 2 # stop() was called
     STATE_DYING = 3    # in the midst of cleanup during child death
 
+    __kaasignals__ = {
+        'read':
+            '''
+            Emitted for each chunk of data read from either stdout or stderr
+            of the child process.
+
+            .. describe:: def callback(chunk, ...)
+
+               :param chunk: data read from the child's stdout or stderr.
+               :type chunk: str
+
+            When a callback is connected to the *read* signal, data is automatically
+            read from the child as soon as it becomes available, and the signal
+            is emitted.
+
+            It is allowed to have a callback connected to the *read* signal
+            and simultaneously use the :meth:`~kaa.Process2.read` and
+            :meth:`~kaa.Process2.readline` methods.
+            ''',
+
+        'readline':
+            '''
+            Emitted for each line read from either stdout or stderr of the
+            child process.
+
+            .. describe:: def callback(line, ...)
+
+               :param line: line read from the child's stdout or stderr.
+               :type line: str
+
+            It is not allowed to have a callback connected to the *readline* signal
+            and simultaneously use the :meth:`~kaa.Process2.readline` method.
+
+            Refer to :meth:`~kaa.Process2.readline` for more details.
+            ''',
+
+        'finished':
+            '''
+            Emitted when the child exits.
+
+            .. describe:: def callback(exitcode, ...)
+
+               :param exitcode: the exit code of the child
+               :type expected: int
+            '''
+    }
+
+    
     def __init__(self, cmd, shell=False, dumpfile=None):
         """
         Create a Process object.  The subprocess is not started until
@@ -143,17 +192,12 @@ class Process2(object):
         :type cmd: string or list of strings
         :param shell: True if the command should be executed through a shell.
                       This allows for shell-like syntax (redirection, pipes,
-                      etc.), but in this case :param:cmd must be a string.
+                      etc.), but in this case *cmd* must be a string.
         :type shell: bool
         :param dumpfile: File to which all child stdout and stderr will be
                          dumped, or None to disable output dumping.
         :type dumpfile: None, string (path to filename), file object, IOChannel
         """
-        # read and readline signals are aggregated for both stdout and stderr.
-        # If caller wants specifically stdout or stderr, she can use the
-        # stdout or stderr IOChannel(which are properties) directly.
-        self.signals = Signals('read', 'readline', 'finished')
-
         self._cmd = cmd
         self._shell = shell
         self._stop_command = None
@@ -506,20 +550,22 @@ class Process2(object):
             while process.readable:
                 data = yield process.read()
 
-        You can read directly from stdout or stderr.  However, beware of this
-        code, which is wrong::
 
-            while process.readable:
-                data = yield process.stdout.read()
+        .. warning::
+           You can read directly from stdout or stderr.  However, beware of this
+           code, which is wrong::
 
-        In the above incorrect example, process.readable may be True even
-        though process.stdout is closed (because process.stderr may not be
-        closed).  In this case, process.stdout.read() will return immediately
-        with None, resulting in a busy loop.  The solution is to test the
-        process.stdout.readable property instead::
+               while process.readable:
+                   data = yield process.stdout.read()
 
-            while process.stdout.readable:
-                data = yield process.stdout.read()
+           In the above incorrect example, process.readable may be True even
+           though process.stdout is closed (because process.stderr may not be
+           closed).  In this case, process.stdout.read() will finish immediately
+           with None, resulting in a busy loop.  The solution is to test the
+           process.stdout.readable property instead::
+
+               while process.stdout.readable:
+                   data = yield process.stdout.read()
         """
         return self._async_read(self._stdout.read, self._stderr.read)
 

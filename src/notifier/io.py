@@ -497,18 +497,17 @@ class IOChannel(Object):
                   was collected and the channel was closed (or the channel 
                   was already closed when read() was called).
 
-        It is therefore possible to busy-loop by reading on a closed channel,
-        when calling :meth:`~kaa.InProgress.wait` on the returned InProgress
-        object::
+        It is therefore possible to busy-loop by reading on a closed channel::
 
             while True:
-                channel.read().wait()
+                data = yield channel.read()
+                # Or: channel.read().wait()
 
         So the return value of read() should be checked.  Alternatively,
         channel.readable could be tested::
 
             while channel.readable:
-                channel.read().wait()
+                 data = yield process.read()
 
         """
         if self._read_queue.tell() > 0:

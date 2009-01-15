@@ -238,7 +238,7 @@ class Process2(Object):
         # The Process read and readline signals (aka "global" read/readline signals)
         # encapsulate both stdout and stderr.  When a new callback is connected
         # to these signals, we invoke _update_read_monitor() on the IOSubChannel
-        # object which will register the fd with the notifier if necessary.
+        # object which will register the fd with the mainloop if necessary.
         # (If we didn't do this, the fd would not get registered and therefore
         # data never read and therefore the callbacks connected to the global
         # read/readline signals never invoked.)

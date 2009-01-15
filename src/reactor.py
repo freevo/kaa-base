@@ -52,7 +52,7 @@ import main
 
 class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
     """
-    Twisted reactor for kaa.notifier.
+    Twisted reactor for kaa
     """
 
     _twisted_stopped = False
@@ -87,7 +87,7 @@ class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
 
     def connect(self):
         """
-        Connect the reactor to kaa.notifier.
+        Connect the reactor to kaa.
         """
         self.interleave(self._kaa_callback)
         self.addSystemEventTrigger('after', 'shutdown', self._twisted_stopped_callback)
@@ -95,7 +95,7 @@ class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
 
     def run(self, installSignalHandlers=1):
         """
-        Run the reactor by starting the notifier mainloop.
+        Run the reactor by starting the generic mainloop.
         """
         main.run()
 

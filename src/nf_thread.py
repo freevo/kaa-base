@@ -35,7 +35,7 @@ __all__ = [ 'init' ]
 import threading
 import logging
 
-# kaa.notifier imports
+# kaa imports
 import main
 import nf_wrapper as notifier
 from main import _set_running as set_mainloop_running
@@ -45,7 +45,7 @@ log = logging.getLogger('notifier')
 
 class ThreadLoop(threading.Thread):
     """
-    Thread running the kaa.notifier mainloop.
+    Thread running the kaa mainloop.
     """
     def __init__(self, interleave, shutdown = None):
         super(ThreadLoop, self).__init__()
@@ -121,7 +121,7 @@ class TwistedLoop(ThreadLoop):
 
 class Wakeup(object):
     """
-    Wrapper around a function to wakeup the sleeping notifier loop
+    Wrapper around a function to wakeup the sleeping mainloop
     when timer or sockets are added.
     """
     def __init__(self, loop, func):

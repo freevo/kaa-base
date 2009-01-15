@@ -72,14 +72,14 @@ LockType = sysimport('thread').LockType
 # get logging object
 log = logging.getLogger('base')
 
-# TODO: organize thread notifier stuff into its own namespace
+# TODO: organize thread stuff into its own namespace
 
 _thread_notifier_mainthread = threading.currentThread()
 _thread_notifier_lock = threading.RLock()
 _thread_notifier_queue = []
 
 # For MainThread* callbacks. The pipe will be created when it is used the first
-# time. This solves a nasty bug when you fork() into a second notifier based
+# time. This solves a nasty bug when you fork() into a second kaa based
 # process without exec. If you have this pipe, communication will go wrong.
 # (kaa.utils.daemonize does not have this problem.)
 _thread_notifier_pipe = None
@@ -388,7 +388,7 @@ class ThreadCallback(Callback):
     """
     Notifier aware wrapper for threads. When a thread is started, it is
     impossible to fork the current process into a second one without exec both
-    using the notifier main loop because of the shared _thread_notifier_pipe.
+    using the main loop because of the shared _thread_notifier_pipe.
     """
     _daemon = False
 

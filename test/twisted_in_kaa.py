@@ -25,7 +25,7 @@ reactor.callLater(0.5, twisted_callback1)
 reactor.callLater(1.5, twisted_callback2)
 kaa.Timer(kaa_callback).start(1)
 
-# you can either call notifier.main() or reactor.run()
+# you can either call kaa.main.run() or reactor.run()
 # reactor.run()
 kaa.main.run()
 

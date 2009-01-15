@@ -1,4 +1,4 @@
-# Test suite for kaa.notifier classes
+# Test suite for kaa notifier classes
 
 import kaa
 from kaa import *

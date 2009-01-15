@@ -3,7 +3,7 @@ TODO before 1.0:
 - Eliminate explicit type() checking.  Even isinstance() should be avoided
   where possible, relying instead of duck typing.
 - Make sure SystemExit and KeyboardInterrupt is not silently caught.  They
-  should be bubbled up to the notifier loop.  In other words, do not
+  should be bubbled up to the mainloop.  In other words, do not
   use catch-all except statements, but rather 'except Exception' (which
   will not catch KeyboardInterrupt and SystemExit).
 - Remove getters and setters (in the form get_foo() and set_foo()), using

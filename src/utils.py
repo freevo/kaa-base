@@ -155,7 +155,7 @@ def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None,
     os.dup2(stderr.fileno(), sys.stderr.fileno())
 
     # Replace any existing thread notifier pipe, otherwise we'll be listening
-    # to our parent's thread notifier.
+    # to our parent's thread pipe.
     from thread import create_thread_notifier_pipe
     create_thread_notifier_pipe(new=False, purge=True)
 
@@ -317,8 +317,7 @@ else:
 
 def sysimport(name):
     """
-    Help to import modules with name conflict. E.g. thread.py in notifier
-    uses sysimport('thread').
+    Help to import modules with name conflict. E.g. thread.py uses sysimport('thread').
     """
     # Fast path: see if the module has already been imported.
     try:

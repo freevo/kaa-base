@@ -1,8 +1,8 @@
 import kaa
 
 # method can be either
-# 0: use thread based notifier
-# 1: use twisted thread based notifier
+# 0: use thread based mainloop
+# 1: use twisted thread based mainloop
 # 2: use twisted experimental pynotifier
 #    Known Bug: Twisted does not stop the reactor on SystemExit. If a
 #    callback calls sys.exit() to shutdown the program, this won't work.
@@ -46,7 +46,7 @@ if method == 1:
     # there is special code in kaa that does the same as method 0
     kaa.main.select_notifier('twisted')
 if method == 2:
-    # or use the real twisted notifier
+    # or use the real twisted mainloop
     kaa.main.select_notifier('twisted_experimental')
 
 reactor.callLater(0.5, twisted_callback1)

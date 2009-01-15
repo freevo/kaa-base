@@ -36,18 +36,18 @@ signals to which you can connect. In some cases, this dictionary is
 extended when modules are imported.
 
 Depending on what you currently use, some small steps need to be made
-to make the notifier loop running. If you aren't using a main loop
-right now, you should use the kaa main loop.
+to make the mainloop running. If you aren't using a mainloop
+right now, you should use the kaa mainloop.
 
 
 GObject / GTK Integration
 -------------------------
 
-The generic notifier is compatible with the GTK/Glib mainloop and kaa
-notifier has a special handler to hook itself into the GTK/Glib
-mainloop. Kaa notifier will use the GTK/Glib mainloop when gtk or
+The generic mainloop is compatible with the GTK/Glib mainloop and kaa
+has a special handler to hook itself into the GTK/Glib
+mainloop. Kaa will use the GTK/Glib mainloop when gtk or
 gobject is imported once the mainloop is active. But it is possible to
-force the notifier loop to use GTK/Glib by calling init::
+force the loop to use GTK/Glib by calling init::
 
     import kaa
     kaa.main.select_notifier('gtk')
@@ -114,11 +114,11 @@ kaa.main.stop() is supported::
     # you can either call kaa.main.run() or reactor.run()
     kaa.main.run()
 
-The Twisted reactor will work with any kaa notifier backend (generic
+The Twisted reactor will work with any kaa mainloop backend (generic
 and gtk).
 
 There is also the reverse option putting the kaa mainloop into Twisted
-and let the Twisted reactor run. This is based on the thread notifier
+and let the Twisted reactor run. This is based on the thread mainloop
 described below and will not use an external pyNotifier installation::
 
     # get reactor
@@ -143,7 +143,7 @@ selected. It is always possible to run the kaa mainloop in a
 thread but that also means that kaa modules and other parts of the
 code have a different idea what the mainloop is.
 
-A different solution is the thread based notifier in kaa. In
+A different solution is the thread based mainloop in kaa. In
 this mode the kaa mainloop will run in an extra thread and will call a
 callback to the real mainloop that should be called from the real main
 thead. The other mainloop only needs to support a callback function
@@ -175,6 +175,6 @@ Note: the step signal will only be called every step the kaa
 mainloop does and does not affect steps the real mainloop does. Future
 version of kaa may fix that problem.
 
-If you create a wrapper to use kaa with a different notifier
+If you create a wrapper to use kaa with a different mainloop
 using this solution please send us an example so we can include
 support for that mainloop in the kaa distribution.

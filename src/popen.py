@@ -1,11 +1,11 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# popen.py - process control using notifier
+# popen.py - process control
 # -----------------------------------------------------------------------------
 # $Id$
 #
 # This module defines a process class similar to the once defined in popen2
-# except that this class is aware of the notifier loop.
+# except that this class is aware of the mainloop.
 #
 # When creating a Process object you can add files for logging the stdout and
 # stderr of the process, you can send data to it and add a callback to be

@@ -80,14 +80,14 @@ signals = {
 
 def select_notifier(module, **options):
     """
-    Initialize the specified notifier.
+    Initialize the specified mainloop.
 
-    @param module: notifier implementation to use
-      - generic (Python based notifier, default)
+    @param module: mainloop implementation to use
+      - generic (Python based mainloop, default)
       - gtk (gtk mainloop)
-      - threaded (Python based notifier in an extra thread
+      - threaded (Python based mainloop in an extra thread
       - twisted (Twisted mainloop)
-    @param options: The options depend on the used notifier
+    @param options: The options depend on the used mainloop
     """
     if module in ('thread', 'twisted'):
         import nf_thread
@@ -152,7 +152,7 @@ def loop(condition, timeout = None):
 
 def run(threaded=False):
     """
-    Notifier main loop function. It will loop until an exception
+    Main loop function. It will loop until an exception
     is raised or sys.exit is called. If thread is true the mainloop
     will run in an extra thread.
     """
@@ -190,7 +190,7 @@ def run(threaded=False):
 @threaded(MAINTHREAD)
 def stop():
     """
-    Shutdown notifier and kill all background processes.
+    Shutdown mainloop and kill all background processes.
     """
     global _shutting_down
 
@@ -198,7 +198,7 @@ def stop():
         return
 
     if is_running():
-        # notifier loop still running, send system exit
+        # loop still running, send system exit
         log.info('Stop notifier loop')
         notifier.shutdown()
 
@@ -225,7 +225,7 @@ def stop():
 
 def step(*args, **kwargs):
     """
-    Notifier step function with signal support. This function should not
+    step function with signal support. This function should not
     be called directly to avoid recursion.
     """
     if not is_mainthread():
@@ -280,7 +280,7 @@ def _shutdown_check(*args):
     # The problem is that pytgtk just exits python and
     # does not simply return from the main loop and kaa
     # can't call the shutdown handler. This is not a perfect
-    # solution, e.g. with the generic notifier you can do
+    # solution, e.g. with the generic mainloop you can do
     # stuff after kaa.main.run() which is not possible with gtk
     if is_running():
         # If the kaa mainthread (i.e. thread the mainloop is running in)
@@ -295,8 +295,9 @@ def _shutdown_check(*args):
 # catch SIGTERM and SIGINT if possible for a clean shutdown
 if threading.enumerate()[0] == threading.currentThread():
     def signal_handler(*args):
-        # use the preferred stop function for the notifier. Most notifier
-        # backends only call sys.exit(0). Some, like twisted need specific code.
+        # use the preferred stop function for the mainloop. Most
+        # backends only call sys.exit(0). Some, like twisted need
+        # specific code.
         notifier.shutdown()
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)

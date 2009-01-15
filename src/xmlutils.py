@@ -204,7 +204,7 @@ class Node(object):
 
     # we can not use the property from util here because this file is
     # needed by distribution and utils has many dependencies including
-    # the notifier that won't work in a non-installed version
+    # the mainloop that won't work in a non-installed version
     content = property(_get_content, _set_content, None, 'cdata content')
 
     def add_child(self, name, content=None, **attributes):

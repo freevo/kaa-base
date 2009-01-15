@@ -52,7 +52,7 @@ try:
 except ImportError:
     gobject = None
 
-# get notifier thread module
+# get thread module
 import thread as thread_support
 import main as main_module
 
@@ -73,7 +73,7 @@ class Wrapper(object):
     def set_threaded(self, mainloop=None):
         """
         Start the gobject mainloop in a thread. This function should
-        always be used together with the generic notifier.  It is
+        always be used together with the generic mainloop.  It is
         possible to jump between the gobject and the generic mainloop
         with the threaded decorator.
 

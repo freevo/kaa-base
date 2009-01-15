@@ -157,9 +157,9 @@ class Timer(notifier.NotifierCallback):
         Run the callback
         """
         if not self.active():
-            # This happens if previous timer that has been called during the
-            # same notifier step has stopped us. The new notifier could
-            # should prevent this.
+            # This happens if previous timer that has been called
+            # during the same step has stopped us. This should not
+            # happen anymore.
             log.error('calling callback on inactive timer (%s)' % repr(self))
             return False
         return super(Timer, self).__call__(*args, **kwargs)

@@ -723,7 +723,7 @@ class IOChannel(Object):
             if tp in (IOError, socket.error) and args[0] == 11:
                 # Resource temporarily unavailable -- we are trying to write
                 # data to a socket which is not ready.  To prevent a busy loop
-                # (notifier loop will keep calling us back) we sleep a tiny
+                # (mainloop will keep calling us back) we sleep a tiny
                 # bit.  It's admittedly a bit kludgy, but it's a simple
                 # solution to a condition which should not occur often.
                 time.sleep(0.001)

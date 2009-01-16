@@ -39,7 +39,7 @@ import signal
 
 from io import IOChannel, IO_WRITE, IO_READ
 from signals import Signals
-from timer import timed, OneShotTimer
+from timer import timed, OneShotTimer, POLICY_ONCE
 from thread import MainThreadCallback, is_mainthread, threaded, MAINTHREAD
 from async import InProgress, InProgressAny, delay
 from callback import Callback, WeakCallback
@@ -49,7 +49,6 @@ from object import Object
 
 # get logging object
 log = logging.getLogger('base.process')
-
 
 class _Supervisor(object):
     """
@@ -65,8 +64,13 @@ class _Supervisor(object):
         self.processes = {}
 
         signal.signal(signal.SIGCHLD, self._sigchld_handler)
-        # Set SA_RESTART bit for the signal, which restarts any interrupt
-        # system calls.
+        # Set SA_RESTART bit for the signal, which restarts any interrupted
+        # system calls -- however, select (at least on Linux) is NOT restarted
+        # for reasons described at:
+        #    http://lkml.indiana.edu/hypermail/linux/kernel/0003.2/0336.html
+        #
+        # Therefore the purpose of signal.set_wakeup_fd() eludes me, since
+        # select calls get interrupted, there is no need to wake it up.
         try:
             # Python 2.6+
             signal.siginterrupt(signal.SIGCHLD, False)
@@ -77,9 +81,10 @@ class _Supervisor(object):
                 ctypes.CDLL("libc.so.6").siginterrupt(signal.SIGCHLD, 0)
             except (ImportError, OSError):
                 # Python 2.4-
-                log.warning('Detaching SIGCHLD handler due to old Python version')
+                log.warning('Using suboptimal child reaping method due to old Python version')
                 signal.signal(signal.SIGCHLD, signal.SIG_DFL)
-
+                # TODO: attach a lame timer that reaps all every N ms.
+        
 
     def register(self, process):
         log.debug('Supervisor now monitoring %s', process)
@@ -92,12 +97,52 @@ class _Supervisor(object):
         except KeyError:
             pass
 
-    @timed(0, timer=OneShotTimer)
+    @timed(0, timer=OneShotTimer, policy=POLICY_ONCE)
     def _sigchld_handler(self, sig, frame):
         """
-        Handler for SIGCHLD.  We invoke this as a OneShotTimer to ensure we get called
-        on the next pass of the mainloop, otherwise we may interrupt a system call
-        in progress.
+        Handler for SIGCHLD.  We invoke this as a OneShotTimer so that we get called
+        on the next pass of the mainloop.  If SIGCHLD just interrupted the select
+        call in pynotifier, then the following sequence occurs:
+
+           1. SIGCHLD received, and Python's internal C sig handler then
+              queues the python handler to run after the bytecode that called
+              Python select() completes
+           2. low level (C) select() aborts with EINTR (because select ignores
+              SA_RESTART bit) and select_error exception is set (but not
+              raised into Python yet)
+           3. The bytecode responsible for calling select() completes and the
+              queued Python SIGCHLD handler is invoked (this is before the
+              select_error is raised into Python space).
+           4. The @timed decorator wrapper is called (asynchronously), which
+              creates a new OneShotTimer to invoke this method
+              (_sigchld_handler) in 0s.
+           5. Python select() call finally raises select_error with EINTR,
+              which is caught and ignored by pynotifier.
+           6. pynotifier proceeds to fire any pending timers, and so the timer
+              that was just added to call _sigchld_handler is invoked,
+              and Bob's your uncle.
+
+        For system calls (such as read()) that _do_ honor the SA_RESTART bit,
+        the sequence looks a bit different:
+
+           1. Same #1 as above (except replace select() with whatever system
+              call is properly restarted thanks to SA_RESTART)
+           2. System call is restarted (presumably within the kernel).
+           3. The bytecode responsible for calling the system call completes.
+           4. Before the return value is passed back into Python space, the
+              queued python handler (@timed decorator wrapper) is called
+              asynchronously as in #4 above.
+           5. The system call's return value is passed back into Python 
+              space as if nothing was interrupted, except now our timer is
+              queued.
+           6. Next mainloop iteration, select() is called with a 0 timeout;
+              then #6 as above.
+             
+        We _might_ get away fine with not using a timer to call the real
+        _sigchld_handler, but as the signal handler is called asynchronously,
+        it is safest and most predictable to do as little as possible,
+        especially as Process._check_read() might involve some fairly complex
+        paths.
         """
         log.debug('SIGCHLD: entering timed handler')
         for process, monitoring in self.processes.items():
@@ -214,6 +259,7 @@ class Process2(Object):
                          dumped, or None to disable output dumping.
         :type dumpfile: None, string (path to filename), file object, IOChannel
         """
+        super(Process2, self).__init__()
         self._cmd = cmd
         self._shell = shell
         self._stop_command = None
@@ -547,7 +593,7 @@ class Process2(Object):
 
         There is no way to determine from which (stdout or stderr) the data
         was read; if you require this, use the stdout or stderr attributes
-        directly (however see note below).
+        directly (however see warning below).
 
         :returns: A :class:`~kaa.InProgress`, finished with the data read.
                   If it is finished the empty string, it means the child's

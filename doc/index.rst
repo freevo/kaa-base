@@ -27,15 +27,21 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   notifier/index
+   async
+   mainloop
+   signals
+   timer
+   threads
+   io/index
    rpc
 
 But that is not all. The following parts of kaa.base need to be
 documented: kaa.config, kaa.db, kaa.distribution, kaa.input,
 kaa.ioctl, kaa.net.mdns, kaa.net.tls, kaa.net.url, kaa.strutils,
-kaa.tmpfile, kaa.utils, kaa.weakref, kaa.xmlutils. The logger
-manipulation in kaa.logger should also be documented as automatic
-function. Also missing are the extensions for inotify and shm.
+kaa.utils, kaa.weakref, kaa.xmlutils. The logger manipulation in
+kaa.logger should also be documented as automatic function. Also
+missing are the extensions for inotify and shm, kaa.signals,
+kaa.Event, and kaa.Eventhandler
 
 Indices and tables
 ==================

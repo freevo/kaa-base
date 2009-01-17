@@ -521,12 +521,12 @@ def append_synopsis_section(state, section_synopsis, search_node, title, role, o
             prop = getattr(cls, name.split('.')[-1], None)
             perm = 'unknown'
             if prop:
-                if prop.fget and prop.fset:
-                    perm = 'read/write'
-                elif prop.fset:
+                if prop.fset and not prop.fget:
                     perm = 'write-only'
-                elif prop.fget:
+                elif prop.fget and not prop.fset:
                     perm = 'read-only'
+                else:
+                    perm = 'read/write'
             members.append((name, nodes.Text(perm), desc))
         else:
             members.append((name, desc))

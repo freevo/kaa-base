@@ -1,9 +1,8 @@
 Socket I/O
 ----------
 
-.. autoclass:: kaa.Socket
+.. kaaclass:: kaa.Socket
 
-   .. autosynopsis:: kaa.Socket
-   .. automethods:: kaa.Socket
-   .. autoproperties:: kaa.Socket
-   .. autosignals:: kaa.Socket
+   .. automethods::
+   .. autoproperties::
+   .. autosignals::

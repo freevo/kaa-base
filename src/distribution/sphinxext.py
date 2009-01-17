@@ -1,30 +1,255 @@
-# No comments in here yet, because this code is repulsive.
+# -*- coding: iso-8859-1 -*-
+# -----------------------------------------------------------------------------
+# sphinxext.py - Kaa specific extensions for Sphinx
+# -----------------------------------------------------------------------------
+# $Id$
+# -----------------------------------------------------------------------------
+# Copyright (C) 2009 Dirk Meyer, Jason Tackaberry
+#
+# First Edition: Jason Tackaberry <tack@urandom.ca>
+# Maintainer:    Jason Tackaberry <tack@urandom.ca>
+#
+# Please see the file AUTHORS for a complete list of authors.
+#
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
+#
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
+#
+# -----------------------------------------------------------------------------
+"""
+Defines the following new directives:
 
+   .. kaaclass:: kaa.SomeClassName
+   
+     Top-most directive for all other custom kaa directives.  There are no
+     options.
+
+     A synopsis is automatically included, which provides (in this order)
+
+        - The class hierarchy
+        - Any class attributes explicitly provided via the classattrs
+          directive.
+        - Methods via the automethod directive
+        - Properties via the autoproperties directive
+        - Signals via the autosignals directive
+
+
+    Any of following directives can be nested inside a kaaclass directive.
+    Arguments following the directive are ignored (the class name is gotten
+    from the outside kaaclass directive):
+
+     .. classattrs::
+
+        .. attribute:: SOME_CONSTANT
+
+           Description of class variable SOME_CONSTANT.
+
+        .. attribute:: [...]
+
+           Any number of attribute directives may be nested under a classattrs
+           directive.  They will all be included in the Class Attributes
+           synopsis table in the order specified here.
+
+
+     .. automethods::
+
+        Automatically insert all methods defined in the class specified in the
+        outer kaaclass directive.  Additional methods may be defined like so:
+
+        .. method:: additional_method(arg1, arg2)
+
+           A brief, one-line description of additional_method()
+
+           :param arg1: don't forget to document any arguments.
+
+
+        Takes the following options:
+
+           :inherit:
+
+              Includes all members from parent classes.
+
+           :add: meth1[, meth2[, meth3[, ...]]]
+
+              Includes the methods specified from parent classes.
+           
+           :remove: meth1[, meth2[, meth3[, ...]]]
+
+              Prevents the specified methods from appearing where they would
+              normally be auto-included.
+
+           :order: meth1[, meth2[, meth3[, ...]]]
+
+              Overrides the order for which the methods are listed.  Not all
+              methods need to be specified here: methods that are specified
+              will be listed first and in the given order.  All other methods
+              will follow in the canonical order.
+
+    
+     .. autoproperties::
+
+        Automatically insert all properties defined in the class specified in the
+        outer kaaclass directive.  Additional properties (or attributes that
+        aren't necessarily implemented as properties) may be defined like so:
+
+        .. attribute:: some_other_prop
+
+           A brief, one-line description of some_other_prop.
+
+           More detailed description if desired.
+
+        Options are the same as the automethods directive.
+        
+
+     .. autosignals::
+
+        Automatically insert all signals defined in the class specified in the
+        outer kaaclass directive.  Additional signals maybe defined like so:
+
+        .. attribute:: signals.some_other_signal
+
+           A brief, one-line description of some_other_signal.
+
+           .. describe:: def callback(arg1, arg2, ...)
+
+              :param arg1: don't forget to document callback arguments.
+           
+           A more detailed description of signal, if desired.
+
+           Note that the signals name following the attribute directive is
+           prefixed with 'signals.'  This is important.  The 'signals.' part
+           is stripped for display purposes.
+
+        Options are the same as the automethods directive.
+      
+
+
+Example usage:
+
+.. kaaclass:: kaa.SomeClass
+
+   .. classattrs::
+
+      .. attribute:: SOME_CONST
+
+         Definition of SOME_COST.
+
+         Can of course contain :attr:`references`.
+      
+      .. attribute:: some_other_class_variable
+
+    .. automethods::
+       :add: superclass_method_foo
+       :remove: deprecated_method
+       :order: superclass_method_foo, read, write, custom_method, close
+
+       .. method:: custom_method(arg1, arg2)
+
+          Short description of custom_method.
+
+          :param arg1: and of course the argument descriptions.
+          :param arg2: same here.
+
+          Additional info about custom_method which won't show up in the
+          synopsis table.
+
+    .. autoproperties::
+       :inherit:
+       :remove: stupid_super_class_method
+
+    .. autosignals::
+"""
+
+
+# Python imports
 import re
+
+# Sphinx imports
 from sphinx.util.compat import make_admonition
 from sphinx.ext.autodoc import prepare_docstring
 import sphinx.addnodes
 
+# Docutils imports
 from docutils.parsers.rst import directives
 from docutils import nodes
-from docutils.statemachine import ViewList
+from docutils.statemachine import ViewList, StringList
 from docutils.parsers.rst import directives
 
+# Kaa imports
 from kaa.object import get_all_signals
 
 
-DELIM = u'xyzzy' * 10
+# Custom nodes
+class synopsis(nodes.paragraph):
+    @staticmethod
+    def visit(document, node):
+        document.body.append('<div class="heading">%s</div>' % node['title'])
+        if node['title'] != 'Class Hierarchy':
+            document.body.append('\n<table>\n')
+
+    @staticmethod
+    def depart(document, node):
+        if node['title'] != 'Class Hierarchy':
+            document.body.append('</table>\n')
 
 
-class kaatable(nodes.paragraph):
-    pass
+class hierarchy_row(nodes.paragraph):
+    @staticmethod
+    def visit(document, node):
+        prefix = '%s%s' % ('&nbsp;' * 5 * (node.level-1), ('', '&#9492;&#9472; ')[node.level != 0])
+        document.body.append(prefix)
+        if node.level == node.depth:
+            document.body.append('<tt class="xref docutils literal current">')
 
-class kaasection(nodes.paragraph):
-    pass
+
+    @staticmethod
+    def depart(document, node):
+        if node.level == node.depth:
+            document.body.append('</tt>')
+        document.body.append('<br />')
+    
+
+class td(nodes.paragraph):
+    @staticmethod
+    def visit(document, node):
+        if node.attributes.get('heading'):
+            document.body.append('<th>')
+        else:
+            document.body.append(document.starttag(node, 'td', ''))
+
+    @staticmethod
+    def depart(document, node):
+        if node.attributes.get('heading'):
+            document.body.append('</th>')
+        else:
+            document.body.append('</td>')
 
 
-def get_signals(cls, inherited, add, remove):
-    if inherited:
+class subsection(nodes.paragraph):
+    @staticmethod
+    def visit(document, node):
+        document.body.append('<h4>%s</h4>' % node['title'])
+        if node['title'] == 'Synopsis':
+            document.body.append('<div class="kaa synopsis">\n')
+
+    @staticmethod
+    def depart(document, node):
+        if node['title'] == 'Synopsis':
+            document.body.append('\n</div>\n')
+
+
+def get_signals(cls, inherit, add, remove):
+    if inherit:
         signals = get_all_signals(cls)
     else:
         signals = getattr(cls, '__kaasignals__', {}).copy()
@@ -40,8 +265,8 @@ def get_signals(cls, inherited, add, remove):
         yield key, val
 
 
-def get_members(cls, inherited, add, remove, pre_filter, post_filter):
-    if inherited:
+def get_members(cls, inherit, add, remove, pre_filter, post_filter):
+    if inherit:
         keys = dir(cls)
     else:
         keys = cls.__dict__.keys()
@@ -54,31 +279,24 @@ def get_members(cls, inherited, add, remove, pre_filter, post_filter):
     for name in sorted(keys):
         yield name, getattr(cls, name)
 
-def get_methods(cls, inherited=False, add=[], remove=[]):
-    return get_members(cls, inherited, add, remove,
+
+def get_methods(cls, inherit=False, add=[], remove=[]):
+    return get_members(cls, inherit, add, remove,
                        lambda name, attr: not name.startswith('_'),
                        lambda name, attr: callable(attr))
 
-def get_properties(cls, inherited=False, add=[], remove=[]):
-    return get_members(cls, inherited, add, remove,
+
+def get_properties(cls, inherit=False, add=[], remove=[]):
+    return get_members(cls, inherit, add, remove,
                        lambda name, attr: not name.startswith('_'),
                        lambda name, attr: isinstance(attr, property))
-
-def get_first_line(docstr):
-    if not docstr:
-        return ''
-    docstr = docstr.lstrip('\n')
-    prefix = docstr[:docstr.index(docstr.strip())]
-    lines = [ re.sub(r'^%s' % prefix, '', s).rstrip() for s in docstr.split('\n') ]
-    if '' in lines:
-        lines = lines[:lines.index('')]
-    return ' '.join(lines)
 
 
 def get_class(fullname):
     mod, clsname = fullname.rsplit('.', 1)
     cls = getattr(__import__(mod, None, None, ['']), clsname)
-    return cls, clsname
+    return cls
+
 
 def normalize_class_name(mod, name):
     for i in reversed(range(mod.count('.')+1)):
@@ -91,205 +309,119 @@ def normalize_class_name(mod, name):
     return '%s.%s' % (mod, name)
     
 
-def tree(list, cls, level=0, clstree=None):
+def append_class_hierarchy(node, state, cls, level=0, clstree=None):
     if clstree is None:
         clstree = []
 
     name = normalize_class_name(cls.__module__, cls.__name__)
-    if level > 0:
-        name = ':class:`%s`' % name
-    else:
-        name = '!' + name
-
     clstree.append((level, name))
 
     for c in cls.__bases__:
         if c != object:
-            tree(list, c, level+1, clstree)
+            append_class_hierarchy(node, state, c, level+1, clstree)
 
     if level == 0:
         clstree = sorted(set(clstree), key=lambda x: -x[0])
         depth = max(clstree, key=lambda x: x[0])[0]
         for level, name in [ (abs(level-depth), cls) for level, cls in clstree ]:
-            list.append('%d %s' % (level, name), '')
+            row = hierarchy_row()
+            row.level, row.depth = level, depth
 
-    return clstree
+            if level != depth:
+                name = ':class:`%s`' % name
 
+            list = ViewList()
+            list.append(name, '')
+            state.nested_parse(list, 0, row)
+            node.append(row)
 
-def synopsis_directive(name, arguments, options, content, lineno,
-                       content_offset, block_text, state, state_machine):
-    inherited_signals = 'inherited-signals' in options
-    add_signals = options.get('add-signals', [])
-    remove_signals = options.get('remove-signals', [])
-    inherited_members = 'inherited-members' in options
-    add_members = options.get('add-members', [])
-    remove_members = options.get('remove-members', [])
-
-    cls, clsname = get_class(arguments[0])
-
-    list = ViewList()
-    table = kaatable()
-    table.clsname = arguments[0]
-
-    def append(v1, v2):
-        list.append(DELIM, '')
-        list.append(v1, '')
-        list.append(DELIM, '')
-        list.append(v2, '')
-        list.append(DELIM, '')
-
-    list.append(DELIM, '')
-    tree(list, cls)
-    list.append(DELIM, '')
-
-    for key, val in get_signals(cls, inherited_signals, add_signals, remove_signals):
-        append(key, get_first_line(val))
-    append('', '')
-
-    for name, prop in get_properties(cls, inherited_members, add_members, remove_members):
-        perm = ('r', '')[prop.fget is None] + ('w', '')[prop.fset is None]
-        append(name, perm + ' ' + get_first_line(prop.__doc__))
-    append('', '')
-
-    for name, method in get_methods(cls, inherited_members, add_members, remove_members):
-        append(name, get_first_line(method.__doc__))
-    append('', '')
-
-    table.append(nodes.Text(DELIM))
-    state.nested_parse(list, 0, table)
-    return [table]
-
-
-def kaatable_visit(self, node):
-    return
-
-def kaatable_depart(self, node):
-    # This is where things get ugly.  Conceptually I'm fairly sure this entire
-    # approach (of rewriting the body in the depart handler) is completely
-    # wrong, but I can't figure out the proper way to do it.
-
-    idx = self.body.index(DELIM)
-    html = ''.join(self.body[idx+2:])
-    del self.body[idx:]
-    signals, properties, methods = [], [], []
-    all = [signals, properties, methods]
-
-    m = re.search(r'(%s.*?%s)' % (DELIM, DELIM), html, re.S)
-    tree = m.group(1)
-    html = html[len(tree):]
-    tree = tree[len(DELIM):-len(DELIM)]
-
-    for name, desc in re.findall(r'%s(.*?)%s(.*?)%s' % (DELIM, DELIM, DELIM), html, re.S):
-        if name == desc == '</p>\n<p>':
-            all.pop(0)
-        elif all[0] is properties:
-            perm, desc = (desc.strip().split(' ', 1) + [''])[:2]
-            perm = {'r': 'read only', 'w': 'write only', 'rw': 'read/write'}[perm]
-            all[0].append((name.strip(), perm, desc))
-        else:
-            all[0].append((name.strip(), desc.strip()))
- 
-
-    link = lambda name, display: '<a title="%s.%s" class="reference internal" href="#%s.%s">%s</a>' % \
-                                 (node.clsname, name, node.clsname, name, display)
-    methods_filter = lambda name: link(name, name) + '()'
-    properties_filter = lambda name: link(name, name)
-    signals_filter = lambda name: link('signals.%s' % name, name)
-
-
-    self.body.append('<div class="kaa synopsis">')
-    self.body.append('<h4>Synopsis</h4>')
-    self.body.append('<div class="heading">Class Hierarchy</div>')
-    self.body.append('<p class="hierarchy">')
-    for line in tree.split('\n'):
-        if not line:
-            continue
-        level, clsname = line.split(' ', 1)
-        if clsname.startswith('!'):
-            clsname = '<tt class="xref docutils literal current">%s</tt>' % clsname[1:]
-        prefix = '%s%s' % ('&nbsp;' * 4 * (int(level)-1), ('', '&#9492;&#9472; ')[level != '0'])
-        self.body.append('%s%s<br />' % (prefix, clsname))
-    self.body.append('</p>')
-
-    for what in ('methods', 'properties', 'signals'):
-        list = locals()[what]
-        filter = locals()['%s_filter' % what]
-        self.body.append('<div class="heading">%s</div>' % what.title())
-        if not list:
-            self.body.append('<p>This class has no %s.</p>' % what)
-        else:
-            self.body.append('<table>')
-            for row in list:
-                self.body.append('<tr><th>%s</th>' % filter(row[0]))
-                self.body.append(''.join(['<td>%s</td>' % col for col in row[1:-1]]))
-                self.body.append('<td class="desc">%s</td></tr>' % row[-1])
-            self.body.append('</table>')
-
-    self.body.append('</div>')
 
 
 def auto_directive(name, arguments, options, content, lineno,
-                       content_offset, block_text, state, state_machine):
+                   content_offset, block_text, state, state_machine):
     env = state.document.settings.env
-    inherited_signals = 'inherited-signals' in options
-    add_signals = options.get('add-signals', [])
-    remove_signals = options.get('remove-signals', [])
-    inherited_members = 'inherited-members' in options
-    add_members = options.get('add-members', [])
-    remove_members = options.get('remove-members', [])
+    inherit = 'inherit' in options
+    add = options.get('add', [])
+    remove = options.get('remove', [])
 
-    cls, clsname = get_class(arguments[0])
+    cls = env._kaa_current_class
+    clsname = env._kaa_current_class_name
 
     list = ViewList()
-    section = kaasection()
-    section.title = name[4:].title()
+    section = subsection()
+    section['title'] = name[4:].title()
 
     if name == 'automethods':
-        for attrname, method in get_methods(cls, inherited_members, add_members, remove_members):
-            list.append(u'.. automethod:: %s.%s' % (arguments[0], attrname), '')
+        for attrname, method in get_methods(cls, inherit, add, remove):
+            list.append(u'.. automethod:: %s.%s' % (clsname, attrname), '')
     elif name == 'autoproperties':
-        # TODO: indicate somewhere if property is read/write.
-        for attrname, prop in get_properties(cls, inherited_members, add_members, remove_members):
-            list.append(u'.. autoattribute:: %s.%s' % (arguments[0], attrname), '')
+        for attrname, prop in get_properties(cls, inherit, add, remove):
+            list.append(u'.. autoattribute:: %s.%s' % (clsname, attrname), '')
     elif name == 'autosignals':
-        for attrname, docstr in get_signals(cls, inherited_signals, add_signals, remove_signals):
-            list.append(u'.. attribute:: %s' %  attrname, '')
+        for attrname, docstr in get_signals(cls, inherit, add, remove):
+            list.append(u'.. attribute:: signals.%s' %  attrname, '')
             list.append(u'', '')
             for line in docstr.split('\n'):
                 list.append(line, '')
             list.append(u'', '')
 
-    if not len(list):
+    if not len(list) and not content:
         return []
 
     state.nested_parse(list, 0, section)
+    state.nested_parse(content, 0, section) 
+
     if name == 'autosignals':
-        # For signals, rewrite the id for each attribute from kaa.Foo.bar to
-        # kaa.Foo.signals.bar (to prevent conflicts from actual attributes
-        # called bar).
+        # We're using signals.foo for signals attribute names.  We don't
+        # want to output 'signals.' for the displayable signal name, so
+        # we need to strip that out.
         for child in section.children:
-            if isinstance(child, sphinx.addnodes.desc) and child.children:
-                signame = str(child.children[0][0].children[0])
-                new_id = u'%s.signals.%s' % (arguments[0], signame)
+            if not isinstance(child, sphinx.addnodes.desc) or not child.children:
+                continue
 
-                if child.children[0]['ids']:
-                    # Replace the descref previously created with the old id
-                    # (kaa.Foo.sig) with the new id (kaa.Foo.signals.sig) so
-                    # that references to the signal may be resolved.
-                    id = child.children[0]['ids'][0]
-                    env.descrefs[new_id] = env.descrefs[id]
-                    del env.descrefs[id]
+            # Change displayed signal name from signals.foo to foo.
+            desc_sig = child.children[0]
+            name_prefix = str(desc_sig[0].children[0])
+            if name_prefix != 'signals.':
+                # Signal names can have dashes (-) but if they do, sphinx
+                # considers this an invalid attribute name (because we're
+                # using '.. attribute') and so generates
+                #    <desc_name>signals.foo-bar</descname> 
+                # and the desc_signature has no ids attribute, which we
+                # need to set to make it linkable.
+                desc_sig[0].children[0] = nodes.Text(name_prefix[8:])
+                new_id = u'%s.%s' % (clsname, name_prefix)
+                desc_sig['ids'] = [new_id]
+                # Add this signal to Sphinx's descref dict so references
+                # to this signal are properly resolved.
+                env.descrefs[new_id] = (env.docname, 'attribute')
 
-                child.children[0]['ids'] = [new_id]
+            else:
+                # Removes <descaddname>signals.</descaddname>
+                desc_sig.remove(desc_sig[0])
+
+    if 'order' in options:
+        def keyfunc(member):
+            try:
+                return options['order'].index(member[0])
+            except ValueError:
+                return 100000
+
+        sorted = section.copy()
+        members = []  # (name, [child1, child2, ...])
+        for node in section.children:
+            if isinstance(node, sphinx.addnodes.index):
+                name = node['entries'][0][1].split()[0].rstrip('()')
+                members.append((name, []))
+            members[-1][1].append(node)
+
+        members.sort(key=keyfunc)
+        for name, children in members:
+            sorted.extend(children)
+        section = sorted
 
     return [section]
 
-
-def kaasection_visit(self, node):
-    self.body.append('<h4>%s</h4>' % node.title)
-
-def kaasection_depart(self, node):
-    return
 
 def members_option(arg):
     if arg is None:
@@ -297,38 +429,161 @@ def members_option(arg):
     return [ x.strip() for x in arg.split(',') ]
 
 
-# Directive options are keyed on handler function, so we need a separate
-# function for autosignals since it has different options from automethods
-# and autoproperties.
-def autosignals_directive(*args, **kwargs):
-    return auto_directive(*args, **kwargs)
+def classattrs_directive(name, arguments, options, content, lineno,
+                   content_offset, block_text, state, state_machine):
+    env = state.document.settings.env
+    section = subsection()
+    section['title'] = 'Class Attributes'
+    state.nested_parse(content, 0, section)
+    return [section]
+
+
+def kaaclass_directive(name, arguments, options, content, lineno,
+                       content_offset, block_text, state, state_machine):
+    list = ViewList()
+    list.append('.. autoclass:: %s' % arguments[0], '')
+    list.append('', '')
+    list.append('   .. autosynopsis:: %s' % arguments[0], '')
+    list.append('', '')
+    for line in content:
+        list.append('      ' + line, '')
+
+    para = nodes.paragraph()
+    state.nested_parse(list, 0, para)
+    return [para]
+
+
+def synopsis_directive(name, arguments, options, content, lineno,
+                       content_offset, block_text, state, state_machine):
+    env = state.document.settings.env
+    cls = get_class(arguments[0])
+    env._kaa_current_class = cls
+    env._kaa_current_class_name = clsname = arguments[0]
+    env.currmodule, env.currclass = clsname.rsplit('.', 1)
+
+    para = nodes.paragraph()
+
+    section_synopsis = subsection(title='Synopsis')
+    para.append(section_synopsis)
+
+    state.nested_parse(content, 0, para)
+
+    if not content:
+        # old method, tempoerary
+        return [section_synopsis]
+
+    syn = synopsis(title='Class Hierarchy')
+    syn_para = nodes.paragraph(classes=['hierarchy'])
+    section_synopsis.append(syn)
+    append_class_hierarchy(syn_para, state, cls)
+    syn.append(syn_para)
+
+    append_synopsis_section(state, section_synopsis, para, 'Class Attributes', 'attr', optional=True)
+    append_synopsis_section(state, section_synopsis, para, 'Methods', 'meth')
+    append_synopsis_section(state, section_synopsis, para, 'Properties', 'attr')
+    append_synopsis_section(state, section_synopsis, para, 'Signals', 'attr')
+    return [para]
+
+
+def find_subsection_node(search_node, title):
+    for node in search_node.traverse(subsection):
+        if node['title'] == title:
+            return node
+
+
+def append_synopsis_section(state, section_synopsis, search_node, title, role, optional=False):
+    env = state.document.settings.env
+    clsname = env._kaa_current_class_name
+    cls = env._kaa_current_class
+    # Crawl through the nodes for section titled the given title ('Methods',
+    # 'Properties', etc) and look for all the <desc> nodes, which contain
+    # methods or attributes.  Construct a list called members whose first
+    # element contains the name of the member, and whose last element contains
+    # the first paragraph node of the description.
+    members = []
+    subsection_node = find_subsection_node(search_node, title)
+    if subsection_node and subsection_node.children:
+        desc_nodes = subsection_node.children[0].traverse(sphinx.addnodes.desc, descend=0, siblings=1)
+    else:
+        desc_nodes = []
+
+    for node in desc_nodes:
+        sig = node.first_child_matching_class(sphinx.addnodes.desc_signature)
+        content = node.first_child_matching_class(sphinx.addnodes.desc_content)
+        pidx = node.children[content].first_child_matching_class(nodes.paragraph)
+        name = node.children[sig]['ids'][0].split('.')[-1]
+
+        desc = nodes.Text('')
+        if pidx is not None:
+            desc = node.children[content].children[pidx].deepcopy()
+        
+        if subsection_node['title'] == 'Properties':
+            prop = getattr(cls, name.split('.')[-1], None)
+            perm = 'unknown'
+            if prop:
+                if prop.fget and prop.fset:
+                    perm = 'read/write'
+                elif prop.fset:
+                    perm = 'write-only'
+                elif prop.fget:
+                    perm = 'read-only'
+            members.append((name, nodes.Text(perm), desc))
+        else:
+            members.append((name, desc))
+
+    # If no members found and this section is optional (Class Attributes),
+    # we're done.
+    if not members and optional:
+        return
+
+    # Create a new synopsis section with the given title.
+    syn = synopsis(title=title)
+    section_synopsis.append(syn)
+    if not members:
+        # Mandatory section and no members, so we say so.
+        syn.append(nodes.paragraph('', 'This class has no %s.' % title.lower()))
+
+    # Loop through all members and add rows to the synopsis section table.
+    for info in members:
+        row = nodes.row()
+        syn.append(row)
+
+        # First columns is a <th> with the member name, cross referenced
+        # to the actual member on this page.
+        name = info[0]
+        col = td(heading=True)
+        row.append(col)
+        list = ViewList()
+        if title == 'Signals':
+            name = 'signals.' + name
+        list.append(':%s:`~%s`' % (role, clsname + '.' + name), '')
+        state.nested_parse(list, 0, col)
+
+        # Add remaining columns from member info.
+        for col_info in info[1:]:
+            col = td()
+            col.append(col_info)
+            row.append(col)
+
+        # Last column has 'desc' class (disables nowrap).
+        col['classes'] = ['desc']
 
 
 def setup(app):
-    synopsis_options = {
-        'inherited-members': directives.flag,
-        'inherited-signals': directives.flag,
-        'add-members': members_option,
-        'remove-members': members_option,
-        'add-signals': members_option,
-        'remove-signals': members_option,
+    auto_options = {
+        'inherit': directives.flag,
+        'add': members_option,
+        'remove': members_option,
+        'order': members_option,
     }
 
-    members_options = {
-        'inherited-members': directives.flag,
-        'add-members': members_option,
-        'remove-members': members_option,
-    }
-
-    signals_options = {
-        'inherited-signals': directives.flag,
-        'add-signals': members_option,
-        'remove-signals': members_option,
-    }
-
-    app.add_node(kaatable, html=(kaatable_visit, kaatable_depart))
-    app.add_node(kaasection, html=(kaasection_visit, kaasection_depart))
-    app.add_directive('autosynopsis', synopsis_directive, 1, (0, 1, 1), **synopsis_options)
-    app.add_directive('autoproperties', auto_directive, 1, (0, 1, 1), **members_options)
-    app.add_directive('automethods', auto_directive, 1, (0, 1, 1), **members_options)
-    app.add_directive('autosignals', autosignals_directive, 1, (0, 1, 1), **signals_options)
+    app.add_node(subsection, html=(subsection.visit, subsection.depart))
+    app.add_node(synopsis, html=(synopsis.visit, synopsis.depart))
+    app.add_node(td, html=(td.visit, td.depart))
+    app.add_node(hierarchy_row, html=(hierarchy_row.visit, hierarchy_row.depart))
+    app.add_directive('kaaclass', kaaclass_directive, 1, (0, 1, 1))
+    app.add_directive('autosynopsis', synopsis_directive, 1, (0, 1, 1))
+    app.add_directive('autoproperties', auto_directive, 1, (0, 1, 1), **auto_options)
+    app.add_directive('automethods', auto_directive, 1, (0, 1, 1), **auto_options)
+    app.add_directive('autosignals', auto_directive, 1, (0, 1, 1), **auto_options)
+    app.add_directive('classattrs', classattrs_directive, 1, (0, 1, 0))

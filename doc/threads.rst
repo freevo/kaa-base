@@ -33,8 +33,19 @@ InProgress objects::
   kaa.ThreadCallback(do_blocking_task)(arg1, arg2).connect(handle_result)
 
 
-.. autoclass:: kaa.ThreadCallback
-.. autoclass:: kaa.NamedThreadCallback
+.. kaaclass:: kaa.ThreadCallback
+
+   .. automethods::
+   .. autoproperties::
+   .. autosignals::
+
+
+.. kaaclass:: kaa.NamedThreadCallback
+
+   .. automethods::
+   .. autoproperties::
+   .. autosignals::
+
 
 The MainThreadCallback is a callback that will be executed from the
 main loop. The thread calling this function will return immediately
@@ -49,7 +60,12 @@ MainThreadCallbacks always returns an InProgress object::
   cb = kaa.MainThreadCallback(needs_to_be_called_from_main)
   print cb(3).wait()
 
-.. autoclass:: kaa.MainThreadCallback
+
+.. kaaclass:: kaa.MainThreadCallback
+
+   .. automethods::
+   .. autoproperties::
+   .. autosignals::
 
 
 .. _threaded:

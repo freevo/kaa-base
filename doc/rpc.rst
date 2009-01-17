@@ -28,25 +28,22 @@ and you can start using it right away. If the authentication is wrong, it
 will fail without notifing the user (I know this is bad, but it is designed
 to work internaly where everything is correct).
 
-.. autoclass:: kaa.rpc.Server
+.. kaaclass:: kaa.rpc.Server
 
-   .. autosynopsis:: kaa.rpc.Server
-   .. automethods:: kaa.rpc.Server
-   .. autoproperties:: kaa.rpc.Server
-   .. autosignals:: kaa.rpc.Server
+   .. automethods::
+   .. autoproperties::
+   .. autosignals::
 
 
-.. autoclass:: kaa.rpc.Client
+.. kaaclass:: kaa.rpc.Client
 
-   .. autosynopsis:: kaa.rpc.Client
-      :inherited-signals:
-      :inherited-members:
-   .. automethods:: kaa.rpc.Client
-      :inherited-members:
-   .. autoproperties:: kaa.rpc.Client
-      :inherited-members:
-   .. autosignals:: kaa.rpc.Client
-      :inherited-signals:
+   .. automethods::
+      :inherit:
+   .. autoproperties::
+      :inherit:
+   .. autosignals::
+      :inherit:
+
 
 Expose Functions
 ----------------

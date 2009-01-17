@@ -32,13 +32,17 @@ exception. Exception handlers must accept three arguments: exception
 class, exception instance, and traceback object. InProgress objects
 have the following methods:
 
-.. autoclass:: kaa.InProgress
-    :members:
+.. kaaclass:: kaa.InProgress
 
-    .. method:: connect(callback, *args, **kwargs)
+   .. automethods::
 
-          connects a callback to be invoked when the InProgress has
-          returned normally (no exception raised)
+      .. method:: connect(callback, *args, **kwargs)
+
+         connects a callback to be invoked when the InProgress has
+         returned normally (no exception raised)
+
+   .. autoproperties::
+   .. autosignals::
 
 
 

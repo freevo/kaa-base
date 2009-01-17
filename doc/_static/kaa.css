@@ -55,6 +55,7 @@ dl.class > dt:first-child {
     font-size: 105%;
     border: 1px solid #dbb1ea;
     padding: 3px 0.5em;
+    margin-top: 2em;
     background-color: #f3e6f8;
 }
 

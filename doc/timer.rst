@@ -6,19 +6,19 @@ Timer Callbacks
 
 FIXME: this section is not yet written
 
-.. autoclass:: kaa.Timer
+.. kaaclass:: kaa.Timer
 
-   .. automethod:: kaa.Timer.start
-   .. automethod:: kaa.Timer.stop
+   .. automethods::
+   .. autoproperties::
+   .. autosignals::
 
 Similar classes are OneShotTimer, WeakTimer and WeakOneShotTimer.
 
-.. autoclass:: kaa.WeakTimer
+.. kaaclass:: kaa.WeakTimer
 
-   .. autosynopsis:: kaa.WeakTimer
-   .. automethods:: kaa.WeakTimer
-   .. autoproperties:: kaa.WeakTimer
-   .. autosignals:: kaa.WeakTimer
+   .. automethods::
+   .. autoproperties::
+   .. autosignals::
 
 
 The timed decorator

@@ -66,7 +66,7 @@
 #
 # The result is an InProgress object. Connect to it to get the result.
 #
-# When a new client connects to the server, the 'client_connected' signals will
+# When a new client connects to the server, the 'client-connected' signals will
 # be emitted with a Channel object as parameter. This object can be used to
 # call functions on client side the same way the client calls functions on
 # server side. The client and the channel objects have a signal 'disconnected'
@@ -158,7 +158,7 @@ class Server(Object):
     See kaa.Socket.buffer_size docstring for information on buffer_size.
     """
     __kaasignals__ = {
-        'client_connected':
+        'client-connected':
             '''
             Emitted when a new RPC client connects to this RPC server.
 
@@ -188,7 +188,7 @@ class Server(Object):
         for obj in self.objects:
             client.register(obj)
         client._send_auth_challenge()
-        kaa.inprogress(client).connect(self.signals['client_connected'].emit)
+        kaa.inprogress(client).connect(self.signals['client-connected'].emit)
 
 
     def close(self):

@@ -408,8 +408,10 @@ class Process(object):
         self.child = None
         if self.__kill_timer:
             notifier.timer_remove( self.__kill_timer )
-        self.in_progress.finish(status >> 8)
-        self.in_progress = None
+        if self.in_progress is not None:
+            # no idea why this can happen
+            self.in_progress.finish(status >> 8)
+            self.in_progress = None
         self.signals['completed'].emit(status >> 8)
 
 

@@ -672,8 +672,15 @@ class Channel(Object):
             # Empty deferred write buffer now that we're authenticated.
             self._socket.write(''.join(self._write_buffer_deferred))
             self._write_buffer_deferred = []
-            self._connect_inprogress.finish(self)
-            self.signals['open'].emit()
+            self._handle_connected()
+
+
+    def _handle_connected(self):
+        """
+        Callback when the channel is authenticated and ready to be used
+        """
+        self._connect_inprogress.finish(self)
+        self.signals['open'].emit()
 
 
     def _get_rand_value(self):
@@ -758,6 +765,13 @@ class Client(Channel):
         if retry is not None:
             self._monitor(address, buffer_size, retry)
             self.monitoring = True
+
+    def _handle_connected(self):
+        """
+        Callback when the channel is authenticated and ready to be used
+        """
+        self.status = CONNECTED
+        super(Client, self)._handle_connected()
 
     def _handle_refused(self, type, value, tb):
         self._socket.signals['read'].disconnect(self._handle_read)

@@ -39,6 +39,8 @@ import xml.sax.saxutils
 # we can't use cStringIO since it doesn't support Unicode strings
 from StringIO import StringIO
 
+# unicode helper functions
+from strutils import unicode_to_str, str_to_unicode
 
 class Element(object):
     """
@@ -157,6 +159,42 @@ class Element(object):
             return cmp(self.tagname, other)
         return object.__cmp__(self, other)
 
+    def __repr__(self):
+        """
+        Python representation string
+        """
+        return '<Element %s>' % self.tagname
+
+    def __unicode__(self):
+        """
+        Convert the element into an XML unicode string.
+        """
+        result = u'<%s' % self.tagname
+        if self.xmlns:
+            result += u' xmlns="%s"' % self.xmlns
+        for key, value in self._attr.items():
+            if value is None:
+                continue
+            if isinstance(value, str):
+                value = str_to_unicode(value)
+            if not isinstance(value, unicode):
+                value = unicode(value)
+            result += u' %s=%s' % (key, xml.sax.saxutils.quoteattr(value))
+        if not self._children and not self._content:
+            return result + u'/>'
+        result += u'>'
+        for child in self._children:
+            if not isinstance(child, Element):
+                child = child.__xml__()
+            result += unicode(child)
+        return result + xml.sax.saxutils.escape(self._content.strip()) + u'</%s>' % self.tagname
+
+    def __str__(self):
+        """
+        Convert the element into an XML string using the current
+        string encoding.
+        """
+        return unicode_to_str(unicode(self))
 
 
 class ElementParser(xml.sax.ContentHandler):
@@ -225,9 +263,8 @@ def pprint(element):
         write(indent+"<" + element.tagname)
         # write attributes
         for key, value in element._attr.items():
-            write(" %s=\"" % key)
+            write(" %s=" % key)
             write(xml.sax.saxutils.quoteattr(value))
-            write("\"")
         if element._content:
             # write text content
             write(">")
@@ -237,6 +274,8 @@ def pprint(element):
             # write children
             write(">%s" % newl)
             for child in element:
+                if not isinstance(child, Element):
+                    child = child.__xml__()
                 convert(write, child, indent+addindent, addindent, newl)
             write("%s</%s>%s" % (indent, element.tagname, newl))
         else:

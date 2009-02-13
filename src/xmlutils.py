@@ -38,7 +38,7 @@ to match the kaa coding style.
 The logic and some functions are copied from xml.dom.minidom.
 """
 
-__all__ = [ 'SaxTreeHandler', 'create' ]
+__all__ = [ 'create' ]
 
 # python imports
 import os
@@ -59,88 +59,6 @@ except ImportError, e:
 
 # we can't use cStringIO since it doesn't support Unicode strings
 from StringIO import StringIO
-
-class SaxTreeHandler(xml.sax.ContentHandler):
-    """
-    Handler for the SAX parser. The member function 'handle' will
-    be called everytime an element given on init is closed. The parameter
-    is the tree with this element as root. A node can either have children
-    or text content. The SaxTreeHandler is usefull for simple xml files
-    found in config files and information like epg data.
-    """
-    class Node(object):
-        """
-        A node created by the SaxTreeHandler
-        """
-        def __init__(self, name, attr):
-            self.name = name
-            self.attr = attr
-            self.children = []
-            self.content = ''
-
-        def getattr(self, attr):
-            if self.attr.has_key(attr):
-                return self.attr.get(attr)
-            nodes = [ n for n in self.children if n.name == attr ]
-            if len(nodes) == 1:
-                return nodes[0]
-            return None
-
-        def __repr__(self):
-            return '<Node %s>' % self.name
-
-    def __init__(self, *elements):
-        """
-        Create handler with a list of element names.
-        """
-        self._elements = elements
-        self._nodes = []
-
-    def startElement(self, name, attr):
-        """
-        SAX callback
-        """
-        node = self.Node(name, attr)
-        if len(self._nodes):
-            self._nodes[-1].children.append(node)
-        self._nodes.append(node)
-
-    def endElement(self, name):
-        """
-        SAX callback
-        """
-        node = self._nodes.pop()
-        node.content = node.content.strip()
-        if name in self._elements:
-            self.handle(node)
-        if not self._nodes:
-            self.finalize()
-
-    def characters(self, c):
-        """
-        SAX callback
-        """
-        if len(self._nodes):
-            self._nodes[-1].content += c
-
-    def handle(self, node):
-        """
-        SaxTreeHandler callback for a complete node.
-        """
-        pass
-
-    def finalize(self):
-        """
-        SaxTreeHandler callback at the end of parsing.
-        """
-        pass
-
-    def parse(self, f):
-        parser = xml.sax.make_parser()
-        parser.setFeature(xml.sax.handler.feature_external_ges, False)
-        parser.setContentHandler(self)
-        parser.parse(f)
-
 
 def _write_data(writer, data):
     """

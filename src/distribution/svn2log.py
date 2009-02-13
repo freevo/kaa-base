@@ -5,7 +5,7 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2007 Dirk Meyer, Jason Tackaberry
+# Copyright (C) 2007-2009 Dirk Meyer, Jason Tackaberry
 #
 # First Edition: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>
@@ -36,9 +36,9 @@ import re
 import xml.sax
 
 try:
-    from xmlutils import SaxTreeHandler
+    from saxutils import ElementParser
 except ImportError:
-    from kaa.xmlutils import SaxTreeHandler
+    from kaa.saxutils import ElementParser
 
 class Entry(object):
     def __init__(self, author, date):
@@ -80,10 +80,10 @@ class Entry(object):
             writer.write('\n')
         writer.write('\n')
 
-class LogParser(SaxTreeHandler):
+class LogParser(ElementParser):
 
     def __init__(self, writer, prefix, user):
-        SaxTreeHandler.__init__(self, 'logentry')
+        ElementParser.__init__(self, 'logentry')
         prefix = '/(trunk|branches/[^/]+)(/WIP)?/(%s)' % '|'.join(prefix)
         self._prefix = re.compile(prefix)
         self._entry = None
@@ -91,42 +91,35 @@ class LogParser(SaxTreeHandler):
         self._writer = writer
 
     def handle(self, node):
-        revision = node.getattr('revision')
-        date = msg = author = ''
+        revision = node.revision
         files = []
+        msg = re.subn('  ', ' ', node.msg.content.encode('latin-1', 'ignore'))[0]
+        date = str(node.date.content[:node.date.content.find('T')])
+        author = node.author.content.encode('latin-1', 'ignore')
+        if author in self._user:
+            author = self._user[author]
+        else:
+            print 'unknown author', author
         changed_listing = False
-        for c in node.children:
-            c.content = c.content.encode('latin-1', 'ignore')
-            if c.name == 'msg':
-                msg = re.subn('  ', ' ', c.content)[0]
-            if c.name == 'date':
-                date = c.content[:c.content.find('T')]
-            if c.name == 'author':
-                author = c.content
-                if author in self._user:
-                    author = self._user[author]
+        for path in node.paths:
+            if self._prefix.search(path.content):
+                f = self._prefix.sub('', path.content)
+                if not len(f):
+                    f = path.content
+                if path.action == "D":
+                    files.append(f[1:] + " (removed)")
+                    changed_listing = True
+                elif path.action == "A":
+                    files.append(f[1:] + " (added)")
+                    changed_listing = True
                 else:
-                    print 'unknown author', author
-            if c.name == 'paths':
-                for path in c.children:
-                    if self._prefix.search(path.content):
-                        f = self._prefix.sub('', path.content)
-                        if not len(f):
-                            f = path.content
-                        if path.getattr('action') == "D":
-                            files.append(f[1:] + " (removed)")
-                            changed_listing = True
-                        elif path.getattr('action') == "A":
-                            files.append(f[1:] + " (added)")
-                            changed_listing = True
-                        else:
-                            files.append(f[1:])
-                if not len(files):
-                    print 'error detecting files'
-                    for path in c.children:
-                        print path.content
-                    print
-
+                    files.append(f[1:])
+        if not len(files):
+            print 'error detecting files'
+            for path in c:
+                print path.content
+            print
+        # write entry to the file or remember if stuff belongs together
         if self._entry and (self._entry.author != author or self._entry.date != date):
             self._entry.write(self._writer)
             self._entry = None

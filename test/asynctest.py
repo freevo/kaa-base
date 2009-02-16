@@ -3,13 +3,13 @@ import os
 import sys
 import gc
 import kaa
-import kaa.rpc, kaa.rpc2
+import kaa.rpc
 
 sig = kaa.Signals('one', 'two', 'three')
 
 class Server(object):
     def __init__(self):
-        self.s = kaa.rpc2.Server('test')
+        self.s = kaa.rpc.Server('test')
         self.s.register(self)
 
     @kaa.rpc.expose('test1')
@@ -153,7 +153,7 @@ def foo():
     print 14
 
     print 'connect to server'
-    c = kaa.rpc2.connect('test')
+    c = kaa.rpc.connect('test')
     print 'server tests'
 
     # normal rpc

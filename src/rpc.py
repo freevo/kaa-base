@@ -1,6 +1,6 @@
 # -* -coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# rpc.py - Simple RPC InterProcessCommunication
+# rpc.py - Simple interprocess communication via remote procedure calls.
 # -----------------------------------------------------------------------------
 # $Id$
 #
@@ -14,6 +14,27 @@
 # confuse the garbage collector and a simple function call on an object can
 # result in many mainloop steps incl. recursion inside the mainloop.
 #
+# *****************************************************************************
+# API changes compared to kaa.rpc:
+# *****************************************************************************
+#
+# 1. Channel.connect is renamed to Channel.register
+#
+# 2. authenticated signal is renamed to open
+#
+# 3. is_connected is removed
+#
+# 4. connected property is not True before authenticated
+#
+# 5. kaa.rpc.Channel() will not raise and exception on connection refused.
+#    Use kaa.inprogress(client) to monitor the connection
+#
+# 6. New client argument: retry. If set to seconds, the client will
+#    retry connecting and reconnects after close.
+#
+# 7. Please use kaa.rpc.connect instead of kaa.rpc.Client
+#
+# *****************************************************************************
 #
 # Documentation:
 #
@@ -75,7 +96,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Server', 'Client', 'expose', 'ConnectError' ]
+__all__ = [ 'Server', 'Client', 'expose' ]
 
 # python imports
 import types
@@ -101,9 +122,6 @@ log = logging.getLogger('rpc')
 # Global constants
 RPC_PACKET_HEADER_SIZE = struct.calcsize("I4sI")
 
-
-class ConnectError(Exception):
-    pass
 
 class RemoteException(AsyncExceptionBase):
     """
@@ -132,7 +150,7 @@ class Server(Object):
     the form ip:port or hostname:port or as a 2-tuple (hostname, port).
     If hostname is an empty string, the socket is bound to all interfaces.
     If address is a string but not in the above form, it is assumed to be
-    a unix socket.  See kaa.Socket.connect docstring for more info.
+    a unix socket.  See :meth:`kaa.Socket.connect` for more info.
 
     See kaa.Socket.buffer_size docstring for information on buffer_size.
     """
@@ -165,9 +183,9 @@ class Server(Object):
         client_sock.buffer_size = self._socket.buffer_size
         client = Channel(sock = client_sock, auth_secret = self._auth_secret)
         for obj in self.objects:
-            client.connect(obj)
+            client.register(obj)
         client._send_auth_challenge()
-        self.signals['client-connected'].emit(client)
+        kaa.inprogress(client).connect(self.signals['client-connected'].emit)
 
 
     def close(self):
@@ -177,10 +195,15 @@ class Server(Object):
         self._socket.close()
         self._socket = None
 
-
-    def connect(self, obj):
+    def register(self, obj):
         """
-        Connect an object to be exposed to the rpc.
+        Registers one or more previously exposed callables to any clients
+        connecting to this RPC Server.
+
+        :param obj: callable(s) to be accessible to connected clients.
+        :type obj: callable, module, or class instance
+
+        If a module is given, all exposed callables.
         """
         self.objects.append(obj)
 
@@ -208,8 +231,8 @@ class Channel(Object):
 
             .. describe:: def callback(...)
             ''',
-        
-        'authenticated':
+
+        'open':
             '''
             Emitted when the RPC channel has successfully authenticated.
 
@@ -217,11 +240,13 @@ class Channel(Object):
             '''
     }
 
+    channel_type = 'server'
+
     def __init__(self, sock, auth_secret):
         super(Channel, self).__init__()
         self._socket = sock
-
         self._authenticated = False
+        self._connect_inprogress = kaa.InProgress()
         # We start off in an unauthenticated state; set chunk size to something
         # small to prevent untrusted remote from flooding read buffer.
         self._socket.chunk_size = 1024
@@ -235,7 +260,7 @@ class Channel(Object):
         self._pending_challenge = None
 
         # Creates a circular reference so that RPC channels survive even when
-        # there is no reference to them.  (Servers do not hold references to
+        # there is no reference to them.  (Servers may not hold references to
         # clients channels.)  As long as the socket is connected, the channel
         # will survive.
         self._socket.signals['read'].connect(self._handle_read)
@@ -244,22 +269,22 @@ class Channel(Object):
 
     @property
     def connected(self):
-        return self._socket.connected
-
-    def is_connected(self):
-        log.warning('kaa.rpc.Channel.is_connected deprecated; use connected property instead')
-        return self.connected
+        return self._socket.connected and self._connect_inprogress.finished
 
 
-    def connect(self, obj):
+    def register(self, obj):
         """
-        Connect an object to be exposed to the rpc.
+        Registers one or more previously exposed callables to the peer
+
+        :param obj: callable(s) to be accessible to.
+        :type obj: callable, module, or class instance
+
+        If a module is given, all exposed callables.
         """
         if type(obj) == types.FunctionType:
             callables = [obj]
         elif type(obj) == types.ModuleType:
-            callables = [ getattr(obj, func) for func in dir(obj) \
-                          if not func.startswith('_')]
+            callables = [ getattr(obj, func) for func in dir(obj) if not func.startswith('_')]
         else:
             callables = [ getattr(obj, func) for func in dir(obj) ]
 
@@ -278,8 +303,6 @@ class Channel(Object):
             kwargs['_kaa_rpc_callback'] = callback
             kaa.MainThreadCallback(self.rpc)(cmd, *args, **kwargs)
             return callback
-        if not self._socket.connected:
-            raise IOError('channel is disconnected')
         seq = self._next_seq
         self._next_seq += 1
         # create InProgress object
@@ -299,7 +322,11 @@ class Channel(Object):
         self._socket.close()
 
 
-    def _handle_close(self, expected):
+    def __inprogress__(self):
+        return self._connect_inprogress
+
+
+    def _handle_close(self, expected, reset_signals=True):
         """
         kaa.Socket callback invoked when socket is closed.
         """
@@ -310,9 +337,15 @@ class Channel(Object):
 
         log.debug('close socket for %s', self)
         self.signals['closed'].emit()
-        self.signals = {}
+        if reset_signals:
+            self.signals = {}
         self._socket.signals['read'].disconnect(self._handle_read)
         self._socket.signals['closed'].disconnect(self._handle_close)
+        while self._rpc_in_progress:
+            # raise exception for callback
+            callback = self._rpc_in_progress.popitem()[1][0]
+            if callback:
+                callback.throw(IOError, IOError('kaa.rpc channel closed'), None)
 
 
     def _handle_read(self, data):
@@ -432,7 +465,7 @@ class Channel(Object):
             except Exception, e:
                 #log.exception('Exception in rpc function "%s"', function)
                 if not function in self._callbacks:
-                    log.error(self._callbacks.keys())
+                    log.error('%s - %s', function, self._callbacks.keys())
                 self._send_exception(*sys.exc_info() + (seq,))
                 return True
 
@@ -543,7 +576,7 @@ class Channel(Object):
         """
         if type not in ('AUTH', 'RESP'):
             # Received a non-auth command while expecting auth.
-            log.error('got %s before authentication is complete; closing socket.' % type)
+            self._connect_inprogress.throw(IOError, IOError('got %s before authentication is complete; closing socket.' % type), None)
             # Hang up.
             self.close()
             return
@@ -562,7 +595,7 @@ class Channel(Object):
             # challenge to validate the response.
             challenge, response, salt = struct.unpack("20s20s20s", payload)
         except:
-            log.warning("Malformed authentication packet from remote; disconnecting.")
+            self._connect_inprogress.throw(IOError, IOError('Malformed authentication packet from remote; disconnecting.'), None)
             self.close()
             return
 
@@ -607,7 +640,7 @@ class Channel(Object):
             self._pending_challenge = None
             # Now check to see if we were sent what we expected.
             if response != expected_response:
-                log.error('authentication error')
+                self._connect_inprogress.throw(IOError, IOError('authentication error.'), None)
                 self.close()
                 return
 
@@ -636,7 +669,15 @@ class Channel(Object):
             # Empty deferred write buffer now that we're authenticated.
             self._socket.write(''.join(self._write_buffer_deferred))
             self._write_buffer_deferred = []
-            self.signals['authenticated'].emit()
+            self._handle_connected()
+
+
+    def _handle_connected(self):
+        """
+        Callback when the channel is authenticated and ready to be used
+        """
+        self._connect_inprogress.finish(self)
+        self.signals['open'].emit()
 
 
     def _get_rand_value(self):
@@ -694,38 +735,85 @@ class Channel(Object):
         return H(xor(K, 0x5c) + H(xor(K, 0x36) + challenge)), salt
 
 
-    def _get_channel_type(self):
-        return 'server'
-
-
     def __repr__(self):
-        tp = self._get_channel_type()
+        tp = self.channel_type
         if not self._socket:
             return '<kaa.rpc.Channel (%s) - disconnected>' % tp
         return '<kaa.rpc.Channel (%s) %s>' % (tp, self._socket.fileno)
 
 
 
+DISCONNECTED = 'DISCONNECTED'
+CONNECTING = 'CONNECTING'
+CONNECTED = 'CONNECTED'
+
+
 class Client(Channel):
     """
     RPC client to be connected to a server.
     """
-    def __init__(self, address, auth_secret = '', buffer_size = None):
-        sock = kaa.Socket(buffer_size)
-        sock.buffer_size = buffer_size
-        # FIXME: we block on connect for now; Channel.rpc() tests socket
-        # connected and raises exception if it isn't, so if we do rpc() right
-        # after connecting, it will fail.
-        try:
-            sock.connect(address).wait()
-        except socket.error, e:
-            raise ConnectError(*e.args)
 
-        super(Client, self).__init__(sock, auth_secret)
+    channel_type = 'client'
+
+    def __init__(self, address, auth_secret = '', buffer_size = None, retry = None):
+        super(Client, self).__init__(kaa.Socket(buffer_size), auth_secret)
+        self._socket.connect(address).exception.connect(self._handle_refused)
+        self.monitoring = False
+        if retry is not None:
+            self._monitor(address, buffer_size, retry)
+            self.monitoring = True
+
+    def _handle_connected(self):
+        """
+        Callback when the channel is authenticated and ready to be used
+        """
+        self.status = CONNECTED
+        super(Client, self)._handle_connected()
+
+    def _handle_refused(self, type, value, tb):
+        self._socket.signals['read'].disconnect(self._handle_read)
+        self._socket.signals['closed'].disconnect(self._handle_close)
+        self._connect_inprogress.throw(type, value, tb)
+        return False
+
+    def _handle_close(self, expected, reset_signals=True):
+        """
+        kaa.Socket callback invoked when socket is closed.
+        """
+        super(Client, self)._handle_close(expected, not self.monitoring)
+
+    @kaa.coroutine()
+    def _monitor(self, address, buffer_size, retry):
+        while True:
+            try:
+                self.status = CONNECTING
+                yield kaa.inprogress(self)
+                # Python 2.4 code
+                self._connect_inprogress.get_result()
+                self.status = CONNECTED
+                # wait until the socket is closed
+                yield self.signals.subset('closed').any()
+            except Exception, e:
+                # connection failed
+                pass
+            self._connect_inprogress = kaa.InProgress()
+            self.status = DISCONNECTED
+            # wait some time until we retry
+            yield kaa.delay(retry)
+            # reset variables
+            self._authenticated = False
+            self._pending_challenge = None
+            self._read_buffer = []
+            self.status = CONNECTING
+            self._socket = kaa.Socket(buffer_size)
+            self._socket.chunk_size = 1024
+            self._socket.signals['read'].connect(self._handle_read)
+            self._socket.signals['closed'].connect(self._handle_close)
+            self._socket.connect(address).exception.connect(self._handle_refused)
 
 
-    def _get_channel_type(self):
-        return 'client'
+# expose Client as connect
+connect = Client
 
 
 def expose(command=None, add_client=False, coroutine=False):

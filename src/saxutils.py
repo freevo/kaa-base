@@ -152,7 +152,11 @@ class Element(object):
         result = self._attr.get(attr)
         if result is not None:
             return result
-        return self.get_child(attr)
+        result = self.get_child(attr)
+        if result is not None:
+            return result
+        if '_' in attr:
+            return getattr(self, attr.replace('_', '-'))
 
     def __cmp__(self, other):
         if isinstance(other, (str, unicode)):

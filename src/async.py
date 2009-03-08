@@ -646,8 +646,8 @@ class InProgressAny(InProgress):
                     prefinished.append(n)
                     continue
                 args = self._get_connect_args(ip, n)
-                ip.connect(self.finish, *args).user_args_first = True
-                ip.exception.connect(self.finish, *args).user_args_first = True
+                ip.connect(self.finish, False, *args).user_args_first = True
+                ip.exception.connect(self.finish, True, *args).user_args_first = True
 
             self._finalize_connect(prefinished)
 
@@ -659,22 +659,19 @@ class InProgressAny(InProgress):
         return super(InProgressAny, self)._changed(action)
 
 
-    def finish(self, result, args):
+    def finish(self, is_exception, index, *result):
         """
         Invoked when any one of the InProgress objects passed to the
         constructor have finished.
         """
+        result = result[0] if is_exception else result
         self._counter -= 1
-        if self._filter and self._filter(args) and self._counter > 0:
+        if self._filter and self._filter(result) and self._counter > 0:
             # Result is filtered and there are other InProgress candidates,
             # so we'll wait for them.
             return
 
-        if self._pass_index:
-            data = (result, args)
-        else:
-            data = args
-        super(InProgressAny, self).finish(data)
+        super(InProgressAny, self).finish((index, result) if self._pass_index else result)
 
         # We're done with the underlying IP objects so unref them.  In the
         # case of InProgressCallbacks connected weakly to signals (which
@@ -720,7 +717,7 @@ class InProgressAll(InProgressAny):
             self._counter = len(self._objects) - len(prefinished)
 
 
-    def finish(self, args):
+    def finish(self, is_exception, *result):
         self._counter -= 1
         if self._counter == 0:
             super(InProgressAny, self).finish(self)

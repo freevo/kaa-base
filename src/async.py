@@ -627,10 +627,12 @@ class InProgressAny(InProgress):
             # IP may get filtered).
             while not self.finished and prefinished:
                 idx = prefinished.pop(0)
-                # FIXME: if the IP failed with exception, we'll end up raising here
-                # due to accessing its result.
-                self.finish(idx, self._objects[idx].result)
-
+                ip = self._objects[idx]
+                if ip.failed:
+                    self.finish(idx, True, ip._exception)
+                else:
+                    self.finish(idx, False, ip.result)
+                    
 
     def _changed(self, action):
         """
@@ -664,7 +666,7 @@ class InProgressAny(InProgress):
         Invoked when any one of the InProgress objects passed to the
         constructor have finished.
         """
-        result = result[0] if is_exception else result
+        result = result[0] if not is_exception else result
         self._counter -= 1
         if self._filter and self._filter(result) and self._counter > 0:
             # Result is filtered and there are other InProgress candidates,
@@ -709,7 +711,7 @@ class InProgressAll(InProgressAny):
             # done.  Prime counter to 1 to force finish() to actually finish
             # when we call it next.
             self._counter = 1
-            self.finish(None)
+            self.finish(False, None)
         elif len(prefinished):
             # Some underlying InProgress objects are already finished so we
             # need to substract them from the number of objects we are still

@@ -39,9 +39,9 @@ import signal
 
 from io import IOChannel, IO_WRITE, IO_READ
 from signals import Signals
-from timer import timed, OneShotTimer, POLICY_ONCE
+from timer import timed, Timer, OneShotTimer, POLICY_ONCE
 from thread import MainThreadCallback, is_mainthread, threaded, MAINTHREAD
-from async import InProgress, InProgressAny, delay
+from async import InProgress, InProgressAny, InProgressAll, delay, inprogress
 from callback import Callback, WeakCallback
 from coroutine import coroutine, POLICY_SINGLETON
 from utils import property
@@ -80,15 +80,14 @@ class _Supervisor(object):
                 import ctypes
                 ctypes.CDLL("libc.so.6").siginterrupt(signal.SIGCHLD, 0)
             except (ImportError, OSError):
-                # Python 2.4-
-                log.warning('Using suboptimal child reaping method due to old Python version')
-                signal.signal(signal.SIGCHLD, signal.SIG_DFL)
-                # TODO: attach a lame timer that reaps all every N ms.
+                # Python 2.4- is not supported.
+                raise SystemError('kaa.base requires Python 2.5 or later')
         
 
     def register(self, process):
         log.debug('Supervisor now monitoring %s', process)
         self.processes[process] = True
+
 
     def unregister(self, process):
         log.debug('Supervisor no longer monitoring %s', process)
@@ -96,6 +95,7 @@ class _Supervisor(object):
             del self.processes[process]
         except KeyError:
             pass
+
 
     @timed(0, timer=OneShotTimer, policy=POLICY_ONCE)
     def _sigchld_handler(self, sig, frame):
@@ -145,17 +145,39 @@ class _Supervisor(object):
         paths.
         """
         log.debug('SIGCHLD: entering timed handler')
-        for process, monitoring in self.processes.items():
+        for process in self.processes.keys():
             process._check_dead()
         log.debug('SIGCHLD: handler completed')
 
-    def stopall(self):
-        # TODO
-        print "STOP ALL"
 
-    def killall(self):
-        # TODO
-        print "KILL ALL"
+    def stopall(self, timeout=10):
+        """
+        Stops all known child processes by calling 
+        """
+        all = InProgressAll(*[process.stop() for process in self.processes])
+        # Normally we yield InProgressAll objects and they get implicitly connected
+        # by the coroutine code.  We're not doing that here, so we connect a dummy
+        # handler so the underlying IPs (the processes) get connected to the IPAll.
+        all.connect(lambda *args: None)
+
+        # XXX: I've observed SIGCHLD either not be signaled or be missed
+        # with stopall() (but not so far any other time).  So this kludge
+        # tries to reap all processes every 0.1s while we're killing child
+        # processes.
+        poll_timer = Timer(lambda: [process._check_dead() for process in self.processes.keys()])
+        poll_timer.start(0.1)
+        while not all.finished:
+            main.step()
+        poll_timer.stop()
+
+        # Handle and log any unhandled exceptions from stop() (i.e. child
+        # failed to die)
+        for process in self.processes:
+            try:
+                inprogress(process).result
+            except Exception, e:
+                log.error(e.message)
+
 
 
 supervisor = _Supervisor()
@@ -195,6 +217,7 @@ class Process2(Object):
     STATE_RUNNING = 1  # start() was called and child is running
     STATE_STOPPING = 2 # stop() was called
     STATE_DYING = 3    # in the midst of cleanup during child death
+    STATE_HUNG = 4     # a SIGKILL failed to stop the process
 
     __kaasignals__ = {
         'read':
@@ -382,9 +405,9 @@ class Process2(Object):
         """
         True if the child process is running.
         
-        If the child process is running, it may be written to.  A child that is
-        in the process of stopping is not considered running, however the pid
-        property will still be valid while it is stopping.
+        If the child process is running (and not hung), it may be written to.
+        A child that is in the process of stopping is not considered running,
+        however the pid property will still be valid while it is stopping.
 
         The converse however is not true: if the child process is
         not running, it still may be read from.  To test readability,
@@ -431,9 +454,22 @@ class Process2(Object):
         self._stop_command = cmd
 
 
-    # TODO: delimiter property
+    @property
+    def delimiter(self):
+        """
+        String used to split data for use with :meth:`~kaa.Process2.readline`.
+        """
+
+        # stdout and stderr are the same.
+        return self._stdout.delimiter
 
 
+    @delimiter.setter
+    def delimiter(self, value):
+        self._stdout.delimiter = value
+        self._stderr.delimiter = value
+
+        
     def _normalize_cmd(self, cmd):
         """
         Returns a list of arguments based on the given cmd.  If cmd is a list,
@@ -525,7 +561,7 @@ class Process2(Object):
         with the value None.
         """
         if self._state != Process2.STATE_RUNNING:
-            # Process is either stopping or dying.
+            # Process is either stopping or dying (or hung).
             yield
 
         self._state = Process2.STATE_STOPPING
@@ -541,34 +577,27 @@ class Process2(Object):
                 # IOChannel isn't writable at this moment.
                 self.write(cmd)
 
+            self._stdin.close(immediate=True)
             yield InProgressAny(self._in_progress, delay(wait))
             # If we're here, child is either dead or we timed out.
-            if self._state == Process2.STATE_STOPPED:
-                yield
 
         # Either no stop command specified or our stop attempt timed out.
-        # Try a relatively polite SIGTERM
-        try:
-            os.kill(self.pid, 15)
-            yield InProgressAny(self._in_progress, delay(wait))
-        except OSError:
-            # Process is dead after all.
-            self._check_dead()
-
-        if self._state == Process2.STATE_STOPPED:
-            yield
-
-        # SIGTERM didn't work.  Last resort: SIGKILL
-        try:
-            os.kill(self.pid, 9)
-            yield InProgressAny(self._in_progress, delay(wait * 2))
-        except OSError:
-            # Process is dead after all.
-            self._check_dead()
+        # Try a relatively polite SIGTERM, then SIGKILL.
+        for sig, pause in ((15, wait), (9, wait * 2)):
+            if self._state == Process2.STATE_STOPPED:
+                # And we're done.
+                yield
+            try:
+                os.kill(self.pid, sig)
+                yield InProgressAny(self._in_progress, delay(pause))
+            except OSError:
+                # Process is dead after all.
+                self._check_dead()
 
         if self._state != Process2.STATE_STOPPED:
             # Child refuses to die even after SIGKILL. :(
-            exc = SystemError('Child process refuses to die even after SIGKILL')
+            self._state = Process2.STATE_HUNG
+            exc = SystemError('Child process (pid=%d) refuses to die even after SIGKILL' % self.pid)
             self._in_progress.throw(SystemError, exc, None)
             raise exc
 
@@ -752,7 +781,11 @@ class Process2(Object):
         supervisor.unregister(self)
 
         self._state = Process2.STATE_STOPPED
-        self._in_progress.finish(self._exitcode)
+        if not self._in_progress.finished:
+            self._in_progress.finish(self._exitcode)
         self.signals['finished'].emit(self._exitcode)
 
 
+
+# Kludge: import here at the end to avoid cyclical imports.
+import main

@@ -112,6 +112,7 @@ import traceback
 
 # kaa imports
 import kaa
+from main import is_shutting_down
 from async import make_exception_class, AsyncExceptionBase
 from utils import property
 from object import Object
@@ -344,7 +345,9 @@ class Channel(Object):
         while self._rpc_in_progress:
             # raise exception for callback
             callback = self._rpc_in_progress.popitem()[1][0]
-            if callback:
+            if callback and (not is_shutting_down() or callback.count() or callback.exception.count()):
+                # Raise an error if this happens during runtime or if
+                # someone wants to get the result or exception.
                 callback.throw(IOError, IOError('kaa.rpc channel closed'), None)
 
 

@@ -180,6 +180,7 @@ def run(threaded=False):
                 # don't want a join of threads or similar fail, we use a very short
                 # sleep here. In most cases we won't sleep at all because this sleep
                 # fails. But after that everything is back to normal.
+                # XXX: (tack) this sounds like an interpreter bug, does it still do this?
                 time.sleep(0.001)
             except:
                 pass
@@ -223,7 +224,7 @@ def stop():
     # One final attempt to reap any remaining zombies
     try:
         os.waitpid(-1, os.WNOHANG)
-    except:
+    except OSError:
         pass
 
 

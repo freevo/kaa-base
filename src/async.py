@@ -454,12 +454,13 @@ class InProgress(Signal):
 
     def execute(self, func, *args, **kwargs):
         """
-        Execute the given function and return the result or exception in the
-        InProgress object. Returns self as result of the execution.
+        Execute the given function and return the result or exception (except
+        KeyboardInterrupt and SystemExit) in the InProgress object. Returns
+        self as result of the execution.
         """
         try:
             result = func(*args, **kwargs)
-        except:
+        except Exception:
             self.throw(*sys.exc_info())
         else:
             self.finish(result)

@@ -308,8 +308,15 @@ def _thread_notifier_run_queue(fd):
             callback, args, kwargs, in_progress = _thread_notifier_queue.pop(0)
             try:
                 in_progress.finish(callback(*args, **kwargs))
-            except:
+            except BaseException, e:
+                # All exceptions, including SystemExit and KeyboardInterrupt,
+                # are caught and thrown to the InProgress, because it may be
+                # waiting in another thread.  However SE and KI are reraised
+                # in here the main thread so they can be propagated back up
+                # the mainloop.
                 in_progress.throw(*sys.exc_info())
+                if isinstance(e, (KeyboardInterrupt, SystemExit)):
+                    raise
     finally:
         _thread_notifier_lock.release()
     return True
@@ -325,8 +332,15 @@ class MainThreadCallback(Callback):
         if is_mainthread():
             try:
                 result = super(MainThreadCallback, self).__call__(*args, **kwargs)
-            except:
+            except BaseException, e:
+                # All exceptions, including SystemExit and KeyboardInterrupt,
+                # are caught and thrown to the InProgress, because it may be
+                # waiting in another thread.  However SE and KI are reraised
+                # in here the main thread so they can be propagated back up
+                # the mainloop.
                 in_progress.throw(*sys.exc_info())
+                if isinstance(e, (KeyboardInterrupt, SystemExit)):
+                    raise
             else:
                 in_progress.finish(result)
 
@@ -345,17 +359,16 @@ class ThreadInProgress(InProgress):
         self._callback = Callback(callback, *args, **kwargs)
 
 
-    def _execute(self):
+    def __call__(self, *args, **kwargs):
         """
-        Execute the callback. This function SHOULD be called __call__ but
-        InProgress.__call__ returns the result. This is deprecated but
-        still used.
+        Execute the callback.
         """
         if self._callback is None:
             return None
         try:
             result = self._callback()
         except:
+            # FIXME: should we really be catching KeyboardInterrupt and SystemExit?
             MainThreadCallback(self.throw)(*sys.exc_info())
         else:
             if type(result) == types.GeneratorType or isinstance(result, InProgress):
@@ -406,7 +419,7 @@ class ThreadCallback(Callback):
         cb = Callback._get_callback(self)
         async = ThreadInProgress(cb, *args, **kwargs)
         # create thread and setDaemon
-        t = threading.Thread(target=async._execute)
+        t = threading.Thread(target=async)
         t.setDaemon(self._daemon)
         # connect thread.join to the InProgress
         join = lambda *args, **kwargs: t.join()
@@ -513,6 +526,6 @@ class _JobServer(threading.Thread):
                 continue
             job = self.jobs.pop(0)
             self.condition.release()
-            job._execute()
+            job()
         # server stopped
         log.debug('stop thread %s' % self.name)

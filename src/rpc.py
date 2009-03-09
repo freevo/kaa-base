@@ -594,7 +594,7 @@ class Channel(Object):
             # be NULL, and the salt is used along with the previously sent
             # challenge to validate the response.
             challenge, response, salt = struct.unpack("20s20s20s", payload)
-        except:
+        except (AssertionError, struct.error):
             self._connect_inprogress.throw(IOError, IOError('Malformed authentication packet from remote; disconnecting.'), None)
             self.close()
             return

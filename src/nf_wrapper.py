@@ -94,7 +94,9 @@ class NotifierCallback(Callback):
             except:
                 # If any of the exception handlers return True, then the
                 # object is not unregistered from the Notifier.  Otherwise
-                # ret = False and it will unregister.
+                # ret = False and it will unregister.  XXX: we catch
+                # KeyboardInterrupt and SystemExit here too, to give
+                # handlers the opportunity to override.
                 ret = self.signals["exception"].emit(*sys.exc_info())
         else:
             ret = super(NotifierCallback, self).__call__(*args, **kwargs)

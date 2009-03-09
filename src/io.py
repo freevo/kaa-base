@@ -583,7 +583,7 @@ class IOChannel(Object):
                 return
             # If we're here, then the socket is likely disconnected.
             data = None
-        except:
+        except Exception:
             log.exception('%s._handle_read failed, closing socket', self.__class__.__name__)
             data = None
 

@@ -771,7 +771,7 @@ class Config(Group):
                     encoding = line[14:-4]
                     ''.encode(encoding)
                     local_encoding = encoding
-                except:
+                except UnicodeError:
                     # bad encoding, ignore it
                     pass
             elif line.startswith('# -*- hash:'):
@@ -913,7 +913,7 @@ class Config(Group):
     def _check_file_changed(self):
         try:
             mtime = os.stat(self._filename)[stat.ST_MTIME]
-        except:
+        except OSError:
             # Config file not available.
             return
 

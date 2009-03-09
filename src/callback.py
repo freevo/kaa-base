@@ -259,7 +259,7 @@ class WeakCallback(Callback):
         try:
             if self._weakref_destroyed_user_cb:
                 return self._weakref_destroyed_user_cb(object)
-        except:
+        except Exception:
             log.exception("Exception raised during weakref destroyed callback")
 
 

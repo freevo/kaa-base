@@ -190,8 +190,10 @@ def coroutine(interval=0, policy=None, progress=False):
                 except StopIteration:
                     # no return with yield, but done, return None
                     result = None
-                except:
-                    # exception handling, return finished InProgress
+                except Exception:
+                    # Generator raised an exception (except KeyboardInterrupt
+                    # or SystemError, which we propogate up), so return a finished
+                    # InProgress with that exception.
                     ip = InProgress()
                     ip.throw(*sys.exc_info())
                     return wrap(ip)
@@ -310,10 +312,13 @@ class CoroutineInProgress(InProgress):
                 # into the coroutine.
 
         except StopIteration:
-            # coroutine is done without result
+            # Generator is exhausted but did not yield a result, so use None as
+            # result.
             result = None
         except:
-            # coroutine is done with exception
+            # Generator raised an exception (except KeyboardInterrupt
+            # or SystemError, which we propogate up), so return a finished
+            # InProgress with that exception.
             return self.throw(*sys.exc_info())
 
         # Coroutine is done, stop and finish with its result (which may be
@@ -372,8 +377,7 @@ class CoroutineInProgress(InProgress):
                 # Throw a GeneratorExit exception so that any callbacks
                 # attached to us get notified that we've aborted.
                 if len(self.exception):
-                    super(CoroutineInProgress, self).\
-                        throw(GeneratorExit, GeneratorExit('Coroutine aborted'), None)
+                    super(CoroutineInProgress, self).throw(GeneratorExit, GeneratorExit('Coroutine aborted'), None)
 
                 if _python25:
                     # This was an active coroutine that expects to be reentered

@@ -110,7 +110,7 @@ class Wrapper(object):
         """
         self.init = True
         if not self.thread or threading.currentThread() == self.thread:
-            return callback._execute()
+            return callback()
         gobject.idle_add(self._execute, callback)
 
     def _execute(self, callback):
@@ -118,7 +118,7 @@ class Wrapper(object):
         Execute callback.
         """
         if callback is not None:
-            callback._execute()
+            callback()
         elif self.stopped:
             self._loop.quit()
         return False

@@ -913,7 +913,7 @@ class Config(Group):
     def _check_file_changed(self):
         try:
             mtime = os.stat(self._filename)[stat.ST_MTIME]
-        except OSError:
+        except (OSError, IOError):
             # Config file not available.
             return
 

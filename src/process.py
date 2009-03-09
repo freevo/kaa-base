@@ -154,7 +154,7 @@ class _Supervisor(object):
         """
         Stops all known child processes by calling 
         """
-        all = InProgressAll(*[process.stop() for process in self.processes])
+        all = InProgressAll(*[process.stop() for process in self.processes.keys()])
         # Normally we yield InProgressAll objects and they get implicitly connected
         # by the coroutine code.  We're not doing that here, so we connect a dummy
         # handler so the underlying IPs (the processes) get connected to the IPAll.
@@ -459,7 +459,6 @@ class Process2(Object):
         """
         String used to split data for use with :meth:`~kaa.Process2.readline`.
         """
-
         # stdout and stderr are the same.
         return self._stdout.delimiter
 
@@ -577,10 +576,10 @@ class Process2(Object):
                 # IOChannel isn't writable at this moment.
                 self.write(cmd)
 
-            self._stdin.close(immediate=True)
             yield InProgressAny(self._in_progress, delay(wait))
             # If we're here, child is either dead or we timed out.
 
+        self._stdin.close(immediate=True)
         # Either no stop command specified or our stop attempt timed out.
         # Try a relatively polite SIGTERM, then SIGKILL.
         for sig, pause in ((15, wait), (9, wait * 2)):

@@ -606,6 +606,9 @@ class InProgressAny(InProgress):
         self._objects = [ inprogress(o) for o in objects ]
         self._counter = len(objects) or 1
 
+        self._prefinished_visited = set()
+        self._check_prefinished()
+
 
     def _get_connect_args(self, ip, n):
         """
@@ -615,24 +618,43 @@ class InProgressAny(InProgress):
         return (n,)
 
 
-    def _finalize_connect(self, prefinished):
+    def _check_prefinished(self):
         """
-        Called after we connect to all given InProgress.  prefinished is a list
-        of indexes (relative to self._objects) that were already finished when
-        we tried to connect to them.
+        Determine if any of the given IP objects were passed to us already finished,
+        which may in turn finish us immediately.
         """
-        if prefinished:
-            # One or more IP was already finished.  We pass each one to
-            # self.finish until we're actually finished (because the prefinished
-            # IP may get filtered).
-            while not self.finished and prefinished:
-                idx = prefinished.pop(0)
-                ip = self._objects[idx]
-                if ip.failed:
-                    self.finish(idx, True, ip._exception)
-                else:
-                    self.finish(idx, False, ip.result)
-                    
+        prefinished = []
+        for n, ip in enumerate(self._objects):
+            if ip.finished and id(ip) not in self._prefinished_visited:
+                prefinished.append(n)
+                self._prefinished_visited.add(id(ip))
+        self._finalize_prefinished(prefinished)
+
+
+    def _finalize_prefinished(self, prefinished):
+        """
+        Called from _check_prefinished.  prefinished is a list of indexes
+        (relative to self._objects) that were already finished when we tried to
+        connect to them.
+
+        This logic is done in a separate method (instead of in _check_prefinished)
+        so that subclasses can override this behaviour (without duplicating the
+        common code in _check_prefinished).
+        """
+        if not prefinished:
+            return
+
+        # One or more IP was already finished.  We pass each one to
+        # self.finish until we're actually finished (because the prefinished
+        # IP may get filtered).
+        while not self.finished and prefinished:
+            idx = prefinished.pop(0)
+            ip = self._objects[idx]
+            if ip.failed:
+                self.finish(True, idx, ip._exception)
+            else:
+                self.finish(False, idx, ip.result)
+
 
     def _changed(self, action):
         """
@@ -641,17 +663,14 @@ class InProgressAny(InProgress):
         if len(self) == 1 and action == Signal.SIGNAL_CONNECTED and not self.finished:
             # Someone wants to know when we finish, so now we connect to the
             # underlying InProgress objects to find out when they finish.
-            prefinished = []
+            self._check_prefinished()
             for n, ip in enumerate(self._objects):
                 if ip.finished:
                     # This one is finished already, no need to connect to it.
-                    prefinished.append(n)
                     continue
                 args = self._get_connect_args(ip, n)
                 ip.connect(self.finish, False, *args).user_args_first = True
                 ip.exception.connect(self.finish, True, *args).user_args_first = True
-
-            self._finalize_connect(prefinished)
 
         elif len(self) == 0 and action == Signal.SIGNAL_DISCONNECTED:
             for ip in self._objects:
@@ -705,7 +724,7 @@ class InProgressAll(InProgressAny):
         return ()
 
 
-    def _finalize_connect(self, prefinished):
+    def _finalize_prefinished(self, prefinished):
         if len(prefinished) == len(self._objects):
             # All underlying InProgress objects are already finished so we're
             # done.  Prime counter to 1 to force finish() to actually finish
@@ -716,7 +735,7 @@ class InProgressAll(InProgressAny):
             # Some underlying InProgress objects are already finished so we
             # need to substract them from the number of objects we are still
             # waiting for.
-            self._counter = len(self._objects) - len(prefinished)
+            self._counter -= len(prefinished)
 
 
     def finish(self, is_exception, *result):

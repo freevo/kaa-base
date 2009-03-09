@@ -286,7 +286,6 @@ class Process2(Object):
         self._cmd = cmd
         self._shell = shell
         self._stop_command = None
-        self._log = None
         # The subprocess.Popen object.
         self._child = None
         # Weakref of self used to invoke Process._cleanup callback on finalization.

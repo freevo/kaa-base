@@ -175,7 +175,7 @@ class _Supervisor(object):
         for process in self.processes:
             try:
                 inprogress(process).result
-            except Exception, e:
+            except SystemError, e:
                 log.error(e.message)
 
 

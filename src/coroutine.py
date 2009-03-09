@@ -78,19 +78,16 @@ POLICY_PASS_LAST = 'passlast'
 # CoroutineInProgress.__init__ for rational.
 _active_coroutines = set()
 
-# variable to detect if send is possible with a generator
-_python25 = sys.hexversion >= 0x02050000
-
-def _process(func, async=None):
+def _process(generator, inprogress=None):
     """
     function to call next, step, or throw
     """
-    if _python25 and async is not None:
-        if async._exception:
-            async._unhandled_exception = None
-            return func.throw(*async._exception)
-        return func.send(async._result)
-    return func.next()
+    if inprogress is not None:
+        if inprogress._exception:
+            inprogress._unhandled_exception = None
+            return generator.throw(*inprogress._exception)
+        return generator.send(inprogress._result)
+    return generator.next()
 
 
 def coroutine(interval=0, policy=None, progress=False):
@@ -166,9 +163,11 @@ def coroutine(interval=0, policy=None, progress=False):
                 return obj
 
 
+            func_info = (func.func_name, func.func_code.co_filename, func.func_code.co_firstlineno)
             if progress:
                 args = (progress(),) + args
             result = func(*args, **kwargs)
+
             if not hasattr(result, 'next'):
                 # Decorated function doesn't have a next attribute, which
                 # means it isn't a generator.  We might simply wrap the result
@@ -181,41 +180,16 @@ def coroutine(interval=0, policy=None, progress=False):
             function = result
             if policy == POLICY_SYNCHRONIZED and func._lock is not None and not func._lock.is_finished():
                 # Function is currently called by someone else
-                return wrap(CoroutineLockedInProgress(func, function, interval))
+                return wrap(CoroutineLockedInProgress(func, function, func_info, interval))
 
-            async = None
-            while True:
-                try:
-                    result = _process(function, async)
-                except StopIteration:
-                    # no return with yield, but done, return None
-                    result = None
-                except Exception:
-                    # Generator raised an exception (except KeyboardInterrupt
-                    # or SystemError, which we propogate up), so return a finished
-                    # InProgress with that exception.
-                    ip = InProgress()
-                    ip.throw(*sys.exc_info())
-                    return wrap(ip)
-
-                if isinstance(result, InProgress):
-                    if result.finished:
-                        # coroutine yielded a finished InProgress, we can
-                        # step back into the coroutine immediately.
-                        async = result
-                        continue
-                elif result is not NotFinished:
-                    # Coroutine yielded a value, so we're done and can return a
-                    # finished InProgress.
-                    return wrap(InProgress().finish(result))
-
-                # we need a CoroutineInProgress to finish this later
-                # Here, result is either NotFinished or InProgress
-                ip = CoroutineInProgress(function, interval, result)
-                if policy == POLICY_SYNCHRONIZED:
-                    func._lock = ip
-                # return the CoroutineInProgress
-                return wrap(ip)
+            ip = CoroutineInProgress(function, func_info, interval)
+            if policy == POLICY_SYNCHRONIZED:
+                func._lock = ip
+            # Perform as much as we can of the coroutine now.
+            if ip._step() == True:
+                # Generator yielded NotFinished, so start the CoroutineInProgress timer.
+                ip._timer.start(interval)
+            return wrap(ip)
 
         if policy == POLICY_SYNCHRONIZED:
             func._lock = None
@@ -235,12 +209,13 @@ class CoroutineInProgress(InProgress):
     for coroutine if it takes some more time. progress can be either NotFinished
     (iterate now) or InProgress (wait until InProgress is done).
     """
-    def __init__(self, function, interval, progress=None):
+    def __init__(self, function, function_info, interval, progress=None):
         InProgress.__init__(self)
         self._coroutine = function
+        self._coroutine_info = function_info
         self._timer = Timer(self._step)
         self._interval = interval
-        self._async = None
+        self._prerequisite_ip = None
         self._valid = True
 
         # This object (self) represents a coroutine that is in progress: that
@@ -267,7 +242,7 @@ class CoroutineInProgress(InProgress):
             self._timer.start(interval)
         elif isinstance(progress, InProgress):
             # continue when InProgress is done
-            self._async = progress
+            self._prerequisite_ip = progress
             progress.connect_both(self._continue, self._continue)
         elif progress is not None:
             raise AttributeError('invalid progress %s' % progress)
@@ -287,8 +262,8 @@ class CoroutineInProgress(InProgress):
         """
         try:
             while True:
-                result = _process(self._coroutine, self._async)
-                self._async = None
+                result = _process(self._coroutine, self._prerequisite_ip)
+                self._prerequisite_ip = None
                 if result is NotFinished:
                     # Schedule next iteration with the timer
                     return True
@@ -297,7 +272,7 @@ class CoroutineInProgress(InProgress):
                     break
 
                 # Result is an InProgress, so there's more work to do.
-                self._async = result
+                self._prerequisite_ip = result
                 if not result.finished:
                     # Coroutine yielded an unfinished InProgress, so continue
                     # when it is finished.
@@ -364,13 +339,13 @@ class CoroutineInProgress(InProgress):
 
         # if this object waits for another CoroutineInProgress, stop
         # that one, too.
-        if isinstance(self._async, CoroutineInProgress):
+        if isinstance(self._prerequisite_ip, CoroutineInProgress):
             # Disconnect from the coroutine we're waiting on.  In case ours is
             # unfinished, we don't need to hear back about the GeneratorExit
             # exception we're about to throw it.
-            self._async.disconnect(self._continue)
-            self._async.exception.disconnect(self._continue)
-            self._async.stop()
+            self._prerequisite_ip.disconnect(self._continue)
+            self._prerequisite_ip.exception.disconnect(self._continue)
+            self._prerequisite_ip.stop()
 
         try:
             if not finished:
@@ -379,21 +354,28 @@ class CoroutineInProgress(InProgress):
                 if len(self.exception):
                     super(CoroutineInProgress, self).throw(GeneratorExit, GeneratorExit('Coroutine aborted'), None)
 
-                if _python25:
-                    # This was an active coroutine that expects to be reentered
-                    # and we are aborting it prematurely.  For Python 2.5, we
-                    # call the generator's close() method, which raises
-                    # GeneratorExit inside the coroutine where it last yielded.
-                    # This allows the coroutine to perform any cleanup if
-                    # necessary.  New exceptions raised inside the coroutine
-                    # are bubbled up through close().
-                    self._coroutine.close()
+            # This is a (potentially) active coroutine that expects to be reentered and we
+            # are aborting it prematurely.  We call the generator's close() method
+            # (introduced in Python 2.5), which raises GeneratorExit inside the coroutine
+            # where it last yielded.  This allows the coroutine to perform any cleanup if
+            # necessary.  New exceptions raised inside the coroutine are bubbled up
+            # through close().
+            #
+            # Even if the generator has completed to termination (StopIteration) we can
+            # safely call close(), and can even call it multiple times with no ill effect.
+            # So we call it explicitly now and catch any 'generator ignored GeneratorExit'
+            # exceptions it might raise so that we can log some more sensible output.
+            try:
+                self._coroutine.close()
+            except RuntimeError:
+                # "generator ignored GeneratorExit".  Log something useful.
+                log.warning('Coroutine "%s" at %s:%s ignored GeneratorExit', *self._coroutine_info)
         finally:
             # Remove the internal timer, the async result and the
             # generator function to remove bad circular references.
             self._timer = None
             self._coroutine = None
-            self._async = None
+            self._prerequisite_ip = None
 
 
     def timeout(self, timeout):
@@ -409,8 +391,8 @@ class CoroutineLockedInProgress(CoroutineInProgress):
     """
     CoroutineInProgress for handling locked coroutine functions.
     """
-    def __init__(self, original_function, function, interval):
-        CoroutineInProgress.__init__(self, function, interval)
+    def __init__(self, original_function, function, function_info, interval):
+        CoroutineInProgress.__init__(self, function, function_info, interval)
         self._func = original_function
         self._func._lock.connect_both(self._try_again, self._try_again)
 

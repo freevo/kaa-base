@@ -5,7 +5,7 @@
  * $Id$
  *
  * ----------------------------------------------------------------------------
- * Copyright (C) 2006 Jason Tackaberry
+ * Copyright (C) 2006-2009 Jason Tackaberry
  *
  * First Edition: Jason Tackaberry <tack@urandom.ca>
  * Maintainer:    Jason Tackaberry <tack@urandom.ca>

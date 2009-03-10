@@ -14,7 +14,7 @@
 # signal to detect this.
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2008 Dirk Meyer
+# Copyright (C) 2008-2009 Dirk Meyer
 #
 # First Edition: Dirk Meyer <dmeyer@tzi.de>
 # Maintainer:    Dirk Meyer <dmeyer@tzi.de>

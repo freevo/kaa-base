@@ -9,7 +9,7 @@
 # for more information about optional paramater.
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2008 Dirk Meyer
+# Copyright (C) 2008-2009 Dirk Meyer
 #
 # First Edition: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>

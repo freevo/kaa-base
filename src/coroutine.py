@@ -290,11 +290,15 @@ class CoroutineInProgress(InProgress):
             # Generator is exhausted but did not yield a result, so use None as
             # result.
             result = None
-        except:
-            # Generator raised an exception (except KeyboardInterrupt
-            # or SystemError, which we propogate up), so return a finished
-            # InProgress with that exception.
-            return self.throw(*sys.exc_info())
+        except BaseException, e:
+            # Generator raised an exception, so finish InProgress with that
+            # exception.  We throw all exceptions, including SE and KI, in
+            # case a thread is waiting on the InProgress.
+            self.throw(*sys.exc_info())
+            if isinstance(e, (SystemExit, KeyboardInterrupt)):
+                # Reraise these signals back up the mainloop.
+                raise
+            return False
 
         # Coroutine is done, stop and finish with its result (which may be
         # None if no result was explicitly yielded).

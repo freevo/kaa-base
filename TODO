@@ -3,6 +3,7 @@ TODO before 1.0:
 - Remove getters and setters (in the form get_foo() and set_foo()), using
   instead properties.  This will result in significant API breakage, but
   is better to do that now than after 1.0 :)
+    - see TODO.api
 - Complete documentation
 
 

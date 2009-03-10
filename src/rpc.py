@@ -361,7 +361,7 @@ class Channel(Object):
         # a full packet.  For very large packets (if we just received a huge
         # pickled object), this saves the string.join() which can be very
         # expensive.  (This is the reason we use a list for our read buffer.)
-        buflen = reduce(lambda x, y: x + len(y), self._read_buffer, 0)
+        buflen = sum(len(x) for x in self._read_buffer)
         if buflen < RPC_PACKET_HEADER_SIZE:
             return
 

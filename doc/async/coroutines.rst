@@ -29,7 +29,7 @@ of its return value or any exception.
 When a coroutine yields kaa.NotFinished, control is returned to the
 main loop, and the coroutine will resume after the yield statement
 at the next main loop iteration, or, if an interval is provided with the
-decorator, after this time time interval.
+decorator, after this time interval.
 
 When a coroutine yields any value other than kaa.NotFinished (including None),
 the coroutine is considered finished and the InProgress returned to the caller

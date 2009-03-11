@@ -107,20 +107,41 @@ def timed(interval, timer=None, policy=POLICY_MANY):
 
 class Timer(notifier.NotifierCallback):
     """
-    Timer callback called every 'interval' seconds.
+    Invokes the supplied callback after the supplied interval (passed to
+    :meth:`~kaa.Timer.start`) elapses.  The Timer is created stopped.
+
+    When the timer interval elapses, we say that the timer is "fired" or
+    "triggered," at which time the given callback is invoked.
+
+    If the callback returns False, then the timer is automatically stopped.
+    If it returns any other value (including None), the timer will continue
+    to fire.
     """
 
     __interval = None
 
     def __init__(self, callback, *args, **kwargs):
+        """
+        :param callback: the callable to be invoked
+        :param args: the arguments to be passed to the callable when it's invoked
+        :param kwargs: the keyword arguments to be passed to the callable when it's invoked
+        """
         super(Timer, self).__init__(callback, *args, **kwargs)
         self.restart_when_active = True
+
 
     @threaded(MAINTHREAD)
     def start(self, interval):
         """
-        Start the timer.
-        :param interval: interval in seconds
+        Start the timer, invoking the callback every *interval* seconds.
+
+        If the timer is already running, it is stopped and restarted with
+        the given interval.  The timer's precision is at the mercy of other
+        tasks running in the main loop.  For example, if another task
+        (a different timer, or I/O callback) blocks the mainloop for longer
+        than the given timer interval, the callback will be invoked late.
+
+        :param interval: interval between invocations of the callback, in seconds
         """
         if self.active():
             if not self.restart_when_active:
@@ -129,32 +150,44 @@ class Timer(notifier.NotifierCallback):
         self._id = notifier.timer_add(int(interval * 1000), self)
         self.__interval = interval
 
+
     @property
     def interval(self):
         """
-        Timer interval when the timer is running, None if not
+        Timer interval when the timer is running, None if not.  The interval
+        cannot be changed once the timer is started, and it is set via the
+        :meth:`~kaa.Timer.start` method.
         """
         return self.__interval
+
 
     @threaded(MAINTHREAD)
     def stop(self):
         """
         Stop a running timer.
+
+        This method can be called safely even if the timer is already stopped.
         """
         self.unregister()
 
+
     def unregister(self):
         """
-        Unregister / remove callback
+        Removes the timer from the notifier.
+
+        This is considered an internal function (required to be implemented by
+        subclasses of NotifierCallback).  User should use stop() instead.
         """
         if self.active():
             notifier.timer_remove(self._id)
             super(Timer, self).unregister()
         self.__interval = None
 
+
     def __call__(self, *args, **kwargs):
         """
-        Run the callback
+        Run the callback.  (This is done internally by the notifier; the user will
+        generally never do this directly.)
         """
         if not self.active():
             # This happens if previous timer that has been called
@@ -165,12 +198,26 @@ class Timer(notifier.NotifierCallback):
         return super(Timer, self).__call__(*args, **kwargs)
 
 
+class WeakTimer(notifier.WeakNotifierCallback, Timer):
+    """
+    Weak variant of the Timer class.
+
+    All references to the callback and supplied args/kwargs are weak
+    references.  When any of the underlying objects are deleted,
+    the WeakTimer is automatically stopped.
+    """
+    pass
+
+
 class OneShotTimer(Timer):
     """
-    A Timer that only gets executed once. If the timer is started again
-    inside the callback, make sure 'False' is NOT returned or the timer
-    will be removed again without being called. To be on tge same side,
-    return nothing in such a callback.
+    A Timer that gets triggered exactly once when it is started.  Useful
+    for deferred one-off tasks.
+
+    Gotcha: it is possible to restart a OneShotTimer from inside the
+    callback it invokes, however be careful not to return False in this
+    case, otherwise the freshly started OneShotTimer will be implicitly
+    stopped before it gets a chance to fire.
     """
     def __call__(self, *args, **kwargs):
         self.unregister()
@@ -178,28 +225,36 @@ class OneShotTimer(Timer):
         return False
 
 
-class WeakTimer(notifier.WeakNotifierCallback, Timer):
-    """
-    Timer with weak references. It will auto-disconnect when the
-    objects are deleted by the gc.
-    """
-    pass
-
-
 class WeakOneShotTimer(notifier.WeakNotifierCallback, OneShotTimer):
     """
-    OneShotTimer with weak references. It will auto-disconnect when
-    the objects are deleted by the gc.
+    Weak variant of the OneshotTimer class.
+
+    All references to the callback and supplied args/kwargs are weak
+    references.  When any of the underlying objects are deleted,
+    the WeakTimer is automatically stopped.
     """
     pass
 
 
 class OneShotAtTimer(OneShotTimer):
     """
-    Timer that will get executed at a time specified with a list
-    of hours, minutes and seconds.
+    A timer that is triggered at a specific time of day.  Once the timer fires
+    it is stopped.
     """
     def start(self, hour=range(24), min=range(60), sec=0):
+        """
+        Starts the timer, causing it to be fired at the specified time.
+
+        By default, the timer will fire every minute at 0 seconds.  The timer
+        has second precision.
+
+        :param hour: the hour number (0-23) or list of hours
+        :type hour: int or list of ints
+        :param min: the minute number (0-59) or list of minutes
+        :type min: int or list of ints
+        :param sec: the second number (0-59) or list of seconds
+        :type sec: int or list of ints
+        """
         if not isinstance(hour, (list, tuple)):
             hour = [ hour ]
         if not isinstance(min, (list, tuple)):
@@ -247,9 +302,7 @@ class OneShotAtTimer(OneShotTimer):
 
 class AtTimer(OneShotAtTimer):
     """
-    Timer that will get executed at a time specified with a list
-    of hours, minutes and seconds. The timer will run until the
-    callback returns False or 'stop' is called.
+    A timer that is triggered at a specific time or times of day.
     """
     def __call__(self, *args, **kwargs):
         if super(Timer, self).__call__(*args, **kwargs) != False:

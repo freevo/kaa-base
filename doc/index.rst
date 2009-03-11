@@ -25,7 +25,6 @@ dependency for kaa.epg because only it is optional within kaa.base.
 Contents:
 
 .. toctree::
-   :maxdepth: 2
 
    core/index
    async/index

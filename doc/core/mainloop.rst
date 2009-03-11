@@ -35,8 +35,8 @@ Depending on what you currently use, some small steps need to be made
 to make the mainloop running. If you aren't using a mainloop
 right now, you should use the kaa mainloop.
 
-Integrating the Main Loop With Other Frameworks
-===============================================
+Integration With Other Frameworks
+=================================
 
 GObject / GTK Integration
 -------------------------

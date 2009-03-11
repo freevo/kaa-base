@@ -19,8 +19,9 @@ have the following methods:
 .. kaaclass:: kaa.InProgress
 
    .. automethods::
+      :remove: Progress
 
-      .. method:: connect(callback, *args, **kwargs)
+      .. method:: connect(callback, \*args, \*\*kwargs)
 
          connects a callback to be invoked when the InProgress has
          returned normally (no exception raised)

@@ -1,8 +1,5 @@
-Main loop
-=========
-
-Overview
---------
+The Main Loop
+=============
 
 The main loop facility within kaa is based on pyNotifier. A
 system-wide installation of pynotifier will be used if it exists,
@@ -25,8 +22,7 @@ something. The other classes available in kaa.base (described below)
 can be used to hook functionality into the main loop. As a general
 rule, one should try not to block the main loop for longer than 100
 milliseconds. kaa.base provides several options to avoid blocking,
-such as coroutines or threads. See SourceDoc/Async for further
-discussion of asynchronous programming with Kaa.
+such as :ref:`coroutines or threads <async>`.
 
 The notion of signals is used heavily within all kaa modules. Here,
 signals are similar to gtk signals, in that they are hooks to allow
@@ -39,6 +35,8 @@ Depending on what you currently use, some small steps need to be made
 to make the mainloop running. If you aren't using a mainloop
 right now, you should use the kaa mainloop.
 
+Integrating the Main Loop With Other Frameworks
+===============================================
 
 GObject / GTK Integration
 -------------------------

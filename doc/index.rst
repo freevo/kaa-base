@@ -27,12 +27,8 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   async
-   mainloop
-   signals
-   timer
-   threads
-   io/index
+   core/index
+   async/index
    rpc
 
 But that is not all. The following parts of kaa.base need to be

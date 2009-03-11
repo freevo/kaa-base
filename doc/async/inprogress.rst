@@ -1,22 +1,5 @@
-Asynchronous Programming
-========================
-
-One objective is avoid blocking the main loop for extended periods (in
-order to improve interactivity and reduce latency), and kaa.base
-provides two convenient approaches to accomplish this with
-asynchronous programming: coroutines, and threads.
-
-Coroutines are used to break up large and computationally expensive
-tasks into smaller tasks, where control is relinquished to the main
-loop after each smaller task. Coroutines are also very useful in
-constructing state machines. In the event where blocking is
-unavoidable, and the duration of the block is unknown (for example,
-connecting to a remote host, or scaling a very large image), threads
-can be used. These two different approaches are unified with a very
-similar API.
-
 InProgress Objects
-------------------
+==================
 
 Throughout Kaa, when a function executes asynchronously (which is generally the
 case for any function that may otherwise block on some resource), it returns an

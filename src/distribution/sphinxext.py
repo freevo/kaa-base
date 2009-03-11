@@ -346,7 +346,7 @@ def auto_directive(name, arguments, options, content, lineno,
 
     cls = env._kaa_current_class
     clsname = env._kaa_current_class_name
-
+    env._kaa_class_info.append(name)
     list = ViewList()
     section = subsection()
     section['title'] = name[4:].title()
@@ -440,6 +440,8 @@ def classattrs_directive(name, arguments, options, content, lineno,
 
 def kaaclass_directive(name, arguments, options, content, lineno,
                        content_offset, block_text, state, state_machine):
+    env = state.document.settings.env
+    env._kaa_class_info = []
     list = ViewList()
     list.append('.. autoclass:: %s' % arguments[0], '')
     list.append('', '')
@@ -468,20 +470,17 @@ def synopsis_directive(name, arguments, options, content, lineno,
 
     state.nested_parse(content, 0, para)
 
-    if not content:
-        # old method, tempoerary
-        return [section_synopsis]
-
     syn = synopsis(title='Class Hierarchy')
     syn_para = nodes.paragraph(classes=['hierarchy'])
     section_synopsis.append(syn)
     append_class_hierarchy(syn_para, state, cls)
     syn.append(syn_para)
 
-    append_synopsis_section(state, section_synopsis, para, 'Class Attributes', 'attr', optional=True)
-    append_synopsis_section(state, section_synopsis, para, 'Methods', 'meth')
-    append_synopsis_section(state, section_synopsis, para, 'Properties', 'attr')
-    append_synopsis_section(state, section_synopsis, para, 'Signals', 'attr')
+    ci = env._kaa_class_info
+    append_synopsis_section(state, section_synopsis, para, 'Class Attributes', 'attr', 'classattrs' not in ci)
+    append_synopsis_section(state, section_synopsis, para, 'Methods', 'meth', 'automethods' not in ci)
+    append_synopsis_section(state, section_synopsis, para, 'Properties', 'attr', 'autoproperties' not in ci)
+    append_synopsis_section(state, section_synopsis, para, 'Signals', 'attr', 'autosignals' not in ci)
     return [para]
 
 

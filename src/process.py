@@ -141,7 +141,7 @@ class _Supervisor(object):
         We _might_ get away fine with not using a timer to call the real
         _sigchld_handler, but as the signal handler is called asynchronously,
         it is safest and most predictable to do as little as possible,
-        especially as Process._check_read() might involve some fairly complex
+        especially as Process._check_dead() might involve some fairly complex
         paths.
         """
         log.debug('SIGCHLD: entering timed handler')
@@ -200,12 +200,12 @@ class IOSubChannel(IOChannel):
     def _is_read_connected(self):
         # With a logger, we'll have 2 signals connect to our 'read' signal: one
         # for the Process's read signal emit, and another for logger.write.
-        n = (1, 2)[self._logger != False]
+        n = 2 if self._logger else 1
         return len(self._read_signal) > 0 or len(self.signals['read']) > n or \
                (self._process() and len(self._process().signals['read']) > 0)
 
     def _is_readline_connected(self):
-        n = (1, 2)[self._logger != False]
+        n = 2 if self._logger else 1
         return len(self._readline_signal) > 0 or len(self.signals['readline']) > n or \
                (self._process() and len(self._process().signals['readline']) > 0)
 

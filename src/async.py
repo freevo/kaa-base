@@ -454,14 +454,25 @@ class InProgress(Signal):
 
     def execute(self, func, *args, **kwargs):
         """
-        Execute the given function and return the result or exception (except
-        KeyboardInterrupt and SystemExit) in the InProgress object. Returns
-        self as result of the execution.
+        Execute the given function and return the result or exception to the
+        InProgress object.
+        
+        If the function raises SystemExit or KeyboardInterrupt, those are
+        re-raised to allow them to be properly handled by the main loop.
+
+        :param func: the function to be invoked
+        :type func: callable
+        :param *args: the arguments to be passed to the function
+        :param **kwargs: the keyword arguments to be passed to the function
+        :return: the InProgress object being acted upon (self)
         """
         try:
             result = func(*args, **kwargs)
-        except Exception:
+        except BaseException, e:
             self.throw(*sys.exc_info())
+            if isinstance(e, (SystemExit, KeyboardInterrupt)):
+                # Reraise these exceptions to be handled by the mainloop
+                raise
         else:
             self.finish(result)
         return self

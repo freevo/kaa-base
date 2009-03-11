@@ -31,9 +31,9 @@ import sys
 import os
 import time
 
-# We require python 2.4 or later, so complain if that isn't satisfied.
-if sys.version.split()[0] < '2.4':
-    print "Python 2.4 or later required."
+# We require python 2.5 or later, so complain if that isn't satisfied.
+if sys.hexversion < 0x02050000:
+    print "Python 2.5 or later required."
     sys.exit(1)
 
 # We have some extensions but kaa.distribution isn't installed yet.  So import

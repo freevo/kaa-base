@@ -18,11 +18,12 @@ similar API.
 InProgress Objects
 ------------------
 
-Throughout Kaa, when a function executes asynchronously, it returns an
-InProgress object. The InProgress object is a signal that can be
-connected to in order to handle its return value or any exception
-raised during the asynchronous execution. When the InProgress object
-is emitted, we say that it is "finished."
+Throughout Kaa, when a function executes asynchronously (which is generally the
+case for any function that may otherwise block on some resource), it returns an
+InProgress object. The InProgress object is a signal that can be connected to
+in order to handle its return value or any exception raised during the
+asynchronous execution. When the InProgress object is emitted, we say that it
+is "finished."
 
 InProgress objects are emitted (they are Signal objects, remember)
 when finished, so handlers can retrieve the return value of the
@@ -87,21 +88,35 @@ constructor of InProgressAny or InProgressAll.
 Coroutines
 ----------
 
-A function or method is designated a coroutine by using the coroutine
-decorator. Any function decorated with coroutine will return an
-InProgress object, and the caller can connect a callback to the
-InProgress object in order to be notified of its return value or any
-exception.
+A function or method is designated a coroutine by using the @kaa.coroutine
+decorator.  A coroutine allows a larger tasks to be broken down into smaller
+ones by yielding control back to the "scheduler" (the main loop), implementing
+a kind of cooperative multitasking.  More usefully, coroutines can yield at
+points where they may otherwise block on resources (e.g. disk or network), and
+when the resource becomes available, the coroutine resumes where it left off.
+With coroutines and InProgress objects, it is possible to construct non-trivial
+state machines, whose state is modified by asynchronous events, using a single
+coroutine.  Without coroutines, this is typically implemented as a series of
+smaller callback functions.  (For more information on coroutines, see
+`Wikipedia's treatment of the subject
+<http://en.wikipedia.org/wiki/Coroutine>`_.)
+
+Any function decorated with coroutine will return an InProgress object, and the
+caller can connect a callback to the InProgress object in order to be notified
+of its return value or any exception.
 
 When a coroutine yields kaa.NotFinished, control is returned to the
-main thread, and the coroutine will resume after the yield statement
-at the next main loop iteration or if an interval is provided with the
-decorator after this time time interval. When a coroutine yields any
-value other than kaa.NotFinished (including None), the coroutine is
-considered finished and the InProgress returned to the caller will be
-emitted (i.e. it is finished). There is a single exception to this
-rule: if the coroutine yields an InProgress object, the coroutine will
-be resumed when the InProgress object is finished.
+main loop, and the coroutine will resume after the yield statement
+at the next main loop iteration, or, if an interval is provided with the
+decorator, after this time time interval.
+
+When a coroutine yields any value other than kaa.NotFinished (including None),
+the coroutine is considered finished and the InProgress returned to the caller
+will be emitted (i.e. it is finished). As with return, if no value is
+explicitly yielded and the coroutine terminates, the InProgress is finished
+with None.  There is a single exception to this rule: if the coroutine yields
+an InProgress object, the coroutine will be resumed when the InProgress object
+is finished.
 
 Here is a simple example that breaks up a loop into smaller tasks::
 
@@ -112,7 +127,6 @@ Here is a simple example that breaks up a loop into smaller tasks::
        for i in range(10):
           do_something_expensive()
           yield kaa.NotFinished
-       yield True
 
     def handle_result(result):
        print "do_something() finished with result:", result
@@ -125,23 +139,6 @@ object the other coroutine returns)::
 
     @kaa.coroutine()
     def do_something_else():
-       progress = do_something()
-       yield progress
-       try:
-          result = progress.get_result()
-       except:
-          print "do_something failed"
-          yield
-
-       if result == True:
-          yield True
-       yield False
-
-In Python 2.5, it is possible for the yield statement itself to return
-a value or raise an exception. This is supported as well::
-
-    @kaa.coroutine()
-    def do_something_else():
        try:
           result = yield do_something()
        except:
@@ -150,32 +147,29 @@ a value or raise an exception. This is supported as well::
 
        yield True if result else False
 
-Note that if you elect to use this idiom, your code will not run on
-Python 2.4. (kaa.base itself supports Python 2.4, however, as this
-syntax is not used internally.) Because of this idiom, in Python 2.5
-the yield statement will raise an exception if there is one while
-Python 2.4 continues and raises the exception when calling
-get_result. That also means that none of the above two variants will
-work perfectly with both Python versions, but one would have to wrap
-the yield in the try/except block::
+(Note that the above syntax, in which the yield statement returns a value,
+was introduced in Python 2.5.  kaa.base requires Python 2.5 or later.)
+
+Classes in kaa make heavy use of coroutines and threads when methods would
+otherwise block on some resource.  Both coroutines and @threaded-decorated
+methods return InProgress objects and behave identically.  These can be
+therefore yielded from a coroutine in the same way::
 
     @kaa.coroutine()
-    def do_something_else():
-       progress = do_something()
-       try:
-          yield progress                 # may throw in python 2.5
-          result = progress.get_result() # may throw in python 2.4
-       except:
-          print "do_something failed"
-          yield
+    def fetch_page(host):
+        """
+        Fetches / from the given host on port 80.
+        """
+        socket = kaa.Socket()
+        # Socket.connect() is implemented as a thread
+        yield socket.connect((host, 80))
+        # Socket.read() and write() are implemented as single-thread async I/O.
+        yield socket.write('GET / HTTP/1.1\n\n')
+        print (yield socket.read())
 
-       if result == True:
-          yield True
-       yield False
-
-Note that the code becomes much more elegant if Python 2.4
-compatibility is sacrificed.
-
-With the help of InProgress objects, it is possible to construct
-non-trivial state machines, whose state is modified by asynchronous
-events, using a single coroutine.
+In the above example, the difference between threaded functions
+(Socket.connect) and coroutines is transparent.  Both return InProgress
+objects. (As an aside, we didn't really need to yield socket.write() because
+writes are queued and written to the socket when it becomes writable.  However,
+yielding a write means that when the coroutine resumes, the data has been
+written.)

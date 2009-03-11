@@ -82,8 +82,8 @@ def inprogress(obj):
     It is safe to call this function on InProgress objects.  (The InProgress
     object given will simply be returned.
 
-    @param obj: object to represent as an InProgress.
-    @rtype: L{InProgress}
+    :param obj: object to represent as an InProgress.
+    :return: :class:`~kaa.InProgress`
     """
     try:
         return obj.__inprogress__()
@@ -95,9 +95,8 @@ def delay(seconds):
     """
     Returns an InProgress that finishes after the given time in seconds.
 
-    @param seconds: number of seconds to wait before the returned InProgress
-        finishes.
-    @rtype: L{InProgress}
+    :param obj: object to represent as an InProgress.
+    :return: :class:`~kaa.InProgress`
     """
     ip = InProgressCallback()
     OneShotTimer(ip).start(seconds)
@@ -462,8 +461,8 @@ class InProgress(Signal):
 
         :param func: the function to be invoked
         :type func: callable
-        :param *args: the arguments to be passed to the function
-        :param **kwargs: the keyword arguments to be passed to the function
+        :param args: the arguments to be passed to the function
+        :param kwargs: the keyword arguments to be passed to the function
         :return: the InProgress object being acted upon (self)
         """
         try:

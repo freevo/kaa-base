@@ -206,7 +206,13 @@ class synchronized(object):
 
 def is_mainthread():
     """
-    Return True if the current thread is the main thread
+    Return True if the current thread is the main thread.
+
+    Note that the "main thread" is considered to be the thread in which the
+    kaa main loop is running.  This is usually, but not necessarily, what
+    Python considers to be the main thread.  (If you call kaa.main.run()
+    in the main Python thread, then they are equivalent.)
+    
     """
     # If threading module is None, assume main thread.  (Silences pointless
     # exceptions on shutdown.)

@@ -45,6 +45,9 @@ from object import Object
 # Callback classes
 from callback import Callback, WeakCallback
 
+# Notifier-aware callbacks
+from nf_wrapper import NotifierCallback, WeakNotifierCallback
+
 # Signal and dict of Signals
 from signals import Signal, Signals
 

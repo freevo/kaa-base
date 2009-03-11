@@ -454,8 +454,8 @@ class InProgress(Signal):
 
     def execute(self, func, *args, **kwargs):
         """
-        Execute the given function and return the result or exception to the
-        InProgress object.
+        Execute the given function and finish the InProgress object with the
+        result or exception. 
         
         If the function raises SystemExit or KeyboardInterrupt, those are
         re-raised to allow them to be properly handled by the main loop.

@@ -1,7 +1,8 @@
-Basic Information
-=================
+I/O Channels
+============
 
 FIXME: Write some basic stuff about IO in kaa
+
 
 Monitoring I/O
 --------------

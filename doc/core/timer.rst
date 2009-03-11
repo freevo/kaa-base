@@ -26,4 +26,4 @@ The timed decorator
 
 FIXME: this section is not yet written
 
-.. autofunction:: kaa.timed
+.. autofunction:: kaa.timed(interval, timer=None, policy=POLICY_MANY)

@@ -48,6 +48,7 @@ Here is a simple example that breaks up a loop into smaller tasks::
        for i in range(10):
           do_something_expensive()
           yield kaa.NotFinished
+       yield 42
 
     def handle_result(result):
        print "do_something() finished with result:", result

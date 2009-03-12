@@ -150,12 +150,16 @@ class Callback(object):
     @property
     def user_args_first(self):
         """
-        If True, any arguments passed when invoking the Callback object
-        will be passed *after* any arguments that were passed when
-        constructing the Callback ("user args").
+        If True, any arguments passed upon invocation of the Callback object take
+        precedence over those arguments passed to the constructor ("user args").
+        e.g. ``callback(constructor_args..., invocation_args...)``
 
-        Default value is False, so user arguments are passed after those
-        passed on invokation of the Callback.
+        Default value is False, so invocation arguments take precedence over user
+        arguments. e.g. ``callback(invocation_args..., constructor_args...)``
+
+        "A takes precedence over B" means that non-keyword arguments are passed
+        in order of A + B, and keyword arguments from A override same-named keyword
+        arguments from B.
         """
         return self._user_args_first
 
@@ -192,7 +196,11 @@ class Callback(object):
 
     def __call__(self, *args, **kwargs):
         """
-        Call the callback function.
+        Invoke the callback function passed upon construction.
+
+        The arguments passed here take precedence over constructor arguments
+        if the :attr:`~kaa.Callback.user_args_first` property is False (default).
+        The underlying callback's return value is returned.
         """
         cb = self._get_callback()
         cb_args, cb_kwargs = self._merge_args(args, kwargs)

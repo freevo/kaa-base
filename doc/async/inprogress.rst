@@ -65,7 +65,7 @@ callbacks.  The above example could be rewritten as::
 
 As seen in the above snippet, with coroutines, InProgress objects are used
 implicitly, where they function as a mechanism for message passing between
-asynchronous tasks and coroutine the machinery built into the main loop.
+asynchronous tasks and the coroutine machinery built into the main loop.
 
 If an InProgress finishes with an exception (in which case the
 :attr:`~kaa.InProgress.failed` property is True) but it is not handled

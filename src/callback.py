@@ -185,10 +185,10 @@ class Callback(object):
             cb_args, cb_kwargs = user_args, user_kwargs
         else:
             if self.user_args_first:
-                cb_args, cb_kwargs = user_args + args, kwargs
+                cb_args, cb_kwargs = user_args + args, kwargs.copy()
                 cb_kwargs.update(user_kwargs)
             else:
-                cb_args, cb_kwargs = args + user_args, user_kwargs
+                cb_args, cb_kwargs = args + user_args, user_kwargs.copy()
                 cb_kwargs.update(kwargs)
 
         return cb_args, cb_kwargs

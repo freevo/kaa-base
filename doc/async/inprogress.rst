@@ -37,11 +37,12 @@ in order to handle success result and exceptions::
     kaa.main.run()
 
 
-Connecting callbacks to signals in this way is fairly standard, but also
-boring.  Another more interesting and powerful approach is using
-:ref:`coroutines <coroutines>` (covered in more detail later), which allow you
-to handle the result of InProgress objects without the use of callbacks.  The
-above example could be rewritten as::
+Connecting callbacks to signals in this way is fairly standard and this
+approach is used in many other frameworks, but it is also rather boring.
+Another more interesting and powerful approach is using :ref:`coroutines
+<coroutines>` (covered in more detail later), which allow you to handle the
+result of InProgress objects without the use of callbacks.  The above example
+could be rewritten as::
 
     import kaa
     
@@ -70,12 +71,17 @@ in a coroutine), the exception will be logged to stdout with the heading
 .. kaaclass:: kaa.InProgress
 
    .. automethods::
-      :remove: Progress
+      :order: abort, connect, connect_both, execute, finish, throw, timeout, wait, waitfor
+      :remove: Progress, is_finished, get_result
 
       .. method:: connect(callback, \*args, \*\*kwargs)
 
-         connects a callback to be invoked when the InProgress has
-         returned normally (no exception raised)
+         Connects a callback to be invoked when the InProgress has
+         returned normally (no exception raised).
+
+         If the asynchronous task raises an exception, the InProgress
+         finishes with that exception and the :attr:`~kaa.InProgress.exception`
+         signal is emitted.
 
    .. autoproperties::
    .. autosignals::

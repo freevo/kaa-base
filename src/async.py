@@ -45,6 +45,7 @@ import threading
 # kaa.base imports
 from callback import Callback
 from utils import property
+from object import Object
 
 # Recursive imports. The Signal requires InProgress which does not
 # exist at this point. But async itself does exist. To avoid any
@@ -147,16 +148,42 @@ class AsyncException(AsyncExceptionBase):
 
 
 class TimeoutException(Exception):
-    pass
+    def __init__(self, msg, inprogress):
+        super(TimeoutException, self).__init__(msg)
+        self.args = (msg, inprogress)
+        self.inprogress = inprogress
+
+    def __getitem__(self, idx):
+        return self.args[idx]
 
 
-class InProgress(Signal):
+class InProgress(Signal, Object):
     """
-    An InProgress class used to return from function calls that need more time
-    to continue. It is possible to connect to an object of this class like
-    Signals. The member 'exception' is a second signal to get
-    notification of an exception raised later.
+    InProgress objects are returned from functions that require more time to
+    complete (because they are either blocked on some resource, are executing
+    in a thread, or perhaps simply because they yielded control back to the main
+    loop as a form of cooperative time slicing).
+
+    InProgress subclasses :class:`~kaa.Signal`, which means InProgress objects are
+    themselves signals.  Callbacks connected to an InProgress receive a single
+    argument containing the result of the asynchronously executed task.
+
+    If the asynchronous task raises an exception, the
+    :attr:`~kaa.InProgress.exception` member, which is a separate signal, is
+    emitted instead.
     """
+    __kaasignals__ = {
+        'abort':
+            '''
+            Emitted when abort() is called.
+
+            .. describe:: def callback()
+
+            If the task cannot be aborted, the callback can return False, which
+            will cause an exception to be raised by abort().
+            '''
+    }
+
     class Progress(Signal):
         """
         Generic progress status object for InProgress. This object can be
@@ -230,11 +257,8 @@ class InProgress(Signal):
 
 
     def __init__(self):
-        """
-        Create an InProgress object.
-        """
-        Signal.__init__(self)
-        self.exception = Signal()
+        super(InProgress, self).__init__()
+        self._exception_signal = Signal()
         self._finished = False
         self._finished_event = threading.Event()
         self._exception = None
@@ -248,6 +272,17 @@ class InProgress(Signal):
         an InProgress, we simply return self.
         """
         return self
+
+    @property
+    def exception(self):
+        """
+        A :class:`~kaa.Signal` emitted when the asynchronous task this InProgress
+        represents has raised an exception.
+
+        Callbacks connected to this signal receive three arguments: exception class,
+        exception instance, traceback.
+        """
+        return self._exception_signal
 
 
     @property
@@ -264,7 +299,20 @@ class InProgress(Signal):
         The result the InProgress was finished with.  If an exception was thrown
         to the InProgress, accessing this property will raise that exception.
         """
-        return self.get_result()
+        if not self._finished:
+            raise RuntimeError('operation not finished')
+        if self._exception:
+            self._unhandled_exception = None
+            if self._exception[2]:
+                # We have the traceback, so we can raise using it.
+                exc_type, exc_value, exc_tb_or_stack = self._exception
+                raise exc_type, exc_value, exc_tb_or_stack
+            else:
+                # No traceback, so construct an AsyncException based on the
+                # stack.
+                raise self._exception[1]
+
+        return self._result
 
 
     @property
@@ -278,11 +326,20 @@ class InProgress(Signal):
 
     def finish(self, result):
         """
-        This function should be called when the creating function is
-        done and no longer in progress.
+        This method should be called when the owner (creator) of the InProgress is
+        finished successfully (with no exception).
 
-        This method returns self, which makes it convenient to prime InProgress
-        objects with a finished value.
+        Any callbacks connected to the InProgress will then be emitted with the
+        result passed to this method.
+
+        If *result* is an unfinished InProgress, then instead of finishing, we
+        wait for the result to finish.
+
+        :param result: the result of the completed asynchronous task.  (This can
+                       be thought of as the return value of the task if it had
+                       been executed synchronously.)
+        :return: This method returns self, which makes it convenient to prime InProgress
+                 objects with a finished value. e.g. ``return InProgress().finish(42)``
         """
         if self._finished:
             raise RuntimeError('%s already finished' % self)
@@ -301,14 +358,24 @@ class InProgress(Signal):
         self.emit_when_handled(result)
         # cleanup
         self.disconnect_all()
-        self.exception.disconnect_all()
+        self._exception_signal.disconnect_all()
+        self.signals['abort'].disconnect_all()
         return self
 
 
     def throw(self, type, value, tb):
         """
-        This function should be called when the creating function is
-        done because it raised an exception.
+        This method should be called when the owner (creator) of the InProgress is
+        finished because it raised an exception.
+
+        Any callbacks connected to the :attr:`~kaa.InProgress.exception` signal will
+        then be emitted with the arguments passed to this method.
+
+        The parameters correspond to sys.exc_info().
+
+        :param type: the class of the exception
+        :param value: the instance of the exception
+        :param tb: the traceback object representing where the exception took place
         """
         # This function must deal with a tricky problem.  See:
         # http://mail.python.org/pipermail/python-dev/2005-September/056091.html
@@ -344,13 +411,13 @@ class InProgress(Signal):
         # the live traceback.
         self._finished_event.set()
 
-        if self.exception.count() == 0:
+        if self._exception_signal.count() == 0:
             # There are no exception handlers, so we know we will end up
             # queuing the traceback in the exception signal.  Set it to None
             # to prevent that.
             tb = None
 
-        if self.exception.emit_when_handled(type, value, tb) == False:
+        if self._exception_signal.emit_when_handled(type, value, tb) == False:
             # A handler has acknowledged handling this exception by returning
             # False.  So we won't log it.
             self._unhandled_exception = None
@@ -376,7 +443,8 @@ class InProgress(Signal):
 
         # cleanup
         self.disconnect_all()
-        self.exception.disconnect_all()
+        self._exception_signal.disconnect_all()
+        self.signals['abort'].disconnect_all()
 
         # We return False here so that if we've received a thrown exception
         # from another InProgress we're waiting on, we essentially inherit
@@ -403,49 +471,67 @@ class InProgress(Signal):
 
 
     def is_finished(self):
-        """
-        Return if the InProgress is finished.
-        """
+        # XXX: DEPRECATED
+        import traceback
+        log.warning('Obsolete call to InProgress.is_finished(); use InProgress.finished property')
+        traceback.print_stack()
         return self._finished
 
 
     def get_result(self):
-        """
-        Get the results when finished.
-        The function will either return the result or raise the exception
-        provided to the exception function.
-        """
-        if not self._finished:
-            raise RuntimeError('operation not finished')
-        if self._exception:
-            self._unhandled_exception = None
-            if self._exception[2]:
-                # We have the traceback, so we can raise using it.
-                exc_type, exc_value, exc_tb_or_stack = self._exception
-                raise exc_type, exc_value, exc_tb_or_stack
-            else:
-                # No traceback, so construct an AsyncException based on the
-                # stack.
-                raise self._exception[1]
+        # XXX: DEPRECATED
+        import traceback
+        log.warning('Obsolete call to InProgress.get_result(); use result property')
+        traceback.print_stack()
+        return self.result
 
-        return self._result
+
+    def abort(self):
+        """
+        Aborts the asynchronous task this InProgress represents.
+
+        Not all such tasks can be aborted.  If aborting is not supported, or if
+        the InProgress is already finished, a RuntimeError exception is raised.
+        """
+        if self.finished:
+            raise RuntimeError('InProgress is already finished.')
+
+        if self.signals['abort'].count() == 0 or self.signals['abort'].emit() == False:
+            raise RuntimeError('This InProgress cannot be aborted.')
 
 
     def timeout(self, timeout, callback=None):
         """
-        Return an InProgress object linked to this one that will throw
-        a TimeoutException if this object is not finished in time. This
-        will not affect this InProgress object. If callback is given, the
-        callback will be called just before TimeoutException is raised.
+        Create a new InProgress object linked to this one that will throw
+        a TimeoutException if this object is not finished by the given timeout.
+
+        :param callback: called (with no additional arguments) just prior
+                         to TimeoutException
+
+        If the original InProgress finishes before the timeout, the new InProgress
+        (returned by this method) is finished with the result of the original.
+
+        If a timeout does occur, the original InProgress object is not affected:
+        it is not finished with the TimeoutException, nor is it aborted.  If you
+        want to abort the original task you must do it explicitly::
+
+            @kaa.coroutine()
+            def read_from_socket(sock):
+                try:
+                    data = sock.read().timeout(3)
+                except TimeoutException, (msg, inprogress):
+                    print 'Error:', msg
+                    inprogress.abort()
         """
         async = InProgress()
         def trigger():
             self.disconnect(async.finish)
-            self.exception.disconnect(async.throw)
+            self._exception_signal.disconnect(async.throw)
             if not async._finished:
                 if callback:
                     callback()
-                async.throw(TimeoutException, TimeoutException('timeout'), None)
+                msg = 'InProgress timed out after %.02f seconds' % timeout
+                async.throw(TimeoutException, TimeoutException(msg, self), None)
         async.waitfor(self)
         OneShotTimer(trigger).start(timeout)
         return async
@@ -477,15 +563,16 @@ class InProgress(Signal):
         return self
 
 
-    def wait(self, timeout = None):
+    def wait(self, timeout=None):
         """
-        Waits for the result (or exception) of the InProgress object.  The
-        main loop is kept alive if waiting in the main thread, otherwise
+        Blocks until the InProgress is finished.
+        
+        The main loop is kept alive if waiting in the main thread, otherwise
         the thread is blocked until another thread finishes the InProgress.
 
-        If timeout is specified, wait() blocks for at most timeout seconds
-        (which may be fractional).  If wait times out, a TimeoutException is
-        raised.
+        :param timeout: if not None, wait() blocks for at most timeout seconds
+                        (which may be fractional).  If wait times out, a
+                        TimeoutException is raised.
         """
         # Connect a dummy handler to ourselves.  This is a bit kludgy, but
         # solves a particular problem with InProgress(Any|All), which don't
@@ -519,12 +606,15 @@ class InProgress(Signal):
         return self.get_result()
 
 
-    def waitfor(self, in_progress):
+    def waitfor(self, inprogress):
         """
-        Connects to another InProgress object.  When the supplied in_progress
-        object finishes (or throws), we do too.
+        Connects to another InProgress object (A) to self (B).  When A finishes
+        (or throws), B is finished with the result or exception.
+
+        :param inprogress: the other InProgress object to link to.
+        :type inprogress: :class:`~kaa.InProgress`
         """
-        in_progress.connect_both(self.finish, self.throw)
+        inprogress.connect_both(self.finish, self.throw)
 
 
     def _connect(self, callback, args = (), kwargs = {}, once = False,
@@ -538,14 +628,29 @@ class InProgress(Signal):
 
     def connect_both(self, finished, exception=None):
         """
-        Connect a finished and an exception callback without extra arguments.
-        If exception is not passed, the finished function is also used as the
-        exception handler.
+        Convenience function that connects a callback (or callbacks) to both
+        the InProgress (for successful result) and exception signals.
+
+        This function does not accept additional args/kwargs to be passed to
+        the callbacks.  If you need that, use :meth:`~kaa.InProgress.connect`
+        and/or :attr:`~kaa.InProgress.exception`.connect().
+
+        If *exception* is not given, the given callable will be used for **both**
+        success and exception results, and therefore must be able to handle variable
+        arguments (as described for each callback below).
+
+        :param finished: callback to be invoked upon successful completion; the
+                         callback is passed a single argument, the result returned
+                         by the asynchronous task.
+        :param exception: (optional) callback to be invoked when the asynchronous task
+                          raises an exception; the callback is passed three arguments
+                          representing the exception: exception class, exception
+                          instance, and traceback.
         """
         if exception is None:
             exception = finished
         self.connect(finished)
-        self.exception.connect_once(exception)
+        self._exception_signal.connect_once(exception)
 
 
 

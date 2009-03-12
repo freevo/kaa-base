@@ -63,6 +63,7 @@ class Signal(object):
     SIGNAL_DISCONNECTED = 2
 
     def __init__(self, changed_cb = None):
+        super(Signal, self).__init__()
         self._callbacks = []
         self.changed_cb = changed_cb
         self._deferred_args = []

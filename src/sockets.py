@@ -50,7 +50,7 @@ class SocketError(Exception):
 
 class Socket(IOChannel):
     """
-    Notifier-aware socket class, implementing fully asynchronous reads
+    Communicate over TCP or Unix sockets, implementing fully asynchronous reads
     and writes.
     """
     __kaasignals__ = {
@@ -363,7 +363,7 @@ class Socket(IOChannel):
 
     def close(self, immediate=False, expected=True):
         """
-        Closes the channel.
+        Closes the socket.
         
         :param immediate: if False and there is data in the write buffer, the
                           channel is closed once the write buffer is emptied.

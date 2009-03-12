@@ -326,9 +326,17 @@ class CoroutineInProgress(InProgress):
         self._interval = interval
 
 
-    def stop(self):
+    def abort(self):
         if self._coroutine:
             return self._stop()
+
+
+    def stop(self):
+        # XXX: DEPRECATED
+        import traceback
+        log.warning('Obsolete call to CoroutineInProgress.stop(); use abort() instead')
+        traceback.print_stack()
+        return self.abort()
 
 
     def _stop(self, finished=False):

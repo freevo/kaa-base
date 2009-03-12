@@ -486,7 +486,15 @@ class IOChannel(Object):
             # with None
             return InProgress().finish(None)
 
-        return inprogress(signal)
+        ip = inprogress(signal)
+
+        def abort():
+            # XXX: closure around ip and signal holds strong refs; is this bad?
+            signal.disconnect(ip)
+            self._update_read_monitor()
+
+        ip.signals['abort'].connect(abort)
+        return ip
 
 
     def read(self):
@@ -679,6 +687,13 @@ class IOChannel(Object):
 
         inprogress = InProgress()
         if data:
+            def abort():
+                try:
+                    self._write_queue.remove((data, inprogress))
+                except ValueError:
+                    # Too late to abort.
+                    return False
+            inprogress.signals['abort'].connect(abort)
             self._write_queue.append((data, inprogress))
             if self._channel and self._wmon and not self._wmon.active():
                 self._wmon.register(self.fileno, IO_WRITE)
@@ -696,7 +711,7 @@ class IOChannel(Object):
         there is something to write.
         """
         if not self._write_queue:
-            # Shouldn't happen; sanity check.
+            # Can happen if a write was aborted.
             return
 
         try:

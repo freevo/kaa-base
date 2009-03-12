@@ -35,7 +35,7 @@ import sys
 import atexit
 
 # notifier import
-from callback import Callback, WeakCallback
+from callback import Callback, WeakCallback, CallbackError
 from signals import Signal
 
 # get logging object
@@ -83,23 +83,27 @@ class NotifierCallback(Callback):
                 self.unregister()
             return False
 
-        # If there are exception handlers for this notifier callback, we
-        # catch the exception and pass it to the handler, giving it the
-        # opportunity to abort the unregistering.  If no handlers are
-        # attached and an exception is raised, it will be propagated up to
-        # our caller.
-        if self.signals["exception"].count() > 0:
-            try:
-                ret = super(NotifierCallback, self).__call__(*args, **kwargs)
-            except:
-                # If any of the exception handlers return True, then the
+        try:
+            ret = super(NotifierCallback, self).__call__(*args, **kwargs)
+        except CallbackError:
+            # A WeakCallback that's no longer valid.  Unregister.
+            ret = False
+        except:
+            # If there are exception handlers for this notifier callback, we
+            # catch the exception and pass it to the handler, giving it the
+            # opportunity to abort the unregistering.  If no handlers are
+            # attached and an exception is raised, it will be propagated up to
+            # our caller.
+            if self.signals["exception"].count() > 0:
+                # If any of the exception handlers return False, then the
                 # object is not unregistered from the Notifier.  Otherwise
                 # ret = False and it will unregister.  XXX: we catch
                 # KeyboardInterrupt and SystemExit here too, to give
                 # handlers the opportunity to override.
-                ret = self.signals["exception"].emit(*sys.exc_info())
-        else:
-            ret = super(NotifierCallback, self).__call__(*args, **kwargs)
+                ret = self.signals["exception"].emit(*sys.exc_info()) == False
+            else:
+                raise
+
         # If Notifier callbacks return False, they get unregistered.
         if ret == False:
             self.unregister()

@@ -30,7 +30,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Callback', 'WeakCallback' ]
+__all__ = [ 'Callback', 'WeakCallback', 'CallbackError' ]
 
 # Python imports
 import _weakref
@@ -109,6 +109,9 @@ def unweakref_data(data):
         return data
 
 
+class CallbackError(Exception):
+    pass
+
 
 class Callback(object):
     """
@@ -127,6 +130,7 @@ class Callback(object):
         """
         assert(callable(callback))
         self._callback = callback
+        self._callback_name = str(callback)
         self._args = args
         self._kwargs = kwargs
         self._ignore_caller_args = False
@@ -205,7 +209,7 @@ class Callback(object):
         cb = self._get_callback()
         cb_args, cb_kwargs = self._merge_args(args, kwargs)
         if not cb:
-            raise TypeError('The callback has become invalid.')
+            raise CallbackError('The callback (%s) has become invalid.' % self._callback_name)
 
         self._entered = True
         result = cb(*cb_args, **cb_kwargs)
@@ -300,7 +304,7 @@ class WeakCallback(Callback):
         become dead.
 
         When this happens, the Callback is invalid and any attempt to invoke
-        it will raise a TypeError.
+        it will raise a kaa.CallbackError.
 
         The callback is passed the weakref object (which is probably dead).
         If the callback requires additional arguments, they can be encapsulated

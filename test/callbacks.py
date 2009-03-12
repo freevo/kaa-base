@@ -58,7 +58,7 @@ cb = kaa.WeakCallback(cb_func2)
 del cb_func2
 try:
     cb(42)
-except TypeError:
+except kaa.CallbackError:
     pass
 
 cb_meth = Cls().meth
@@ -66,7 +66,7 @@ cb = kaa.WeakCallback(cb_meth)
 del cb_meth
 try:
     cb(42)
-except TypeError:
+except kaa.CallbackError:
     pass
 
 

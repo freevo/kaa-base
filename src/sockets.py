@@ -74,13 +74,6 @@ class Socket(IOChannel):
         super(Socket, self).__init__(chunk_size=chunk_size)
 
 
-    def __repr__(self):
-        clsname = self.__class__.__name__
-        if not self._channel:
-            return '<kaa.%s - disconnected>' % clsname
-        return '<kaa.%s fd=%d>' % (clsname, self.fileno)
-
-
     @property
     def address(self):
         """

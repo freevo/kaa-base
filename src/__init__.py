@@ -43,7 +43,7 @@ from async import TimeoutException, InProgress, InProgressCallback, \
 from object import Object
 
 # Callback classes
-from callback import Callback, WeakCallback
+from callback import Callback, WeakCallback, CallbackError
 
 # Notifier-aware callbacks
 from nf_wrapper import NotifierCallback, WeakNotifierCallback

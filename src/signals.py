@@ -37,7 +37,7 @@ import logging
 import atexit
 
 # kaa imports
-from callback import Callback, WeakCallback
+from callback import Callback, WeakCallback, CallbackError
 from utils import property
 
 # Recursive import. async itself exists, but not the async.InProgress*
@@ -227,10 +227,18 @@ class Signal(object):
             try:
                 if cb(*args, **kwargs) == False:
                     retval = False
-            except (KeyboardInterrupt, SystemExit):
-                raise
+            except CallbackError:
+                if self._disconnect(cb, (), {}) != False:
+                    # If _disconnect returned False, it means that this callback
+                    # wasn't still connected, which almost certainly means that
+                    # a weakref was destroyed while we were iterating over the
+                    # callbacks in this loop and already disconnected this
+                    # callback.  If that's the case, no problem.  However,
+                    # if _disconnect returned True, it means that we didn't
+                    # expect this callback to become invalid, so reraise.
+                    raise
             except Exception, e:
-                log.exception('signal.emit')
+                log.exception('Exception while emitting signal')
         return retval
 
 

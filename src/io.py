@@ -70,7 +70,11 @@ class IOMonitor(notifier.NotifierCallback):
 
     def register(self, fd, condition = IO_READ):
         """
-        Register the IOMonitor to a specific file descriptor
+        Register the IOMonitor to a specific file descriptor.
+
+        The IOMonitor is registered with the notifier, which means that the
+        notifier holds a reference to the IOMonitor until it is explicitly
+        unregistered (or until the file descriptor is closed).
 
         :param fd: The file descriptor to monitor.
         :type fd: File descriptor or any file-like object
@@ -104,6 +108,9 @@ class IOMonitor(notifier.NotifierCallback):
 class WeakIOMonitor(notifier.WeakNotifierCallback, IOMonitor):
     """
     IOMonitor using weak references for the callback.
+
+    Any previously registered file descriptor will become unregistered from
+    the notifier when the callback (or any arguments) are destroyed.
     """
     pass
 
@@ -244,6 +251,13 @@ class IOChannel(Object):
         self._wmon = None
 
         self.wrap(channel, mode)
+
+
+    def __repr__(self):
+        clsname = self.__class__.__name__
+        if not hasattr(self, '_channel') or not self._channel:
+            return '<kaa.%s - disconnected>' % clsname
+        return '<kaa.%s fd=%d>' % (clsname, self.fileno)
 
 
     @property

@@ -3,71 +3,6 @@
 Thread Support
 ==============
 
-.. autofunction:: kaa.is_mainthread
-
-.. function:: kaa.main.wakeup()
-
-   Wake up main thread. A thread can use this function to wake up a
-   mainloop waiting on a select.
-
-
-Callback Classes for Threads
-----------------------------
-
-Kaa provides a ThreadCallback class which can be used to invoke a
-callback in a new thread every time the ThreadCallback object is
-invoked.
-
-With the NamedThreadCallback class, invocations are queued and each
-executed in the same thread. A priority may also be specified, and
-NamedThreadCallback objects with the highest priority is first in the
-queue (and hence executed first). This allows you to create a
-priority-based job queue that executes asynchronously.
-
-Instances of the two classes above are callable, and they return
-InProgress objects::
-
-  def handle_result(result):
-     print "Thread returned with", result
-
-  kaa.ThreadCallback(do_blocking_task)(arg1, arg2).connect(handle_result)
-
-
-.. kaaclass:: kaa.ThreadCallback
-
-   .. automethods::
-   .. autoproperties::
-   .. autosignals::
-
-
-.. kaaclass:: kaa.NamedThreadCallback
-
-   .. automethods::
-   .. autoproperties::
-   .. autosignals::
-
-
-The MainThreadCallback is a callback that will be executed from the
-main loop. The thread calling this function will return immediately
-after calling the object without waiting for the result. Invoking
-MainThreadCallbacks always returns an InProgress object::
-
-  def needs_to_be_called_from_main(param):
-      print param
-      return 5
-
-  # ... suppose we are in a thread here ...
-  cb = kaa.MainThreadCallback(needs_to_be_called_from_main)
-  print cb(3).wait()
-
-
-.. kaaclass:: kaa.MainThreadCallback
-
-   .. automethods::
-   .. autoproperties::
-   .. autosignals::
-
-
 .. _threaded:
 
 The threaded decorator
@@ -164,4 +99,73 @@ provided::
   def baz():
       # only_baz_synchronized
       do_something()
+
+
+
+The following thread-related functions are available:
+
+.. autofunction:: kaa.is_mainthread
+
+.. function:: kaa.main.wakeup()
+
+   Wake up main thread. A thread can use this function to wake up a
+   mainloop waiting on a select.
+
+
+Callback Classes for Threads
+----------------------------
+
+Kaa provides a ThreadCallback class which can be used to invoke a
+callback in a new thread every time the ThreadCallback object is
+invoked.
+
+With the NamedThreadCallback class, invocations are queued and each
+executed in the same thread. A priority may also be specified, and
+NamedThreadCallback objects with the highest priority is first in the
+queue (and hence executed first). This allows you to create a
+priority-based job queue that executes asynchronously.
+
+Instances of the two classes above are callable, and they return
+InProgress objects::
+
+  def handle_result(result):
+     print "Thread returned with", result
+
+  kaa.ThreadCallback(do_blocking_task)(arg1, arg2).connect(handle_result)
+
+
+.. kaaclass:: kaa.ThreadCallback
+
+   .. automethods::
+   .. autoproperties::
+   .. autosignals::
+
+
+.. kaaclass:: kaa.NamedThreadCallback
+
+   .. automethods::
+   .. autoproperties::
+   .. autosignals::
+
+
+The MainThreadCallback is a callback that will be executed from the
+main loop. The thread calling this function will return immediately
+after calling the object without waiting for the result. Invoking
+MainThreadCallbacks always returns an InProgress object::
+
+  def needs_to_be_called_from_main(param):
+      print param
+      return 5
+
+  # ... suppose we are in a thread here ...
+  cb = kaa.MainThreadCallback(needs_to_be_called_from_main)
+  print cb(3).wait()
+
+
+.. kaaclass:: kaa.MainThreadCallback
+
+   .. automethods::
+   .. autoproperties::
+   .. autosignals::
+
 

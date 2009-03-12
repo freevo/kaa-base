@@ -1,3 +1,5 @@
+.. _inprogress:
+
 InProgress Objects
 ==================
 
@@ -38,11 +40,13 @@ in order to handle success result and exceptions::
 
 
 Connecting callbacks to signals in this way is fairly standard and this
-approach is used in many other frameworks, but it is also rather boring.
-Another more interesting and powerful approach is using :ref:`coroutines
-<coroutines>` (covered in more detail later), which allow you to handle the
-result of InProgress objects without the use of callbacks.  The above example
-could be rewritten as::
+approach is used in many other frameworks.  For example, readers familiar
+with the Twisted framework may find similarities with Twisted's Deferreds.
+
+However, InProgress objects can be used with :ref:`coroutines <coroutines>`
+(covered in more detail later), a more interesting and powerful approach which
+allows you to handle the result of InProgress objects without the use of
+callbacks.  The above example could be rewritten as::
 
     import kaa
     
@@ -59,6 +63,9 @@ could be rewritten as::
     connect('www.freevo.org:80')
     kaa.main.run()
 
+As seen in the above snippet, with coroutines, InProgress objects are used
+implicitly, where they function as a mechanism for message passing between
+asynchronous tasks and coroutine machinery built into the main loop.
 
 If an InProgress finishes with an exception (in which case the
 :attr:`~kaa.InProgress.failed` property is True) but it is not handled

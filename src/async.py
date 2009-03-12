@@ -406,9 +406,9 @@ class InProgress(Signal, Object):
         value.formatted_traceback = trace
 
         # Wake any threads waiting on us.  We've initialized _exception with
-        # the traceback object, so any threads that call get_result() between
-        # now and the end of this function will have an opportunity to get
-        # the live traceback.
+        # the traceback object, so any threads that access the result property
+        # between now and the end of this function will have an opportunity to
+        # get the live traceback.
         self._finished_event.set()
 
         if self._exception_signal.count() == 0:
@@ -430,7 +430,7 @@ class InProgress(Signal, Object):
             # kludge lets us accomplish the same thing without actually using
             # __del__.
             #
-            # If the exception is passed back via get_result(), then it is
+            # If the exception is passed back via result property, then it is
             # considered handled, and it will not be logged.
             cb = Callback(InProgress._log_exception, trace, value)
             self._unhandled_exception = _weakref.ref(self, cb)
@@ -586,11 +586,11 @@ class InProgress(Signal, Object):
         if is_mainthread():
             # We're waiting in the main thread, so we must keep the mainloop
             # alive by calling main.loop() until we're finished.
-            main.loop(lambda: not self.is_finished(), timeout)
+            main.loop(lambda: not self.finished, timeout)
         elif not main.is_running():
             # Seems that no loop is running, try to loop
             try:
-                main.loop(lambda: not self.is_finished(), timeout)
+                main.loop(lambda: not self.finished, timeout)
             except RuntimeError:
                 # oops, there is something running, wait
                 self._finished_event.wait(timeout)
@@ -599,11 +599,11 @@ class InProgress(Signal, Object):
             # thread to wake us up.
             self._finished_event.wait(timeout)
 
-        if not self.is_finished():
+        if not self.finished:
             self.disconnect(dummy)
             raise TimeoutException
 
-        return self.get_result()
+        return self.result
 
 
     def waitfor(self, inprogress):

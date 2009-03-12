@@ -38,6 +38,9 @@ import types
 import logging
 import atexit
 
+# Kaa imports
+from utils import property
+
 # get logging object
 log = logging.getLogger('base')
 
@@ -126,14 +129,39 @@ class Callback(object):
         self._callback = callback
         self._args = args
         self._kwargs = kwargs
-        # Ignore the caller arguments and only provide the user arguments
-        # provided at __init__ to the callback. Default value is not to
-        # ignore the caller arguments.
-        self.ignore_caller_args = False
-        # Set flag to add the user arguments first when calling the callback.
-        # Default is that the provided arguments will be appended to the
-        # arguments provided with __call__.
-        self.user_args_first = False
+        self._ignore_caller_args = False
+        self._user_args_first = False
+
+    @property
+    def ignore_caller_args(self):
+        """
+        If True, any arguments passed when invoking the Callback object are not
+        passed to the underlying callable.
+
+        Default value is False, so all arguments are passed to the callable.
+        """
+        return self._ignore_caller_args
+
+    @ignore_caller_args.setter
+    def ignore_caller_args(self, value):
+        self._ignore_caller_args = value
+
+
+    @property
+    def user_args_first(self):
+        """
+        If True, any arguments passed when invoking the Callback object
+        will be passed *after* any arguments that were passed when
+        constructing the Callback ("user args").
+
+        Default value is False, so user arguments are passed after those
+        passed on invokation of the Callback.
+        """
+        return self._user_args_first
+
+    @user_args_first.setter
+    def user_args_first(self, value):
+        self._user_args_first = value
 
 
     def _get_user_args(self):

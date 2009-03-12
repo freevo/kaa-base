@@ -178,7 +178,7 @@ def coroutine(interval=0, policy=None, progress=False):
                 raise ValueError('@coroutine decorated function is not a generator')
 
             function = result
-            if policy == POLICY_SYNCHRONIZED and func._lock is not None and not func._lock.is_finished():
+            if policy == POLICY_SYNCHRONIZED and func._lock is not None and not func._lock.finished:
                 # Function is currently called by someone else
                 return wrap(CoroutineLockedInProgress(func, function, func_info, interval))
 
@@ -413,7 +413,7 @@ class CoroutineLockedInProgress(CoroutineInProgress):
         """
         Try to start now.
         """
-        if not self._func._lock.is_finished():
+        if not self._func._lock.finished:
             # still locked by a new call, wait again
             self._func._lock.connect_both(self._try_again, self._try_again)
             return

@@ -97,7 +97,7 @@ def foo():
             print f, 'needs more time'
             yield x                     # waiting...
             # subyield is now done
-            x = x.get_result()
+            x = x.result
         else:
             # this should happen for fast
             print f, 'was a yield function but did not stop'
@@ -113,39 +113,39 @@ def foo():
     callback = kaa.InProgressCallback()
     async(callback, 7, 8)
     yield callback
-    print callback.get_result()                # (7, 8)
+    print callback.result                # (7, 8)
 
     callback = kaa.InProgressCallback()
     async(callback)
     yield callback
-    print callback.get_result()                # None
+    print callback.result                # None
 
     callback = kaa.InProgressCallback()
     async(callback, 9)
     yield callback
-    print callback.get_result()                # 9
+    print callback.result                # 9
 
     callback = kaa.InProgressCallback()
     async(callback, foo=10)
     yield callback
-    print callback.get_result()                # 10
+    print callback.result                # 10
 
     callback = kaa.InProgressCallback()
     async(callback, foo=11, bar=12)
     yield callback
-    print callback.get_result()                # {'foo': 11, 'bar': 12}
+    print callback.result                # {'foo': 11, 'bar': 12}
 
     x = thread(13)
     # this is also an InProgress object
     yield x
-    print x.get_result()                           # 13
+    print x.result                           # 13
 
     x = thread('crash')
     try:
         # the thread raised an exception, so x() will
         # raise it here
         yield x
-        print x.get_result()
+        print x.result
         print 'crash test failed'
     except:
         print 'crash test ok'
@@ -159,28 +159,28 @@ def foo():
     # normal rpc
     result = c.rpc('test1', 15)
     yield result
-    print result.get_result()
+    print result.result
 
     # rpc in a thread
     result = c.rpc('test2', 16)
     yield result
-    print result.get_result()
+    print result.result
     
     # rpc with yield direct
     result = c.rpc('test3', 17)
     yield result
-    print result.get_result()
+    print result.result
     
     # rpc with yield indirect
     result = c.rpc('test4', 18)
     yield result
-    print result.get_result()
+    print result.result
     
     # rpc with yield error
     result = c.rpc('crash')
     try:
         yield result
-        result.get_result()
+        result.result
         print 'bad rpc test failed'
     except:
         print 'bad rpc test ok'
@@ -189,7 +189,7 @@ def foo():
     result = c.rpc('test6', 18)
     try:
         yield result
-        result.get_result()
+        result.result
         print 'remote rpc exception test failed'
     except ValueError, e:
         print 'remote rpc exception test ok'
@@ -199,7 +199,7 @@ def foo():
     # call rpc in thread
     x = thread2(c, 19)
     yield x                             # print 19
-    print x.get_result()                           # 20
+    print x.result                           # 20
     
     # Test InProgressCallback destruction cleans up signal connection.
     ip = kaa.inprogress(sig['one'])

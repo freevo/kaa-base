@@ -14,7 +14,7 @@ similar API.
 
 A function or method is designated a coroutine by using the @kaa.coroutine
 decorator.  A coroutine allows a larger tasks to be broken down into smaller
-ones by yielding control back to the "scheduler" (the main loop), implementing
+ones by yielding control back to the "scheduler" (the notifier), implementing
 a kind of cooperative multitasking.  More usefully, coroutines can yield at
 points where they may otherwise block on resources (e.g. disk or network), and
 when the resource becomes available, the coroutine resumes where it left off.

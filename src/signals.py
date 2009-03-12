@@ -128,7 +128,7 @@ class Signal(object):
             # We create a callback for weakref destruction for both the
             # signal callback as well as signal data.
             destroy_cb = Callback(self._weakref_destroyed, callback)
-            callback.set_weakref_destroyed_cb(destroy_cb)
+            callback.weakref_destroyed_cb = destroy_cb
         else:
             callback = Callback(callback, *args, **kwargs)
 

@@ -1,7 +1,6 @@
 # Test suite for kaa notifier classes
 
 import kaa
-from kaa import *
 
 def test(result, expected):
     if result != expected:
@@ -19,21 +18,21 @@ class Cls(object):
 #######################
 print "Callbacks ..." 
 
-cb = Callback(cb_func)
+cb = kaa.Callback(cb_func)
 test( cb(42), ((42,), {}) )
 
-cb = Callback(cb_func, 42)
+cb = kaa.Callback(cb_func, 42)
 test( cb(), ((42,), {}) )
 
-cb = Callback(cb_func)
+cb = kaa.Callback(cb_func)
 test( cb(42, "foo", bar="baz"), ((42,"foo"), {"bar":"baz"}) )
 
 
 cb_meth = Cls().meth
-cb = Callback(cb_meth)
+cb = kaa.Callback(cb_meth)
 test( cb(42), ((42,), {}) )
 
-cb = Callback(cb_meth)
+cb = kaa.Callback(cb_meth)
 del cb_meth
 test( cb(42), ((42,), {}) )
 
@@ -47,22 +46,28 @@ print "Weak Callbacks ..."
 def cb_func2(*args, **kwargs):
     return args, kwargs
 
-cb = WeakCallback(cb_func)
+cb = kaa.WeakCallback(cb_func)
 test( cb(42), ((42,), {}) )
 
 # Lambdas are not weakref'd
-cb = WeakCallback(lambda arg: arg)
+cb = kaa.WeakCallback(lambda arg: arg)
 test( cb(42), 42)
 
 # Functions are weakref'd
-cb = WeakCallback(cb_func2)
+cb = kaa.WeakCallback(cb_func2)
 del cb_func2
-test( cb(42), None )
+try:
+    cb(42)
+except TypeError:
+    pass
 
 cb_meth = Cls().meth
-cb = WeakCallback(cb_meth)
+cb = kaa.WeakCallback(cb_meth)
 del cb_meth
-test( cb(42), None )
+try:
+    cb(42)
+except TypeError:
+    pass
 
 
 ##############################################################
@@ -81,28 +86,28 @@ class Cls(object):
         result.append(arg)
 
 result = []
-OneShotTimer(test_OneShotTimer, 42).start(0)
+kaa.OneShotTimer(test_OneShotTimer, 42).start(0)
 kaa.main.step()
 test(result, [42])
 
 result = []
-OneShotTimer(Cls().meth, 42).start(0)
+kaa.OneShotTimer(Cls().meth, 42).start(0)
 kaa.main.step()
 test(result, [42])
 
 result = []
-WeakOneShotTimer(Cls().meth, 42).start(0)
+kaa.WeakOneShotTimer(Cls().meth, 42).start(0)
 kaa.main.step()
 test(result, [])
 
 result = []
 cb = Cls().meth
-WeakOneShotTimer(cb, 42).start(0)
+kaa.WeakOneShotTimer(cb, 42).start(0)
 kaa.main.step()
 test(result, [42])
 
 result = []
-timer = Timer(Cls().meth, 42)
+timer = kaa.Timer(Cls().meth, 42)
 timer.start(0)
 for i in range(5):
     kaa.main.step()
@@ -112,7 +117,7 @@ test(result, [42, 42, 42, 42, 42])
 result = []
 # Tests proper destruction of a weak timer.  We hold a weak ref to Cls().meth
 # and since there are no other refs, the weak timer never gets activated.
-timer = WeakTimer(Cls().meth, 42)
+timer = kaa.WeakTimer(Cls().meth, 42)
 timer.start(0)
 # Notifier technically has nothing to do, so it may sleep for 30 seconds.
 print '(This could take 30 seconds or so.)'
@@ -135,7 +140,7 @@ class Cls(object):
         result.extend(arg)
 
 
-sig = Signal()
+sig = kaa.Signal()
 
 sig.connect(cb_func, 42)
 

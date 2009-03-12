@@ -205,8 +205,7 @@ class Callback(object):
         cb = self._get_callback()
         cb_args, cb_kwargs = self._merge_args(args, kwargs)
         if not cb:
-            # Is it wise to fail so gracefully here?
-            return
+            raise TypeError('The callback has become invalid.')
 
         self._entered = True
         result = cb(*cb_args, **cb_kwargs)
@@ -235,6 +234,17 @@ class Callback(object):
 
 
 class WeakCallback(Callback):
+    """
+    Weak variant of the Callback class.  Only weak references are held for
+    non-intrinsic types (i.e. any user-defined object).
+
+    If the callable is a method, only a weak reference is kept to the instance
+    to which that method belongs, and only weak references are kept to any of
+    the arguments and keyword arguments.
+
+    This also works recursively, so there are nested data structures, for example 
+    ``kwarg=[1, [2, [3, my_object]]]``, only a weak reference is held for my_object.
+    """
 
     def __init__(self, callback, *args, **kwargs):
         super(WeakCallback, self).__init__(callback, *args, **kwargs)
@@ -269,8 +279,10 @@ class WeakCallback(Callback):
         else:
             return self._callback
 
+
     def _get_user_args(self):
         return unweakref_data(self._args), unweakref_data(self._kwargs)
+
 
     def __call__(self, *args, **kwargs):
         if _python_shutting_down != False:
@@ -280,13 +292,35 @@ class WeakCallback(Callback):
         return super(WeakCallback, self).__call__(*args, **kwargs)
 
 
-    def set_weakref_destroyed_cb(self, callback):
+    @property
+    def weakref_destroyed_cb(self):
         """
-        Add callback to be called when the weak reference is destroyed.
-        If the callback need more argument please use a kaa.Callback object.
+        A callback that's invoked when any of the weak references held (either
+        for the callable or any of the arguments passed on the constructor)
+        become dead.
+
+        When this happens, the Callback is invalid and any attempt to invoke
+        it will raise a TypeError.
+
+        The callback is passed the weakref object (which is probably dead).
+        If the callback requires additional arguments, they can be encapsulated
+        in a :class:`kaa.Callback` object.
         """
+        return self._weakref_destroyed_user_cb
+
+    @weakref_destroyed_cb.setter
+    def weakref_destroyed_cb(self, callback):
+        if not callable(callback):
+            raise ValueError('Value must be a callable')
         self._weakref_destroyed_user_cb = callback
 
+
+    def set_weakref_destroyed_cb(self, callback):
+        import traceback
+        log.warning('Deprecated call to Callback.set_weakref_destroyed_cb(); use weakref_destroyed_cb property')
+        traceback.print_stack()
+        self._weakref_destroyed_user_cb = callback
+   
 
     def _weakref_destroyed(self, object):
         if _python_shutting_down != False:
@@ -297,6 +331,9 @@ class WeakCallback(Callback):
                 return self._weakref_destroyed_user_cb(object)
         except Exception:
             log.exception("Exception raised during weakref destroyed callback")
+        finally:
+            # One of the weak refs has died, consider this WeakCallback invalid.
+            self._instance = self._callback = None
 
 
 

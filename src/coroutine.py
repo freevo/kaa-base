@@ -113,7 +113,7 @@ def coroutine(interval=0, policy=None, progress=False):
 
     A function decorated with this decorator will always return an
     InProgress object. It may already be finished. If it is not finished,
-    it has stop() and set_interval() member functions. If stop() is called,
+    it has stop() and set_interval() member functions. If abort() is called,
     the InProgress object will be thrown a GeneratorExit exception.
     """
     if progress is True:
@@ -357,7 +357,7 @@ class CoroutineInProgress(InProgress):
             # exception we're about to throw it.
             self._prerequisite_ip.disconnect(self._continue)
             self._prerequisite_ip.exception.disconnect(self._continue)
-            self._prerequisite_ip.stop()
+            self._prerequisite_ip.abort()
 
         try:
             if not finished:

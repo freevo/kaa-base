@@ -246,7 +246,7 @@ class WeakCallback(Callback):
     to which that method belongs, and only weak references are kept to any of
     the arguments and keyword arguments.
 
-    This also works recursively, so there are nested data structures, for example 
+    This also works recursively, so if there are nested data structures, for example 
     ``kwarg=[1, [2, [3, my_object]]]``, only a weak reference is held for my_object.
     """
 

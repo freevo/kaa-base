@@ -507,6 +507,7 @@ class InProgress(Signal, Object):
 
         :param callback: called (with no additional arguments) just prior
                          to TimeoutException
+        :return: a new :class:`~kaa.InProgress` object that is subject to the timeout
 
         If the original InProgress finishes before the timeout, the new InProgress
         (returned by this method) is finished with the result of the original.
@@ -518,7 +519,7 @@ class InProgress(Signal, Object):
             @kaa.coroutine()
             def read_from_socket(sock):
                 try:
-                    data = sock.read().timeout(3)
+                    data = yield sock.read().timeout(3)
                 except TimeoutException, (msg, inprogress):
                     print 'Error:', msg
                     inprogress.abort()
@@ -633,7 +634,7 @@ class InProgress(Signal, Object):
 
         This function does not accept additional args/kwargs to be passed to
         the callbacks.  If you need that, use :meth:`~kaa.InProgress.connect`
-        and/or :attr:`~kaa.InProgress.exception`.connect().
+        and :attr:`~kaa.InProgress.exception`.connect().
 
         If *exception* is not given, the given callable will be used for **both**
         success and exception results, and therefore must be able to handle variable

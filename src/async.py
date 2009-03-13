@@ -571,9 +571,13 @@ class InProgress(Signal, Object):
         The main loop is kept alive if waiting in the main thread, otherwise
         the thread is blocked until another thread finishes the InProgress.
 
+        If the InProgress finishes due to an exception, that exception is
+        raised.
+
         :param timeout: if not None, wait() blocks for at most timeout seconds
                         (which may be fractional).  If wait times out, a
                         TimeoutException is raised.
+        :return: the value the InProgress finished with
         """
         # Connect a dummy handler to ourselves.  This is a bit kludgy, but
         # solves a particular problem with InProgress(Any|All), which don't

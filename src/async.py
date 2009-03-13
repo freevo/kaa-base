@@ -776,7 +776,7 @@ class InProgressAny(InProgress):
         """
         Called when a callback connects or disconnects from us.
         """
-        if len(self) == 1 and action == Signal.SIGNAL_CONNECTED and not self.finished:
+        if len(self) == 1 and action == Signal.CONNECTED and not self.finished:
             # Someone wants to know when we finish, so now we connect to the
             # underlying InProgress objects to find out when they finish.
             self._check_prefinished()
@@ -788,7 +788,7 @@ class InProgressAny(InProgress):
                 ip.connect(self.finish, False, *args).user_args_first = True
                 ip.exception.connect(self.finish, True, *args).user_args_first = True
 
-        elif len(self) == 0 and action == Signal.SIGNAL_DISCONNECTED:
+        elif len(self) == 0 and action == Signal.DISCONNECTED:
             for ip in self._objects:
                 ip.disconnect(self.finish)
                 ip.exception.disconnect(self.finish)

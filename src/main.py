@@ -83,12 +83,13 @@ def select_notifier(module, **options):
     """
     Initialize the specified mainloop.
 
-    @param module: mainloop implementation to use
-      - generic (Python based mainloop, default)
-      - gtk (gtk mainloop)
-      - threaded (Python based mainloop in an extra thread
-      - twisted (Twisted mainloop)
-    @param options: The options depend on the used mainloop
+    :param module: the mainloop implementation to use.
+                   ``"generic"``: Python based mainloop, default;
+                   ``"gtk"``: pygtk mainloop;
+                   ``"threaded"``: Python based mainloop in an extra thread;
+                   ``"twisted"``: Twisted mainloop
+    :type module: str
+    :param options: module-specific keyword arguments
     """
     if module in ('thread', 'twisted'):
         import nf_thread
@@ -96,7 +97,7 @@ def select_notifier(module, **options):
     return notifier.init( module, **options )
 
 
-def loop(condition, timeout = None):
+def loop(condition, timeout=None):
     """
     Executes the main loop until condition is met.  condition is either a
     callable, or value that is evaluated after each step of the main loop.
@@ -153,9 +154,18 @@ def loop(condition, timeout = None):
 
 def run(threaded=False):
     """
-    Main loop function. It will loop until an exception
-    is raised or sys.exit is called. If thread is true the mainloop
-    will run in an extra thread.
+    Start the main loop.
+
+    The main loop will continue to run until an exception is raised
+    (and makes its way back up to the main loop without being caught).
+    SystemExit and KeyboardInterrupt exceptions will cause the main loop
+    to terminate, and execution will resume after run() was called.
+
+    :param threaded: if True, the Kaa mainloop will start in a new thread.
+                     This is useful if the main Python thread has been co-opted
+                     by another mainloop framework and you want to use Kaa
+                     in parallel.
+    :type threaded: bool
     """
     if is_running():
         raise RuntimeError('Mainthread is already running')
@@ -192,7 +202,11 @@ def run(threaded=False):
 @threaded(MAINTHREAD)
 def stop():
     """
-    Shutdown mainloop and kill all background processes.
+    Stop the main loop and terminate all child processes and named
+    threads started via the Kaa API.
+
+    Any notifier callback can also cause the main loop to terminate
+    by raising SystemExit.
     """
     global _shutting_down
 
@@ -230,8 +244,10 @@ def stop():
 
 def step(*args, **kwargs):
     """
-    step function with signal support. This function should not
-    be called directly to avoid recursion.
+    Performs a single iteration of the main loop.
+
+    This function should almost certainly never be called directly.  Use it
+    at your own peril.
     """
     if not is_mainthread():
         # If step is being called from a thread, wake up the mainthread
@@ -265,6 +281,7 @@ def is_shutting_down():
 def is_stopped():
     """
     Returns True if the main loop used to be running but is now shutdown.
+
     This is useful for worker tasks running a thread that need to live for
     the life of the application, but are started before kaa.main.run() is
     called.  These threads can loop until kaa.main.is_stopped()

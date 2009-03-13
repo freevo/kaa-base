@@ -58,9 +58,14 @@ _python_shutting_down = False
 
 class Signal(object):
 
-    # Parameters for changed callback
+    # Constants used for the action parameter for changed_cb.
+    CONNECTED = 1
+    DISCONNECTED = 2
+
+    # These are kept for backward compatibility.  Don't use them.
     SIGNAL_CONNECTED = 1
     SIGNAL_DISCONNECTED = 2
+
 
     def __init__(self, changed_cb = None):
         super(Signal, self).__init__()
@@ -138,7 +143,7 @@ class Signal(object):
             pos = len(self._callbacks)
 
         self._callbacks.insert(pos, callback)
-        self._changed(Signal.SIGNAL_CONNECTED)
+        self._changed(Signal.CONNECTED)
 
         if self._deferred_args:
             for args, kwargs in self._deferred_args:
@@ -183,7 +188,7 @@ class Signal(object):
 
         if len(new_callbacks) != len(self._callbacks):
             self._callbacks = new_callbacks
-            self._changed(Signal.SIGNAL_DISCONNECTED)
+            self._changed(Signal.DISCONNECTED)
             return True
 
         return False
@@ -193,7 +198,7 @@ class Signal(object):
         """
         Called when a callback was connected or disconnected.
 
-        @param action: SIGNAL_CONNECTED or SIGNAL_DISCONNECTED.
+        @param action: CONNECTED or DISCONNECTED.
         """
         if self._changed_cb:
             self._changed_cb(self, action)
@@ -207,7 +212,7 @@ class Signal(object):
         count = self.count()
         self._callbacks = []
         if self._changed_cb and count > 0:
-            self._changed_cb(self, Signal.SIGNAL_DISCONNECTED)
+            self._changed_cb(self, Signal.DISCONNECTED)
 
 
     def emit(self, *args, **kwargs):

@@ -117,13 +117,12 @@ class Callback(object):
     """
     Wraps an existing callable, binding to it the given args and kwargs.
 
-    The function passed to this objects get the parameter passed to this object
-    and after that the args and kwargs defined in the init function.
+    When the Callback object is invoked, the arguments passed on invocation
+    are combined with the arguments specified at construction time and the
+    underlying callback function is invoked with those arguments.
     """
     def __init__(self, callback, *args, **kwargs):
         """
-        Create a new callback.
-
         :param callback: callable function or object
         :param args: arguments for the callback
         :param kwargs: keyword arguments for the callback
@@ -135,6 +134,7 @@ class Callback(object):
         self._kwargs = kwargs
         self._ignore_caller_args = False
         self._user_args_first = False
+
 
     @property
     def ignore_caller_args(self):

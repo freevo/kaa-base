@@ -117,7 +117,9 @@ class Socket(IOChannel):
             # Will raise exception if socket is not connected.
             self._channel.getpeername()
             return True
-        except socket.error:
+        except (AttributeError, socket.error):
+            # AttributeError is raised if _channel is None, socket.error is
+            # raised if the socket is disconnected
             return False
 
 

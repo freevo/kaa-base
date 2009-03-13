@@ -402,7 +402,7 @@ class IOChannel(Object):
         it until the end of the mainloop iteration via a timer in order not
         to lose incoming data between read() calls.
         """
-        if not (self._mode & IO_READ) or not self._rmon or change == Signal.SIGNAL_DISCONNECTED:
+        if not (self._mode & IO_READ) or not self._rmon:
             return
         elif not self._is_read_connected() and not self._is_readline_connected():
             self._rmon.unregister()

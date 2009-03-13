@@ -76,15 +76,15 @@ def make_exception_class(name, bases, dict):
 def inprogress(obj):
     """
     Returns a suitable InProgress for the given object.  This function simply
-    calls __inprogress__ of the given obj if one exists, and if not will raise
-    an exception.  In this sense, it behaves quite similar to len() and
-    __len__.
+    calls ``__inprogress__`` of the given ``obj`` if one exists, and if not will raise
+    an exception.  In this sense, it behaves quite similar to ``len()`` and
+    ``__len__``.
 
     It is safe to call this function on InProgress objects.  (The InProgress
-    object given will simply be returned.
+    object given will simply be returned.)
 
     :param obj: object to represent as an InProgress.
-    :return: :class:`~kaa.InProgress`
+    :return: an :class:`~kaa.InProgress` representing ``obj``
     """
     try:
         return obj.__inprogress__()

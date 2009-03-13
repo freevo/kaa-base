@@ -129,8 +129,84 @@ Callback API
 Signals
 -------
 
-FIXME: add overview and example of a typical way to use signals
+In Kaa, signals don't refer to Unix signals, but rather are similar to gtk+ signals
+in that they are hooks to allow you to connect callbacks to be triggered when
+certain events occur.  A signal may have any number of callbacks connected to it,
+and when it is *emitted*, all the callbacks are invoked.  For example,
+:class:`kaa.IOChannel` has a signal called :attr:`~kaa.IOChannel.signals.read`
+which is emitted when a chunk of data has been read from the IO channel.
 
+Classes that offer signals have a *signals* attribute, which is a dictionary
+(or in fact a :class:`kaa.Signals` object, which behaves like a dictionary), whose
+keys are the names of the signal supported by that object, and the corresponding
+values are :class:`kaa.Signal` objects.  For example::
+
+    def handle_data_chunk(data, userdata):
+        print 'Read:', data
+
+    iochannel.signals['read'].connect(handle_data_chunk, 'This is user data')
+
+The :meth:`~kaa.Signal.connect` method accepts a callable and arbitrary
+non-keyword and keyword arguments, which are passed to the callback.  This
+method, and the whole ``connect_*`` family of methods in general, constructs a
+:class:`~kaa.Callback` object implicitly (and in fact return that newly
+constructed Callback).  So the above example is equivalent to::
+
+    iochannel.signals['read'].connect(kaa.Callback(handle_data_chunk, 'this is user data'))
+
+Obviously the earlier form is more convenient.  Similarly, :meth:`~kaa.Signal.connect_weak`
+does the same thing, except it creates a :class:`~kaa.WeakCallback` from the callback and
+arguments.
+
+It is possible to detect when a Signal changes by assigning a callback to the Signal
+object's :attr:`~kaa.Signal.changed_cb` property (or by passing it on the constructor)::
+
+    >>> def signal_changed(signal, action):
+    ...     if action == kaa.Signal.CONNECTED:
+    ...         print 'New callback added, signal now has %d' % len(signal)
+    ...     else:
+    ...         print 'Callback added, signal now has %d' % len(signal)
+    ... 
+    >>> sig = kaa.Signal(changed_cb=signal_changed)
+    >>> callback = sig.connect(lambda: None)
+    New callback added, signal now has 1
+    >>> sig.disconnect(callback)
+    Callback added, signal now has 0
+
+One example of where this is used is with IOChannel's
+:attr:`~kaa.IOChannel.signals.read` signal.  If there are no callbacks
+connected to the ``read`` signal then we don't want to consume any data
+from the channel.  So, when a callback is connected, the IOChannel must
+register itself with the notifier and handle read events in order
+to consume data, passing it to all the callbacks connected to the read
+signal.  When all callbacks have been disconnected, the IOChannel must
+unregister itself, so that no data is consumed when it has no listeners.
+
+Signal objects also behave like containers, in that they can be iterated
+over (where each element is the :class:`~kaa.Callback` object), counted
+(via ``len()``), and tested for membership (``myfunc in signal``).
+
+A Signal knows how to be coerced into an :class:`~kaa.InProgress` object
+via :func:`kaa.inprogress`, and can therefore be yielded from a :ref:`coroutine <coroutines>`::
+
+    @kaa.coroutine()
+    def stop_process(self):
+        self.write('quit\n')
+        # Let's assume the 'terminated' signal gets emitted when the process
+        # exits, which is handled elsewhere.
+        yield kaa.inprogress(self.signals['terminated'])
+
+Here, the ``stop_process()`` coroutine is finished when the ``terminated`` signal
+is emitted.  For more information on coroutines, see the section on
+:ref:`asynchronous programming in Kaa <async>`.
+
+A collection of many Signal objects is represented by a :class:`~kaa.Signals`
+object, which behaves like a dictionary.  There are several additional methods
+with Signals object, such as :meth:`~kaa.Signals.any` and :meth:`~kaa.Signals.all`.
+
+
+Signals API
+~~~~~~~~~~~
 
 .. kaaclass:: kaa.Signal
 
@@ -144,9 +220,3 @@ FIXME: add overview and example of a typical way to use signals
    .. automethods::
    .. autoproperties::
    .. autosignals::
-
-
-Connect-Change Notification
----------------------------
-
-FIXME: this section is not yet written

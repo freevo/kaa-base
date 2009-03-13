@@ -1,42 +1,119 @@
 The Main Loop
 =============
 
-The main loop facility within kaa is based on pyNotifier. A
-system-wide installation of pynotifier will be used if it exists,
-otherwise kaa will fallback to an internal version which supports
-integration with gtk and twisted main loops. kaa.base fully wraps and
-enhances stock pyNotifier API with process, thread and signal handling
-and a wide variety of callback classes.
+The plumbing within Kaa that orchestrates the main loop -- dispatching
+callbacks triggered by events (such as activity on a file descriptor or timers)
+-- is collectively referred to as "the notifier."  If you're familiar with the
+Twisted framework, it is very similar to Twisted's reactor.
 
-To start the main loop, you need to import kaa and call
-kaa.main.run(). When the program stops because you press Ctrl-c in the
-terminal, send a SIG15 or call sys.exit, the application won't
-stop. It will just terminate the main loop (i.e. kaa.main.run()
-returns)::
+This main loop facility depends on pyNotifier. A system-wide installation of
+pynotifier will be used if it exists, otherwise kaa will fallback to an
+internal version which supports integration with gtk and Twisted main loops.
+kaa.base fully wraps and enhances stock pyNotifier API with process, thread and
+signal handling and a wide variety of callback classes.
+
+To start the main loop, import kaa and call :func:`kaa.main.run`.  The main
+loop (but *not* the program) will terminate when SIGTERM or SIGINT (ctrl-c) is
+received.  The simplest Kaa program is therefore::
 
     import kaa
     kaa.main.run()
 
-This is a trivial example of course; your program should do
-something. The other classes available in kaa.base (described below)
-can be used to hook functionality into the main loop. As a general
-rule, one should try not to block the main loop for longer than 100
-milliseconds. kaa.base provides several options to avoid blocking,
-such as :ref:`coroutines or threads <async>`.
+This program is effectively deaf and mute.  Internally, it will go to sleep for
+30 seconds, wake up briefly, sleep again, and so on.  (30 is a happenstance of
+the internal pyNotifier implementation; 30 seconds is basically infinity as far
+as a computer is concerned.)
 
-The notion of signals is used heavily within all kaa modules. Here,
-signals are similar to gtk signals, in that they are hooks to allow
-you to connect callbacks when certain events occur. There is a
-dictionary signals called kaa.main.signals which contains several
-signals to which you can connect. In some cases, this dictionary is
-extended when modules are imported.
+From the above basic shell, you can begin hooking functionality into the
+program via the rest of the Kaa API: :ref:`timers <timer>`, :ref:`sockets
+<socket>`, :ref:`subprocesses <subprocess>`, :ref:`I/O channels <io>`,
+:ref:`coroutines <coroutines>`, :ref:`threads <threads>`, etc.
 
-Depending on what you currently use, some small steps need to be made
-to make the mainloop running. If you aren't using a mainloop
-right now, you should use the kaa mainloop.
+
+Main Loop API
+-------------
+
+.. autofunction:: kaa.main.run
+
+.. autofunction:: kaa.main.stop
+
+.. autofunction:: kaa.main.loop
+
+.. autofunction:: kaa.main.select_notifier
+
+.. autofunction:: kaa.main.is_running
+
+.. autofunction:: kaa.main.is_shutting_down
+
+.. autofunction:: kaa.main.is_stopped
+
+.. autofunction:: kaa.main.step
+
+
+Main Loop Signals
+-----------------
+
+Global Kaa signals are accessed via the ``kaa.signals`` :class:`~kaa.Signals` object.
+For example::
+
+    def shutdown_handler():
+        print 'Shutting down'
+
+    kaa.signals['shutdown'].connect(shutdown_handler)
+
+
+Importing other Kaa modules (such as those in ``kaa.input``) may add specialized
+signals, however by default ``kaa.signals`` contains:
+
+.. attribute:: shutdown
+
+   Emitted when the Kaa main loop is shutting down, but before any
+   subprocesses or threads are terminated.
+
+   .. describe:: def callback()
+
+      The callback takes no arguments.
+
+.. attribute:: step
+
+   Emitted after each iteration step of the main loop.
+
+   This signal is probably not suitable as an 'idle worker' because the
+   interval between emissions may be as much as 30 seconds.  However it is
+   useful for functions which need to be called after notifier callbacks.
+   One example use-case is rendering a canvas after notifier callbacks have
+   manipulated objects upon it.
+
+   .. describe:: def callback()
+
+      The callback takes no arguments.
+
+.. attribute:: exception
+
+   Emitted when an uncaught exception has bubbled up to the main loop.  This
+   signal presents the last chance to handle it before the main loop will
+   be aborted.  (This also includes SystemExit and KeyboardInterrupt.)
+
+   .. describe:: def callback(tp, exc, tb)
+
+      The callback parameters correspond to sys.exc_info().
+
+      :param tp: the exception class
+      :param exc: the exception instance
+      :param tb: the traceback for this exception
+
+      If the callback returns ``False``, the exception will be considered
+      handled and the main loop will *not* terminate.  Otherwise, it will.
+
+
 
 Integration With Other Frameworks
 =================================
+
+Kaa can be made to play nicely with other main loop facilities.  For example,
+you can write a pygtk application while still making use of Kaa's convenient
+API.
+
 
 GObject / GTK Integration
 -------------------------

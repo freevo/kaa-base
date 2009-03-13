@@ -94,41 +94,29 @@ in a coroutine), the exception will be logged to stdout with the heading
    .. autosignals::
 
 
+InProgress Collections
+----------------------
 
-InProgressAny
--------------
+.. kaaclass:: kaa.InProgressAny
 
-InProgressAny objects represent multiple InProgress objects, and is
-finished when any one of the underlying InProgress objects
-finishes. The object is finished with a 2-tuple (idx, result) where
-idx is the index of the underlying finished InProgress (offset from 0
-and in the order of the InProgress objects as passed to the
-InProgressAny constructor), and where result is the result the
-underlying InProgress finished with. If that InProgress was finished
-by an exception, then result is a 3-tuple of (type, value, traceback)
-representing the exception.
+   .. automethods::
+   .. autosignals::
 
-InProgressAll
--------------
+.. kaaclass:: kaa.InProgressAll
 
-InProgressAll objects represent multiple InProgress objects, and is
-finished when all of the underlying InProgress objects are
-finished. The InProgressAll object is always finished with itself
-(that is in_progress_all.result == in_progress_all). The object is an
-iterable, and will iterate over all of the InProgress objects passed
-to its constructor.
+   .. automethods::
+   .. autosignals::
 
-__inprogress__
---------------
 
-Similar to __len__ and len(), objects that implement the
-__inprogress__ method (which takes no arguments) return an InProgress
-object that represents the progress of the original object. There is a
-method kaa.inprogress() which accepts an object and simply calls its
-__inprogress__ method.
+Functions
+---------
 
-A practical demonstration of this protocol is in the Signal object,
-which implements the __inprogress__ method. The returned InProgress in
-that case is finished with the signal is next emitted. Any object
-implementing the __inprogress__ protocol can be passed directly to the
-constructor of InProgressAny or InProgressAll.
+.. autofunction:: kaa.inprogress
+
+   A practical demonstration of this protocol is in the Signal object,
+   which implements the __inprogress__ method. The returned InProgress in
+   that case is finished with the signal is next emitted. Any object
+   implementing the __inprogress__ protocol can be passed directly to the
+   constructor of InProgressAny or InProgressAll.
+
+.. autofunction:: kaa.delay

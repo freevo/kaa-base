@@ -49,7 +49,7 @@ import threading
 import atexit
 
 import nf_wrapper as notifier
-from signals import Signal
+from signals import Signal, Signals
 from timer import OneShotTimer
 from popen import proclist as _proclist
 from process import supervisor
@@ -73,11 +73,8 @@ _loop_lock = threading.Lock()
 #:  - exception: emited when an unhandled async exceptions occurs
 #:  - shutdown: emited on kaa shutdown
 #:  - step: emited on each step of the mainloop
-signals = {
-    'exception': Signal(),
-    'shutdown': Signal(),
-    'step': Signal(),
-}
+signals = Signals('exception', 'shutdown', 'step')
+
 
 def select_notifier(module, **options):
     """
@@ -99,8 +96,17 @@ def select_notifier(module, **options):
 
 def loop(condition, timeout=None):
     """
-    Executes the main loop until condition is met.  condition is either a
-    callable, or value that is evaluated after each step of the main loop.
+    Executes the main loop until condition is met.
+
+    This function may be called recursively, however two loops may not
+    run in parallel threads.
+
+    :param condition: a callable or object that is evaluated after each step
+                      of the loop.  If it evaluates False, the loop
+                      terminates.  (If condition is therefore ``True``, the
+                      loop will run forever.)
+    :param timeout: number of seconds after which the loop will terminate
+                    (regardless of the condition).
     """
     _loop_lock.acquire()
     if is_running() and not is_mainthread():
@@ -135,7 +141,7 @@ def loop(condition, timeout=None):
             try:
                 notifier.step()
                 signals['step'].emit()
-            except Exception, e:
+            except BaseException, e:
                 if signals['exception'].emit(*sys.exc_info()) != False:
                     # Either there are no global exception handlers, or none of
                     # them explicitly returned False to abort mainloop
@@ -220,11 +226,12 @@ def stop():
 
     _shutting_down = True
     
-    supervisor.stopall()
-    _proclist.stop_all() # XXX: deprecated
     signals["shutdown"].emit()
     signals["shutdown"].disconnect_all()
     signals["step"].disconnect_all()
+
+    supervisor.stopall()
+    _proclist.stop_all() # XXX: deprecated
 
     # Kill processes _after_ shutdown emits to give callbacks a chance to
     # close them properly.

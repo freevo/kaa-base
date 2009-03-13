@@ -1,3 +1,5 @@
+.. _subprocess:
+
 Sub-Process I/O
 ---------------
 

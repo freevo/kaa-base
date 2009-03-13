@@ -1,8 +1,8 @@
 Signals and Callbacks
 =====================
 
-Signal and Callback objects are among the core building blocks of the Kaa framework
-and are used extensively throughout.
+Signal and Callback objects are among the core building blocks of Kaa and are
+used extensively throughout the framework.
 
 
 Callbacks

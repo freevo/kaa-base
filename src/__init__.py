@@ -70,6 +70,9 @@ from event import Event, EventHandler, WeakEventHandler
 from coroutine import NotFinished, coroutine, \
      POLICY_SYNCHRONIZED, POLICY_SINGLETON, POLICY_PASS_LAST
 
+# generator support
+from generator import Generator, generator
+
 # process management
 from popen import Process
 from process import Process2

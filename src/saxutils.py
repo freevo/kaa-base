@@ -288,5 +288,5 @@ def pprint(element):
 
     writer = codecs.lookup('utf8')[3](StringIO())
     writer.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-    self.writexml(writer.write, element, '', '    ', '\n')
+    convert(writer.write, element, '', '    ', '\n')
     return writer.getvalue()

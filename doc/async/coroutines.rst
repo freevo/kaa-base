@@ -74,10 +74,10 @@ object the other coroutine returns)::
 (Note that the above syntax, in which the yield statement returns a value,
 was introduced in Python 2.5.  kaa.base requires Python 2.5 or later.)
 
-Classes in kaa make heavy use of coroutines and threads when methods would
-otherwise block on some resource.  Both coroutines and @threaded-decorated
-methods return InProgress objects and behave identically.  These can be
-therefore yielded from a coroutine in the same way::
+Classes in kaa make heavy use of coroutines and (to a lesser extent) threads
+when methods would otherwise block on some resource.  Both coroutines and
+@threaded-decorated methods return InProgress objects and behave identically.
+These can be therefore yielded from a coroutine in the same way::
 
     @kaa.coroutine()
     def fetch_page(host):
@@ -92,8 +92,11 @@ therefore yielded from a coroutine in the same way::
         print (yield socket.read())
 
 In the above example, the difference between threaded functions
-(Socket.connect) and coroutines is transparent.  Both return InProgress
-objects. (As an aside, we didn't really need to yield socket.write() because
-writes are queued and written to the socket when it becomes writable.  However,
-yielding a write means that when the coroutine resumes, the data has been
+(:meth:`kaa.Socket.connect`) and coroutines (:meth:`~kaa.IOChannel.write` and
+:meth:`~kaa.IOChannel.read`) is transparent.  Both return InProgress objects. (As
+an aside, we didn't really need to yield socket.write() because writes are
+queued and written to the socket when it becomes writable.  However, yielding a
+write means that when the coroutine resumes, the data has been
 written.)
+
+.. autofunction:: kaa.coroutine

@@ -10,7 +10,7 @@ project, from small event-driven tools, to larger, complex applications.
 
 The Kaa Application Framework includes a mainloop facility with an API for
 signals and callbacks, timers, thread and subprocess management, local IO and
-sockets (with TLS support), and inter-process communication.
+sockets (with TLS support), inter-process communication, and much more.
 
 Kaa also -- and perhaps most importantly -- provides a rich, practically
 magical API for asynchronous programming.  Threads and coroutines in

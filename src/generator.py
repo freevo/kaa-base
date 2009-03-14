@@ -110,7 +110,14 @@ _generator_callbacks = {}
 
 def generator(generic=False):
     """
-    Generator decorator
+    This decorator is used to construct asynchronous generators, to be used
+    in combination with functions that return InProgress objects (such as
+    those functions decorated with @:func:`kaa.coroutine` or @:func:`kaa.threaded`).
+
+    :param generic: if True, a :class:`~kaa.Generator` object is passed as the 
+                    first argument to the decorated function.  This can be used
+                    for functions which have not been previously decoratored
+                    with a supported decorator (such as @coroutine or @threaded).
     """
     def _decorator(func):
         callback = None
@@ -140,6 +147,7 @@ def generator(generic=False):
         return newfunc
 
     return _decorator
+
 
 def register(wrapper):
     """

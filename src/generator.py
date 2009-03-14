@@ -130,7 +130,6 @@ def generator(decorator=None, *args, **kwargs):
             ip.connect(generator.finish)
             ip.exception.connect(generator.throw)
             return inprogress(generator)
-        newfunc.func_name = func.func_name
         return newfunc
 
     return _decorator

@@ -130,7 +130,6 @@ def threaded(name=None, priority=0, async=True, progress=False):
                 in_progress.progress = args[0]
             return in_progress
 
-        newfunc.func_name = func.func_name
         return newfunc
 
     return decorator

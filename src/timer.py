@@ -98,7 +98,6 @@ def timed(interval, timer=None, policy=POLICY_MANY):
             store.timer = weakref(t)
             t.start(interval)
             return True
-        newfunc.func_name = func.func_name
         return newfunc
 
     return decorator

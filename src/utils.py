@@ -38,6 +38,7 @@ import imp
 import logging
 import inspect
 import re
+import functools
 from tempfile import mktemp
 
 import _utils
@@ -368,16 +369,6 @@ def sysimport(name):
             fp.close()
 
 
-try:
-    from functools import update_wrapper
-except ImportError:
-    # update_wrapper is only available in 2.5+, so create our own for
-    # later versions of Python.
-    def update_wrapper(wrapper, wrapped):
-        for attr in ('__module__', '__name__', '__doc__'):
-            setattr(wrapper, attr, getattr(wrapped, attr))
-        wrapper.__dict__.update(wrapped.__dict__)
-
 
 def wraps(origfunc, lshift=0):
     """
@@ -404,7 +395,7 @@ def wraps(origfunc, lshift=0):
     """
     if 'epydoc' not in sys.modules and 'sphinx.builder' not in sys.modules:
         # epydoc not imported, so return a decorator that passes the func through.
-        return lambda func: func
+        return functools.wraps(origfunc)
     elif lshift == 0:
         # Simple case, we don't need to munge args, so we can pass origfunc.
         return lambda func: origfunc

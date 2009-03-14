@@ -193,6 +193,11 @@ def coroutine(interval=0, policy=None, progress=False):
 
         if policy == POLICY_SYNCHRONIZED:
             func._lock = None
+
+        # Boilerplate for @kaa.generator
+        newfunc.decorator = coroutine
+        newfunc.origfunc = func
+        newfunc.redecorate = lambda: coroutine(interval, policy, progress)
         return newfunc
 
     return decorator

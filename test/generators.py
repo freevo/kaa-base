@@ -8,7 +8,8 @@ def async():
     yield kaa.NotFinished
     yield 10
 
-@kaa.generator(kaa.coroutine)
+@kaa.generator()
+@kaa.coroutine()
 def coroutine_test():
     """
     Test with a coroutine generator. The coroutine has to raise
@@ -24,7 +25,8 @@ def coroutine_test():
     yield kaa.NotFinished
     yield 3
 
-@kaa.generator(kaa.threaded)
+@kaa.generator()
+@kaa.threaded()
 def thread_test():
     """
     Test with a generator in a thread. Each value from yield is send
@@ -35,7 +37,7 @@ def thread_test():
     yield 2
     yield 3
 
-@kaa.generator()
+@kaa.generator(generic=True)
 @kaa.threaded()
 def generic_test(generator):
     """

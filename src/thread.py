@@ -130,6 +130,10 @@ def threaded(name=None, priority=0, async=True, progress=False):
                 in_progress.progress = args[0]
             return in_progress
 
+        # Boilerplate for @kaa.generator
+        newfunc.decorator = threaded
+        newfunc.origfunc = func
+        newfunc.redecorate = lambda: threaded(name, priority, async, progress)
         return newfunc
 
     return decorator

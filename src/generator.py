@@ -109,21 +109,24 @@ class Generator(object):
 # list of special handler
 _generator_callbacks = {}
 
-def generator(decorator=None, *args, **kwargs):
+def generator(generic=False):
     """
     Generator decorator
     """
-    if decorator:
-        callback = _generator_callbacks.get(decorator)
-        if callback is None:
-            raise RuntimeError('unsupported decorator %s', decorator)
-        callback = decorator(*args, **kwargs)(callback)
-
     def _decorator(func):
+        callback = None
+        if not generic:
+            try:
+                callback = _generator_callbacks.get(func.decorator)
+            except (AttributeError, KeyError):
+                raise RuntimeError('unsupported decorator %s', func.decorator)
+            callback = func.redecorate()(callback)
+            func = func.origfunc
+        
         @wraps(func)
         def newfunc(*args, **kwargs):
             generator = Generator()
-            if decorator:
+            if callback:
                 ip = callback(generator, func, args, kwargs)
             else:
                 ip = func(generator=generator, *args, **kwargs)

@@ -62,6 +62,7 @@ import logging
 from utils import wraps, DecoratorDataStore
 from timer import Timer
 from async import InProgress
+from generator import generator
 
 # get logging object
 log = logging.getLogger('base')
@@ -201,6 +202,24 @@ def coroutine(interval=0, policy=None, progress=False):
         return newfunc
 
     return decorator
+
+@generator.register(coroutine)
+def _generator_coroutine(generator, func, args, kwargs):
+    """
+    kaa.generator support for kaa.coroutine
+    """
+    async = func(*args, **kwargs)
+    while True:
+        result = async.next()
+        while isinstance(result, InProgress):
+            try:
+                result = async.send((yield result))
+            except Exception, e:
+                async.throw(*sys.exc_info())
+        if result == NotFinished:
+            yield result
+        else:
+            generator.send(result)
 
 
 # -----------------------------------------------------------------------------

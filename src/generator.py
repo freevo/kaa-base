@@ -34,7 +34,6 @@ __all__ = [ 'Generator', 'generator' ]
 # kaa imports
 from async import InProgress, inprogress
 from thread import MAINTHREAD, threaded
-from coroutine import coroutine, NotFinished
 from utils import wraps
 
 class Generator(object):
@@ -152,29 +151,3 @@ def register(wrapper):
     return decorator
 
 generator.register = register
-
-@generator.register(coroutine)
-def _generator_coroutine(generator, func, args, kwargs):
-    """
-    Generator for kaa.coroutine
-    """
-    async = func(*args, **kwargs)
-    while True:
-        result = async.next()
-        while isinstance(result, InProgress):
-            try:
-                result = async.send((yield result))
-            except Exception, e:
-                async.throw(*sys.exc_info())
-        if result == NotFinished:
-            yield result
-        else:
-            generator.send(result)
-
-@generator.register(threaded)
-def _generator_threaded(generator, func, args, kwargs):
-    """
-    Generator for kaa.threaded
-    """
-    for g in func(*args, **kwargs):
-        generator.send(g)

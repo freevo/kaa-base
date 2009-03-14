@@ -139,6 +139,21 @@ def threaded(name=None, priority=0, async=True, progress=False):
     return decorator
 
 
+# XXX: we import generator here because generator.py requires
+# threaded and MAINTHREAD from this module, so this is necessary
+# to avoid import loop.
+from generator import generator
+
+@generator.register(threaded)
+def _generator_threaded(generator, func, args, kwargs):
+    """
+    kaa.generator support for kaa.threaded
+    """
+    for g in func(*args, **kwargs):
+        generator.send(g)
+
+
+
 class synchronized(object):
     """
     synchronized decorator and `with` statement similar to synchronized

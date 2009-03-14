@@ -117,9 +117,11 @@ def generator(generic=False):
         callback = None
         if not generic:
             try:
-                callback = _generator_callbacks.get(func.decorator)
-            except (AttributeError, KeyError):
-                raise RuntimeError('unsupported decorator %s', func.decorator)
+                callback = _generator_callbacks[func.decorator]
+            except KeyError:
+                raise RuntimeError('Unsupported decorator: %s', func.decorator)
+            except AttributeError:
+                raise RuntimeError('Function %s does not support redecoration' % func)
             callback = func.redecorate()(callback)
             func = func.origfunc
         
@@ -130,8 +132,11 @@ def generator(generic=False):
                 ip = callback(generator, func, args, kwargs)
             else:
                 ip = func(generator=generator, *args, **kwargs)
-            ip.connect(generator.finish)
-            ip.exception.connect(generator.throw)
+            try:
+                ip.connect(generator.finish)
+                ip.exception.connect(generator.throw)
+            except AttributeError:
+                raise ValueError('@kaa.generator decorated function (%s) must return InProgress' % func.func_name)
             return inprogress(generator)
         return newfunc
 

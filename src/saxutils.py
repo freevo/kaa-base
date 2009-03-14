@@ -215,7 +215,8 @@ class ElementParser(xml.sax.ContentHandler):
         """
         self._names = names
         self._elements = []
-
+        self.attr = {}
+        
     def startElement(self, name, attr):
         """
         SAX callback
@@ -223,6 +224,8 @@ class ElementParser(xml.sax.ContentHandler):
         element = Element(name, attr)
         if len(self._elements):
             self._elements[-1].append(element)
+        else:
+            self.attr = dict(attr)
         self._elements.append(element)
 
     def endElement(self, name):

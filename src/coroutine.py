@@ -223,8 +223,6 @@ def coroutine(interval=0, policy=None, progress=False, group=None):
                 ip._timer.start(interval)
             return wrap(ip)
 
-        #if policy == POLICY_SYNCHRONIZED:
-        #    store.lock = None
 
         # Boilerplate for @kaa.generator
         newfunc.decorator = coroutine

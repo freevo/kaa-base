@@ -447,7 +447,7 @@ class DecoratorDataStore(object):
     the decorator, and from outside the decorator.  This allows, for example, a
     method to access data stored by one of its decorators.
     """
-    def __init__(self, func, newfunc=None, newfunc_args=None):
+    def __init__(self, func, newfunc=None, newfunc_args=None, identifier=None):
         # Object the data will be stored in.
         target = func
         if hasattr(func, 'im_self'):
@@ -464,7 +464,8 @@ class DecoratorDataStore(object):
             target = newfunc_args[0]
 
         self.__target = target
-        self.__name = func.func_name
+        # FIXME: user identifier only works when decorating methods.
+        self.__name = identifier if identifier else func.func_name
 
     def __hash(self, key):
         return '__kaa_decorator_data_%s_%s' % (key, self.__name)

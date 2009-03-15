@@ -91,31 +91,60 @@ def _process(generator, inprogress=None):
     return generator.next()
 
 
-def coroutine(interval=0, policy=None, progress=False):
+def coroutine(interval=0, policy=None, progress=False, group=None):
     """
-    Functions with this decorator uses yield to break and to return the
-    results. Special yield values for break are NotFinished or
-    InProgress objects.
+    Decorated functions (which must be generators) may yield control
+    back to the mainloop and be subsequently resumed at a later time.
 
-    The policy arg is one of:
+    Functions which yield ``kaa.NotFinished`` will be resumed on the
+    next mainloop iteration; yielding an :class:`~kaa.InProgress` object
+    will cause the coroutine to be resumed when the InProgress is finished.
+    However, yielding a *finished* InProgress object will cause the coroutine
+    to be resumed immediately.
 
-        POLICY_SYNCHRONIZED: reentry into the coroutine is not permitted,
-            and multiple calls are queued so that they execute sequentially.
-        POLICY_SINGLETON: only one active instance of the coroutine is allowed
-            to exist.  If the coroutine is invoked while another is running,
-            the CoroutineInProgress object returned by the first invocation
-            until it finishes.
-        POLICY_PASS_LAST: passes the CoroutineInProgress of the most recently
-            called, unfinished invocation of this coroutine as the 'last'
-            kwarg.  If no such CoroutineInProgress exists, the last kwarg will
-            be None.  This is useful to chain multiple invocations of the
-            coroutine together, but unlike POLICY_SYNCHRONIZED, the decorated
-            function is entered each invocation.
+    The coroutine is considered finished when the underlying generator yields
+    a value other than ``kaa.NotFinished`` or an InProgress object.
+
+    :param interval: Number of seconds to delay before resuming entry into
+                     the coroutine.  Set to 0 (default) to resume as soon as
+                     possible (but not sooner than the next mainloop iteration).
+    :param policy: None, or one of ``POLICY_SYNCHRONIZED``, ``POLICY_SINGLETON``, or
+                   ``POLICY_PASS_LAST`` (described below).
+    :param progress: if True, a Progress object is passed as the first argument to
+                     the decorated function, allowing the coroutine to report progress
+                     to the caller.  (The progress parameter corresponds to the
+                     ``progress`` attribute of the InProgress object returned to
+                     the caller.)
+    :param group: Name of the group this coroutine shares its policy with.  For
+                  example, multiple coroutines with POLICY_SYNCHRONIZED and the
+                  same group name will all be synchronized against each other.
+    :return: an :class:`~kaa.InProgress` object representing the coroutine.
+
+    Possible policies are:
+
+        * ``kaa.POLICY_SYNCHRONIZED``: reentry into the coroutine is not permitted,
+          and multiple calls are queued so that they execute sequentially.
+        * ``kaa.POLICY_SINGLETON``: only one active instance of the coroutine is allowed
+          to exist.  If the coroutine is invoked while another is running,
+          the CoroutineInProgress object returned by the first invocation
+          until it finishes.
+        * ``kaa.POLICY_PASS_LAST``: passes the CoroutineInProgress of the most recently
+          called, unfinished invocation of this coroutine as the 'last'
+          kwarg.  If no such CoroutineInProgress exists, the last kwarg will
+          be None.  This is useful to chain multiple invocations of the
+          coroutine together, but unlike ``POLICY_SYNCHRONIZED``, the decorated
+          function is entered each invocation.
 
     A function decorated with this decorator will always return an
-    InProgress object. It may already be finished. If it is not finished,
-    it has stop() and set_interval() member functions. If abort() is called,
-    the InProgress object will be thrown a GeneratorExit exception.
+    :class:`~kaa.InProgress` object. It may already be finished (which happens if
+    the coroutine's first yielded value is one other than ``kaa.NotFinished`` or  
+    an InProgress object).
+    
+    If it is not finished, the coroutine's life can be controlled via the
+    :class:`~kaa.InProgress` it returns.  It can be :meth:`~kaa.InProgress.abort`ed,
+    in which case a GeneratorExit will be raised inside the coroutine, or its
+    interval may be adjusted via the :attr:`~kaa.CoroutineInProgress.interval` 
+    property.
     """
     if progress is True:
         progress = InProgress.Progress
@@ -124,9 +153,11 @@ def coroutine(interval=0, policy=None, progress=False):
         @wraps(func, lshift=int(not not progress))
         def newfunc(*args, **kwargs):
             if policy:
-                store = DecoratorDataStore(func, newfunc, args)
+                store = DecoratorDataStore(func, newfunc, args, group)
                 if 'last' not in store:
                     store.last = []
+                if 'lock' not in store:
+                    store.lock = None
                 last = store.last
 
                 if policy == POLICY_SINGLETON and last:
@@ -179,21 +210,21 @@ def coroutine(interval=0, policy=None, progress=False):
                 raise ValueError('@coroutine decorated function is not a generator')
 
             function = result
-            if policy == POLICY_SYNCHRONIZED and func._lock is not None and not func._lock.finished:
+            if policy == POLICY_SYNCHRONIZED and store.lock is not None and not store.lock.finished:
                 # Function is currently called by someone else
-                return wrap(CoroutineLockedInProgress(func, function, func_info, interval))
+                return wrap(CoroutineLockedInProgress(store, function, func_info, interval))
 
             ip = CoroutineInProgress(function, func_info, interval)
             if policy == POLICY_SYNCHRONIZED:
-                func._lock = ip
+                store.lock = ip
             # Perform as much as we can of the coroutine now.
             if ip._step() == True:
                 # Generator yielded NotFinished, so start the CoroutineInProgress timer.
                 ip._timer.start(interval)
             return wrap(ip)
 
-        if policy == POLICY_SYNCHRONIZED:
-            func._lock = None
+        #if policy == POLICY_SYNCHRONIZED:
+        #    store.lock = None
 
         # Boilerplate for @kaa.generator
         newfunc.decorator = coroutine
@@ -426,19 +457,19 @@ class CoroutineLockedInProgress(CoroutineInProgress):
     """
     CoroutineInProgress for handling locked coroutine functions.
     """
-    def __init__(self, original_function, function, function_info, interval):
+    def __init__(self, store, function, function_info, interval):
         CoroutineInProgress.__init__(self, function, function_info, interval)
-        self._func = original_function
-        self._func._lock.connect_both(self._try_again, self._try_again)
+        self._store = store
+        self._store.lock.connect_both(self._try_again, self._try_again)
 
 
     def _try_again(self, *args, **kwargs):
         """
         Try to start now.
         """
-        if not self._func._lock.finished:
+        if not self._store.lock.finished:
             # still locked by a new call, wait again
-            self._func._lock.connect_both(self._try_again, self._try_again)
+            self._store.lock.connect_both(self._try_again, self._try_again)
             return
-        self._func._lock = self
+        self._store.lock = self
         self._continue()

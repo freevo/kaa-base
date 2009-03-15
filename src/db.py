@@ -917,7 +917,7 @@ class Database:
                     ivtidx_columns[attr_ivtidx] = [ False, [] ]
                 if flags & ATTR_SEARCHABLE:
                     ivtidx_columns[attr_ivtidx][1].append(name)
-                else:
+                if flags & (ATTR_SIMPLE | ATTR_IGNORE_CASE):
                     get_pickle = True
                 if name in attrs:
                     ivtidx_columns[attr_ivtidx][0] = True
@@ -930,7 +930,7 @@ class Database:
         # that are available in the ObjectRow.  (Of course this assumes
         # the object wasn't changed via elsewhere during the life of the
         # ObjectRow object, so maybe we don't want to do that.)
-        reqd_columns = ([], ['pickle'])[get_pickle]
+        reqd_columns = ['pickle'] if get_pickle else []
         for dirty, searchable_attrs in ivtidx_columns.values():
             if dirty:
                 reqd_columns.extend(searchable_attrs)
@@ -941,8 +941,15 @@ class Database:
             if not row:
                 raise ValueError, "Can't update unknown object (%s, %d)" % (object_type, object_id)
             if reqd_columns[0] == 'pickle' and row[0]:
-                # Update stored pickle data with new ATTR_SIMPLE attribute values
+                # One of the attrs we're updating is in the pickle, so we
+                # have fetched it; now convert it to a dict.
                 row_attrs = cPickle.loads(str(row[0]))
+                for key, value in row_attrs.items():
+                    # Rename all __foo to foo for ATTR_IGNORE_CASE columns
+                    if key.startswith('__') and type_attrs[key[2:]][1] & ATTR_IGNORE_CASE:
+                        row_attrs[key[2:]] = value
+                        del row_attrs[key]
+                # Update stored pickle data with new ATTR_SIMPLE attribute values
                 row_attrs.update(attrs)
                 attrs = row_attrs
 

@@ -74,6 +74,17 @@ class Socket(IOChannel):
         super(Socket, self).__init__(chunk_size=chunk_size)
 
 
+    @IOChannel.fileno.getter
+    def fileno(self):
+        # If fileno() is accessed on a closed socket, socket.error is
+        # railsed.  So we override our superclass's implementation to
+        # handle this case.
+        try:
+            return self._channel.fileno()
+        except (AttributeError, socket.error):
+            return None
+
+
     @property
     def address(self):
         """

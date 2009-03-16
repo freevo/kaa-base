@@ -735,7 +735,7 @@ class IOChannel(Object):
                 if sent != len(data):
                     # Not all data was able to be sent; push remaining data
                     # back onto the write buffer.
-                    self._write_queue.insert(0, (data[sent:], inprogress))
+                    self._write_queue.insert(0, (data[(sent if sent >= 0 else 0):], inprogress))
                     break
                 else:
                     # All data is written, finish the InProgress associated
@@ -755,6 +755,7 @@ class IOChannel(Object):
                 # (mainloop will keep calling us back) we sleep a tiny
                 # bit.  It's admittedly a bit kludgy, but it's a simple
                 # solution to a condition which should not occur often.
+                self._write_queue.insert(0, (data, inprogress))
                 time.sleep(0.001)
                 return
 

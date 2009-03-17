@@ -448,7 +448,7 @@ class CoroutineInProgress(InProgress):
         a TimeoutException if this object is not finished in time. If used,
         this will stop the coroutine.
         """
-        return InProgress.timeout(self, timeout, callback=self.stop)
+        return InProgress.timeout(self, timeout, callback=self.abort)
 
 
 class CoroutineLockedInProgress(CoroutineInProgress):

@@ -700,7 +700,7 @@ class Config(Group):
             os.makedirs(os.path.dirname(filename))
 
         self._autosave_timer.stop()
-        f = open(filename, 'w')
+        f = open(filename + '~', 'w')
         encoding = get_encoding().lower().replace('iso8859', 'iso-8859')
         f.write('# -*- coding: %s -*-\n' % encoding + \
                 '# -*- hash: %s -*-\n' % self._hash())
@@ -731,7 +731,9 @@ class Config(Group):
                     '# *************************************************************\n\n')
             for error, line in self._bad_lines:
                 f.write('# %s\n%s\n\n' % (error, line))
+        os.fdatasync(f.fileno())
         f.close()
+        os.rename(filename + '~', filename)
 
 
     def load(self, filename = None, remember = True, create = False):

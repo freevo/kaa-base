@@ -39,7 +39,7 @@ import locale
 try:
     ENCODING = locale.getdefaultlocale()[1]
     ''.encode(ENCODING)
-except UnicodeError:
+except (UnicodeError, TypeError):
     ENCODING = 'latin-1'
 
 

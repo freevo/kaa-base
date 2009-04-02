@@ -99,4 +99,22 @@ queued and written to the socket when it becomes writable.  However, yielding a
 write means that when the coroutine resumes, the data has been
 written.)
 
+To more clearly see the benefit of implementing the above example as a coroutine,
+consider the following code, which is rewritten using the more traditional approach
+of connecting callbacks at the various stages of the task::
+
+    def fetch_page(host):
+        socket = kaa.Socket()
+        socket.connect((host, 80)).connect(finished_connect, socket)
+
+    def finished_connect(result, socket):
+        socket.write('GET / HTTP/1.1\n\n').connect(finished_write, socket)
+
+    def finished_write(len, socket):
+        socket.read().connect(finished_read)
+
+    def finished_read(data):
+        print data
+
+
 .. autofunction:: kaa.coroutine

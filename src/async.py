@@ -156,6 +156,8 @@ class TimeoutException(Exception):
     def __getitem__(self, idx):
         return self.args[idx]
 
+class InProgressAborted(Exception):
+    pass
 
 class InProgress(Signal, Object):
     """
@@ -363,7 +365,7 @@ class InProgress(Signal, Object):
         return self
 
 
-    def throw(self, type, value, tb):
+    def throw(self, type, value, tb, aborted=False):
         """
         This method should be called when the owner (creator) of the InProgress is
         finished because it raised an exception.
@@ -420,6 +422,13 @@ class InProgress(Signal, Object):
         if self._exception_signal.emit_when_handled(type, value, tb) == False:
             # A handler has acknowledged handling this exception by returning
             # False.  So we won't log it.
+            self._unhandled_exception = None
+
+        if isinstance(value, InProgressAborted):
+            if not aborted:
+                # An InProgress we were waiting on has been aborted, so we
+                # abort too.
+                self.signals['abort'].emit()
             self._unhandled_exception = None
 
         if self._unhandled_exception:
@@ -499,8 +508,10 @@ class InProgress(Signal, Object):
         if self.signals['abort'].count() == 0 or self.signals['abort'].emit() == False:
             raise RuntimeError('This InProgress cannot be aborted.')
 
+        self.throw(InProgressAborted, InProgressAborted(), None, aborted=True)
 
-    def timeout(self, timeout, callback=None):
+
+    def timeout(self, timeout, callback=None, abort=False):
         """
         Create a new InProgress object linked to this one that will throw
         a TimeoutException if this object is not finished by the given timeout.
@@ -533,6 +544,8 @@ class InProgress(Signal, Object):
                     callback()
                 msg = 'InProgress timed out after %.02f seconds' % timeout
                 async.throw(TimeoutException, TimeoutException(msg, self), None)
+                if abort:
+                    self.abort()
         async.waitfor(self)
         OneShotTimer(trigger).start(timeout)
         return async

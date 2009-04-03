@@ -61,7 +61,7 @@ import logging
 # kaa.base imports
 from utils import wraps, DecoratorDataStore
 from timer import Timer
-from async import InProgress
+from async import InProgress, InProgressAborted
 from generator import generator
 
 # get logging object
@@ -184,7 +184,7 @@ def coroutine(interval=0, policy=None, progress=False, group=None):
                     # finishes.
                     def cb(*args, **kwargs):
                         last.remove(obj)
-                        if args and args[0] == GeneratorExit:
+                        if args and args[0] in (GeneratorExit, InProgressAborted):
                             # Because we've attached to the exception signal
                             # we'll hear about GeneratorExit exceptions.
                             # Indicate those handled (by returning False) so as
@@ -378,7 +378,12 @@ class CoroutineInProgress(InProgress):
         self._interval = interval
 
 
-    def abort(self):
+    def abort(self, bubble=True):
+        if bubble and isinstance(self._prerequisite_ip, InProgress):
+            self._prerequisite_ip.disconnect(self._continue)
+            self._prerequisite_ip.exception.disconnect(self._continue)
+            self._prerequisite_ip.abort()
+
         if self._coroutine:
             return self._stop()
 
@@ -403,20 +408,24 @@ class CoroutineInProgress(InProgress):
 
         # if this object waits for another CoroutineInProgress, stop
         # that one, too.
-        if isinstance(self._prerequisite_ip, CoroutineInProgress):
+        if isinstance(self._prerequisite_ip, InProgress):
             # Disconnect from the coroutine we're waiting on.  In case ours is
             # unfinished, we don't need to hear back about the GeneratorExit
             # exception we're about to throw it.
             self._prerequisite_ip.disconnect(self._continue)
             self._prerequisite_ip.exception.disconnect(self._continue)
-            self._prerequisite_ip.abort()
+            # Don't abort, because some other coroutine may be waiting on this one
+            # too, and it would be rude of us to abort it just because we're no longer
+            # interested.  (We do abort in CoroutineInProgress.abort() however.)
+            ### self._prerequisite_ip.abort()
 
         try:
             if not finished:
                 # Throw a GeneratorExit exception so that any callbacks
                 # attached to us get notified that we've aborted.
                 if len(self.exception):
-                    super(CoroutineInProgress, self).throw(GeneratorExit, GeneratorExit('Coroutine aborted'), None)
+                    super(CoroutineInProgress, self).throw(InProgressAborted, 
+                                                           InProgressAborted('Coroutine aborted'), None)
 
             # This is a (potentially) active coroutine that expects to be reentered and we
             # are aborting it prematurely.  We call the generator's close() method
@@ -441,14 +450,6 @@ class CoroutineInProgress(InProgress):
             self._coroutine = None
             self._prerequisite_ip = None
 
-
-    def timeout(self, timeout):
-        """
-        Return an InProgress object linked to this one that will throw
-        a TimeoutException if this object is not finished in time. If used,
-        this will stop the coroutine.
-        """
-        return InProgress.timeout(self, timeout, callback=self.abort)
 
 
 class CoroutineLockedInProgress(CoroutineInProgress):

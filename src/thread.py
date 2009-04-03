@@ -63,7 +63,7 @@ import types
 # kaa imports
 import nf_wrapper as notifier
 from callback import Callback
-from async import InProgress
+from async import InProgress, InProgressAborted
 from utils import wraps, DecoratorDataStore, sysimport
 
 # import python thread file
@@ -391,6 +391,11 @@ class ThreadInProgress(InProgress):
             return None
         try:
             result = self._callback()
+        except InProgressAborted:
+            # InProgressAborted was raised inside the thread (from the InProgress
+            # abort handler).  This means we're already finished, so there's no
+            # need to do anything further.
+            pass
         except:
             # FIXME: should we really be catching KeyboardInterrupt and SystemExit?
             MainThreadCallback(self.throw)(*sys.exc_info())
@@ -413,12 +418,6 @@ class ThreadInProgress(InProgress):
         """
         return self._callback is not None
 
-
-    def stop(self):
-        """
-        Remove the callback from the thread schedule if still active.
-        """
-        self._callback = None
 
 
 class ThreadCallback(Callback):
@@ -447,6 +446,20 @@ class ThreadCallback(Callback):
         t.setDaemon(self._daemon)
         # connect thread.join to the InProgress
         join = lambda *args, **kwargs: t.join()
+
+        # Hook an abort callback for this ThreadInProgress.
+        def abort():
+            async.exception.disconnect(join)
+            if not t.isAlive():
+                # Already stopped
+                return
+
+            # This magic uses Python/C to raise an exception inside the thread.
+            import ctypes
+            tid = [ tid for tid, tobj in threading._active.items() if tobj == t ][0]
+            res = ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, ctypes.py_object(InProgressAborted))
+
+        async.signals['abort'].connect(abort)
         async.connect_both(join, join)
         # start the thread
         t.start()

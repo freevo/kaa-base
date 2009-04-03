@@ -31,15 +31,33 @@ of its return value or any exception.
 When a coroutine yields kaa.NotFinished, control is returned to the
 main loop, and the coroutine will resume after the yield statement
 at the next main loop iteration, or, if an interval is provided with the
-decorator, after this time interval.
+decorator, after this time interval.  Following the cooperative multitasking
+analogy, yielding kaa.NotFinished can be thought of as the coroutine releasing
+a "time slice" so that other tasks may run.
 
 When a coroutine yields any value other than kaa.NotFinished (including None),
 the coroutine is considered finished and the InProgress returned to the caller
 will be emitted (i.e. it is finished). As with return, if no value is
 explicitly yielded and the coroutine terminates, the InProgress is finished
-with None.  There is a single exception to this rule: if the coroutine yields
-an InProgress object, the coroutine will be resumed when the InProgress object
-is finished.
+with None.
+
+There is an important exception to the above rule: if the coroutine yields an
+:class:`~kaa.InProgress` object, the coroutine will be resumed when the
+InProgress object is finished.  This allows a coroutine to be "chained" with
+other InProgress tasks, including other coroutines.
+
+To recap, if a coroutine yields:
+
+ * `kaa.NotFinished`: control is returned to the main loop so that other tasks
+   can run (such as other timers, I/O handlers, etc.) and resumed on the next
+   main loop iteration.
+ * an :class:`~kaa.InProgress` object: control is returned to the main loop and
+   the coroutine is resumed with the yielded InProgress is finished.  Inside
+   the coroutine, the yield call "returns" the value that InProgress was finished
+   with.
+ * any other value: the coroutine terminates, and the InProgress the coroutine
+   returned to the caller is finished with that value (which includes None, if
+   no value was explicitly yielded and the coroutine reaches the end naturally).
 
 Here is a simple example that breaks up a loop into smaller tasks::
 
@@ -76,7 +94,7 @@ was introduced in Python 2.5.  kaa.base requires Python 2.5 or later.)
 
 Classes in kaa make heavy use of coroutines and (to a lesser extent) threads
 when methods would otherwise block on some resource.  Both coroutines and
-@threaded-decorated methods return InProgress objects and behave identically.
+:ref:`@threaded <threaded>`-decorated methods return InProgress objects and behave identically.
 These can be therefore yielded from a coroutine in the same way::
 
     @kaa.coroutine()
@@ -116,5 +134,21 @@ of connecting callbacks at the various stages of the task::
     def finished_read(data):
         print data
 
+
+In practice then, coroutines can be seen as an alternative approach to the
+classic signal/callback pattern, allowing you to achieve the same logic but
+with a much more intuitive and readable code.  This means that if you design
+your application to use signals and callbacks, it might not be clear where
+coroutines would be useful.
+
+However, if you make use of the asynchronous plumbing that kaa offers early on
+in your design -- and that includes healthy use of :class:`~kaa.InProgress`
+objects, either explicitly or implicitly through the use of the @coroutine
+and :ref:`@threaded <threaded>` decorators -- you should find that you're able
+to produce some surprisingly elegant, non-trivial code.
+
+
+Decorator
+=========
 
 .. autofunction:: kaa.coroutine

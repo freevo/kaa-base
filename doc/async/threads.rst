@@ -8,18 +8,18 @@ Thread Support
 The threaded decorator
 ----------------------
 
-Any function or method may be decorated with `@kaa.threaded()` which
-takes two optional arguments: a thread name, and a priority. If a
-thread name is specified, the decorated function is wrapped in
-NamedThreadCallback, and invocations of that function are queued to be
-executed in a single thread. If the thread name is `kaa.MAINTHREAD`
-the decorated function is invoked from the main thread. If no thread
-name is specified, the function is wrapped in ThreadCallback so that
-each invocation is executed in a separate thread. Because these
-callbacks returns InProgress objects, they may be yielded from
-coroutines.
+Any function or method may be decorated with ``@kaa.threaded()`` which takes
+two optional arguments: a thread name, and a priority. If a thread name is
+specified, the decorated function is wrapped in
+:class:`~kaa.NamedThreadCallback`, and invocations of that function are queued
+to be executed in a single thread. If the thread name is ``kaa.MAINTHREAD`` the
+decorated function is invoked from the main thread. If no thread name is
+specified, the function is wrapped in :class:`~kaa.ThreadCallback` so that each
+invocation is executed in a separate thread. Because these callbacks returns
+:class:`~kaa.InProgress` objects, they may be yielded from :ref:`coroutines
+<coroutines>`.
 
-(This example uses Python 2.5 syntax.)::
+For example::
 
   @kaa.threaded()
   def do_blocking_task():
@@ -38,39 +38,45 @@ coroutines.
 The threaded decorator also supports a async kwarg, which is by
 default True. When True, the decorated function returns an InProgress
 object. When False, however, invocation of the function blocks until
-the decorated function completes, and its return value is passed
-back. This allows a threaded function to be used as a standard
-callback.
+the decorated function completes, and its return value is passed back.
+Internally, the decorator merely invokes :meth:`~kaa.InProgress.wait` on the
+InProgress returned by the threaded function, which means the main loop is
+otherwise kept alive for timers and I/O handlers.  This allows a threaded
+function to be used as a standard callback (but in practice it is not used
+often).
 
 .. autofunction:: kaa.threaded
 
 As a rule of thumb, if you have a function that must always be called
-in the main thread, you would use `@kaa.threaded(kaa.MAINTHREAD)` as
-mentioned above, if you need to decide case-by-case, don't decorate it
-and use `MainThreadCallback` when needed.
+in the main thread, you would use ``@kaa.threaded(kaa.MAINTHREAD)`` as
+mentioned above. If you need to decide case-by-case, don't decorate it
+and use :class:`~kaa.MainThreadCallback` when needed.
 
 
-The synchronized statement
+The synchronized decorator
 --------------------------
 
 .. autoclass:: kaa.synchronized
 
-Some functions may be aware of threads and block simultaneous access
-to specific functions. For this task, kaa has a synchronized class::
+Some functions may need to block concurrent access to certain
+data structures, or prevent concurrent entry to the whole function.  In these
+cases, ``kaa.synchronized`` can be used, which serves as both a decorator as
+well as a context manager for use with Python's ``with`` statement::
+   
+    class Test(object):
 
-  class Test(object):
+        def foo(self):
+            # call to do_something() can be done concurrently by other threads.
+            do_something()
+            with kaa.synchronized(self):
+                # Anything in this block however is synchronized between threads.
+                do_something_else()
 
-      def foo(self):
-          #unprotected
-	  do_something()
-          with kaa.synchronized(self):
-	      # protected block
-	      do_something_else()
 
-      @kaa.synchronized()
-      def bar(self, x, y):
-         # protected function
-         do_something_else()
+        # bar() is a protected function
+        @kaa.synchronized()
+        def bar(self, x, y):
+            do_something_else()
 
 The decorator will synchronize on the actual object. Two different
 objects can access the same function in two threads. On the other hand
@@ -115,18 +121,17 @@ The following thread-related functions are available:
 Callback Classes for Threads
 ----------------------------
 
-Kaa provides a ThreadCallback class which can be used to invoke a
-callback in a new thread every time the ThreadCallback object is
-invoked.
+Kaa provides a :class:`~kaa.ThreadCallback` class which can be used to invoke a
+callback in a new thread every time the ThreadCallback object is invoked.
 
-With the NamedThreadCallback class, invocations are queued and each
-executed in the same thread. A priority may also be specified, and
-NamedThreadCallback objects with the highest priority is first in the
-queue (and hence executed first). This allows you to create a
-priority-based job queue that executes asynchronously.
+With the :class:`~kaa.NamedThreadCallback` class, invocations are queued and
+each executed in the same thread. A priority may also be specified, and
+NamedThreadCallback objects with the highest priority is first in the queue
+(and hence executed first). This allows you to create a priority-based job
+queue that executes asynchronously.
 
 Instances of the two classes above are callable, and they return
-InProgress objects::
+:class:`~kaa.InProgress` objects::
 
   def handle_result(result):
      print "Thread returned with", result

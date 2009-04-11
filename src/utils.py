@@ -488,39 +488,3 @@ class DecoratorDataStore(object):
 
     def __delattr__(self, key):
         return delattr(self.__target, self.__hash(key))
-
-def utc2localtime(t):
-    """
-    Transform given seconds from UTC into localtime
-    """
-    if not t:
-        # no time value given
-        return 0
-    # FIXME: maybe cache this value
-    # time.daylight does not do what we want
-    if time.localtime(time.time())[8]:
-        return t - time.altzone
-    else:
-        return t - time.timezone
-
-def localtime2utc(t):
-    """
-    Transform given seconds from localtime into UTC
-    """
-    if not t:
-        # no time value given
-        return 0
-    # FIXME: maybe cache this value
-    # time.daylight does not do what we want
-    if time.localtime(time.time())[8]:
-        return t + time.altzone
-    else:
-        return t + time.timezone
-
-
-def utctime():
-    """
-    Return current time in seconds in UTC
-    """
-    return int(localtime2utc(time.time()))
-

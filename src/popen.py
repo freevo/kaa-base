@@ -375,7 +375,7 @@ class Process(object):
                     except (KeyboardInterrupt, SystemExit), e:
                         os.kill(pid, signal)
                         sys.exit(0)
-                    except:
+                    except Exception:
                         pass
         except OSError:
             pass
@@ -435,9 +435,7 @@ class IO_Handler(object):
             try:
                 try:
                     os.unlink(logger)
-                except (KeyboardInterrupt, SystemExit), e:
-                    sys.exit(0)
-                except:
+                except Exception:
                     pass
                 self.logger = open(logger, 'w')
                 log.info('logging child to "%s"' % logger)

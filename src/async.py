@@ -467,7 +467,7 @@ class InProgress(Signal, Object):
         """
         Callback to log unhandled exceptions.
         """
-        if isinstance(exc, (SystemExit, KeyboardInterrupt)):
+        if isinstance(exc, (KeyboardInterrupt, SystemExit)):
             # We have an unhandled asynchronous SystemExit or KeyboardInterrupt
             # exception.  Rather than logging it, we reraise it in the main
             # loop so that the main loop exception handler can act
@@ -569,7 +569,7 @@ class InProgress(Signal, Object):
             result = func(*args, **kwargs)
         except BaseException, e:
             self.throw(*sys.exc_info())
-            if isinstance(e, (SystemExit, KeyboardInterrupt)):
+            if isinstance(e, (KeyboardInterrupt, SystemExit)):
                 # Reraise these exceptions to be handled by the mainloop
                 raise
         else:

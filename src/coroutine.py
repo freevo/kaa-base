@@ -347,7 +347,7 @@ class CoroutineInProgress(InProgress):
             # exception.  We throw all exceptions, including SE and KI, in
             # case a thread is waiting on the InProgress.
             self.throw(*sys.exc_info())
-            if isinstance(e, (SystemExit, KeyboardInterrupt)):
+            if isinstance(e, (KeyboardInterrupt, SystemExit)):
                 # Reraise these signals back up the mainloop.
                 raise
             return False

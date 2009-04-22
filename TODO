@@ -11,10 +11,6 @@ DONE:
 - Rewrite of Process class
 - [?] Adjust kaa.distribution to not import anything from kaa itself. Right now
   svn2log.py imports kaa.xmlutils
-- Make sure SystemExit and KeyboardInterrupt is not silently caught.  They
-  should be bubbled up to the mainloop.  In other words, do not
-  use catch-all except statements, but rather 'except Exception' (which
-  will not catch KeyboardInterrupt and SystemExit).
 
 
 TODO either before or after 1.0:

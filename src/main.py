@@ -149,9 +149,7 @@ def loop(condition, timeout=None):
                     type, value, tb = sys.exc_info()
                     raise type, value, tb
     finally:
-        # make sure we set mainloop status even for Exceptions we did not
-        # catch. E.g. in Python 2.5 SystemExit and KeyboardInterrupt do not
-        # inherit from Exception.
+        # make sure we set mainloop status
         if timeout is not None:
             timeout.stop()
         if initial_mainloop:
@@ -198,7 +196,7 @@ def run(threaded=False):
                 # fails. But after that everything is back to normal.
                 # XXX: (tack) this sounds like an interpreter bug, does it still do this?
                 time.sleep(0.001)
-            except:
+            except Exception:
                 pass
     finally:
         stop()
@@ -263,12 +261,8 @@ def step(*args, **kwargs):
         # Sleep for epsilon to prevent busy loops.
         time.sleep(0.001)
         return
-
-    try:
-        notifier.step(*args, **kwargs)
-        signals['step'].emit()
-    except (KeyboardInterrupt, SystemExit):
-        raise SystemExit
+    notifier.step(*args, **kwargs)
+    signals['step'].emit()
 
 
 def is_running():

@@ -464,8 +464,6 @@ class Channel(Object):
                 if self._callbacks[function]._kaa_rpc_param[0]:
                     args = [ self ] + list(args)
                 result = self._callbacks[function](*args, **kwargs)
-            except (SystemExit, KeyboardInterrupt):
-                sys.exit(0)
             except Exception, e:
                 #log.exception('Exception in rpc function "%s"', function)
                 if not function in self._callbacks:

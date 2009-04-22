@@ -88,7 +88,7 @@ class NotifierCallback(Callback):
         except CallbackError:
             # A WeakCallback that's no longer valid.  Unregister.
             ret = False
-        except:
+        except Exception:
             # If there are exception handlers for this notifier callback, we
             # catch the exception and pass it to the handler, giving it the
             # opportunity to abort the unregistering.  If no handlers are
@@ -97,9 +97,7 @@ class NotifierCallback(Callback):
             if self.signals["exception"].count() > 0:
                 # If any of the exception handlers return False, then the
                 # object is not unregistered from the Notifier.  Otherwise
-                # ret = False and it will unregister.  XXX: we catch
-                # KeyboardInterrupt and SystemExit here too, to give
-                # handlers the opportunity to override.
+                # ret = False and it will unregister.
                 ret = self.signals["exception"].emit(*sys.exc_info()) == False
             else:
                 raise

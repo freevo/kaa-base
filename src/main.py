@@ -196,7 +196,7 @@ def run(threaded=False):
                 # fails. But after that everything is back to normal.
                 # XXX: (tack) this sounds like an interpreter bug, does it still do this?
                 time.sleep(0.001)
-            except Exception:
+            except:
                 pass
     finally:
         stop()

@@ -479,22 +479,6 @@ class InProgress(Signal, Object):
         log.error('Unhandled %s exception:\n%s', cls.__name__, trace)
 
 
-    def is_finished(self):
-        # XXX: DEPRECATED
-        import traceback
-        log.warning('Obsolete call to InProgress.is_finished(); use InProgress.finished property')
-        traceback.print_stack()
-        return self._finished
-
-
-    def get_result(self):
-        # XXX: DEPRECATED
-        import traceback
-        log.warning('Obsolete call to InProgress.get_result(); use result property')
-        traceback.print_stack()
-        return self.result
-
-
     def abort(self):
         """
         Aborts the asynchronous task this InProgress represents.

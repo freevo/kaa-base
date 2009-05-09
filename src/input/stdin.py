@@ -128,10 +128,10 @@ def _handle_stdin_keypress():
 _dispatcher = kaa.IOMonitor(_handle_stdin_keypress)
 
 def _keypress_signal_changed(s, flag):
-    if flag == kaa.Signal.SIGNAL_CONNECTED and s.count() == 1:
+    if flag == kaa.Signal.CONNECTED and s.count() == 1:
         getch_enable()
         _dispatcher.register(sys.stdin)
-    elif flag == kaa.Signal.SIGNAL_DISCONNECTED and s.count() == 0:
+    elif flag == kaa.Signal.DISCONNECTED and s.count() == 0:
         getch_disable()
         _dispatcher.unregister()
 

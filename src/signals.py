@@ -65,11 +65,6 @@ class Signal(object):
     CONNECTED = 1
     DISCONNECTED = 2
 
-    # These are kept for backward compatibility.  Don't use them.
-    SIGNAL_CONNECTED = 1
-    SIGNAL_DISCONNECTED = 2
-
-
     def __init__(self, changed_cb=None):
         """
         :param changed_cb: corresponds to the :attr:`~kaa.Signal.changed_cb` property.

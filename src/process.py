@@ -383,7 +383,7 @@ class Process2(Object):
     @property
     def pid(self):
         """
-        The child's pid when it is running, or None when it is not.
+        The child's pid when it is running (or stopping), or None when it is not.
         """
         if self._child:
             return self._child.pid
@@ -403,16 +403,16 @@ class Process2(Object):
     def running(self):
         """
         True if the child process is running.
-        
-        If the child process is running (and not hung), it may be written to.
-        A child that is in the process of stopping is not considered running,
-        however the pid property will still be valid while it is stopping.
 
-        The converse however is not true: if the child process is
-        not running, it still may be read from.  To test readability,
-        use the readable property.
+        A child that is currently stopping is still considered running.  When
+        the ``running`` property is False, it means :meth:`~kaa.Process2.start`
+        may safely be called.
+
+        To test whether :meth:`~kaa.Process2.read` or :meth:`~kaa.Process2.write`
+        may be called, use the :attr:`~kaa.Process2.readable` and
+        :attr:`~kaa.Process2.writable` properties respectively.
         """
-        return self._child and self._state == Process2.STATE_RUNNING
+        return bool(self._child and self._state not in (Process2.STATE_STOPPED, Process2.STATE_HUNG))
 
 
     @property
@@ -430,6 +430,18 @@ class Process2(Object):
         you want to see if the child is still running.
         """
         return self._stdout.readable or self._stderr.readable
+
+
+    @property
+    def writable(self):
+        """
+        True if it is possible to write data to the child.
+
+        If the child process is writable, :meth:`~kaa.Process2.write` may
+        safely be called.  A child that is in the process of stopping is not
+        writable.
+        """
+        return bool(self._child and self._state == Process2.STATE_RUNNING)
 
 
     @property
@@ -493,13 +505,22 @@ class Process2(Object):
                      to any arguments specified to the initializer.
         :type args: string or list of strings
         :return: An :class:`~kaa.InProgress` object, finished with the exitcode
-                 when the child process terminates.
-
+                 when the child process terminates.  
+                 
         The Process is registered with a global supervisor which holds a strong
         reference to the Process object while the child process remains
         active. 
+
+        .. warning::
+           If timeout() is called on the returned InProgress and the timeout
+           occurs, the InProgress returned by ``start()`` will be finished with
+           a TimeoutException even though the child process isn't actually
+           dead.  You can always test the :attr:`~kaa.Process2.running`
+           property, or use the :attr:`~kaa.Process2.signals.finished` signal,
+           which doesn't emit until the child process is genuinely dead.
+
         """
-        if self._child:
+        if self._child and self._state != Process2.STATE_HUNG:
             raise IOError(errno.EEXIST, 'Child process has already been started')
 
         if not self._shell:
@@ -512,6 +533,7 @@ class Process2(Object):
             cmd = self._cmd + ' ' + args
 
         supervisor.register(self)
+        log.debug("Spawning: %s", cmd)
         self._child = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE, close_fds=True, shell=self._shell)
 
@@ -520,10 +542,11 @@ class Process2(Object):
         self._stderr.wrap(self._child.stderr, IO_READ)
 
         self._in_progress = InProgress()
+        self._in_progress.signals['abort'].connect_weak(self.stop)
         self._exitcode = None
         self._state = Process2.STATE_RUNNING
 
-        return self
+        return self._in_progress
 
 
     @coroutine(policy=POLICY_SINGLETON)
@@ -564,6 +587,8 @@ class Process2(Object):
 
         self._state = Process2.STATE_STOPPING
         cmd = cmd or self._stop_command
+        pid = self.pid  # See below why we save self.pid
+
         if cmd:
             log.debug('Stop command specified: %s', cmd)
             if callable(cmd):
@@ -586,16 +611,28 @@ class Process2(Object):
                 # And we're done.
                 yield
             try:
-                os.kill(self.pid, sig)
-                yield InProgressAny(self._in_progress, delay(pause))
+                os.kill(pid, sig)
+                # Here we yield on the 'finished' signal instead of
+                # self._in_progress, because the InProgress could in fact be
+                # finished due to a timeout, not because the process is
+                # legitimately stopped, whereas the 'finished' signals truly is
+                # only emitted when the child is dead.
+                yield InProgressAny(self.signals['finished'], delay(pause))
             except OSError:
                 # Process is dead after all.
                 self._check_dead()
+            except:
+                log.exception("Some other error")
 
-        if self._state != Process2.STATE_STOPPED:
+        # If state isn't STOPPED, make sure pid hasn't changed.  Because we yield
+        # on the 'finished' signal above, it's possible for the user to connect a 
+        # callback to 'finished' that restarts the child, which gets executed before
+        # this coroutine resumes.  If our pid has changed, we know we died.  If the
+        # pid is the same, we have a hung process.
+        if self._state != Process2.STATE_STOPPED and pid == self.pid:
             # Child refuses to die even after SIGKILL. :(
             self._state = Process2.STATE_HUNG
-            exc = SystemError('Child process (pid=%d) refuses to die even after SIGKILL' % self.pid)
+            exc = SystemError('Child process (pid=%d) refuses to die even after SIGKILL' % pid)
             self._in_progress.throw(SystemError, exc, None)
             raise exc
 

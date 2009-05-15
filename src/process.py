@@ -505,8 +505,8 @@ class Process2(Object):
                      to any arguments specified to the initializer.
         :type args: string or list of strings
         :return: An :class:`~kaa.InProgress` object, finished with the exitcode
-                 when the child process terminates.  
-                 
+                 when the child process terminates.
+
         The Process is registered with a global supervisor which holds a strong
         reference to the Process object while the child process remains
         active. 

@@ -889,7 +889,7 @@ class Database:
         return ObjectRow(None, None, attrs)
 
 
-    def update_object(self, obj, parent_obj = None, **attrs):
+    def update_object(self, obj, parent=None, **attrs):
         """
         Update an object in the database.  For updating, object is identified
         by a (type, id) tuple or an ObjectRow instance.  Parent is a (type, id)
@@ -953,10 +953,10 @@ class Database:
                 row_attrs.update(attrs)
                 attrs = row_attrs
 
-        if isinstance(parent_obj, ObjectRow):
-            attrs['parent_type'], attrs['parent_id'] = parent_obj['type'], parent_obj['id']
-        elif parent_obj:
-            attrs['parent_type'], attrs['parent_id'] = self._get_type_id(parent_obj[0]), parent_obj[1]
+        if isinstance(parent, ObjectRow):
+            attrs['parent_type'], attrs['parent_id'] = parent['type'], parent['id']
+        elif parent:
+            attrs['parent_type'], attrs['parent_id'] = self._get_type_id(parent[0]), parent[1]
 
         attrs['id'] = object_id
         # Make copy of attrs for later query, since we're now about to mess with it.

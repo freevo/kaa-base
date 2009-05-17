@@ -97,11 +97,15 @@ class Base(object):
         self._monitors = []
 
 
-    def _hash(self):
+    def _hash(self, values=True):
         """
         Returns a hash of the config item.
+
+        If values is False, don't include the value in the hash, effectively taking
+        a hash of the schema only.
         """
-        return md5.new(repr(self._name) + repr(self._desc) + repr(self._default) + repr(self._value)).hexdigest()
+        value = repr(self._value) if values else ''
+        return md5.new(repr(self._name) + repr(self._desc) + repr(self._default) + value).hexdigest()
 
 
     def copy(self):
@@ -219,11 +223,11 @@ class Var(Base):
         self._type = type
 
 
-    def _hash(self):
+    def _hash(self, values=True):
         """
         Returns a hash of the config item.
         """
-        return md5.new(super(Var, self)._hash() + repr(self._type)).hexdigest()
+        return md5.new(super(Var, self)._hash(values) + repr(self._type)).hexdigest()
 
 
     def _cfg_string(self, prefix, print_desc=True):
@@ -342,13 +346,13 @@ class Group(Base):
         return self._vars
 
 
-    def _hash(self):
+    def _hash(self, values=True):
         """
         Returns a hash of the config item.
         """
-        hash = md5.new(super(Group, self)._hash())
+        hash = md5.new(super(Group, self)._hash(values))
         for name in self._vars:
-            hash.update(self._dict[name]._hash())
+            hash.update(self._dict[name]._hash(values))
         return hash.hexdigest()
 
 
@@ -496,13 +500,13 @@ class Dict(Base):
         return [ self._dict[key]._value for key in self.keys() ]
 
 
-    def _hash(self):
+    def _hash(self, values=True):
         """
         Returns a hash of the config item.
         """
-        hash = md5.new(super(Dict, self)._hash())
+        hash = md5.new(super(Dict, self)._hash(values))
         for key in self.keys():
-            hash.update(self._dict[key]._hash())
+            hash.update(self._dict[key]._hash(values))
         return hash.hexdigest()
 
 
@@ -651,7 +655,8 @@ class Config(Group):
         Group.__init__(self, schema, desc, name)
         self._filename = None
         self._bad_lines = []
-        self._loaded_hash = None
+        self._loaded_hash = None   # hash for schema + values
+        self._loaded_schema = None # hash for schema only
         self._module = module
 
         # Whether or not to autosave config file when options have changed
@@ -666,11 +671,11 @@ class Config(Group):
         self._inotify = None
 
 
-    def _hash(self):
+    def _hash(self, values=True):
         """
         Returns a hash of the config item.
         """
-        return md5.new(super(Config, self)._hash() + repr(self._bad_lines)).hexdigest()
+        return md5.new(super(Config, self)._hash(values) + repr(self._bad_lines)).hexdigest()
 
 
     def copy(self):
@@ -703,7 +708,8 @@ class Config(Group):
         f = open(filename + '~', 'w')
         encoding = get_encoding().lower().replace('iso8859', 'iso-8859')
         f.write('# -*- coding: %s -*-\n' % encoding + \
-                '# -*- hash: %s -*-\n' % self._hash())
+                '# -*- hash: %s -*-\n' % self._hash(values=True) + \
+                '# -*- schema: %s -*-\n' % self._hash(values=False))
         if self._module:
             f.write('# -*- module: %s -*-\n' % self._module)
         f.write('# *************************************************************\n' + \
@@ -734,6 +740,15 @@ class Config(Group):
         os.fdatasync(f.fileno())
         f.close()
         os.rename(filename + '~', filename)
+
+
+    def save_if_needed(self, filename=None):
+        """
+        Saves the config file only if the config schema has changed since the last
+        load.  Also saves if no config has previously been loaded.
+        """
+        if self._loaded_schema != self._hash(values=False):
+            self.save(filename)
 
 
     def load(self, filename = None, remember = True, create = False):
@@ -778,6 +793,8 @@ class Config(Group):
                     pass
             elif line.startswith('# -*- hash:'):
                 self._loaded_hash = line[12:].split()[0]
+            elif line.startswith('# -*- schema:'):
+                self._loaded_schema = line[14:].split()[0]
 
             # convert lines based on local encoding
             line = unicode(line, local_encoding)

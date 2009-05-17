@@ -704,12 +704,15 @@ class Config(Group):
         if os.path.dirname(filename) and not os.path.isdir(os.path.dirname(filename)):
             os.makedirs(os.path.dirname(filename))
 
+        self._loaded_hash = self._hash(values=True)
+        self._loaded_schema = self._hash(values=False)
+
         self._autosave_timer.stop()
         f = open(filename + '~', 'w')
         encoding = get_encoding().lower().replace('iso8859', 'iso-8859')
         f.write('# -*- coding: %s -*-\n' % encoding + \
-                '# -*- hash: %s -*-\n' % self._hash(values=True) + \
-                '# -*- schema: %s -*-\n' % self._hash(values=False))
+                '# -*- hash: %s -*-\n' % self._loaded_hash + \
+                '# -*- schema: %s -*-\n' % self._loaded_schema)
         if self._module:
             f.write('# -*- module: %s -*-\n' % self._module)
         f.write('# *************************************************************\n' + \
@@ -768,6 +771,9 @@ class Config(Group):
             self._filename = filename
         line_regexp = re.compile('^([a-zA-Z0-9_-]+|\[.*?\]|\.)+ *= *(.*)')
         key_regexp = re.compile('(([a-zA-Z0-9_-]+)|(\[.*?\]))')
+
+        self._loaded_hash = None
+        self._loaded_schema = None
 
         if not os.path.isfile(filename):
             # filename not found
@@ -846,8 +852,7 @@ class Config(Group):
         self._watch_mtime = os.stat(filename)[stat.ST_MTIME]
         if create:
             # Write config file if schema is different.
-            hash = self._hash()
-            if hash != self._loaded_hash:
+            if self._loaded_hash != self._hash(values=True):
                 self.save(filename)
 
         return len(self._bad_lines) == 0

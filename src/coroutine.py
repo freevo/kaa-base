@@ -382,18 +382,13 @@ class CoroutineInProgress(InProgress):
         if bubble and isinstance(self._prerequisite_ip, InProgress):
             self._prerequisite_ip.disconnect(self._continue)
             self._prerequisite_ip.exception.disconnect(self._continue)
-            self._prerequisite_ip.abort()
+            try:
+                self._prerequisite_ip.abort()
+            except Exception:
+                log.exception('Error aborting %s yielded from coroutine', self._prerequisite_ip)
 
         if self._coroutine:
             return self._stop()
-
-
-    def stop(self):
-        # XXX: DEPRECATED
-        import traceback
-        log.warning('Obsolete call to CoroutineInProgress.stop(); use abort() instead')
-        traceback.print_stack()
-        return self.abort()
 
 
     def _stop(self, finished=False):
@@ -423,6 +418,7 @@ class CoroutineInProgress(InProgress):
             if not finished:
                 # Throw a GeneratorExit exception so that any callbacks
                 # attached to us get notified that we've aborted.
+                self.signals['abort'].emit()
                 if len(self.exception):
                     super(CoroutineInProgress, self).throw(InProgressAborted, 
                                                            InProgressAborted('Coroutine aborted'), None)

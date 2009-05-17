@@ -99,7 +99,7 @@ def delay(seconds):
     :param obj: object to represent as an InProgress.
     :return: :class:`~kaa.InProgress`
     """
-    ip = InProgressCallback()
+    ip = InProgressCallback(abortable=True)
     OneShotTimer(ip).start(seconds)
     return ip
 
@@ -258,7 +258,12 @@ class InProgress(Signal, Object):
             return 0
 
 
-    def __init__(self):
+    def __init__(self, abortable=False, frame=None):
+        """
+        :param abortable: see the :attr:`~kaa.InProgress.abortable` property.  
+                          (Default: False)
+        :type abortable: bool
+        """
         super(InProgress, self).__init__()
         self._exception_signal = Signal()
         self._finished = False
@@ -266,6 +271,16 @@ class InProgress(Signal, Object):
         self._exception = None
         self._unhandled_exception = None
         self.progress = None
+        self.abortable = abortable
+
+        # Stack frame for the caller who is creating us.
+        if not frame:
+            frame = traceback.extract_stack()[-2]
+        self._name = 'owner=%s:%d:%s()' % frame[:3]
+
+
+    def __repr__(self):
+        return '<%s object at 0x%08x, %s>' % (self.__class__.__name__, id(self), self._name)
 
 
     def __inprogress__(self):
@@ -320,10 +335,36 @@ class InProgress(Signal, Object):
     @property
     def failed(self):
         """
-        Returns True if an exception was thrown to the InProgress, False if
-        it was finished without error or if it is not yet finished.
+        True if an exception was thrown to the InProgress, False if it was
+        finished without error or if it is not yet finished.
         """
         return bool(self._exception)
+
+
+    @property
+    def abortable(self):
+        """
+        True if the asynchronous task this InProgress represents can be
+        aborted by a call to :meth:`~kaa.InProgress.abort`.
+
+        Normally :meth:`~kaa.InProgress.abort` will fail if there are no
+        callbacks attached to the :attr:`~kaa.InProgress.signals.abort` signal.
+        This property may be explicitly set to ``True``, in which case
+        :meth:`~kaa.InProgress.abort` will succeed regardless.  An InProgress is
+        therefore abortable if the ``abortable`` property has been explicitly
+        set to True, if if there are callbacks connected to the
+        :attr:`~kaa.InProgress.signals.abort` signal.
+
+        This is useful when constructing an InProgress object that corresponds
+        to an asynchronous task that can be safely aborted with no explicit action.
+        An exaple of this is :func:`kaa.delay`.
+        """
+        return self._abortable or self.signals['abort'].count() > 0
+
+
+    @abortable.setter
+    def abortable(self, abortable):
+        self._abortable = abortable
 
 
     def finish(self, result):
@@ -489,8 +530,8 @@ class InProgress(Signal, Object):
         if self.finished:
             raise RuntimeError('InProgress is already finished.')
 
-        if self.signals['abort'].count() == 0 or self.signals['abort'].emit() == False:
-            raise RuntimeError('This InProgress cannot be aborted.')
+        if not self.abortable or self.signals['abort'].emit() == False:
+            raise RuntimeError('%s cannot be aborted.' % self)
 
         self.throw(InProgressAborted, InProgressAborted(), None, aborted=True)
 
@@ -663,8 +704,8 @@ class InProgressCallback(InProgress):
     called. Special support for Signals that will finish the InProgress
     object when the signal is emited.
     """
-    def __init__(self, func=None):
-        InProgress.__init__(self)
+    def __init__(self, func=None, abortable=False, frame=None):
+        super(InProgressCallback, self).__init__(abortable, frame=frame or traceback.extract_stack()[-2])
         if func is not None:
             # connect self as callback
             func(self)

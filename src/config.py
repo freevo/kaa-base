@@ -46,6 +46,7 @@ from strutils import str_to_unicode, unicode_to_str, get_encoding
 from callback import Callback, WeakCallback
 from timer import WeakTimer, WeakOneShotTimer
 from kaa.inotify import INotify
+from utils import property
 
 # get logging object
 log = logging.getLogger('config')
@@ -317,6 +318,8 @@ class Group(Base):
         for data in schema:
             if not data._name:
                 raise AttributeError('no name given')
+            if data._name in self.__class__.__dict__:
+                raise ValueError('Config name "%s" conflicts with internal method or property' % data._name)
             self._dict[data._name] = data
             self._vars.append(data._name)
 
@@ -333,6 +336,8 @@ class Group(Base):
         Add a variable to the group. The name will be set into the
         given value. The object will _not_ be copied.
         """
+        if name in self.__class__.__dict__:
+            raise ValueError('Config name "%s" conflicts with internal method or property' % name)
         value._name = name
         value._parent = self
         self._dict[name] = value
@@ -430,7 +435,7 @@ class Group(Base):
         """
         Set a variable in the group.
         """
-        if key.startswith('_'):
+        if key.startswith('_') or key not in self._dict:
             return object.__setattr__(self, key, value)
         self._cfg_get(key)._cfg_set(value)
 
@@ -439,7 +444,7 @@ class Group(Base):
         """
         Get variable, subgroup, dict or list.
         """
-        if key.startswith('_'):
+        if key.startswith('_') or key not in self._dict:
             return object.__getattribute__(self, key)
         item = self._cfg_get(key)
         if isinstance(item, Var):
@@ -634,7 +639,7 @@ class List(Dict):
         defaults_dict = {}
         for key, value in enumerate(defaults):
             defaults_dict[key] = value
-        Dict.__init__(self, schema, desc, name, int, defaults_dict)
+        super(List, self).__init__(schema, desc, name, int, defaults_dict)
 
 
     def __iter__(self):
@@ -652,17 +657,16 @@ class Config(Group):
     A config object. This is a group with functions to load and save a file.
     """
     def __init__(self, schema, desc=u'', name='', module = None):
-        Group.__init__(self, schema, desc, name)
+        super(Config, self).__init__(schema, desc, name)
         self._filename = None
         self._bad_lines = []
         self._loaded_hash = None   # hash for schema + values
-        self._loaded_schema = None # hash for schema only
         self._module = module
 
         # Whether or not to autosave config file when options have changed
         self._autosave = None
         self._autosave_timer = WeakOneShotTimer(self.save)
-        self.set_autosave(True)
+        self.autosave = True
 
         # If we are watching the config file for changes.
         self._watching = False
@@ -705,14 +709,12 @@ class Config(Group):
             os.makedirs(os.path.dirname(filename))
 
         self._loaded_hash = self._hash(values=True)
-        self._loaded_schema = self._hash(values=False)
 
         self._autosave_timer.stop()
         f = open(filename + '~', 'w')
         encoding = get_encoding().lower().replace('iso8859', 'iso-8859')
         f.write('# -*- coding: %s -*-\n' % encoding + \
-                '# -*- hash: %s -*-\n' % self._loaded_hash + \
-                '# -*- schema: %s -*-\n' % self._loaded_schema)
+                '# -*- hash: %s -*-\n' % self._loaded_hash)
         if self._module:
             f.write('# -*- module: %s -*-\n' % self._module)
         f.write('# *************************************************************\n' + \
@@ -747,43 +749,53 @@ class Config(Group):
 
     def save_if_needed(self, filename=None):
         """
-        Saves the config file only if the config schema has changed since the last
-        load.  Also saves if no config has previously been loaded.
+        Saves the config file only if the config schema or any values changed
+        since the last load.  Also saves if no config has previously been
+        loaded.
         """
-        if self._loaded_schema != self._hash(values=False):
+        if self._loaded_hash != self._hash(values=True):
             self.save(filename)
 
 
-    def load(self, filename = None, remember = True, create = False):
+    def load(self, filename=None, sync=False):
         """
-        Load config from a config file.  If create kwarg is True, the config
-        file will be written immediately if it doesn't exist or if the schema
-        has changed since last write.
+        Load values from a config file previously saved for this schema.
+
+        :param filename: filename to load values from; if None, will use the
+                          :attr:`~kaa.config.Config.filename` property.
+        :type filename: str
+        :param sync: if True, will overwrite the current file (retaining previous
+                     values, of course) if the schema has changed.  (Default: False)
+        :type sync: bool
+
+        If no filename has been previously set with the :attr:`~kaa.config.Config.filename`
+        property then the ``filename`` argument is required, and in that case the
+        filename property will be set to this value.
         """
         local_encoding = get_encoding()
         if filename:
             filename = os.path.expanduser(filename)
         if not filename:
             if not self._filename:
-                raise ValueError, "Filename not specified and no default filename set."
+                raise ValueError("Filename not specified and no default filename set.")
             filename = self._filename
-        elif remember:
+        if not self._filename:
             self._filename = filename
+
         line_regexp = re.compile('^([a-zA-Z0-9_-]+|\[.*?\]|\.)+ *= *(.*)')
         key_regexp = re.compile('(([a-zA-Z0-9_-]+)|(\[.*?\]))')
 
         self._loaded_hash = None
-        self._loaded_schema = None
 
         if not os.path.isfile(filename):
             # filename not found
-            if create:
+            if sync:
                 self.save(filename)
             return False
 
         # Disable autosaving while we load the config file.
-        autosave_orig = self.get_autosave()
-        self.set_autosave(False)
+        autosave_orig = self.autosave
+        self.autosave = False
 
         f = open(filename)
         for line in f.readlines():
@@ -799,8 +811,6 @@ class Config(Group):
                     pass
             elif line.startswith('# -*- hash:'):
                 self._loaded_hash = line[12:].split()[0]
-            elif line.startswith('# -*- schema:'):
-                self._loaded_schema = line[14:].split()[0]
 
             # convert lines based on local encoding
             line = unicode(line, local_encoding)
@@ -848,41 +858,42 @@ class Config(Group):
                     log.warning('%s: %s' % error)
                     self._bad_lines.append(error)
         f.close()
-        self.set_autosave(autosave_orig)
+        self.autosave = autosave_orig
         self._watch_mtime = os.stat(filename)[stat.ST_MTIME]
-        if create:
+        if sync:
             # Write config file if schema is different.
-            if self._loaded_hash != self._hash(values=True):
-                self.save(filename)
+            self.save_if_needed(filename)
 
         return len(self._bad_lines) == 0
 
 
-    def get_filename(self):
+    @property
+    def filename(self):
         """
-        Return the current used filename.
+        The current config filename.
         """
         return self._filename
 
-    def set_filename(self, filename):
-        """
-        Set the default filename for this config.
-        """
+    @filename.setter
+    def filename(self, filename):
         self._filename = filename
 
 
-    def get_autosave(self):
+    @property
+    def autosave(self):
         """
-        Fetches the current autosave value.
+        Whether or not changes are automatically save.
+
+        If True, will write the config filename (either previously passed to
+        :meth:`~kaa.config.Config.load` or defined by the
+        :attr:`~kaa.config.Config.filename` property) 5 seconds after the last
+        config value update.
         """
         return self._autosave
 
-    def set_autosave(self, autosave = True):
-        """
-        Sets whether or not to automatically save configuration changes.
-        If True, will write the config file set by set_filename 5 seconds
-        after the last config value update.
-        """
+
+    @autosave.setter
+    def autosave(self, autosave):
         if autosave and not self._autosave:
             self.add_monitor(WeakCallback(self._config_changed_cb))
         elif not autosave and self._autosave:

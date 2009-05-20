@@ -47,6 +47,7 @@ from callback import Callback, WeakCallback
 from timer import WeakTimer, WeakOneShotTimer
 from kaa.inotify import INotify
 from utils import property
+import main
 
 # get logging object
 log = logging.getLogger('config')
@@ -660,7 +661,8 @@ class Config(Group):
         super(Config, self).__init__(schema, desc, name)
         self._filename = None
         self._bad_lines = []
-        self._loaded_hash = None   # hash for schema + values
+        self._loaded_hash_values = None   # hash for schema + values
+        self._loaded_hash_schema = None   # hash for schema only
         self._module = module
 
         # Whether or not to autosave config file when options have changed
@@ -695,26 +697,42 @@ class Config(Group):
         return copy
 
 
-    def save(self, filename = None):
+    def save(self, filename=None, force=False):
         """
-        Save file. If filename is not given use filename from last load.
+        Save configuration file.
+
+        :param filename: the name of the file to save; if None specified, will
+                         use the name of the previously loaded file, or the
+                         value assigned to the filename property.
+        :param force: if False (default), will only write the file if there were
+                      any changes (to either values or the schema).
+        :type force: bool
         """
         if not filename:
             if not self._filename:
                 raise ValueError, "Filename not specified and no default filename set."
             filename = self._filename
 
+        # If this callback was added due to autosave, remove it now.
+        main.signals['exit'].disconnect(self.save)
+
+        hash_values = self._hash(values=True)
+        if self._loaded_hash_values == hash_values and not force:
+            # Nothing has changed, and forced save not required.
+            return True
+
         filename = os.path.expanduser(filename)
         if os.path.dirname(filename) and not os.path.isdir(os.path.dirname(filename)):
             os.makedirs(os.path.dirname(filename))
 
-        self._loaded_hash = self._hash(values=True)
+        self._loaded_hash_schema = self._hash(values=False)
+        self._loaded_hash_values = hash_values
 
         self._autosave_timer.stop()
         f = open(filename + '~', 'w')
         encoding = get_encoding().lower().replace('iso8859', 'iso-8859')
         f.write('# -*- coding: %s -*-\n' % encoding + \
-                '# -*- hash: %s -*-\n' % self._loaded_hash)
+                '# -*- hash: %s -*-\n' % self._loaded_hash_schema)
         if self._module:
             f.write('# -*- module: %s -*-\n' % self._module)
         f.write('# *************************************************************\n' + \
@@ -726,14 +744,15 @@ class Config(Group):
                 '# comments) will be lost.\n' + \
                 '#\n' + \
                 '# The available settings are commented out with their default\n' + \
-                '# values.\n')
+                '# values.\n' + \
+                '# *************************************************************\n')
         if self._bad_lines:
-            f.write('#\n' + \
+            f.write('\n# =========================================================\n' + \
                     '# CAUTION: This file contains syntax errors or unsupported\n' + \
                     '# config settings, which were ignored.  Refer to the end of\n' + \
-                    '# this file for the relevant lines.\n')
-        f.write('# *************************************************************\n\n')
-        f.write(self._cfg_string(''))
+                    '# this file for the relevant lines.\n' + \
+                    '# =========================================================\n')
+        f.write(self._cfg_string('') + '\n')
         if self._bad_lines:
             f.write('\n\n\n' + \
                     '# *************************************************************\n' + \
@@ -747,16 +766,6 @@ class Config(Group):
         os.rename(filename + '~', filename)
 
 
-    def save_if_needed(self, filename=None):
-        """
-        Saves the config file only if the config schema or any values changed
-        since the last load.  Also saves if no config has previously been
-        loaded.
-        """
-        if self._loaded_hash != self._hash(values=True):
-            self.save(filename)
-
-
     def load(self, filename=None, sync=False):
         """
         Load values from a config file previously saved for this schema.
@@ -765,7 +774,8 @@ class Config(Group):
                           :attr:`~kaa.config.Config.filename` property.
         :type filename: str
         :param sync: if True, will overwrite the current file (retaining previous
-                     values, of course) if the schema has changed.  (Default: False)
+                     values, of course) if the schema has changed, or create the
+                     config file if it does not exist.  (Default: False)
         :type sync: bool
 
         If no filename has been previously set with the :attr:`~kaa.config.Config.filename`
@@ -785,7 +795,8 @@ class Config(Group):
         line_regexp = re.compile('^([a-zA-Z0-9_-]+|\[.*?\]|\.)+ *= *(.*)')
         key_regexp = re.compile('(([a-zA-Z0-9_-]+)|(\[.*?\]))')
 
-        self._loaded_hash = None
+        self._loaded_hash_schema = None
+        self._loaded_hash_value = None
 
         if not os.path.isfile(filename):
             # filename not found
@@ -810,7 +821,7 @@ class Config(Group):
                     # bad encoding, ignore it
                     pass
             elif line.startswith('# -*- hash:'):
-                self._loaded_hash = line[12:].split()[0]
+                self._loaded_hash_schema = line[12:].rstrip('-* ')
 
             # convert lines based on local encoding
             line = unicode(line, local_encoding)
@@ -860,9 +871,12 @@ class Config(Group):
         f.close()
         self.autosave = autosave_orig
         self._watch_mtime = os.stat(filename)[stat.ST_MTIME]
-        if sync:
-            # Write config file if schema is different.
-            self.save_if_needed(filename)
+        if sync and self._loaded_hash_schema != self._hash(values=False):
+            # Schema has changed and sync needed.  Saving will update
+            # self._loaded_hash_values
+            self.save(filename)
+        else:
+            self._loaded_hash_values = self._hash(values=True)
 
         return len(self._bad_lines) == 0
 
@@ -887,7 +901,7 @@ class Config(Group):
         If True, will write the config filename (either previously passed to
         :meth:`~kaa.config.Config.load` or defined by the
         :attr:`~kaa.config.Config.filename` property) 5 seconds after the last
-        config value update.
+        config value update (or program exit, whichever comes first).
         """
         return self._autosave
 
@@ -904,6 +918,8 @@ class Config(Group):
 
     def _config_changed_cb(self, name, oldval, newval):
         if self._filename:
+            if not self._autosave_timer.active():
+                main.signals['exit'].connect(self.save)
             # Start/restart the timer to save in 5 seconds.
             self._autosave_timer.start(5)
 

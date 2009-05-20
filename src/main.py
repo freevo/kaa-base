@@ -70,10 +70,11 @@ _shutting_down = False
 _loop_lock = threading.Lock()
 
 #: mainloop signals to connect to
-#:  - exception: emited when an unhandled async exceptions occurs
-#:  - shutdown: emited on kaa shutdown
-#:  - step: emited on each step of the mainloop
-signals = Signals('exception', 'shutdown', 'step')
+#:  - exception: emitted when an unhandled async exceptions occurs
+#:  - step: emitted on each step of the mainloop
+#:  - shutdown: emitted on kaa mainloop termination
+#:  - exit: emitted when process exits
+signals = Signals('exception', 'shutdown', 'step', 'exit')
 
 
 def select_notifier(module, **options):
@@ -329,3 +330,4 @@ else:
 
 # check to make sure we really call our shutdown function
 atexit.register(_shutdown_check)
+atexit.register(signals['exit'].emit)

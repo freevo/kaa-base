@@ -74,6 +74,17 @@ signals, however by default ``kaa.signals`` contains:
 
       The callback takes no arguments.
 
+.. attribute:: exit
+
+   Emitted when the process exits.  This differs from the ``shutdown`` signal
+   in that the Python program may continue to run after ``shutdown`` emits and
+   the mainloop terminates, whereas ``exit`` is invoked from an ``atexit``
+   handler.
+
+   .. describe:: def callback()
+
+      The callback takes no arguments.
+
 .. attribute:: step
 
    Emitted after each iteration step of the main loop.

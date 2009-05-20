@@ -735,29 +735,29 @@ class Config(Group):
                 '# -*- hash: %s -*-\n' % self._loaded_hash_schema)
         if self._module:
             f.write('# -*- module: %s -*-\n' % self._module)
-        f.write('# *************************************************************\n' + \
-                '# WARNING: This file is auto-generated.  You are free to edit\n' + \
-                '# this file to change config values, but any other changes\n' + \
+        f.write('# *************************************************************\n'
+                '# WARNING: This file is auto-generated.  You are free to edit\n'
+                '# this file to change config values, but any other changes\n'
                 # FIXME: custom comments lost, would be nice if they were kept.  Might
                 # be tricky to fix.
-                '# (including removing or rearranging lines, or adding custom\n' + \
-                '# comments) will be lost.\n' + \
-                '#\n' + \
-                '# The available settings are commented out with their default\n' + \
-                '# values.\n' + \
+                '# (including removing or rearranging lines, or adding custom\n'
+                '# comments) will be lost.\n'
+                '#\n'
+                '# The available settings are commented out with their default\n'
+                '# values.\n'
                 '# *************************************************************\n')
         if self._bad_lines:
-            f.write('\n# =========================================================\n' + \
-                    '# CAUTION: This file contains syntax errors or unsupported\n' + \
-                    '# config settings, which were ignored.  Refer to the end of\n' + \
-                    '# this file for the relevant lines.\n' + \
+            f.write('\n# =========================================================\n'
+                    '# CAUTION: This file contains syntax errors or unsupported\n'
+                    '# config settings, which were ignored.  Refer to the end of\n'
+                    '# this file for the relevant lines.\n'
                     '# =========================================================\n')
         f.write(self._cfg_string('') + '\n')
         if self._bad_lines:
-            f.write('\n\n\n' + \
-                    '# *************************************************************\n' + \
-                    '# The following lines caused errors and were ignored.  Possible\n' + \
-                    '# reasons are removed variables or bad configuration.\n' + \
+            f.write('\n\n\n'
+                    '# *************************************************************\n'
+                    '# The following lines caused errors and were ignored.  Possible\n'
+                    '# reasons are removed variables or bad configuration.\n'
                     '# *************************************************************\n\n')
             for error, line in self._bad_lines:
                 f.write('# %s\n%s\n\n' % (error, line))

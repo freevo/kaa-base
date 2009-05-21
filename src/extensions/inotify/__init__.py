@@ -189,7 +189,7 @@ class INotify(object):
 
         self._read_buffer += data
 
-        event_len = struct.calcsize('LLLL')
+        event_len = struct.calcsize('IIII')
         while True:
             if len(self._read_buffer) < event_len:
                 if self._move_state:
@@ -199,7 +199,7 @@ class INotify(object):
                     self._moved_timer.start(0.1)
                 break
 
-            wd, mask, cookie, size = struct.unpack("LLLL", self._read_buffer[0:event_len])
+            wd, mask, cookie, size = struct.unpack("IIII", self._read_buffer[0:event_len])
             if size:
                 name = self._read_buffer[event_len:event_len+size].rstrip('\0')
             else:

@@ -328,10 +328,24 @@ class Channel(Object):
         return self._connect_inprogress
 
 
+    def _write(self, data):
+        """
+        Writes data to the channel.
+        """
+        cb = kaa.WeakCallback(self._handle_close, False)
+        cb.ignore_caller_args = True
+        self._socket.write(data).exception.connect(cb)
+
+
     def _handle_close(self, expected, reset_signals=True):
         """
         kaa.Socket callback invoked when socket is closed.
         """
+        if not self._socket or not self._socket.alive:
+            # Socket already closed.  Return False to indicate the exception
+            # was handled, if invoked from write() exception handler.
+            return False
+
         if not self._authenticated:
             # Socket closed before authentication completed.  We assume it's
             # because authentication failed (though it may not be).
@@ -350,6 +364,9 @@ class Channel(Object):
                 # Raise an error if this happens during runtime or if
                 # someone wants to get the result or exception.
                 callback.throw(IOError, IOError('kaa.rpc channel closed'), None)
+
+        # Return False for reason explained above.
+        return False
 
 
     def _handle_read(self, data):
@@ -429,7 +446,7 @@ class Channel(Object):
             log.debug('delay packet %s', packet_type)
             self._write_buffer_deferred.append(header + payload)
         else:
-            self._socket.write(header + payload)
+            self._write(header + payload)
 
 
     def _send_answer(self, answer, seq):
@@ -669,7 +686,7 @@ class Channel(Object):
                 log.debug('Sent response to challenge from client.')
 
             # Empty deferred write buffer now that we're authenticated.
-            self._socket.write(''.join(self._write_buffer_deferred))
+            self._write(''.join(self._write_buffer_deferred))
             self._write_buffer_deferred = []
             self._handle_connected()
 

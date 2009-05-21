@@ -747,9 +747,9 @@ class IOChannel(Object):
                     return self.close(immediate=True)
                 self._wmon.unregister()
 
-        except Exception, args:
+        except Exception, e:
             tp, exc, tb = sys.exc_info()
-            if tp in (IOError, socket.error) and args[0] == 11:
+            if tp in (IOError, socket.error) and e.args[0] == 11:
                 # Resource temporarily unavailable -- we are trying to write
                 # data to a socket which is not ready.  To prevent a busy loop
                 # (mainloop will keep calling us back) we sleep a tiny
@@ -763,6 +763,8 @@ class IOChannel(Object):
                 # Any of these are treated as fatal.  We close, which
                 # also throws to any other pending InProgress writes.
                 self.close(immediate=True, expected=False)
+                # Normalize exception into an IOError.
+                tp, exc = IOError, IOError(*e.args)
     
             # Throw the current exception to the InProgress for this write.
             # If nobody is listening for it, it will eventually get logged

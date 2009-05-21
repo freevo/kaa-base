@@ -258,7 +258,7 @@ class InProgress(Signal, Object):
             return 0
 
 
-    def __init__(self, abortable=False, frame=None):
+    def __init__(self, abortable=False, frame=0):
         """
         :param abortable: see the :attr:`~kaa.InProgress.abortable` property.  
                           (Default: False)
@@ -273,10 +273,9 @@ class InProgress(Signal, Object):
         self.progress = None
         self.abortable = abortable
 
-        # Stack frame for the caller who is creating us.
-        if not frame:
-            frame = traceback.extract_stack()[-2]
-        self._name = 'owner=%s:%d:%s()' % frame[:3]
+        # Stack frame for the caller who is creating us, for debugging.
+        self._stack = traceback.extract_stack()[:frame-2]
+        self._name = 'owner=%s:%d:%s()' % self._stack[-1][:3]
 
 
     def __repr__(self):
@@ -482,7 +481,7 @@ class InProgress(Signal, Object):
             #
             # If the exception is passed back via result property, then it is
             # considered handled, and it will not be logged.
-            cb = Callback(InProgress._log_exception, trace, value)
+            cb = Callback(InProgress._log_exception, trace, value, self._stack)
             self._unhandled_exception = _weakref.ref(self, cb)
 
         # Remove traceback from stored exception.  If any waiting threads
@@ -504,7 +503,7 @@ class InProgress(Signal, Object):
         return False
 
     @classmethod
-    def _log_exception(cls, weakref, trace, exc):
+    def _log_exception(cls, weakref, trace, exc, create_stack):
         """
         Callback to log unhandled exceptions.
         """
@@ -518,6 +517,14 @@ class InProgress(Signal, Object):
             return main.signals['step'].connect_once(reraise)
 
         log.error('Unhandled %s exception:\n%s', cls.__name__, trace)
+        if log.level <= logging.INFO:
+            # Asynchronous exceptions create a bit of a problem in that while you
+            # know where the exception came from, you don't easily know where it
+            # was going.  Here we dump the stack obtained in the constructor,
+            # so it's possible to find out which caller didn't properly catch
+            # the exception.
+            create_tb = ''.join(traceback.format_list(create_stack))
+            log.info('Create-stack for InProgress from preceding exception:\n%s', create_tb)
 
 
     def abort(self):
@@ -704,8 +711,8 @@ class InProgressCallback(InProgress):
     called. Special support for Signals that will finish the InProgress
     object when the signal is emited.
     """
-    def __init__(self, func=None, abortable=False, frame=None):
-        super(InProgressCallback, self).__init__(abortable, frame=frame or traceback.extract_stack()[-2])
+    def __init__(self, func=None, abortable=False, frame=0):
+        super(InProgressCallback, self).__init__(abortable, frame=frame-1)
         if func is not None:
             # connect self as callback
             func(self)

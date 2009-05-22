@@ -416,8 +416,10 @@ class CoroutineInProgress(InProgress):
 
         try:
             if not finished:
-                # Throw a GeneratorExit exception so that any callbacks
-                # attached to us get notified that we've aborted.
+                # Throw an InProgressAborted exception so that any callbacks
+                # attached to us get notified that we've aborted.  The
+                # generator itself will receive a GeneratorExit exception via
+                # the generator's close() method later on.
                 self.signals['abort'].emit()
                 if len(self.exception):
                     super(CoroutineInProgress, self).throw(InProgressAborted, 
@@ -437,7 +439,9 @@ class CoroutineInProgress(InProgress):
             try:
                 self._coroutine.close()
             except RuntimeError:
-                # "generator ignored GeneratorExit".  Log something useful.
+                # "generator ignored GeneratorExit".  Log something useful.  This happens
+                # when the generator catches GeneratorExit but doesn't reraise it (or
+                # StopIteratorion).  See PEP 342.
                 log.warning('Coroutine "%s" at %s:%s ignored GeneratorExit', *self._coroutine_info)
         finally:
             # Remove the internal timer, the async result and the

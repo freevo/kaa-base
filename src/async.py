@@ -99,8 +99,13 @@ def delay(seconds):
     :param obj: object to represent as an InProgress.
     :return: :class:`~kaa.InProgress`
     """
-    ip = InProgressCallback(abortable=True)
-    OneShotTimer(ip).start(seconds)
+    ip = InProgressCallback()
+    timer = OneShotTimer(ip)
+    # If the IP gets aborted, stop the timer.  Otherwise the timer
+    # will fire and the IP would attempt to get finished a second
+    # time (and would therefore raise an exception).
+    ip.signals['abort'].connect_weak(timer.stop)
+    timer.start(seconds)
     return ip
 
 
@@ -340,6 +345,9 @@ class InProgress(Signal, Object):
         return bool(self._exception)
 
 
+    # XXX: is this property sane after all?  Maybe there is no such case where
+    # an IP can be just ignored upon abort().  kaa.delay() turned out not to be
+    # an example after all.
     @property
     def abortable(self):
         """
@@ -356,7 +364,6 @@ class InProgress(Signal, Object):
 
         This is useful when constructing an InProgress object that corresponds
         to an asynchronous task that can be safely aborted with no explicit action.
-        An exaple of this is :func:`kaa.delay`.
         """
         return self._abortable or self.signals['abort'].count() > 0
 

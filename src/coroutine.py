@@ -378,8 +378,8 @@ class CoroutineInProgress(InProgress):
         self._interval = interval
 
 
-    def abort(self, bubble=True):
-        if bubble and isinstance(self._prerequisite_ip, InProgress):
+    def abort(self):
+        if isinstance(self._prerequisite_ip, InProgress):
             self._prerequisite_ip.disconnect(self._continue)
             self._prerequisite_ip.exception.disconnect(self._continue)
             try:

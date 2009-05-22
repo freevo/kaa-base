@@ -382,10 +382,18 @@ class CoroutineInProgress(InProgress):
         if isinstance(self._prerequisite_ip, InProgress):
             self._prerequisite_ip.disconnect(self._continue)
             self._prerequisite_ip.exception.disconnect(self._continue)
-            try:
-                self._prerequisite_ip.abort()
-            except Exception:
-                log.exception('Error aborting %s yielded from coroutine', self._prerequisite_ip)
+
+            # It's possible for _prerequisite_ip to exist and be finished
+            # if:
+            #      1. IP finishes, and self._continue is called.
+            #      2. Timer for self._continue is started.
+            #      3. abort() is called before the mainloop fires the timer.
+            # So we don't attempt to abort() it if it's already finished.
+            if not self._prerequisite_ip.finished:
+                try:
+                    self._prerequisite_ip.abort()
+                except Exception:
+                    log.exception('Error aborting %s yielded from coroutine', self._prerequisite_ip)
 
         if self._coroutine:
             return self._stop()

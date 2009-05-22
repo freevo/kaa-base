@@ -749,7 +749,7 @@ class IOChannel(Object):
 
         except Exception, e:
             tp, exc, tb = sys.exc_info()
-            if tp in (IOError, socket.error) and e.args[0] == 11:
+            if tp in (OSError, IOError, socket.error) and e.args[0] == 11:
                 # Resource temporarily unavailable -- we are trying to write
                 # data to a socket which is not ready.  To prevent a busy loop
                 # (mainloop will keep calling us back) we sleep a tiny

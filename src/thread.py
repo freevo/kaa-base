@@ -667,6 +667,13 @@ class _JobServer(threading.Thread):
                 continue
             job = self.jobs.pop(0)
             self.condition.release()
-            job()
+            try:
+                job()
+            except InProgressAborted:
+                # If we catch this, and not in ThreadInProgress.__call__,
+                # it's because the asynchronous exception took more bytecodes
+                # to trigger than the job callback had left.  Nothing sensible
+                # we can do about that now, except ignore it.
+                pass
         # server stopped
         log.debug('stop thread %s' % self.name)

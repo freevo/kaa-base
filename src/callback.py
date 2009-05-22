@@ -127,6 +127,7 @@ class Callback(object):
         :param args: arguments for the callback
         :param kwargs: keyword arguments for the callback
         """
+        super(Callback, self).__init__()
         assert(callable(callback))
         self._callback = callback
         self._callback_name = str(callback)

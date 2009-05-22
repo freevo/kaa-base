@@ -30,7 +30,7 @@
 # -----------------------------------------------------------------------------
 
 __all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallback',
-            'AsyncException', 'InProgressAny', 'InProgressAll',
+            'AsyncException', 'InProgressAny', 'InProgressAll', 'InProgressAborted',
             'AsyncExceptionBase', 'make_exception_class', 'inprogress',
             'delay' ]
 

@@ -48,7 +48,7 @@
 
 __all__ = [ 'MainThreadCallback', 'ThreadCallback', 'is_mainthread',
             'wakeup', 'set_as_mainthread', 'create_thread_notifier_pipe',
-            'threaded', 'MAINTHREAD', 'synchronized' ]
+            'threaded', 'MAINTHREAD', 'synchronized', 'ThreadInProgress' ]
 
 # python imports
 import sys
@@ -63,6 +63,7 @@ import types
 # kaa imports
 import nf_wrapper as notifier
 from callback import Callback
+from object import Object
 from async import InProgress, InProgressAborted
 from utils import wraps, DecoratorDataStore, sysimport
 
@@ -387,8 +388,24 @@ class ThreadInProgress(InProgress):
         """
         Execute the callback.
         """
+        if self.finished:
+            # We're finished before we even started.  The only sane reason for
+            # this is that the we were aborted, so check for for this, and if
+            # it's not the case, log an error.
+            if self.failed and self._exception[0] == InProgressAborted:
+                # Aborted, fine.
+                return
+
+            # This shouldn't happen.  If it does, it's certainly an error
+            # condition.  But as we are inside the thread now and already
+            # finished, we can't really raise an exception.  So logging the
+            # error will have to suffice.
+            log.error('Attempting to start thread which has already finished')
+
         if self._callback is None:
+            # Attempting to invoke multiple times?  Shouldn't happen.
             return None
+
         try:
             result = self._callback()
         except InProgressAborted:
@@ -408,19 +425,108 @@ class ThreadInProgress(InProgress):
                 # will be from the mainthread, which is almost certainly _not_
                 # what is intended by threading a coroutine.
                 log.warning('NYI: coroutines cannot (yet) be executed in threads.')
-            MainThreadCallback(self.finish)(result)
+
+            # If we're finished, it means we were aborted, but probably caught the
+            # InProgressAborted inside the threaded callback.  If so, we discard the
+            # return value from the callback, as we're considered finished.  Otherwise
+            # finish up in the mainthread.
+            if not self.finished:
+                MainThreadCallback(self.finish)(result)
+
         self._callback = None
 
 
     def active(self):
         """
-        Return True if the callback is still waiting to be proccessed.
+        Return True if the callback is still waiting to be processed.
         """
         return self._callback is not None
 
 
+    def abort(self):
+        """
+        Aborts the callback being executed inside a thread.  (Or attempts to.)
 
-class ThreadCallback(Callback):
+        Invocation of a :class:`~kaa.ThreadCallback` or
+        :class:`~kaa.NamedThreadCallback` will return a ``ThreadInProgress``
+        object which may be aborted by calling this method.  When an
+        in-progress thread is aborted, an ``InProgressAborted`` exception is
+        raised inside the thread.
+
+        Just prior to raising ``InProgressAborted`` inside the thread, the
+        :attr:`~ThreadCallback.signals.abort` signal will be emitted.
+        Callbacks connected to this signal are invoked within the thread from
+        which ``abort()`` was called.  If any of the callbacks return
+        ``False``, ``InProgressAborted`` will not be raised in the thread.
+
+        It is possible to catch InProgressAborted within the thread to
+        deal with cleanup, but any return value from the threaded callback
+        will be discarded.  It is therefore not possible abort an abort.
+        However, if the InProgress is aborted before the thread has a chance
+        to start, the thread is not started at all, and so obviously the threaded
+        callback will not receive ``InProgressAborted``.
+
+        .. warning::
+        
+           This method raises an exception asynchronously within the thread, and
+           this is unreliable.  The asynchronous exception may get inadvertently
+           cleared internally, and if it doesn't, it will in any case take
+           up to 100 bytecodes for it to trigger within the thread.  This 
+           approach still has uses as a general-purposes aborting mechanism,
+           but, if possible, it is preferable for you to implement custom logic
+           by attaching an abort handler to the :class:`~kaa.ThreadCallback` or
+           :class:`~kaa.NamedThreadCallback` object.
+
+        """
+        return super(ThreadInProgress, self).abort()
+
+
+class ThreadCallbackBase(Callback, Object):
+    __kaasignals__ = {
+        'abort':
+            '''
+            Emitted when the thread callback is aborted.
+
+            .. describe:: def callback()
+
+               This callback takes no arguments
+
+            See :meth:`~ThreadInProgress.abort` for a more detailed discussion.
+
+            Handlers may return False to prevent ``InProgressAborted`` from
+            being raised inside the thread.  However, the ThreadInProgress is
+            still considered aborted regardless.  Handlers of this signal are
+            intended to implement more appropriate logic to cancel the threaded
+            callback.
+
+            '''
+    }
+
+    def _setup_abort(self, thread, inprogress):
+        # Hook an abort callback for this ThreadInProgress.
+        def abort():
+            if not thread.isAlive():
+                # Already stopped.
+                return
+
+            if self.signals['abort'].emit() == False:
+                # A callback returned False, do not raise inside thread.
+                return
+
+            # This magic uses Python/C to raise an exception inside the thread.
+            import ctypes
+            tids = [tid for tid, tobj in threading._active.items() if tobj == thread]
+            if not tids:
+                # Thread not found.  It must already have finished.
+                return
+
+            res = ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, ctypes.py_object(InProgressAborted))
+
+        inprogress.signals['abort'].connect(abort)
+
+
+
+class ThreadCallback(ThreadCallbackBase):
     """
     Notifier aware wrapper for threads. When a thread is started, it is
     impossible to fork the current process into a second one without exec both
@@ -447,19 +553,13 @@ class ThreadCallback(Callback):
         # connect thread.join to the InProgress
         join = lambda *args, **kwargs: t.join()
 
-        # Hook an abort callback for this ThreadInProgress.
-        def abort():
-            async.exception.disconnect(join)
-            if not t.isAlive():
-                # Already stopped
-                return
+        # Hook the aborted signal for the ThreadInProgress to stop the thread
+        # callback.
+        self._setup_abort(t, async)
+        # XXX: this was in the original abort code but I don't think it's necessary.
+        # If I'm wrong, uncomment and explain why it's needed.
+        #async.signals['abort'].connect(lambda: async.exception.disconnect(join))
 
-            # This magic uses Python/C to raise an exception inside the thread.
-            import ctypes
-            tid = [ tid for tid, tobj in threading._active.items() if tobj == t ][0]
-            res = ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, ctypes.py_object(InProgressAborted))
-
-        async.signals['abort'].connect(abort)
         async.connect_both(join, join)
         # start the thread
         t.start()
@@ -474,13 +574,13 @@ class ThreadCallback(Callback):
 
 
 
-class NamedThreadCallback(Callback):
+class NamedThreadCallback(ThreadCallbackBase):
     """
     A callback to run a function in a thread. This class is used by the
     threaded decorator, but it is also possible to use this call directly.
     """
     def __init__(self, thread_information, func, *args, **kwargs):
-        Callback.__init__(self, func, *args, **kwargs)
+        super(NamedThreadCallback, self).__init__(func, *args, **kwargs)
         self.priority = 0
         if isinstance(thread_information, (list, tuple)):
             thread_information, self.priority = thread_information
@@ -491,10 +591,14 @@ class NamedThreadCallback(Callback):
         cb = Callback._get_callback(self)
         job = ThreadInProgress(cb, *args, **kwargs)
         job.priority = self.priority
+
         if not _threads.has_key(self._thread):
             _threads[self._thread] = _JobServer(self._thread)
         server = _threads[self._thread]
         server.add(job)
+        # Hook the aborted signal for the ThreadInProgress to stop the thread
+        # callback.
+        self._setup_abort(server, job)
         return job
 
 
@@ -507,8 +611,8 @@ class _JobServer(threading.Thread):
     Thread processing NamedThreadCallback jobs.
     """
     def __init__(self, name):
+        super(_JobServer, self).__init__()
         log.debug('start jobserver %s' % name)
-        threading.Thread.__init__(self)
         self.setDaemon(True)
         self.condition = threading.Condition()
         self.stopped = False

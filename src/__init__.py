@@ -37,7 +37,7 @@ import logger
 
 # InProgress class
 from async import TimeoutException, InProgress, InProgressCallback, \
-     InProgressAny, InProgressAll, inprogress, delay
+     InProgressAny, InProgressAll, InProgressAborted, inprogress, delay
 
 # Import all classes, functions and decorators that are part of the API
 from object import Object
@@ -53,7 +53,7 @@ from signals import Signal, Signals
 
 # Thread callbacks, helper functions and decorators
 from thread import MainThreadCallback, NamedThreadCallback, ThreadCallback, \
-     is_mainthread, threaded, synchronized, MAINTHREAD
+     is_mainthread, threaded, synchronized, MAINTHREAD, ThreadInProgress
 
 # Timer classes and decorators
 from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, \

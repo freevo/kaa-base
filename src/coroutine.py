@@ -384,7 +384,7 @@ class CoroutineInProgress(InProgress):
             self._prerequisite_ip.exception.disconnect(self._continue)
 
             # It's possible for _prerequisite_ip to exist and be finished
-            # if:
+            # if this sequence occurs:
             #      1. IP finishes, and self._continue is called.
             #      2. Timer for self._continue is started.
             #      3. abort() is called before the mainloop fires the timer.

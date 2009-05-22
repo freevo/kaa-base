@@ -16,8 +16,8 @@ to be executed in a single thread. If the thread name is ``kaa.MAINTHREAD`` the
 decorated function is invoked from the main thread. If no thread name is
 specified, the function is wrapped in :class:`~kaa.ThreadCallback` so that each
 invocation is executed in a separate thread. Because these callbacks returns
-:class:`~kaa.InProgress` objects, they may be yielded from :ref:`coroutines
-<coroutines>`.
+:class:`~kaa.ThreadInProgress` objects, which are derived from
+:class:`~kaa.InProgress`, they may be yielded from :ref:`coroutines <coroutines>`.
 
 For example::
 
@@ -35,14 +35,14 @@ For example::
 
      print "Thread returned", result
 
-The threaded decorator also supports a async kwarg, which is by
-default True. When True, the decorated function returns an InProgress
-object. When False, however, invocation of the function blocks until
-the decorated function completes, and its return value is passed back.
-Internally, the decorator merely invokes :meth:`~kaa.InProgress.wait` on the
-InProgress returned by the threaded function, which means the main loop is
-otherwise kept alive for timers and I/O handlers.  This allows a threaded
-function to be used as a standard callback (but in practice it is not used
+The threaded decorator also supports a async kwarg, which is by default True.
+When True, the decorated function returns a :class:`~kaa.ThreadInProgress`
+object. When False, however, invocation of the function blocks until the
+decorated function completes, and its return value is passed back.  Internally,
+the decorator merely invokes :meth:`~kaa.InProgress.wait` on the InProgress
+returned by the threaded function, which means the main loop is otherwise kept
+alive for timers and I/O handlers.  This allows a threaded function to be used
+as a standard callback (but in practice it is not used
 often).
 
 .. autofunction:: kaa.threaded
@@ -131,7 +131,7 @@ NamedThreadCallback objects with the highest priority is first in the queue
 queue that executes asynchronously.
 
 Instances of the two classes above are callable, and they return
-:class:`~kaa.InProgress` objects::
+:class:`~kaa.ThreadInProgress` objects::
 
   def handle_result(result):
      print "Thread returned with", result
@@ -139,12 +139,19 @@ Instances of the two classes above are callable, and they return
   kaa.ThreadCallback(do_blocking_task)(arg1, arg2).connect(handle_result)
 
 
+.. kaaclass:: kaa.ThreadInProgress
+
+   .. automethods::
+      :remove: active
+   .. autoproperties::
+   .. autosignals::
+      :remove: abort
+
 .. kaaclass:: kaa.ThreadCallback
 
    .. automethods::
    .. autoproperties::
    .. autosignals::
-
 
 .. kaaclass:: kaa.NamedThreadCallback
 

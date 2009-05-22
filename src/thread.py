@@ -408,6 +408,15 @@ class ThreadInProgress(InProgress):
 
         try:
             result = self._callback()
+            # Kludge alert: InProgressAborted gets raised asynchronously inside
+            # the thread.  Assuming it doesn't inadvertently get cleared out
+            # by PyErr_Clear(), it may take up to check-interval bytecodes for
+            # it to trigger.  So we do a dummy loop to chew up that many byte
+            # codes (roughly) to cause any pending async InProgressAborted to
+            # raise here, which we'll catch next.  The overhead added by this
+            # loop is negligible.  [About 10us on my system]
+            for i in xrange(sys.getcheckinterval()):
+                pass
         except InProgressAborted:
             # InProgressAborted was raised inside the thread (from the InProgress
             # abort handler).  This means we're already finished, so there's no
@@ -521,6 +530,13 @@ class ThreadCallbackBase(Callback, Object):
                 return
 
             res = ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, ctypes.py_object(InProgressAborted))
+            if res == 0:
+                # Thread not found.  Must have terminated an instant ago.
+                return
+
+            # FIXME: It's possible for the InProgressAborted exception to get swallowed
+            # by PyErr_Clear() somewhere in the thread.  We could use a timer to keep
+            # raising the exception inside the thread until it dies.
 
         inprogress.signals['abort'].connect(abort)
 
@@ -667,13 +683,6 @@ class _JobServer(threading.Thread):
                 continue
             job = self.jobs.pop(0)
             self.condition.release()
-            try:
-                job()
-            except InProgressAborted:
-                # If we catch this, and not in ThreadInProgress.__call__,
-                # it's because the asynchronous exception took more bytecodes
-                # to trigger than the job callback had left.  Nothing sensible
-                # we can do about that now, except ignore it.
-                pass
+            job()
         # server stopped
         log.debug('stop thread %s' % self.name)

@@ -161,8 +161,21 @@ class TimeoutException(Exception):
     def __getitem__(self, idx):
         return self.args[idx]
 
-class InProgressAborted(Exception):
+
+class InProgressAborted(BaseException):
+    """
+    This exception is thrown into an InProgress object when 
+    :meth:`~kaa.InProgress.abort` is called.
+
+    For :class:`~kaa.ThreadCallback` and  :class:`~kaa.NamedThreadCallback`
+    this exception is raised inside the threaded callback.  This makes
+    potentially an asynchronous exception (when used this way), and therefore
+    it subclasses BaseException, similar in rationale to KeyboardInterrupt
+    and SystemExit, and also (for slightly different reasons) GeneratorExit,
+    which as of Python 2.6 also subclasses BaseException.
+    """
     pass
+
 
 class InProgress(Signal, Object):
     """

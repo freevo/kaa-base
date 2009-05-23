@@ -89,3 +89,15 @@ from utils import tempfile
 # Expose main loop functions under kaa.main
 import main
 from main import signals
+
+import sys, os
+if sys.hexversion < 0x02060000 and os.name == 'posix':
+    # Python 2.5 (all point releases) have a bug with listdir on POSIX systems
+    # causing improper out of memory exceptions.  We replace the standard
+    # os.listdir with a version from kaa._utils that doesn't have this bug.
+    # Some distros will have patched their 2.5 packages, but since we can't
+    # discriminate those, we replace os.listdir regardless.
+    #
+    # See http://bugs.python.org/issue1608818
+    import kaa._utils
+    os.listdir = kaa._utils.listdir

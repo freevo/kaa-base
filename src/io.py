@@ -665,7 +665,7 @@ class IOChannel(Object):
                     last = idx
                     idx = self._find_delim(queue, last)
 
-                if self._find_delim(lines[-1]) == -1:
+                if self._find_delim(lines[-1]) is None:
                     # Queue did not end with delimiter, so push the remainder back.
                     self._read_queue.write(lines.pop())
 

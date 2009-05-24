@@ -590,15 +590,15 @@ class Process2(Object):
         pid = self.pid  # See below why we save self.pid
 
         if cmd:
-            log.debug('Stop command specified: %s', cmd)
+            log.debug('Stop command specified: %s, stdin=%d', cmd, self._stdin.alive)
             if callable(cmd):
                 # XXX: should we allow coroutines for cmd and yield them?
                 cmd()
-            else:
+            elif self._stdin.alive:
                 # This does get buffered.  We could bypass the write queue
                 # by calling self.stdin._write() directly, but maybe the
                 # IOChannel isn't writable at this moment.
-                self.write(cmd)
+                self._stdin.write(cmd)
 
             yield InProgressAny(self._in_progress, delay(wait))
             # If we're here, child is either dead or we timed out.

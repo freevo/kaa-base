@@ -313,12 +313,6 @@ class Process2(Object):
         self._stdout = IOSubChannel(self, logger)
         self._stderr = IOSubChannel(self, logger)
 
-        for fd in self._stdout, self._stderr:
-            fd.signals['closed'].connect_weak(self._check_dead)
-            fd.signals['read'].connect_weak(self.signals['read'].emit)
-            fd.signals['readline'].connect_weak(self.signals['readline'].emit)
-        self._stdin.signals['closed'].connect_weak(self._check_dead)
-
         # The Process read and readline signals (aka "global" read/readline signals)
         # encapsulate both stdout and stderr.  When a new callback is connected
         # to these signals, we invoke _update_read_monitor() on the IOSubChannel
@@ -536,6 +530,12 @@ class Process2(Object):
         log.debug("Spawning: %s", cmd)
         self._child = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE, close_fds=True, shell=self._shell)
+
+        for fd in self._stdout, self._stderr:
+            fd.signals['closed'].connect_weak(self._check_dead)
+            fd.signals['read'].connect_weak(self.signals['read'].emit)
+            fd.signals['readline'].connect_weak(self.signals['readline'].emit)
+        self._stdin.signals['closed'].connect_weak(self._check_dead)
 
         self._stdin.wrap(self._child.stdin, IO_WRITE)
         self._stdout.wrap(self._child.stdout, IO_READ)
@@ -800,7 +800,9 @@ class Process2(Object):
 
         # We can close stdin since the child is dead.  But stdout and stderr
         # need to remain open, in case there is data buffered in them that the
-        # user may yet retrieve.
+        # user may yet retrieve (which can only happen when there are no callbacks
+        # connected to 'read' and 'readline' signals, so we can safely disconnect
+        # those below).
         self._stdin.close(immediate=True)
         self._child = None
 
@@ -814,6 +816,17 @@ class Process2(Object):
         # We no longer need help from the supervisor.  Any future SIGCHLDs
         # are not caused by us.
         supervisor.unregister(self)
+
+        # Disconnect handlers for the IOChannels as we're now no longer
+        # interested.  By ensuring these callbacks are only connected while
+        # the process is running (and registered with the supervisor), we
+        # avoid _cleanup() invoking potentially dead weak callbacks (and 
+        # spamming with ignored CallbackError exceptions).
+        for fd in self._stdout, self._stderr:
+            fd.signals['closed'].disconnect(self._check_dead)
+            fd.signals['read'].disconnect(self.signals['read'].emit)
+            fd.signals['readline'].disconnect(self.signals['readline'].emit)
+        self._stdin.signals['closed'].disconnect(self._check_dead)
 
         self._state = Process2.STATE_STOPPED
         if not self._in_progress.finished:

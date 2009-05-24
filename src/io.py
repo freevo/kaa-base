@@ -471,7 +471,17 @@ class IOChannel(Object):
                 self._wmon.register(self.fileno, IO_WRITE)
 
         # Disconnect channel on shutdown.
-        main.signals['shutdown'].connect_weak(self.close)
+        #
+        # XXX: actually, don't.  If a Process object has a stop command, we
+        # need stdin alive so we can send it.  Even if it doesn't have a stop
+        # command, closing the stdin pipe to child processes seems to sometimes
+        # do undesirable things.  For example, MPlayer will leave one of its
+        # threads running, even though the main thread dies.)
+        #
+        # If it turns out we do need a shutdown handler for IOChannels,
+        # make it opt-in and clearly document why.
+        #
+        #main.signals['shutdown'].connect_weak(self.close)
 
 
     def _clear_read_queue(self):
@@ -873,7 +883,9 @@ class IOChannel(Object):
             self._channel = None
 
             self.signals['closed'].emit(expected)
-            main.signals['shutdown'].disconnect(self.close)
+            # We aren't attaching to 'shutdown' in wrap() after all.  Comment
+            # out for now.
+            #main.signals['shutdown'].disconnect(self.close)
 
 
 # We have have a problem with recursive imports. We need main here,

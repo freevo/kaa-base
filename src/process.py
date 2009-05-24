@@ -644,12 +644,14 @@ class Process2(Object):
                 yield
             try:
                 os.kill(pid, sig)
-                # Here we yield on the 'finished' signal instead of
+                # Here we yield on the 'exited' signal instead of
                 # self._in_progress, because the InProgress could in fact be
                 # finished due to a timeout, not because the process is
-                # legitimately stopped, whereas the 'finished' signals truly is
-                # only emitted when the child is dead.
-                yield InProgressAny(self.signals['finished'], delay(pause))
+                # legitimately stopped, whereas the 'exited' signals truly is
+                # only emitted when the child is dead.  (Also, because we
+                # don't care about losing stdout/err data, otherwise we would
+                # use 'finished')
+                yield InProgressAny(self.signals['exited'], delay(pause))
             except OSError:
                 # Process is dead after all.
                 self._check_dead()
@@ -657,8 +659,8 @@ class Process2(Object):
                 log.exception("Some other error")
 
         # If state isn't STOPPED, make sure pid hasn't changed.  Because we yield
-        # on the 'finished' signal above, it's possible for the user to connect a 
-        # callback to 'finished' that restarts the child, which gets executed before
+        # on the 'exited' signal above, it's possible for the user to connect a 
+        # callback to 'exited' that restarts the child, which gets executed before
         # this coroutine resumes.  If our pid has changed, we know we died.  If the
         # pid is the same, we have a hung process.
         if self._state != Process2.STATE_STOPPED and pid == self.pid:

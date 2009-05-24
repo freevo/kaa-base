@@ -42,7 +42,7 @@ from signals import Signals
 from timer import timed, Timer, OneShotTimer, POLICY_ONCE
 from thread import MainThreadCallback, is_mainthread, threaded, MAINTHREAD
 from async import InProgress, InProgressAny, InProgressAll, delay, inprogress
-from callback import Callback, WeakCallback
+from callback import Callback, WeakCallback, CallbackError
 from coroutine import coroutine, POLICY_SINGLETON
 from utils import property
 from object import Object
@@ -257,12 +257,36 @@ class Process2(Object):
 
         'finished':
             '''
-            Emitted when the child exits.
+            Emitted when the child is dead and all data from stdout and stderr
+            has been consumed.
 
             .. describe:: def callback(exitcode, ...)
 
                :param exitcode: the exit code of the child
                :type expected: int
+
+            Due to buffering, a child process may be terminated, but the pipes
+            to its stdout and stderr still open possibly containing buffered
+            data yet to be read.  This signal emits only when the child has
+            exited and all data has been consumed (or stdout and stderr
+            explicitly closed).
+
+            After this signal emits, the :attr:`~kaa.Process2.readable`
+            property will be False.
+            ''',
+
+        'exited':
+            '''
+            Emitted when the child process has terminated.
+
+            .. describe:: def callback(exitcode, ...)
+
+               :param exitcode: the exit code of the child
+               :type expected: int
+
+            Unlike the :attr:`~kaa.Process2.signals.finished` signal, this
+            signal emits when the child is dead (and has been reaped), however
+            the Process may or may not still be :attr:`~kaa.Process2.readable`.
             '''
     }
 
@@ -281,6 +305,11 @@ class Process2(Object):
         :param dumpfile: File to which all child stdout and stderr will be
                          dumped, or None to disable output dumping.
         :type dumpfile: None, string (path to filename), file object, IOChannel
+
+        Process objects passed to :func:`kaa.inprogress` return a
+        :class:`~kaa.InProgress` that corresponds to the
+        :attr:`~kaa.Process2.signals.finished` signal (not the
+        :attr:`~kaa.Process2.signals.exited` signal).
         """
         super(Process2, self).__init__()
         self._cmd = cmd
@@ -312,6 +341,15 @@ class Process2(Object):
         self._stdin = IOChannel()
         self._stdout = IOSubChannel(self, logger)
         self._stderr = IOSubChannel(self, logger)
+        self._weak_closed_cbs = []
+
+        for fd in self._stdout, self._stderr:
+            fd.signals['read'].connect_weak(self.signals['read'].emit)
+            fd.signals['readline'].connect_weak(self.signals['readline'].emit)
+            # We need to keep track of the WeakCallbacks for _cleanup()
+            cb = fd.signals['closed'].connect_weak(self._check_dead)
+            self._weak_closed_cbs.append(cb)
+        self._stdin.signals['closed'].connect_weak(self._check_dead)
 
         # The Process read and readline signals (aka "global" read/readline signals)
         # encapsulate both stdout and stderr.  When a new callback is connected
@@ -531,12 +569,6 @@ class Process2(Object):
         self._child = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE, close_fds=True, shell=self._shell)
 
-        for fd in self._stdout, self._stderr:
-            fd.signals['closed'].connect_weak(self._check_dead)
-            fd.signals['read'].connect_weak(self.signals['read'].emit)
-            fd.signals['readline'].connect_weak(self.signals['readline'].emit)
-        self._stdin.signals['closed'].connect_weak(self._check_dead)
-
         self._stdin.wrap(self._child.stdin, IO_WRITE)
         self._stdout.wrap(self._child.stdout, IO_READ)
         self._stderr.wrap(self._child.stderr, IO_READ)
@@ -742,6 +774,12 @@ class Process2(Object):
         return self._stdin.write(data)
 
 
+    def _emit_finished(self):
+        if not self._in_progress.finished:
+            self._in_progress.finish(self._exitcode)
+        self.signals['finished'].emit(self._exitcode)
+
+
     def _check_dead(self, expected=None):
         """
         Checks to see if the child process has died.
@@ -751,14 +789,18 @@ class Process2(Object):
            (XX) 2. Child is finished and read() or readline() was called.
            3. One of stdin/stdout/stderr closes on us.
         """
-        log.debug('Checking child dead child=%s, stdin=%s, stdout=%s, stderr=%s', self._child,
-                  self._stdin.alive, self._stdout.alive, self._stderr.alive)
+        log.debug('Checking child dead child=%s, state=%d, weakref=%s, stdin=%s, stdout=%s, stderr=%s', self._child,
+                  self._state, self._cleanup_weakref, self._stdin.alive, self._stdout.alive, self._stderr.alive)
+
         if not self._child or self._state in (Process2.STATE_STOPPED, Process2.STATE_DYING):
             # We're already dead or dying.
-            if not self._stdout.alive and not self._stderr.alive:
+            if not self._stdout.alive and not self._stderr.alive and self._cleanup_weakref:
                 # Child is dead and all IOChannels are closed.  We no longer need
                 # our weakref cleanup crutch.
                 self._cleanup_weakref = None
+                # With child exited and both stdout/stderr closed, the child is
+                # considered finished.
+                self._emit_finished()
             return
 
         if self._child.poll() is not None:
@@ -766,7 +808,7 @@ class Process2(Object):
  
 
     @classmethod
-    def _cleanup(cls, weakref, stdout, stderr):
+    def _cleanup(cls, weakref, channels, callbacks):
         """
         Called when the Process object is destroyed (similar to __del__ but
         uses a weakref finalization callback instead to avoid the problems
@@ -782,9 +824,24 @@ class Process2(Object):
         child is still running, and the Supervisor has a reference to us
         and therefore it is impossible for this function to get called.
         """
-        log.debug('Process cleanup: stdout=%s stderr=%s', stdout.fileno, stderr.fileno)
-        stdout.close(immediate=True)
-        stderr.close(immediate=True)
+        log.debug('Process cleanup: stdout=%s stderr=%s', channels[0].fileno, channels[1].fileno)
+        for channel, callback in zip(channels, callbacks):
+            # We previously attached a weak callback for self._check_dead to
+            # the 'closed' signals of stdout and stderr.  Since we're in
+            # _cleanup(), it means the Process object is destroyed, and all its
+            # weak references are now dead.  When we call close() below, it
+            # will emit the 'closed' signal, so our weak _check_dead will be
+            # invoked in Signal.emit(), and fail because the weakref is dead.
+            #
+            # Now normally this isn't a problem, because when weak callbacks
+            # die, they automatically get disconnected.  The weak _check_dead
+            # callbacks are on the chopping block already, and would get
+            # disconnected automatically after this function.  (In other words,
+            # _cleanup() is invoked before Signal._weakref_destroyed.)  So
+            # we need to disconnect the WeakCallback before invoking close()
+            # in order to avoid a CallbackError that Signal.emit() reraises.
+            channel.signals['closed'].disconnect(callback)
+            channel.close(immediate=True)
 
 
     def _handle_dead(self):
@@ -800,39 +857,28 @@ class Process2(Object):
 
         # We can close stdin since the child is dead.  But stdout and stderr
         # need to remain open, in case there is data buffered in them that the
-        # user may yet retrieve (which can only happen when there are no callbacks
-        # connected to 'read' and 'readline' signals, so we can safely disconnect
-        # those below).
+        # user may yet retrieve.
         self._stdin.close(immediate=True)
         self._child = None
-
-        if self._stdout.alive or self._stderr.alive:
-            # Use weakref finializer callback kludge to invoke Process._cleanup
-            # when Process object goes away in order to close stdout
-            # and stderr IOChannels.
-            cb = Callback(self.__class__._cleanup, self._stdout, self._stderr)
-            self._cleanup_weakref = weakref.ref(self, cb)
 
         # We no longer need help from the supervisor.  Any future SIGCHLDs
         # are not caused by us.
         supervisor.unregister(self)
 
-        # Disconnect handlers for the IOChannels as we're now no longer
-        # interested.  By ensuring these callbacks are only connected while
-        # the process is running (and registered with the supervisor), we
-        # avoid _cleanup() invoking potentially dead weak callbacks (and 
-        # spamming with ignored CallbackError exceptions).
-        for fd in self._stdout, self._stderr:
-            fd.signals['closed'].disconnect(self._check_dead)
-            fd.signals['read'].disconnect(self.signals['read'].emit)
-            fd.signals['readline'].disconnect(self.signals['readline'].emit)
-        self._stdin.signals['closed'].disconnect(self._check_dead)
-
         self._state = Process2.STATE_STOPPED
-        if not self._in_progress.finished:
-            self._in_progress.finish(self._exitcode)
-        self.signals['finished'].emit(self._exitcode)
+        # We don't emit 'finished' here, because stdout/stderr is still open
+        # and there may be data yet to be read.  But we do emit 'exited'
+        self.signals['exited'].emit(self._exitcode)
 
+        if self._stdout.alive or self._stderr.alive:
+            # Use weakref finializer callback kludge to invoke Process._cleanup
+            # when Process object goes away in order to close stdout
+            # and stderr IOChannels.
+            cb = Callback(self.__class__._cleanup, (self._stdout, self._stderr), self._weak_closed_cbs)
+            self._cleanup_weakref = weakref.ref(self, cb)
+        else:
+            # Child exit and stdout/stderr closed.  We're finished.
+            self._emit_finished()
 
 
 # Kludge: import here at the end to avoid cyclical imports.

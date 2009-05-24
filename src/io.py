@@ -39,6 +39,7 @@ import logging
 import time
 import fcntl
 import cStringIO
+import re
 
 import nf_wrapper as notifier
 from callback import WeakCallback
@@ -368,6 +369,10 @@ class IOChannel(Object):
     def delimiter(self):
         """
         String used to split data for use with :meth:`~kaa.IOChannel.readline`.
+
+        Delimiter may also be a list of strings, in which case any one of the
+        elements in the list will be used as a delimiter.  For example, if you
+        want to delimit based on either \\\\r or \\\\n, specify ['\\\\r', '\\\\n'].
         """
         return self._delimiter
 
@@ -474,19 +479,34 @@ class IOChannel(Object):
         self._read_queue.truncate()
 
 
+    def _find_delim(self, buf, start=0):
+        """
+        Returns the position in the buffer where the first delimiter is found.
+        The index position includes the delimiter.  If the delimiter is not
+        found, None is returned.
+        """
+        if isinstance(self._delimiter, basestring):
+            idx = buf.find(self._delimiter, start)
+            return idx + len(self._delimiter) if idx >= 0 else None
+
+        # Delimiter is a list, so find any one of them.
+        m = re.compile('|'.join(self._delimiter)).search(buf, start)
+        return m.end() if m else None
+
+
     def _pop_line_from_read_queue(self):
         """
         Pops a line (plus delimiter) from the read queue.  If the delimiter
         is not found in the queue, returns None.
         """
         s = self._read_queue.getvalue()
-        idx = s.find(self._delimiter)
-        if idx < 0:
+        idx = self._find_delim(s)
+        if idx is None:
             return
  
         self._clear_read_queue()
-        self._read_queue.write(s[idx + len(self._delimiter):])
-        return s[:idx + len(self._delimiter)]
+        self._read_queue.write(s[idx:])
+        return s[:idx]
 
 
     def _async_read(self, signal):
@@ -623,13 +643,24 @@ class IOChannel(Object):
             if len(self._readline_signal) == 0:
                 # Callback is connected to the 'readline' signal, so loop
                 # through read queue and emit all lines individually.
-                lines = (self._read_queue.getvalue() + data).split(self._delimiter)
+                queue = self._read_queue.getvalue() + data
                 self._clear_read_queue()
-                if lines[-1] != '':
+
+                lines, last, idx = [], 0, self._find_delim(queue)
+                while True:
+                    # If idx is None, it will slice to the end.
+                    lines.append(queue[last:idx])
+                    if idx is None:
+                        break
+                    last = idx
+                    idx = self._find_delim(queue, last)
+
+                if self._find_delim(lines[-1]) == -1:
                     # Queue did not end with delimiter, so push the remainder back.
-                    self._read_queue.write(lines[-1])
-                for line in lines[:-1]:
-                    self.signals['readline'].emit(line + self._delimiter)
+                    self._read_queue.write(lines.pop())
+
+                for line in lines:
+                    self.signals['readline'].emit(line)
 
             else:
                 # No callbacks connected to 'readline' signal, here we handle

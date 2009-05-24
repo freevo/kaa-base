@@ -189,8 +189,6 @@ class EventManager(object):
         try:
             for handler in copy.copy(self.handler):
                 handler(event)
-        except (KeyboardInterrupt, SystemExit), e:
-            raise e
         except Exception, e:
             log.exception('event callback')
         self.locked = False

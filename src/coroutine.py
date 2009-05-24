@@ -378,7 +378,7 @@ class CoroutineInProgress(InProgress):
         self._interval = interval
 
 
-    def abort(self):
+    def abort(self, exc=None):
         if isinstance(self._prerequisite_ip, InProgress):
             self._prerequisite_ip.disconnect(self._continue)
             self._prerequisite_ip.exception.disconnect(self._continue)
@@ -391,15 +391,15 @@ class CoroutineInProgress(InProgress):
             # So we don't attempt to abort() it if it's already finished.
             if not self._prerequisite_ip.finished:
                 try:
-                    self._prerequisite_ip.abort()
+                    self._prerequisite_ip.abort(exc)
                 except Exception:
                     log.exception('Error aborting %s yielded from coroutine', self._prerequisite_ip)
 
         if self._coroutine:
-            return self._stop()
+            return self._stop(exc=exc)
 
 
-    def _stop(self, finished=False):
+    def _stop(self, finished=False, exc=None):
         """
         Stop the function, no callbacks called.
         """
@@ -428,10 +428,11 @@ class CoroutineInProgress(InProgress):
                 # attached to us get notified that we've aborted.  The
                 # generator itself will receive a GeneratorExit exception via
                 # the generator's close() method later on.
-                self.signals['abort'].emit()
+                self.signals['abort'].emit(exc)
                 if len(self.exception):
-                    super(CoroutineInProgress, self).throw(InProgressAborted, 
-                                                           InProgressAborted('Coroutine aborted'), None)
+                    if not exc:
+                        exc = InProgressAborted('Coroutine aborted')
+                    super(CoroutineInProgress, self).throw(exc.__class__, exc, None)
 
             # This is a (potentially) active coroutine that expects to be reentered and we
             # are aborting it prematurely.  We call the generator's close() method

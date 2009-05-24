@@ -104,7 +104,7 @@ def delay(seconds):
     # If the IP gets aborted, stop the timer.  Otherwise the timer
     # will fire and the IP would attempt to get finished a second
     # time (and would therefore raise an exception).
-    ip.signals['abort'].connect_weak(timer.stop)
+    ip.signals['abort'].connect_weak(lambda exc: timer.stop())
     timer.start(seconds)
     return ip
 
@@ -197,7 +197,10 @@ class InProgress(Signal, Object):
             '''
             Emitted when abort() is called.
 
-            .. describe:: def callback()
+            .. describe:: def callback(exc)
+
+               :param exc: an exception object the InProgress was aborted with.
+               :type exc: InProgressAborted
 
             If the task cannot be aborted, the callback can return False, which
             will cause an exception to be raised by abort().
@@ -488,7 +491,7 @@ class InProgress(Signal, Object):
             if not aborted:
                 # An InProgress we were waiting on has been aborted, so we
                 # abort too.
-                self.signals['abort'].emit()
+                self.signals['abort'].emit(value)
             self._unhandled_exception = None
 
         if self._unhandled_exception:
@@ -547,20 +550,35 @@ class InProgress(Signal, Object):
             log.info('Create-stack for InProgress from preceding exception:\n%s', create_tb)
 
 
-    def abort(self):
+    def abort(self, exc=None):
         """
         Aborts the asynchronous task this InProgress represents.
 
+        :param exc: optional exception object with which to abort the InProgress; if
+                    None is given, a general InProgressAborted exception will
+                    be used.
+        :type exc: InProgressAborted
+
         Not all such tasks can be aborted.  If aborting is not supported, or if
         the InProgress is already finished, a RuntimeError exception is raised.
+
+        If a coroutine is aborted, the CoroutineInProgress object returned by
+        the coroutine will be finished with InProgressAborted, while the underlying
+        generator used by the coroutine will have the standard GeneratorExit
+        raised inside it.
         """
         if self.finished:
             raise RuntimeError('InProgress is already finished.')
 
-        if not self.abortable or self.signals['abort'].emit() == False:
+        if exc is None:
+            exc = InProgressAborted('InProgress task aborted by abort()')
+        elif not isinstance(exc, InProgressAborted):
+            raise ValueError('Exception must be instance of InProgressAborted (or subclass thereof)')
+
+        if not self.abortable or self.signals['abort'].emit(exc) == False:
             raise RuntimeError('%s cannot be aborted.' % self)
 
-        self.throw(InProgressAborted, InProgressAborted(), None, aborted=True)
+        self.throw(exc.__class__, exc, None, aborted=True)
 
 
     def timeout(self, timeout, callback=None, abort=False):

@@ -532,7 +532,7 @@ class IOChannel(Object):
 
         ip = inprogress(signal)
 
-        def abort():
+        def abort(exc):
             # XXX: closure around ip and signal holds strong refs; is this bad?
             signal.disconnect(ip)
             self._update_read_monitor()
@@ -742,7 +742,7 @@ class IOChannel(Object):
 
         inprogress = InProgress()
         if data:
-            def abort():
+            def abort(exc):
                 try:
                     self._write_queue.remove((data, inprogress))
                 except ValueError:

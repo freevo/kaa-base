@@ -452,7 +452,7 @@ class ThreadInProgress(InProgress):
         return self._callback is not None
 
 
-    def abort(self):
+    def abort(self, exc=None):
         """
         Aborts the callback being executed inside a thread.  (Or attempts to.)
 
@@ -487,7 +487,7 @@ class ThreadInProgress(InProgress):
            :class:`~kaa.NamedThreadCallback` object.
 
         """
-        return super(ThreadInProgress, self).abort()
+        return super(ThreadInProgress, self).abort(exc)
 
 
 class ThreadCallbackBase(Callback, Object):
@@ -513,12 +513,12 @@ class ThreadCallbackBase(Callback, Object):
 
     def _setup_abort(self, thread, inprogress):
         # Hook an abort callback for this ThreadInProgress.
-        def abort():
+        def abort(exc):
             if not thread.isAlive():
                 # Already stopped.
                 return
 
-            if self.signals['abort'].emit() == False:
+            if self.signals['abort'].emit(exc) == False:
                 # A callback returned False, do not raise inside thread.
                 return
 
@@ -529,7 +529,8 @@ class ThreadCallbackBase(Callback, Object):
                 # Thread not found.  It must already have finished.
                 return
 
-            res = ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, ctypes.py_object(InProgressAborted))
+            # We can't raise the exact exception into the thread, so just use the class.
+            res = ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, ctypes.py_object(exc.__class__))
             if res == 0:
                 # Thread not found.  Must have terminated an instant ago.
                 return

@@ -428,7 +428,7 @@ class Group(Base):
         if not key in self._dict:
             if key.replace('_', '-') in self._dict:
                 return self._dict[key.replace('_', '-')]
-            raise AttributeError('No attribute %s' % key)
+            return object.__getattribute__(self, key)
         return self._dict[key]
 
 
@@ -445,12 +445,11 @@ class Group(Base):
         """
         Get variable, subgroup, dict or list.
         """
-        if key.startswith('_') or key not in self._dict:
+        if key.startswith('_'):
             return object.__getattribute__(self, key)
         item = self._cfg_get(key)
         if isinstance(item, Var):
             return VarProxy(item)
-
         return item
 
     def __repr__(self):

@@ -29,7 +29,7 @@
 __all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallback',
             'AsyncException', 'InProgressAny', 'InProgressAll', 'InProgressAborted',
             'AsyncExceptionBase', 'make_exception_class', 'inprogress',
-            'delay' ]
+            'delay', 'InProgressStatus' ]
 
 # python imports
 import sys
@@ -182,6 +182,79 @@ class InProgressAborted(BaseException):
     pass
 
 
+
+class InProgressStatus(Signal):
+    """
+    Generic progress status object for InProgress. This object can be
+    used as 'progress' member of an InProgress object and the caller
+    can monitor the progress.
+    """
+    def __init__(self, max=0):
+        super(InProgressStatus, self).__init__()
+        self.start_time = time.time()
+        self.pos = 0
+        self.max = max
+
+
+    def set(self, pos=None, max=None):
+        """
+        Set new status. The new status is pos of max.
+        """
+        if max is not None:
+            self.max = max
+        if pos is not None:
+            self.pos = pos
+        if pos > self.max:
+            self.max = pos
+        self.emit(self)
+
+
+    def update(self, diff=1):
+        """
+        Update position by the given difference.
+        """
+        self.set(self.pos + diff)
+
+
+    def get_progressbar(self, width=70):
+        """
+        Return a small ASCII art progressbar.
+        """
+        n = 0
+        if self.max:
+            n = int((self.pos / float(self.max)) * (width-3))
+        s = '|%%%ss|' % (width-2)
+        return s % ("="*n + ">").ljust(width-2)
+
+    @property
+    def elapsed(self):
+        """
+        Return time elapsed since the operation started.
+        """
+        return time.time() - self.start_time
+
+    @property
+    def eta(self):
+        """
+        Estimated time left to complete the operation. Depends on the
+        operation itself if this is correct or not.
+        """
+        if not self.pos:
+            return 0
+        sec = (time.time() - self.start_time) / self.pos
+        # we assume every step takes the same amount of time
+        return sec * (self.max - self.pos)
+
+    @property
+    def percentage(self):
+        """
+        Return percentage of steps done.
+        """
+        if self.max:
+            return (self.pos * 100) / self.max
+        return 0
+
+
 class InProgress(Signal, Object):
     """
     InProgress objects are returned from functions that require more time to
@@ -212,77 +285,6 @@ class InProgress(Signal, Object):
             '''
     }
 
-    class Progress(Signal):
-        """
-        Generic progress status object for InProgress. This object can be
-        used as 'progress' member of an InProgress object and the caller
-        can monitor the progress.
-        """
-        def __init__(self, max=0):
-            super(InProgress.Progress, self).__init__()
-            self.start_time = time.time()
-            self.pos = 0
-            self.max = max
-
-
-        def set(self, pos=None, max=None):
-            """
-            Set new status. The new status is pos of max.
-            """
-            if max is not None:
-                self.max = max
-            if pos is not None:
-                self.pos = pos
-            if pos > self.max:
-                self.max = pos
-            self.emit(self)
-
-
-        def update(self, diff=1):
-            """
-            Update position by the given difference.
-            """
-            self.set(self.pos + diff)
-
-
-        def get_progressbar(self, width=70):
-            """
-            Return a small ASCII art progressbar.
-            """
-            n = 0
-            if self.max:
-                n = int((self.pos / float(self.max)) * (width-3))
-            s = '|%%%ss|' % (width-2)
-            return s % ("="*n + ">").ljust(width-2)
-
-        @property
-        def elapsed(self):
-            """
-            Return time elapsed since the operation started.
-            """
-            return time.time() - self.start_time
-
-        @property
-        def eta(self):
-            """
-            Estimated time left to complete the operation. Depends on the
-            operation itself if this is correct or not.
-            """
-            if not self.pos:
-                return 0
-            sec = (time.time() - self.start_time) / self.pos
-            # we assume every step takes the same amount of time
-            return sec * (self.max - self.pos)
-
-        @property
-        def percentage(self):
-            """
-            Return percentage of steps done.
-            """
-            if self.max:
-                return (self.pos * 100) / self.max
-            return 0
-
 
     def __init__(self, abortable=False, frame=0):
         """
@@ -296,6 +298,7 @@ class InProgress(Signal, Object):
         self._finished_event = threading.Event()
         self._exception = None
         self._unhandled_exception = None
+        # TODO: make progress a property so we can document it.
         self.progress = None
         self.abortable = abortable
 

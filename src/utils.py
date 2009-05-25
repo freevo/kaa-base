@@ -25,7 +25,11 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ ]
+__all__ = [
+    'tempfile', 'which', 'Lock', 'daemonize', 'is_running', 'set_running',
+    'set_process_name', 'get_num_cpus', 'get_plugins', 'Singleton', 
+    'property', 'sysimport', 'wraps', 'DecoratorDataStore',
+]
 
 import sys
 import os

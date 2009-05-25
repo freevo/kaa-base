@@ -37,7 +37,8 @@ import logger
 
 # InProgress class
 from async import TimeoutException, InProgress, InProgressCallback, \
-     InProgressAny, InProgressAll, InProgressAborted, inprogress, delay
+     InProgressAny, InProgressAll, InProgressAborted, InProgressStatus, \
+     inprogress, delay
 
 # Import all classes, functions and decorators that are part of the API
 from object import Object

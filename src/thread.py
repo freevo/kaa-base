@@ -60,7 +60,7 @@ import types
 import nf_wrapper as notifier
 from callback import Callback
 from object import Object
-from async import InProgress, InProgressAborted
+from async import InProgress, InProgressAborted, InProgressStatus
 from utils import wraps, DecoratorDataStore, sysimport, property
 
 # import python thread file
@@ -94,14 +94,14 @@ def threaded(name=None, priority=0, async=True, progress=False):
     async=True (default), otherwise it will cause invoking the decorated
     function to block (the main loop is kept alive) and its result is
     returned. If progress is True, the first argument to the function is
-    an InProgress.Progress object to return execution progress.
+    an InProgressStatus object to return execution progress.
 
     If name=kaa.MAINTHREAD, the decorated function will be invoked from
     the main thread.  (In this case, currently the priority kwarg is
     ignored.)
     """
     if progress is True:
-        progress = InProgress.Progress
+        progress = InProgressStatus
 
     def decorator(func):
         @wraps(func, lshift=int(not not progress))

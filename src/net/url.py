@@ -44,6 +44,7 @@ import urllib2
 
 # kaa imports
 from kaa import ThreadCallback, Signals, InProgress
+from kaa.utils import InProgressStatus
 
 # add password manager to urllib
 pm = urllib2.HTTPPasswordMgrWithDefaultRealm()
@@ -138,7 +139,7 @@ def _fetch_HTTP(url, filename, tmpname):
         url = url[:8+url[8:].find('/')] + \
               urllib.quote(url[8+url[8:].find('/'):])
     # FIXME: use kaa.threaded()
-    s = InProgress.Progress()
+    s = InProgressStatus()
     t = ThreadCallback(download, url, filename, tmpname, s)
     t.wait_on_exit = False
     async = t()

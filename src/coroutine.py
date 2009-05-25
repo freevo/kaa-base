@@ -58,7 +58,7 @@ import logging
 # kaa.base imports
 from utils import property, wraps, DecoratorDataStore
 from timer import Timer
-from async import InProgress, InProgressAborted
+from async import InProgress, InProgressAborted, InProgressStatus
 from generator import generator
 
 # get logging object
@@ -144,7 +144,7 @@ def coroutine(interval=0, policy=None, progress=False, group=None):
     property.
     """
     if progress is True:
-        progress = InProgress.Progress
+        progress = InProgressStatus
 
     def decorator(func):
         @wraps(func, lshift=int(not not progress))

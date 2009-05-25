@@ -39,7 +39,7 @@ master_doc = 'index'
 
 # General substitutions.
 project = 'kaa.base'
-copyright = '2005-2008, Dirk Meyer, Jason Tackaberry'
+copyright = '2005-2009, Dirk Meyer, Jason Tackaberry'
 
 # The default replacements for |version| and |release|, also used in various
 # other places throughout the built documents.

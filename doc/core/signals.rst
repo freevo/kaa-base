@@ -195,6 +195,9 @@ via :func:`kaa.inprogress`, and can therefore be yielded from a :ref:`coroutine 
         # Let's assume the 'terminated' signal gets emitted when the process
         # exits, which is handled elsewhere.
         yield kaa.inprogress(self.signals['terminated'])
+        
+        # Once we get here, the 'terminated' signal was emitted.
+        # [...]
 
 Here, the ``stop_process()`` coroutine is finished when the ``terminated`` signal
 is emitted.  For more information on coroutines, see the section on

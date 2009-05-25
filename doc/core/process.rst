@@ -3,7 +3,7 @@
 Sub-Process I/O
 ---------------
 
-.. kaaclass:: kaa.Process2
+.. kaaclass:: kaa.Process
 
    .. automethods::
    .. autoproperties::

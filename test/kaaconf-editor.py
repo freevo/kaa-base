@@ -201,7 +201,7 @@ class Editor(object):
         pb = self.xml.get_widget('main').render_icon(gtk.STOCK_DIRECTORY, gtk.ICON_SIZE_MENU)
 
         def add_group(parent, group):
-            for var in group.get_variables():
+            for var in group.variables:
                 if isinstance(getattr(group, var), kaa.config.Group):
                     node = store.append(parent, [pb, var])
                     add_group(node, getattr(group, var))
@@ -223,7 +223,7 @@ class Editor(object):
         self._current_cfg_path = self._current_cfg_path[0], []
         store = self._var_tree.get_model()
         store.clear()
-        for var in group.get_variables():
+        for var in group.variables:
             proxy = getattr(group, var)
             if isinstance(proxy, kaa.config.Group):
                 continue

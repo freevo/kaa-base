@@ -146,7 +146,9 @@ class Base(object):
                 monitor(name, oldval, self._value)
             o = o._parent
 
-    def get_parent(self):
+
+    @property
+    def parent(self):
         return self._parent
 
 
@@ -342,9 +344,10 @@ class Group(Base):
         self._vars.append(name)
 
 
-    def get_variables(self):
+    @property
+    def variables(self):
         """
-        Returns a list of variables for this group.
+        List of variables for this group.
         """
         return self._vars
 

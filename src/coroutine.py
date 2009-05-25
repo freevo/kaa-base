@@ -56,7 +56,7 @@ import sys
 import logging
 
 # kaa.base imports
-from utils import wraps, DecoratorDataStore
+from utils import property, wraps, DecoratorDataStore
 from timer import Timer
 from async import InProgress, InProgressAborted
 from generator import generator
@@ -297,6 +297,22 @@ class CoroutineInProgress(InProgress):
             raise AttributeError('invalid progress %s' % progress)
 
 
+    @property
+    def interval(self):
+        """
+        The interval between the coroutine yielding a ``kaa.NotFinished`` or
+        :class:`~kaa.InProgress` and reentry.
+        """
+        return self._interval
+
+    @interval.setter  
+    def interval(self, interval):
+        if self._timer and self._timer.active:
+            # restart timer
+            self._timer.start(interval)
+        self._interval = interval
+
+
     def _continue(self, *args, **kwargs):
         """
         Restart timer to call _step() after interval seconds.
@@ -363,16 +379,6 @@ class CoroutineInProgress(InProgress):
         """
         self._stop(finished=True)
         return super(CoroutineInProgress, self).throw(*args)
-
-
-    def set_interval(self, interval):
-        """
-        Set a new interval for the internal timer.
-        """
-        if self._timer and self._timer.active:
-            # restart timer
-            self._timer.start(interval)
-        self._interval = interval
 
 
     def abort(self, exc=None):

@@ -43,8 +43,7 @@ import urllib
 import urllib2
 
 # kaa imports
-from kaa import ThreadCallback, Signals, InProgress
-from kaa.utils import InProgressStatus
+from kaa import ThreadCallback, InProgressStatus, Signals, InProgress
 
 # add password manager to urllib
 pm = urllib2.HTTPPasswordMgrWithDefaultRealm()

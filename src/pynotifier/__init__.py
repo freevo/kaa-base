@@ -5,7 +5,7 @@
 #
 # package initialisation
 #
-# Copyright (C) 2004, 2005, 2006
+# Copyright 2004, 2005, 2006
 #		Andreas Büsching <crunchy@bitkipper.net>
 #
 # This library is free software; you can redistribute it and/or modify

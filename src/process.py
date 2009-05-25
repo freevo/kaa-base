@@ -6,7 +6,7 @@
 #
 # -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
-# Copyright (C) 2008-2009 Dirk Meyer, Jason Tackaberry, et al.
+# Copyright 2008-2009 Dirk Meyer, Jason Tackaberry, et al.
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version
@@ -104,7 +104,7 @@ class _Supervisor(object):
            1. SIGCHLD received, and Python's internal C sig handler then
               queues the python handler to run after the bytecode that called
               Python select() completes
-           2. low level (C) select() aborts with EINTR (because select ignores
+           2. low level select() aborts with EINTR (because select ignores
               SA_RESTART bit) and select_error exception is set (but not
               raised into Python yet)
            3. The bytecode responsible for calling select() completes and the

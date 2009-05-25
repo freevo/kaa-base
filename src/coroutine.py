@@ -29,7 +29,7 @@
 #
 # -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
-# Copyright (C) 2006-2009 Dirk Meyer, Jason Tackaberry, et al.
+# Copyright 2006-2009 Dirk Meyer, Jason Tackaberry, et al.
 #
 # Please see the file AUTHORS for a complete list of authors.
 #

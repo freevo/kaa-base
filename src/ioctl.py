@@ -5,7 +5,7 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2005,2006 Rob Shortt, Dirk Meyer, Jason Tackaberry
+# Copyright 2005,2006 Rob Shortt, Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.
 #

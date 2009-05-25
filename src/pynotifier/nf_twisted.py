@@ -5,7 +5,7 @@
 #
 # A notifier implementation using Twisted.
 #
-# Copyright (C) 2008
+# Copyright 2008
 # Rob Shortt <rob@tvcentric.com>
 #
 # This library is free software; you can redistribute it and/or modify

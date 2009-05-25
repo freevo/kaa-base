@@ -14,7 +14,7 @@
 # signal to detect this.
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2008-2009 Dirk Meyer
+# Copyright 2008-2009 Dirk Meyer
 #
 # Please see the file AUTHORS for a complete list of authors.
 #

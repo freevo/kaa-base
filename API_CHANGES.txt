@@ -15,19 +15,36 @@ existing methods) may be introduced at any time.
 Changes for 0.6.0
 -----------------
 
-1.  Callback.(set|get)_ignore_caller_args() and (set|get)_user_args_first() are
-    replaced by properties named ignore_caller_args and user_args_first
-    respectively.
+1. Callback.(set|get)_ignore_caller_args() and (set|get)_user_args_first() are
+   replaced by read/write properties named ignore_caller_args and
+   user_args_first respectively.
 
-2.  Callback.get_user_args() has changed to an internal method called 
-    _get_user_args()
+2. Callback.get_user_args() has changed to an internal method called 
+   _get_user_args()
 
-3. Timer.get_interval() is now a property called Timer.interval
+3. Timer.get_interval() is now a read-only property called 'interval'
 
-4. active() method changed to active property for the following classes:
-   Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, ThreadInProgress,
-   Event.
+4. active() method changed to read-only property called 'active' for the
+   following classes: Timer, WeakTimer, OneShotTimer, WeakOneShotTimer,
+   ThreadInProgress, Event.
 
+5. WeakCallback.set_weakref_destroyed_cb() is now a read/write property
+   called 'weakref_destroyed_cb'
+
+6. CoroutineInProgress.set_interval() is now a read/write property called
+   'interval'
+
+7. ThreadCallback.wait_on_exit() is now a read/write property called
+   'wait_on_exit'
+
+8. Database.add_object() has been renamed to add(); 
+   Database.update_object() has been renamed to update()
+
+9. config.Group.get_variables() is now a read-only property called 'variables';
+   config.Group.get_parent() is now a read-only property called 'parent'.
+
+10. The (nested) InProgress.Progress class has been pulled out from InProgress
+    and renamed to InProgressStatus.
 
 
 Changes for 0.5.0

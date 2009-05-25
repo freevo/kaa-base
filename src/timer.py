@@ -87,7 +87,7 @@ def timed(interval, timer=None, policy=POLICY_MANY):
                 return True
             store = DecoratorDataStore(func, newfunc, args)
             # check current timer
-            if 'timer' in store and store.timer and store.timer.active():
+            if 'timer' in store and store.timer and store.timer.active:
                 if policy == POLICY_ONCE:
                     # timer already running and not override
                     return False
@@ -142,7 +142,7 @@ class Timer(notifier.NotifierCallback):
 
         :param interval: interval between invocations of the callback, in seconds
         """
-        if self.active():
+        if self.active:
             if not self.restart_when_active:
                 return
             self.unregister()
@@ -177,7 +177,7 @@ class Timer(notifier.NotifierCallback):
         This is considered an internal function (required to be implemented by
         subclasses of NotifierCallback).  User should use stop() instead.
         """
-        if self.active():
+        if self.active:
             notifier.timer_remove(self._id)
             super(Timer, self).unregister()
         self.__interval = None
@@ -188,7 +188,7 @@ class Timer(notifier.NotifierCallback):
         Run the callback.  (This is done internally by the notifier; the user will
         generally never do this directly.)
         """
-        if not self.active():
+        if not self.active:
             # This happens if previous timer that has been called
             # during the same step has stopped us. This should not
             # happen anymore.

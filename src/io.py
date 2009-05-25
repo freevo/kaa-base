@@ -81,7 +81,7 @@ class IOMonitor(notifier.NotifierCallback):
         :type fd: File descriptor or any file-like object
         :param condition: IO_READ or IO_WRITE
         """
-        if self.active():
+        if self.active:
             if fd != self._id or condition != self._condition:
                 raise ValueError('Existing file descriptor already registered with this IOMonitor.')
             return
@@ -97,7 +97,7 @@ class IOMonitor(notifier.NotifierCallback):
         """
         Unregister the IOMonitor
         """
-        if not self.active():
+        if not self.active:
             return
         if not is_mainthread():
             return MainThreadCallback(self.unregister)()
@@ -411,7 +411,7 @@ class IOChannel(Object):
             return
         elif not self._is_read_connected() and not self._is_readline_connected():
             self._rmon.unregister()
-        elif not self._rmon.active():
+        elif not self._rmon.active:
             self._rmon.register(self.fileno, IO_READ)
 
 
@@ -750,7 +750,7 @@ class IOChannel(Object):
                     return False
             inprogress.signals['abort'].connect(abort)
             self._write_queue.append((data, inprogress))
-            if self._channel and self._wmon and not self._wmon.active():
+            if self._channel and self._wmon and not self._wmon.active:
                 self._wmon.register(self.fileno, IO_WRITE)
         else:
             # We're writing the null string, nothing really to do.  We're

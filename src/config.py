@@ -917,7 +917,7 @@ class Config(Group):
 
     def _config_changed_cb(self, name, oldval, newval):
         if self._filename:
-            if not self._autosave_timer.active():
+            if not self._autosave_timer.active:
                 main.signals['exit'].connect(self.save)
             # Start/restart the timer to save in 5 seconds.
             self._autosave_timer.start(5)

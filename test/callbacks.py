@@ -124,7 +124,7 @@ print '(This could take 30 seconds or so.)'
 for i in range(2):
     kaa.main.step()
 test(result, [])
-test(timer.active(), False)
+test(timer.active, False)
 
 
 ##############################################################

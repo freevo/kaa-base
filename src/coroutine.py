@@ -372,7 +372,7 @@ class CoroutineInProgress(InProgress):
         """
         Set a new interval for the internal timer.
         """
-        if self._timer and self._timer.active():
+        if self._timer and self._timer.active:
             # restart timer
             self._timer.start(interval)
         self._interval = interval
@@ -403,7 +403,7 @@ class CoroutineInProgress(InProgress):
         """
         Stop the function, no callbacks called.
         """
-        if self._timer and self._timer.active():
+        if self._timer and self._timer.active:
             self._timer.stop()
 
         if self in _active_coroutines:

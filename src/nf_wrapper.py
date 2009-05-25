@@ -37,6 +37,7 @@ import atexit
 # notifier import
 from callback import Callback, WeakCallback, CallbackError
 from signals import Signal
+from utils import property
 
 # get logging object
 log = logging.getLogger('base')
@@ -62,9 +63,10 @@ class NotifierCallback(Callback):
         }
 
 
+    @property
     def active(self):
         """
-        FIXME: This should be a property.
+        True if the callback is registered with the notifier.
         """
         # callback is active if id is not None and python is not shutting down
         # if python is in shutdown, notifier unregister could crash
@@ -79,7 +81,7 @@ class NotifierCallback(Callback):
 
     def __call__(self, *args, **kwargs):
         if not self._get_callback():
-            if self.active():
+            if self.active:
                 self.unregister()
             return False
 

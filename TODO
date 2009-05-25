@@ -6,7 +6,6 @@ TODO before 1.0:
   is better to do that now than after 1.0 :)
 
     WeakCallback.set_weakref_destroyed_cb -> WeakCallback.weakref_destroyed_cb property
-    NotifierCallback.active() -> should be property
     CoroutineInProgress.set_interval -> CoroutineInProgress.interval property
     Database.add_object -> Database.add
     Database.update_object -> Database.update

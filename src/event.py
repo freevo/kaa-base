@@ -39,6 +39,7 @@ import logging
 from nf_wrapper import NotifierCallback, WeakNotifierCallback
 from thread import MainThreadCallback, is_mainthread
 from timer import OneShotTimer
+from utils import property
 
 # get logging object
 log = logging.getLogger('base')
@@ -122,9 +123,10 @@ class EventHandler(NotifierCallback):
             manager.handler.append(self)
 
 
+    @property
     def active(self):
         """
-        Return if the object is bound to the event manager.
+        True if the object is bound to the event manager.
         """
         return self in manager.handler
 
@@ -169,7 +171,7 @@ class EventManager(object):
         Add event to the queue.
         """
         self.queue.append(event)
-        if not self.timer.active():
+        if not self.timer.active:
             self.timer.start(0)
 
 
@@ -192,7 +194,7 @@ class EventManager(object):
         except Exception, e:
             log.exception('event callback')
         self.locked = False
-        if self.queue and not self.timer.active():
+        if self.queue and not self.timer.active:
             self.timer.start(0)
 
 manager = EventManager()

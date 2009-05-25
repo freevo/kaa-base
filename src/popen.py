@@ -207,7 +207,7 @@ class Process(object):
         if not self.child:
             return
 
-        if self._wmon and self._wmon.active():
+        if self._wmon and self._wmon.active:
             self._close_stdin = True
         else:
             self.child.tochild.close()
@@ -221,7 +221,7 @@ class Process(object):
             raise ValueError("Can't write when stdin has been closed")
 
         self._write_buffer.append(data)
-        if self.child and self._wmon and not self._wmon.active():
+        if self.child and self._wmon and not self._wmon.active:
             self._wmon.register(self.child.tochild, IO_WRITE)
 
 

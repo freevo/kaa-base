@@ -5,10 +5,7 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2007 Dirk Meyer, Jason Tackaberry
-#
-# First Edition: Dirk Meyer <dmeyer@tzi.de>
-# Maintainer:    Dirk Meyer <dmeyer@tzi.de>
+# Copyright (C) 2007-2009 Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.
 #

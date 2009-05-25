@@ -8,9 +8,6 @@
 # kaa.base - The Kaa Application Framework
 # Copyright (C) 2007-2009 Dirk Meyer, Jason Tackaberry, et al.
 #
-# First Version: Dirk Meyer <dmeyer@tzi.de>
-# Maintainer:    Dirk Meyer <dmeyer@tzi.de>
-#
 # Please see the file AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify

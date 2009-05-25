@@ -7,9 +7,6 @@
 # -----------------------------------------------------------------------------
 # Copyright (C) 2006-2009 Dirk Meyer, Jason Tackaberry
 #
-# First Edition: Dirk Meyer <dmeyer@tzi.de>
-# Maintainer:    Dirk Meyer <dmeyer@tzi.de>
-#
 # Please see the file AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify

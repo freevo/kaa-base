@@ -8,9 +8,6 @@
 # kaa.input - Kaa input subsystem
 # Copyright (C) 2005-2009 Dirk Meyer, Jason Tackaberry
 #
-# First Edition: Jason Tackaberry <tack@urandom.ca>
-# Maintainer:    Jason Tackaberry <tack@urandom.ca>
-#
 # Please see the file AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify

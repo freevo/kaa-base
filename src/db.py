@@ -4,10 +4,7 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2006-2007 Dirk Meyer, Jason Tackaberry
-#
-# First Edition: Jason Tackaberry <tack@urandom.ca>
-# Maintainer:    Jason Tackaberry <tack@urandom.ca>
+# Copyright (C) 2006-2009 Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.
 #

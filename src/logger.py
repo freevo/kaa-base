@@ -9,10 +9,7 @@
 # defined when needed.
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2006 Dirk Meyer, Jason Tackaberry
-#
-# First Edition: Dirk Meyer <dischi@freevo.org>
-# Maintainer:    Dirk Meyer <dischi@freevo.org>
+# Copyright (C) 2006-2009 Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.
 #

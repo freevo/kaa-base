@@ -5,10 +5,7 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# Copyright (C) 2005,2006 Dirk Meyer, Jason Tackaberry
-#
-# First Edition: Rob Shortt <rob@tvcentric.com>
-# Maintainer:    Rob Shortt <rob@tvcentric.com>
+# Copyright (C) 2005,2006 Rob Shortt, Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.
 #

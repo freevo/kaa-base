@@ -75,10 +75,6 @@
 # -----------------------------------------------------------------------------
 # Copyright (C) 2006-2009 Dirk Meyer, Jason Tackaberry
 #
-# First Edition: Dirk Meyer <dischi@freevo.org>
-# Maintainer:    Dirk Meyer <dischi@freevo.org>
-#                Jason Tackaberry <tack@urandom.ca>
-#
 # Please see the file AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify

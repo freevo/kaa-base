@@ -56,7 +56,7 @@ def weakref_data(data, destroy_cb = None):
     elif type(data) == types.MethodType:
         cb = WeakCallback(data)
         if destroy_cb:
-            cb.set_weakref_destroyed_cb(destroy_cb)
+            cb.weakref_destroyed_cb = destroy_cb
             cb.ignore_caller_args = True
         return cb
     elif type(data) in (list, tuple):
@@ -316,12 +316,6 @@ class WeakCallback(Callback):
         self._weakref_destroyed_user_cb = callback
 
 
-    def set_weakref_destroyed_cb(self, callback):
-        import traceback
-        log.warning('Deprecated call to Callback.set_weakref_destroyed_cb(); use weakref_destroyed_cb property')
-        traceback.print_stack()
-        self._weakref_destroyed_user_cb = callback
-   
 
     def _weakref_destroyed(self, object):
         if _python_shutting_down != False:

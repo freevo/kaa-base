@@ -75,21 +75,29 @@ def make_exception_class(name, bases, dict):
 
 def inprogress(obj):
     """
-    Returns a suitable InProgress for the given object.  This function simply
-    calls ``__inprogress__`` of the given ``obj`` if one exists, and if not will raise
-    an exception.  In this sense, it behaves quite similar to ``len()`` and
-    ``__len__``.
+    Returns a suitable :class:`~kaa.InProgress` for the given object.
+
+    :param obj: object to represent as an InProgress.
+    :return: an :class:`~kaa.InProgress` representing ``obj``
+    
+    The precise behaviour of an object represented as an
+    :class:`~kaa.InProgress` should be defined in the documentation for the
+    class.  For example, the :class:`~kaa.InProgress` for a
+    :class:`~kaa.Process` object will be finished when the process is
+    terminated.
+    
+    This function simply calls ``__inprogress__()`` of the given ``obj`` if one
+    exists, and if not will raise an exception.  In this sense, it behaves
+    quite similar to ``len()`` and ``__len__()``.
 
     It is safe to call this function on InProgress objects.  (The InProgress
     object given will simply be returned.)
 
-    :param obj: object to represent as an InProgress.
-    :return: an :class:`~kaa.InProgress` representing ``obj``
     """
     try:
         return obj.__inprogress__()
     except AttributeError:
-        raise TypeError("object of type '%s' has no inprogress()" % obj.__class__.__name__)
+        raise TypeError("object of type '%s' has no __inprogress__()" % obj.__class__.__name__)
 
 
 def delay(seconds):

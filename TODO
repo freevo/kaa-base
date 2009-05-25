@@ -1,26 +1,7 @@
 TODO before 1.0:
 ----------------
 
-- Remove getters and setters (in the form get_foo() and set_foo()), using
-  instead properties.  This will result in significant API breakage, but
-  is better to do that now than after 1.0 :)
-
-    WeakCallback.set_weakref_destroyed_cb -> WeakCallback.weakref_destroyed_cb property
-    CoroutineInProgress.set_interval -> CoroutineInProgress.interval property
-    Database.add_object -> Database.add
-    Database.update_object -> Database.update
-    Database.query -> make it a coroutine
-    ThreadCallback.wait_on_exit -> property instead of function
-
 - Complete documentation
-
-- Adjust code to new Process class to remove kaa.popen. The following
-  parts in kaa uses kaa.Process: popcorn (requires rewrite anyway) and
-  beacon in the video thumbnailer and cdrom.py to (u)mount. Freevo 2.0
-  uses it in the tvserver plugins (dvbstreamer and mplayer), some
-  small one-lines that should work with kaa.Process2 without changes,
-  and the games code which is broken anyway. Freevo 1.x is not using
-  it at all.
 
 
 TODO either before or after 1.0:

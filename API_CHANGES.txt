@@ -46,6 +46,23 @@ Changes for 0.6.0
 10. The (nested) InProgress.Progress class has been pulled out from InProgress
     and renamed to InProgressStatus.
 
+11. kaa.Process has been completely rewritten:
+       a. signals['stdout'] -> stdout.signals['readline']
+       b. signals['raw-stdout'] -> stdout.signals['read']
+       c. signals['stderr'] -> stderr.signals['readline']
+       d. signals['raw-stderr'] -> stderr.signals['read']
+       e. signals['completed'] -> signals['finished'] or signals['exited']
+          depending on the desired behaviour (see docs).
+       f. is_alive() -> alive property
+       g. stop() is now a coroutine and finishes when the process is dead
+       h. set_stop_command() -> read/write property 'stop_command'
+       i. close_stdin() -> stdin.close()
+       k. get_pid() -> read-only property 'pid'
+
+   Several new methods and properties are available now.  Notably, read() and
+   readline(), which are coroutines.  See documentation for more details.
+
+         
 
 Changes for 0.5.0
 -----------------

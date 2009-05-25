@@ -58,6 +58,9 @@ Changes for 0.6.0
        h. set_stop_command() -> read/write property 'stop_command'
        i. close_stdin() -> stdin.close()
        k. get_pid() -> read-only property 'pid'
+       l. 'readline' signal now only delimits on \n by default, as opposed to
+          both \r _or_ \n like the old class.  To delimit on either, set the
+          delimiter property to ['\r', '\n']
 
    Several new methods and properties are available now.  Notably, read() and
    readline(), which are coroutines.  See documentation for more details.

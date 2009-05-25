@@ -65,7 +65,7 @@ import nf_wrapper as notifier
 from callback import Callback
 from object import Object
 from async import InProgress, InProgressAborted
-from utils import wraps, DecoratorDataStore, sysimport
+from utils import wraps, DecoratorDataStore, sysimport, property
 
 # import python thread file
 LockType = sysimport('thread').LockType
@@ -445,9 +445,10 @@ class ThreadInProgress(InProgress):
         self._callback = None
 
 
+    @property
     def active(self):
         """
-        Return True if the callback is still waiting to be processed.
+        True if the callback is still waiting to be processed.
         """
         return self._callback is not None
 

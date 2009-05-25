@@ -75,8 +75,7 @@ from coroutine import NotFinished, coroutine, \
 from generator import Generator, generator
 
 # process management
-from popen import Process
-from process import Process2
+from process import Process
 
 # special gobject thread support
 from gobject import GOBJECT, gobject_set_threaded

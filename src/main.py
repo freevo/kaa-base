@@ -47,7 +47,6 @@ import atexit
 import nf_wrapper as notifier
 from signals import Signal, Signals
 from timer import OneShotTimer
-from popen import proclist as _proclist
 from process import supervisor
 from thread import is_mainthread, wakeup, set_as_mainthread, threaded, MAINTHREAD
 from thread import killall as kill_jobserver
@@ -225,16 +224,9 @@ def stop():
     signals["shutdown"].disconnect_all()
     signals["step"].disconnect_all()
 
-    supervisor.stopall()
-    _proclist.stop_all() # XXX: deprecated
-
     # Kill processes _after_ shutdown emits to give callbacks a chance to
     # close them properly.
-    # XXX: deprecated
-    _proclist.kill_all()
-    while _proclist.check():
-        # wait until all processes are stopped
-        step()
+    supervisor.stopall()
 
     kill_jobserver()
     # One final attempt to reap any remaining zombies

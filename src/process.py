@@ -24,7 +24,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Process2', 'supervisor' ]
+__all__ = [ 'Process', 'supervisor' ]
 
 import subprocess
 import os
@@ -208,7 +208,7 @@ class IOSubChannel(IOChannel):
 
 
 
-class Process2(Object):
+class Process(Object):
 
     STATE_STOPPED = 0  # Idle state, no child.
     STATE_RUNNING = 1  # start() was called and child is running
@@ -232,8 +232,8 @@ class Process2(Object):
             is emitted.
 
             It is allowed to have a callback connected to the *read* signal
-            and simultaneously use the :meth:`~kaa.Process2.read` and
-            :meth:`~kaa.Process2.readline` methods.
+            and simultaneously use the :meth:`~kaa.Process.read` and
+            :meth:`~kaa.Process.readline` methods.
             ''',
 
         'readline':
@@ -247,9 +247,9 @@ class Process2(Object):
                :type line: str
 
             It is not allowed to have a callback connected to the *readline* signal
-            and simultaneously use the :meth:`~kaa.Process2.readline` method.
+            and simultaneously use the :meth:`~kaa.Process.readline` method.
 
-            Refer to :meth:`~kaa.Process2.readline` for more details.
+            Refer to :meth:`~kaa.Process.readline` for more details.
             ''',
 
         'finished':
@@ -268,7 +268,7 @@ class Process2(Object):
             exited and all data has been consumed (or stdout and stderr
             explicitly closed).
 
-            After this signal emits, the :attr:`~kaa.Process2.readable`
+            After this signal emits, the :attr:`~kaa.Process.readable`
             property will be False.
             ''',
 
@@ -281,9 +281,9 @@ class Process2(Object):
                :param exitcode: the exit code of the child
                :type expected: int
 
-            Unlike the :attr:`~kaa.Process2.signals.finished` signal, this
+            Unlike the :attr:`~kaa.Process.signals.finished` signal, this
             signal emits when the child is dead (and has been reaped), however
-            the Process may or may not still be :attr:`~kaa.Process2.readable`.
+            the Process may or may not still be :attr:`~kaa.Process.readable`.
             '''
     }
 
@@ -291,7 +291,7 @@ class Process2(Object):
     def __init__(self, cmd, shell=False, dumpfile=None):
         """
         Create a Process object.  The subprocess is not started until
-        :meth:`~kaa.Process2.start` is called.
+        :meth:`~kaa.Process.start` is called.
 
         :param cmd: the command to be executed.
         :type cmd: string or list of strings
@@ -305,10 +305,10 @@ class Process2(Object):
 
         Process objects passed to :func:`kaa.inprogress` return a
         :class:`~kaa.InProgress` that corresponds to the
-        :attr:`~kaa.Process2.signals.finished` signal (not the
-        :attr:`~kaa.Process2.signals.exited` signal).
+        :attr:`~kaa.Process.signals.finished` signal (not the
+        :attr:`~kaa.Process.signals.exited` signal).
         """
-        super(Process2, self).__init__()
+        super(Process, self).__init__()
         self._cmd = cmd
         self._shell = shell
         self._stop_command = None
@@ -359,7 +359,7 @@ class Process2(Object):
         self.signals['read'].changed_cb = cb
         self.signals['readline'].changed_cb = cb
 
-        self._state = Process2.STATE_STOPPED 
+        self._state = Process.STATE_STOPPED 
         # InProgress for the whole process.  Is created in start(), and finished
         # when the process is terminated.
         self._in_progress = None
@@ -434,14 +434,14 @@ class Process2(Object):
         True if the child process is running.
 
         A child that is currently stopping is still considered running.  When
-        the ``running`` property is False, it means :meth:`~kaa.Process2.start`
+        the ``running`` property is False, it means :meth:`~kaa.Process.start`
         may safely be called.
 
-        To test whether :meth:`~kaa.Process2.read` or :meth:`~kaa.Process2.write`
-        may be called, use the :attr:`~kaa.Process2.readable` and
-        :attr:`~kaa.Process2.writable` properties respectively.
+        To test whether :meth:`~kaa.Process.read` or :meth:`~kaa.Process.write`
+        may be called, use the :attr:`~kaa.Process.readable` and
+        :attr:`~kaa.Process.writable` properties respectively.
         """
-        return bool(self._child and self._state not in (Process2.STATE_STOPPED, Process2.STATE_HUNG))
+        return bool(self._child and self._state not in (Process.STATE_STOPPED, Process.STATE_HUNG))
 
 
     @property
@@ -455,7 +455,7 @@ class Process2(Object):
         
         This doesn't necessarily mean the child is still running: a terminated
         child may still be read from (there may be data buffered in its stdout
-        or stderr channels).  Use the :attr:`~kaa.Process2.running` property if
+        or stderr channels).  Use the :attr:`~kaa.Process.running` property if
         you want to see if the child is still running.
         """
         return self._stdout.readable or self._stderr.readable
@@ -466,11 +466,11 @@ class Process2(Object):
         """
         True if it is possible to write data to the child.
 
-        If the child process is writable, :meth:`~kaa.Process2.write` may
+        If the child process is writable, :meth:`~kaa.Process.write` may
         safely be called.  A child that is in the process of stopping is not
         writable.
         """
-        return bool(self._child and self._state == Process2.STATE_RUNNING)
+        return bool(self._child and self._state == Process.STATE_RUNNING)
 
 
     @property
@@ -497,7 +497,7 @@ class Process2(Object):
     @property
     def delimiter(self):
         """
-        String used to split data for use with :meth:`~kaa.Process2.readline`.
+        String used to split data for use with :meth:`~kaa.Process.readline`.
         """
         # stdout and stderr are the same.
         return self._stdout.delimiter
@@ -544,12 +544,12 @@ class Process2(Object):
            If timeout() is called on the returned InProgress and the timeout
            occurs, the InProgress returned by ``start()`` will be finished with
            a TimeoutException even though the child process isn't actually
-           dead.  You can always test the :attr:`~kaa.Process2.running`
-           property, or use the :attr:`~kaa.Process2.signals.finished` signal,
+           dead.  You can always test the :attr:`~kaa.Process.running`
+           property, or use the :attr:`~kaa.Process.signals.finished` signal,
            which doesn't emit until the child process is genuinely dead.
 
         """
-        if self._child and self._state != Process2.STATE_HUNG:
+        if self._child and self._state != Process.STATE_HUNG:
             raise IOError(errno.EEXIST, 'Child process has already been started')
 
         if not self._shell:
@@ -573,7 +573,7 @@ class Process2(Object):
         self._in_progress = InProgress()
         self._in_progress.signals['abort'].connect_weak(lambda exc: self.stop())
         self._exitcode = None
-        self._state = Process2.STATE_RUNNING
+        self._state = Process.STATE_RUNNING
 
         return self._in_progress
 
@@ -586,7 +586,7 @@ class Process2(Object):
         :param cmd: stop command used to attempt to terminate the child
                     gracefully; overrides the *stop_command* property if
                     specified.
-        :type cmd: string or callable; see :attr:`~kaa.Process2.stop_command`
+        :type cmd: string or callable; see :attr:`~kaa.Process.stop_command`
         :param wait: number of seconds to wait between termination steps 
                      (see below).
         :type wait: float
@@ -607,14 +607,14 @@ class Process2(Object):
 
         If after step 3 the child is still not dead, a SystemError exception
         is thrown to the InProgress, as well to the InProgress returned by
-        :meth:`~kaa.Process2.start` and the *finished* signal will be emitted
+        :meth:`~kaa.Process.start` and the *finished* signal will be emitted
         with the value None.
         """
-        if self._state != Process2.STATE_RUNNING:
+        if self._state != Process.STATE_RUNNING:
             # Process is either stopping or dying (or hung).
             yield
 
-        self._state = Process2.STATE_STOPPING
+        self._state = Process.STATE_STOPPING
         cmd = cmd or self._stop_command
         pid = self.pid  # See below why we save self.pid
 
@@ -636,7 +636,7 @@ class Process2(Object):
         # Either no stop command specified or our stop attempt timed out.
         # Try a relatively polite SIGTERM, then SIGKILL.
         for sig, pause in ((15, wait), (9, wait * 2)):
-            if self._state == Process2.STATE_STOPPED:
+            if self._state == Process.STATE_STOPPED:
                 # And we're done.
                 yield
             try:
@@ -660,9 +660,9 @@ class Process2(Object):
         # callback to 'exited' that restarts the child, which gets executed before
         # this coroutine resumes.  If our pid has changed, we know we died.  If the
         # pid is the same, we have a hung process.
-        if self._state != Process2.STATE_STOPPED and pid == self.pid:
+        if self._state != Process.STATE_STOPPED and pid == self.pid:
             # Child refuses to die even after SIGKILL. :(
-            self._state = Process2.STATE_HUNG
+            self._state = Process.STATE_HUNG
             exc = SystemError('Child process (pid=%d) refuses to die even after SIGKILL' % pid)
             self._in_progress.throw(SystemError, exc, None)
             raise exc
@@ -742,9 +742,9 @@ class Process2(Object):
                   stdout and stderr were both closed (which is almost certainly
                   because the process exited) and no data was available.
 
-        Like :meth:`~kaa.Process2.read`, it is possible busy-loop with this
+        Like :meth:`~kaa.Process.read`, it is possible busy-loop with this
         method, so you should test its output or test the
-        :attr:`~kaa.Process2.readable` property calling.
+        :attr:`~kaa.Process.readable` property calling.
         """
         return self._async_read(self._stdout.readline, self._stderr.readline)
 
@@ -791,7 +791,7 @@ class Process2(Object):
         log.debug('Checking child dead child=%s, state=%d, weakref=%s, stdin=%s, stdout=%s, stderr=%s', self._child,
                   self._state, self._cleanup_weakref, self._stdin.alive, self._stdout.alive, self._stderr.alive)
 
-        if not self._child or self._state in (Process2.STATE_STOPPED, Process2.STATE_DYING):
+        if not self._child or self._state in (Process.STATE_STOPPED, Process.STATE_DYING):
             # We're already dead or dying.
             if not self._stdout.alive and not self._stderr.alive and self._cleanup_weakref:
                 # Child is dead and all IOChannels are closed.  We no longer need
@@ -846,7 +846,7 @@ class Process2(Object):
     def _handle_dead(self):
         # This state prevents reentry into this method via 'closed' signal
         # of stdin IOChannel.
-        self._state = Process2.STATE_DYING
+        self._state = Process.STATE_DYING
 
         # Should be safe to wait() to collect zombies.  We shouldn't be here
         # unless the process actually is done.
@@ -864,7 +864,7 @@ class Process2(Object):
         # are not caused by us.
         supervisor.unregister(self)
 
-        self._state = Process2.STATE_STOPPED
+        self._state = Process.STATE_STOPPED
         # We don't emit 'finished' here, because stdout/stderr is still open
         # and there may be data yet to be read.  But we do emit 'exited'
         self.signals['exited'].emit(self._exitcode)

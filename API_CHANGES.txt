@@ -1,6 +1,71 @@
-The API for kaa.notifier has changed in releases 0.3.0 and 0.4.0. We
-think the API is now stable again. You need to check your code to
-adjust to the new API.
+During the 0.x development cycle of kaa.base, the API has changed several
+times.  This document describes incompatible API changes introduced in each
+released version.
+
+We are quickly approaching a 1.0 release.  After 1.0, the API will not change
+in any incompatible ways throughout the 1.0.x lifecycle.  Minor releases (1.x)
+may introduce incompatible API changes, but we will follow the standard Python
+approach of warning when an API usage is deprecated and provide a migration
+path (similar to that of Python's __future__ module).
+
+Compatible API changes (new methods and properties, or addition of kwargs to
+existing methods) may be introduced at any time.
+
+
+Changes for 0.6.0
+-----------------
+
+1.  Callback.(set|get)_ignore_caller_args() and (set|get)_user_args_first() are
+    replaced by properties named ignore_caller_args and user_args_first
+    respectively.
+
+2.  Callback.get_user_args() has changed to an internal method called 
+    _get_user_args()
+
+3. Timer.get_interval() is now a property called Timer.interval
+
+4. active() method changed to active property for the following classes:
+   Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, ThreadInProgress,
+   Event.
+
+
+
+Changes for 0.5.0
+-----------------
+
+1. InProgressCallback does not support a signal as argument anymore,
+   yield inprogress(signal) instead.
+
+2. @kaa.coroutine does not support the keyword synchronize anymore,
+   use policy=kaa.POLICY_SYNCHRONIZED instead.
+
+
+
+Changes for 0.4.0
+-----------------
+
+1. MainThreadCallback.set_async() is removed.  Calling a
+   MainThreadCallback will return an InProgress object, and the
+   new approach now is to wait() on this InProgress.
+
+2. Several decorators renamed:
+      @kaa.execute_in_timer  -->  @kaa.timed
+      @kaa.execute_in_thread  -->  @kaa.threaded
+      @kaa.execute_in_mainloop  --> @kaa.threaded(kaa.MAINTHREAD)
+      @kaa.yield_execution  -->  @kaa.coroutine
+
+   @kaa.timed also changed the parameter order and name. It is now
+   interval, timer (default Timer) and policy (default
+   POLICY_RESTART).
+
+3. SocketDispatcher and WeakSocketDispatcher are renamed to IOMonitor
+   and WeakIOMonitor.
+
+4. Rename YieldContinue to NotFinished
+   Rename YieldCallback to InProgressCallback
+   Remove YieldFunction from the API, the class is now only for
+   internal use and may change without further notice.
+
 
 
 Changes for 0.3.0
@@ -49,47 +114,3 @@ Changes for 0.3.0
    yield also returns the value or can raise an exception.
 
 
-Changes for 0.4.0
------------------
-
-1. MainThreadCallback.set_async() is removed.  Calling a
-   MainThreadCallback will return an InProgress object, and the
-   new approach now is to wait() on this InProgress.
-
-2. Several decorators renamed:
-      @kaa.execute_in_timer  -->  @kaa.timed
-      @kaa.execute_in_thread  -->  @kaa.threaded
-      @kaa.execute_in_mainloop  --> @kaa.threaded(kaa.MAINTHREAD)
-      @kaa.yield_execution  -->  @kaa.coroutine
-
-   @kaa.timed also changed the parameter order and name. It is now
-   interval, timer (default Timer) and policy (default
-   POLICY_RESTART).
-
-3. SocketDispatcher and WeakSocketDispatcher are renamed to IOMonitor
-   and WeakIOMonitor.
-
-4. Rename YieldContinue to NotFinished
-   Rename YieldCallback to InProgressCallback
-   Remove YieldFunction from the API, the class is now only for
-   internal use and may change without further notice.
-
-
-Changes for 0.5.0
------------------
-
-1. InProgressCallback does not support a signal as argument anymore,
-   yield inprogress(signal) instead.
-
-2. @kaa.coroutine does not support the keyword synchronize anymore,
-   use policy=kaa.POLICY_SYNCHRONIZED instead.
-
-
-Changes for 0.6.0
------------------
-
-1. The methods set_ignore_caller_args and set_user_args_first in
-   Callback are replaced by variables ignore_caller_args and
-   user_args_first. get_user_args is now called _get_user_args.
-
-2. Timer.get_interval() is now Timer.interval

@@ -1,12 +1,18 @@
-This module contains some basic code needed in all kaa modules. This
-is a requirement for all the other modules in the repository.
+Kaa is an umbrella project comprising a set of Python modules, mostly inclined
+toward solving problems in the domain of multimedia.
 
-The module also contains a mainloop. Some kaa modules like kaa-Display
-require the mainloop to be running, for other modules like kaa-Thumb
-it's optional and some like kaa-Metadata don't need the mainloop at
-all. The documentation of the module should explain if and why the
-mainloop is needed. If you already have a mainloop running, please
-read SourceDoc/MainLoop how to merge the mainloop you use with the
-kaa mainloop.
+kaa.base is an LGPL-licensed generic application framework, providing the
+foundation for other modules within Kaa, and can be used in any type of
+project, from small event-driven tools, to larger, complex applications.
 
-See http://www.freevo.org/kaa for more information
+The Kaa Application Framework includes a mainloop facility with an API for
+signals and callbacks, timers, thread and subprocess management, local IO and
+sockets (with TLS support), inter-process communication, and much more.
+
+Kaa also – and perhaps most importantly – provides a rich, practically magical
+API for asynchronous programming. Threads and coroutines in combination with
+InProgress objects, which are used extensively throughout Kaa, allow you to
+implement complex state machines responding to asynchronous events in very
+compact, readable code.
+
+See http://www.freevo.org/kaa for more information.

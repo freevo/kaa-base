@@ -73,7 +73,7 @@ class URLOpener(object):
         object.
         """
         t = ThreadCallback(self._fetch_thread, length)
-        t.wait_on_exit(False)
+        t.wait_on_exit = False
         return t()
 
 
@@ -140,7 +140,7 @@ def _fetch_HTTP(url, filename, tmpname):
     # FIXME: use kaa.threaded()
     s = InProgress.Progress()
     t = ThreadCallback(download, url, filename, tmpname, s)
-    t.wait_on_exit(False)
+    t.wait_on_exit = False
     async = t()
     async.progress = s
     return async

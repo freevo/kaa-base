@@ -117,7 +117,7 @@ def threaded(name=None, priority=0, async=True, progress=False):
                 callback = NamedThreadCallback((name, priority), func)
             else:
                 callback = ThreadCallback(func)
-                callback.wait_on_exit(False)
+                callback.wait_on_exit = False
 
             # callback will always return InProgress
             in_progress = callback(*args, **kwargs)
@@ -546,13 +546,18 @@ class ThreadCallback(ThreadCallbackBase):
     impossible to fork the current process into a second one without exec both
     using the main loop because of the shared _thread_notifier_pipe.
     """
-    _daemon = False
+    _wait_on_exit = True
 
-    def wait_on_exit(self, wait=False):
+    @property
+    def wait_on_exit(self):
         """
-        Wait for the thread on application exit. Default is True.
+        If True (default), wait for the thread on application exit.
         """
-        self._daemon = not wait
+        return self._daemon
+
+    @wait_on_exit.setter
+    def wait_on_exit(self, wait):
+        self._wait_on_exit = wait
 
 
     def _create_thread(self, *args, **kwargs):
@@ -563,7 +568,7 @@ class ThreadCallback(ThreadCallbackBase):
         async = ThreadInProgress(cb, *args, **kwargs)
         # create thread and setDaemon
         t = threading.Thread(target=async)
-        t.setDaemon(self._daemon)
+        t.setDaemon(not self._wait_on_exit)
         # connect thread.join to the InProgress
         join = lambda *args, **kwargs: t.join()
 

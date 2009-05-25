@@ -574,7 +574,7 @@ class Process2(Object):
         self._stderr.wrap(self._child.stderr, IO_READ)
 
         self._in_progress = InProgress()
-        self._in_progress.signals['abort'].connect_weak(self.stop)
+        self._in_progress.signals['abort'].connect_weak(lambda exc: self.stop())
         self._exitcode = None
         self._state = Process2.STATE_RUNNING
 

@@ -818,7 +818,7 @@ class Database:
         return count
 
 
-    def add_object(self, object_type, parent = None, **attrs):
+    def add(self, object_type, parent = None, **attrs):
         """
         Adds an object of type 'object_type' to the database.  Parent is a
         (type, id) tuple which refers to the object's parent.  'object_type'
@@ -886,13 +886,13 @@ class Database:
         return ObjectRow(None, None, attrs)
 
 
-    def update_object(self, obj, parent=None, **attrs):
+    def update(self, obj, parent=None, **attrs):
         """
         Update an object in the database.  For updating, object is identified
         by a (type, id) tuple or an ObjectRow instance.  Parent is a (type, id)
         tuple or ObjectRow instance, which refers to the object's parent.  If
         specified, the object is reparented, otherwise the parent remains the
-        same as when it was added with add_object().  attrs kwargs will vary
+        same as when it was added with add().  attrs kwargs will vary
         based on object type.  If a ATTR_SIMPLE attribute is set to None, it
         will be removed from the pickled dictionary.
         """
@@ -972,7 +972,7 @@ class Database:
             # Remove existing indexed words for this object.
             self._delete_object_inverted_index_terms((object_type, object_id), ivtidx)
 
-            # FIXME: code duplication from add_object
+            # FIXME: code duplication from add()
             # Need to reindex all columns in this object using this ivtidx.
             terms_list = []
             for name, (attr_type, flags, attr_ivtidx, attr_split) in type_attrs.items():

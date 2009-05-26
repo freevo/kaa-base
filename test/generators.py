@@ -16,7 +16,7 @@ def coroutine_test():
     GeneratorExit to be stopped. Each value yielded will be send to
     the generator.
     """
-    print kaa.is_mainthread()
+    print "Is main thread:", kaa.is_mainthread()
     yield kaa.NotFinished
     yield 1
     x = yield async()
@@ -25,6 +25,10 @@ def coroutine_test():
     yield kaa.NotFinished
     yield 3
 
+@kaa.coroutine()
+def indirect():
+    yield (yield coroutine_test())
+
 @kaa.generator()
 @kaa.threaded()
 def thread_test():
@@ -32,7 +36,7 @@ def thread_test():
     Test with a generator in a thread. Each value from yield is send
     to the generator.
     """
-    print kaa.is_mainthread()
+    print "Is main thread:", kaa.is_mainthread()
     yield 1
     yield 2
     yield 3
@@ -64,7 +68,7 @@ def generic_test(generator):
 
 @kaa.coroutine()
 def main():
-    for test in (coroutine_test, thread_test, generic_test):
+    for test in (coroutine_test, indirect, thread_test, generic_test):
         # we need to sync on start. If the generator returns it is not
         # done. The thread may still be running and so does the
         # coroutine. It only menas that we have at least one item

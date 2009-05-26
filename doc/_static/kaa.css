@@ -1,0 +1,64 @@
+div.kaa.synopsis table {
+    border-top: 1px solid #d2b089;
+    border-bottom: 1px solid #d2b089;
+    width: 95%;
+    margin: 0 auto;
+    background-color: #f8f0e6;
+    padding: 5px;
+    margin-bottom: 1em;
+}
+
+div.kaa.synopsis th {
+    white-space: nowrap;
+    border-bottom: 1px solid #efddc8;
+    padding-right: 1em;
+    vertical-align: top;
+}
+
+div.kaa.synopsis td {
+    border-bottom: 1px solid #efddc8;
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+    vertical-align: top;
+    white-space: nowrap;
+}
+
+div.kaa.synopsis td.desc {
+    padding-left: 1em;
+    width: 100%;
+    vertical-align: top;
+    white-space: normal;
+}
+
+div.kaa.synopsis p {
+        padding-left: 1.5em;
+}
+
+div.kaa.synopsis p.hierarchy .current {
+    background-color: #cfe3ff;
+    padding: 2px;
+    font-weight: normal;
+}
+
+p.hierarchy tt {
+    font-weight: normal;
+}
+
+div.kaa.synopsis div.heading {
+    font-weight: bold;
+    margin-top: 0.5em;
+    margin-bottom: 0.3em;
+
+}
+
+dl.class > dt:first-child {
+    font-size: 105%;
+    border: 1px solid #dbb1ea;
+    padding: 3px 0.5em;
+    margin-top: 2em;
+    background-color: #f3e6f8;
+}
+
+dt:target, .highlight {
+    background-color: #fbe54e !important;
+}

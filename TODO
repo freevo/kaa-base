@@ -1,0 +1,13 @@
+TODO before 1.0:
+----------------
+
+- Complete documentation
+
+
+TODO either before or after 1.0:
+--------------------------------
+
+- Unit testing suite (preferably before)
+
+- Eliminate explicit type() checking.  Even isinstance() should be avoided
+  where possible, relying instead of duck typing.

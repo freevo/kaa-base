@@ -1,9 +1,25 @@
 Release Notes, see ChangeLog for a detailed list of changes.
 
+0.6.0, 2009-05-25
+
+* Final round of incompatible API changes before a 1.0 release.  See
+  API_CHANGES for details.
+* New class IOChannel, which provides advanced, asynchronous I/O to anything
+  that can be represented as a file descriptor (pipes, sockets, files, etc.)
+* kaa.Process rewrite
+* Began documentation (under doc/); core functionality is almost fully
+* documented.
+* Asynchronous tasks may now be aborted via InProgress.abort(); this 
+  (especially) includes coroutines and threads.
+* New base class kaa.Object from with most kaa classes (those which
+  provide signals) derive.
+* Other core improvements and bug fixes.
+
+
 0.4.0, 2008-03-24
 
 * Again some API changes for kaa.notifier. Please read
-  API_CHANGES.txt for details. The API should be stable now.
+  API_CHANGES for details. The API should be stable now.
 * synchronized decorator
 * Support to run a glib mainloop in an extra thread
 * TLS socket support using tlslite
@@ -15,7 +31,7 @@ Release Notes, see ChangeLog for a detailed list of changes.
 
 0.3.0, 2008-02-04
 
-* API changes for kaa.notifier. Please read API_CHANGES.txt for
+* API changes for kaa.notifier. Please read API_CHANGES for
   details. All classes from kaa.notifier are now in the kaa
   namespace and yield_execution has changed.
 * Add new native twisted notifier

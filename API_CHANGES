@@ -65,16 +65,21 @@ Changes for 0.6.0
    Several new methods and properties are available now.  Notably, read() and
    readline(), which are coroutines.  See documentation for more details.
 
-         
 
-Changes for 0.5.0
------------------
+12. InProgressCallback does not support a signal as argument anymore,
+    yield inprogress(signal) instead.
 
-1. InProgressCallback does not support a signal as argument anymore,
-   yield inprogress(signal) instead.
+13. @kaa.coroutine does not support the keyword synchronize anymore,
+    use policy=kaa.POLICY_SYNCHRONIZED instead.
 
-2. @kaa.coroutine does not support the keyword synchronize anymore,
-   use policy=kaa.POLICY_SYNCHRONIZED instead.
+14. InProgressSignals and InProgressList classes have been replaced with
+    InProgressAny and InProgressAll classes.  The latter are not direct
+    translations but similar functionality can be obtained.
+
+15. Semantics of the 'step' signal has changed: rather than being more like
+    an idle signal, it now emits only for each iteration of the main loop.
+    Therefore if there is nothing for the mainloop to do, the 'step' signal
+    will not emit.
 
 
 

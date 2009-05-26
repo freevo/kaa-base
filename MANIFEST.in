@@ -1,4 +1,5 @@
 recursive-include src *.py *.c *.h
 recursive-include test *.py
+recursive-include doc/html *
 
-include ChangeLog MANIFEST README COPYING TODO AUTHORS NEWS
+include ChangeLog MANIFEST README COPYING TODO AUTHORS NEWS API_CHANGES

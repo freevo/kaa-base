@@ -3,7 +3,7 @@
 The Core Framework
 ==================
 
-Blah.
+TODO: insert introduction here.
 
 Contents:
 

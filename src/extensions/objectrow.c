@@ -33,6 +33,8 @@
 #define ATTR_SIMPLE              0x01
 #define ATTR_INDEXED             0x04
 #define ATTR_IGNORE_CASE         0x08
+#define ATTR_INVERTED_INDEX      0x10
+
 #define ATTR_INDEXED_IGNORE_CASE (ATTR_INDEXED | ATTR_IGNORE_CASE)
 #define IS_ATTR_INDEXED_IGNORE_CASE(attr) ((attr & ATTR_INDEXED_IGNORE_CASE) == ATTR_INDEXED_IGNORE_CASE)
 
@@ -293,6 +295,19 @@ convert(ObjectRow_PyObject *self, ObjectAttribute *attr, PyObject *value)
     return value;
 }
 
+static PyObject *
+get_default_for_attr(ObjectAttribute *attr)
+{
+    if (attr->flags & ATTR_INVERTED_INDEX)
+        // If the attr is an inverted index, return an empty list.
+        return PyList_New(0);
+
+    // Otherwise return None.
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+
 PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
 {
     char *skey = 0,
@@ -388,10 +403,10 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
     if (attr && attr->index == -1 && !self->has_pickle && self->query_info->pickle_idx != -1) {
         /* Attribute is valid and pickle column exists in sql row, but pickle
          * is None, which means this attribute was never assigned a value, so
-         * return None.
+         * return suitable default ([] for ivtidx, and None for everything
+         * else)
          */
-         Py_INCREF(Py_None);
-         return Py_None;
+        return get_default_for_attr(attr);
     }
 
     /* Raise exception if attribute name isn't known, or if the requested
@@ -424,8 +439,8 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
 
     value = PyDict_GetItemString(self->pickle, skey);
     if (!value)
-        // Attribute isn't stored in pickle, which means it's None.
-        value = Py_None;
+        // Attribute isn't stored in pickle, so return suitable default.
+        return get_default_for_attr(attr);
 
     return convert(self, attr, value);
 }

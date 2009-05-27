@@ -306,7 +306,7 @@ class Database:
         rows = cursor.fetchall()
         self._lock.release()
         #t1=time.time()
-        #print "QUERY [%.04f%s]: %s" % (t1-t0, ('', ' (many)')[many], statement), args
+        #print "QUERY [%.06f%s]: %s" % (t1-t0, ('', ' (many)')[many], statement), args
         return rows
 
 
@@ -946,11 +946,14 @@ class Database:
                 terms_list.append((attrs[ivtidx], 1.0, split, ivtidx))
 
             terms = self._score_terms(terms_list)
-            ivtidx_terms.append((ivtidx, terms))
-            if ivtidx in type_attrs:
-                # Registered attribute named after ivtidx; store ivtidx
-                # terms in object.
-                attrs[ivtidx] = terms.keys()
+            if terms:
+                ivtidx_terms.append((ivtidx, terms))
+                # If there are no terms for this ivtidx, we don't bother storing
+                # an empty list in the pickle.
+                if ivtidx in type_attrs:
+                    # Registered attribute named after ivtidx; store ivtidx
+                    # terms in object.
+                    attrs[ivtidx] = terms.keys()
 
         query, values = self._make_query_from_attrs("add", attrs, object_type)
         self._db_query(query, values)
@@ -1095,7 +1098,12 @@ class Database:
             if ivtidx in type_attrs:
                 # Registered attribute named after ivtidx; store ivtidx
                 # terms in object.
-                orig_attrs[ivtidx] = terms.keys()
+                if not terms and ivtidx in orig_attrs:
+                    # Update removed all terms for this ivtidx, remove from pickle.
+                    del orig_attrs[ivtidx]
+                elif terms:
+                    # There are terms for this ivtidx, store in pickle.
+                    orig_attrs[ivtidx] = terms.keys()
 
         query, values = self._make_query_from_attrs("update", orig_attrs, object_type)
         self._db_query(query, values)

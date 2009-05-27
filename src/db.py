@@ -317,6 +317,31 @@ class Database:
         return rows[0]
 
 
+    def _to_obj_tuple(self, obj, numeric=False):
+        """
+        Returns a normalized object reference as a 2-tuple (type, id).
+
+        :param obj: an ObjectRow, or 2-tuple (type, id)
+        :param numeric: if True, coerce type name to a type id
+
+        Raises ValueError if obj is not valid.
+        """
+        if isinstance(obj, ObjectRow):
+            object_type, object_id = obj['type'], obj['id']
+        else: 
+            try:
+                object_type, object_id = obj
+                if not isinstance(object_type, (int, basestring)) or not isinstance(object_id, (int, long, QExpr)):
+                    raise TypeError
+            except TypeError:
+                raise ValueError('Object reference must be either ObjectRow, or (type, id), got %s' % obj)
+
+        if numeric:
+            object_type = self._get_type_id(object_type)
+
+        return object_type, object_id
+
+
     def check_table_exists(self, table):
         res = self._db_query_row("SELECT name FROM sqlite_master where " \
                                  "name=? and type='table'", (table,))
@@ -701,7 +726,7 @@ class Database:
                 columns.append(name)
                 placeholders.append("?")
                 value = attrs[name]
-                # Coercion for numberic types
+                # Coercion for numeric types
                 if isinstance(value, (int, long, float)) and attr_type in (int, long, float):
                     value = attr_type(value)
                 elif isinstance(value, basestring) and \
@@ -761,12 +786,74 @@ class Database:
         return q, values
 
 
-    def delete_object(self, (object_type, object_id)):
+    def delete(self, obj):
         """
         Deletes the specified object.
         """
+        # FIXME: support recursive delete (delete all decendents)
+        object_type, object_id = self._to_obj_tuple(obj)
         return self._delete_multiple_objects({object_type: (object_id,)})
 
+
+    def reparent(self, obj, parent):
+        """
+        Changes the parent of an object.
+
+        :param obj: the object to reparent
+        :type obj: ObjectRow, or (type, id)
+        :param parent: the new parent of the object
+        :type parent: ObjectRow, or (type, id)
+
+        This is a convenience method to improve code readability, and is
+        equivalent to::
+
+            database.update(obj, parent=parent)
+        """
+        return self.update(obj, parent=parent)
+
+
+    def retype(self, obj, new_type):
+        """
+        Converts the object to a new type.
+
+        :param obj: the object to reparent
+        :type obj: ObjectRow, or (type, id)
+        :param new_type: the type to convert the object to
+        :type newtype: str
+        :returns: an ObjectRow, converted to the new type with the new id
+
+        Any attribute that has not also been registered with ``new_type``
+        (and with the same name) will be removed.  Because the object is
+        effectively changing ids, all of its existing children will be
+        reparented to the new id.
+        """
+
+        if new_type not in self._object_types:
+            raise ValueError('Parent type %s not registered in database' % new_type)
+
+        # Reload and force pickled attributes into the dict.
+        try:
+            attrs = dict(self.get(obj))
+        except TypeError:
+            raise ValueError('Object (%s, %s) is not found in database' % (obj['type'], obj['id']))
+
+        parent = attrs.get('parent')
+        # Remove all attributes that aren't also in the destination type.  Also
+        # remove type, id, and parent attrs, which get regenerated when we add().
+        for attr_name in attrs.keys():
+            # TODO: check src and dst attr types and try to coerce, and if
+            # not possible, raise an exception.
+            if attr_name not in self._object_types[new_type][1] or attr_name in ('type', 'id', 'parent'):
+                del attrs[attr_name]
+
+        new_obj = self.add(new_type, parent, **attrs)
+        # Reparent all current children to the new id.
+        for child in self.query(parent=obj):
+            # TODO: if this raises, delete new_obj (to rollback) and reraise.
+            self.reparent(child, new_obj)
+
+        self.delete(obj)
+        return new_obj
 
 
     def delete_by_query(self, **attrs):
@@ -818,7 +905,7 @@ class Database:
         return count
 
 
-    def add(self, object_type, parent = None, **attrs):
+    def add(self, object_type, parent=None, **attrs):
         """
         Adds an object of type 'object_type' to the database.  Parent is a
         (type, id) tuple which refers to the object's parent.  'object_type'
@@ -832,8 +919,7 @@ class Database:
         """
         type_attrs = self._get_type_attrs(object_type)
         if parent:
-            attrs["parent_type"] = self._get_type_id(parent[0])
-            attrs["parent_id"] = parent[1]
+            attrs['parent_type'], attrs['parent_id'] = self._to_obj_tuple(parent, numeric=True)
 
         # Increment objectcount for the applicable inverted indexes.
         inverted_indexes = self._get_type_inverted_indexes(object_type)
@@ -870,12 +956,9 @@ class Database:
         self._db_query(query, values)
 
         # Add id given by db, as well as object type.
-        attrs["id"] = self._cursor.lastrowid
-        attrs["type"] = unicode(object_type)
-        if parent:
-            attrs['parent'] = (attrs['parent_type'], attrs['parent_id'])
-        else:
-            attrs['parent'] = (None, None)
+        attrs['id'] = self._cursor.lastrowid
+        attrs['type'] = unicode(object_type)
+        attrs['parent'] = self._to_obj_tuple(parent) if parent else (None, None)
 
         for ivtidx, terms in ivtidx_terms:
             self._add_object_inverted_index_terms((object_type, attrs['id']), ivtidx, terms)
@@ -884,6 +967,27 @@ class Database:
         attrs.update(dict.fromkeys([k for k in type_attrs if k not in attrs.keys() + ['pickle']]))
 
         return ObjectRow(None, None, attrs)
+
+
+    def get(self, obj):
+        """
+        Fetches the given object from the database.
+
+        :param obj: a 2-tuple (type, id) representing the object.
+        :returns: ObjectRow
+        
+        obj may also be an ObjectRow, however that usage is less likely to be
+        useful, because an ObjectRow already contains all information about the
+        object.  (It may be used to reload a possibly changed object from disk.)
+
+        This method is essentially shorthand for::
+
+           database.query(object=(object_type, object_id))[0]
+        """
+        obj = self._to_obj_tuple(obj)
+        rows = self.query(object=obj)
+        if rows:
+            return rows[0]
 
 
     def update(self, obj, parent=None, **attrs):
@@ -896,10 +1000,7 @@ class Database:
         based on object type.  If a ATTR_SIMPLE attribute is set to None, it
         will be removed from the pickled dictionary.
         """
-        if isinstance(obj, ObjectRow):
-            object_type, object_id = obj['type'], obj['id']
-        else:
-            object_type, object_id = obj
+        object_type, object_id = self._to_obj_tuple(obj)
 
         type_attrs = self._get_type_attrs(object_type)
         get_pickle = False
@@ -950,11 +1051,9 @@ class Database:
                 row_attrs.update(attrs)
                 attrs = row_attrs
 
-        if isinstance(parent, ObjectRow):
-            attrs['parent_type'], attrs['parent_id'] = parent['type'], parent['id']
-        elif parent:
-            attrs['parent_type'], attrs['parent_id'] = self._get_type_id(parent[0]), parent[1]
-
+        
+        if parent:
+            attrs['parent_type'], attrs['parent_id'] = self._to_obj_tuple(parent, numeric=True)
         attrs['id'] = object_id
         # Make copy of attrs for later query, since we're now about to mess with it.
         orig_attrs = attrs.copy()
@@ -1042,8 +1141,8 @@ class Database:
         query_info["attrs"] = {}
 
         if "object" in attrs:
-            attrs["type"], attrs["id"] = attrs["object"]
-            del attrs["object"]
+            attrs['type'], attrs['id'] = self._to_obj_tuple(attrs['object'])
+            del attrs['object']
 
         ivtidx_results = ivtidx_results_by_type = None
         for ivtidx in self._inverted_indexes:
@@ -1094,16 +1193,16 @@ class Database:
 
         if "parent" in attrs:
             # ("type", id_or_QExpr) or (("type1", id_or_QExpr), ("type2", id_or_QExpr), ...)
-            if type(attrs["parent"][0]) != tuple:
+            if not isinstance(attrs['parent'][0], (list, tuple)):
                 # Convert first form to second form.
-                attrs["parent"] = (attrs["parent"],)
+                attrs['parent'] = (attrs['parent'],)
 
-            for parent_type_name, parent_id in attrs["parent"]:
-                parent_type_id = self._get_type_id(parent_type_name)
+            for parent_obj in attrs['parent']:
+                parent_type_id, parent_id = self._to_obj_tuple(parent_obj, numeric=True)
                 if type(parent_id) != QExpr:
                     parent_id = QExpr("=", parent_id)
                 parents.append((parent_type_id, parent_id))
-            del attrs["parent"]
+            del attrs['parent']
 
         if "limit" in attrs:
             result_limit = attrs["limit"]

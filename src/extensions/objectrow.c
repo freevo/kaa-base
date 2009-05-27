@@ -36,6 +36,8 @@
 #define ATTR_INDEXED_IGNORE_CASE (ATTR_INDEXED | ATTR_IGNORE_CASE)
 #define IS_ATTR_INDEXED_IGNORE_CASE(attr) ((attr & ATTR_INDEXED_IGNORE_CASE) == ATTR_INDEXED_IGNORE_CASE)
 
+#define PyObjectRow_Check(op)   ((op)->ob_type == &ObjectRow_PyObject_Type)
+
 #if PY_VERSION_HEX < 0x02050000
 typedef int Py_ssize_t;
 #define PY_SSIZE_T_MAX INT_MAX
@@ -46,6 +48,7 @@ typedef Py_ssize_t (*lenfunc)(PyObject *);
 GHashTable *queries = 0;
 PyObject *cPickle_loads, *zip;
 
+PyTypeObject ObjectRow_PyObject_Type;
 
 typedef struct {
     int refcount,
@@ -65,7 +68,6 @@ typedef struct {
     PyObject_HEAD
     PyObject *desc,         // Cursor description for this row
              *row,          // Row tuple from sqlite
-             *db,           // Weakref to kaa.db.Database instance
              *object_types, // Object types dict from Database instance
              *attrs,        // Dict of attributes for this type
              *type_name,    // String object of object type name
@@ -84,18 +86,14 @@ PyObject *ObjectRow_PyObject__items(ObjectRow_PyObject *, PyObject *, PyObject *
 int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject *kwargs)
 {
     PyObject *cursor, *row, *o_type, *pickle_dict = 0;
-    if (!PyArg_ParseTuple(args, "OO|O", &cursor, &row, &pickle_dict))
+    if (!PyArg_ParseTuple(args, "OO|O!", &cursor, &row, &PyDict_Type, &pickle_dict))
         return -1;
 
     if (pickle_dict) {
         /* If row or cursor weren't specified, then we require the third arg
-         * (pickle_dict) be a dictionary, and we basically pass behave as this
-         * dict.  We do this for example from Database.add_object()
+         * (pickle_dict) be a dictionary, and we basically behave as this dict.
+         * We do this for example from Database.add()
          */
-        if (pickle_dict == 0 || !PyDict_Check(pickle_dict)) {
-            PyErr_Format(PyExc_ValueError, "pickle dict must be specified when cursor or row is None");
-            return -1;
-        }
         self->pickle = pickle_dict;
         Py_INCREF(self->pickle);
         self->row = Py_None;
@@ -105,6 +103,9 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
         return 0;
     }
 
+    /* First argument is the db cursor from which we fetch the row description
+     * and object types.  Or, it is a 2-tuple of same.
+     */
     if (PyTuple_Check(cursor)) {
         self->desc = PySequence_GetItem(cursor, 0); // new ref
         self->object_types = PySequence_GetItem(cursor, 1); // new ref
@@ -443,8 +444,11 @@ PyObject *ObjectRow_PyObject__str(ObjectRow_PyObject *self)
 
 Py_ssize_t ObjectRow_PyObject__length(ObjectRow_PyObject *self)
 {
-    PyObject *keys = ObjectRow_PyObject__keys(self, NULL, NULL);
-    Py_DECREF(keys);
+    if (!self->keys) {
+        // Force population of self->keys
+        PyObject *keys = ObjectRow_PyObject__keys(self, NULL, NULL);
+        Py_DECREF(keys);
+    }
     return PySequence_Length(self->keys);
 }
 
@@ -467,9 +471,9 @@ PyObject *ObjectRow_PyObject__keys(ObjectRow_PyObject *self, PyObject *args, PyO
 {
     PyObject *key, *parent_type, *parent_id;
 
-    if (!self->query_info)
+    if (!self->query_info && !self->keys)
         // No query_info means we work just from pickle dict.
-        return PyMapping_Keys(self->pickle);
+        self->keys = PyMapping_Keys(self->pickle);
 
     if (self->keys) {
         Py_INCREF(self->keys);
@@ -561,6 +565,30 @@ PyObject *ObjectRow_PyObject__has_key(ObjectRow_PyObject *self, PyObject *args, 
     return PyBool_FromLong(has_key);
 }
 
+PyObject *ObjectRow_PyObject__iter(ObjectRow_PyObject *self)
+{
+    if (!PyObjectRow_Check(self)) {
+        PyErr_BadInternalCall();
+        return NULL;
+    }
+    // Could be more efficient
+    return PyObject_GetIter(ObjectRow_PyObject__keys(self, NULL, NULL));
+}
+
+static int ObjectRow_PyObject_Contains(ObjectRow_PyObject *self, PyObject *el)
+{
+    char *sel = PyString_AsString(el);
+    if (!strcmp(sel, "type"))
+        return 1;
+    else if (!strcmp(sel, "parent") && g_hash_table_lookup(self->query_info->idxmap, "parent_id"))
+        return 1;
+    else
+        return g_hash_table_lookup(self->query_info->idxmap, PyString_AsString(el)) != NULL;
+}
+
+
+
+
 
 PyMappingMethods row_as_mapping = {
     /* mp_length        */ (lenfunc)ObjectRow_PyObject__length,
@@ -585,6 +613,20 @@ static PyMemberDef ObjectRow_PyObject_members[] = {
     {NULL}
 };
 
+/* Hack to implement "key in dict" */
+static PySequenceMethods row_as_sequence = {
+    0,          /* sq_length */
+    0,          /* sq_concat */
+    0,          /* sq_repeat */
+    0,          /* sq_item */
+    0,          /* sq_slice */
+    0,          /* sq_ass_item */
+    0,          /* sq_ass_slice */
+    (objobjproc)ObjectRow_PyObject_Contains, /* sq_contains */
+    0,          /* sq_inplace_concat */
+    0,          /* sq_inplace_repeat */
+};
+
 
 PyTypeObject ObjectRow_PyObject_Type = {
     PyObject_HEAD_INIT(NULL)
@@ -599,7 +641,7 @@ PyTypeObject ObjectRow_PyObject_Type = {
     0,                          /* tp_compare */
     0,                          /* tp_repr */
     0,                          /* tp_as_number */
-    0,                          /* tp_as_sequence */
+    &row_as_sequence,           /* tp_as_sequence */
     &row_as_mapping,            /* tp_as_mapping */
     0,                          /* tp_hash */
     0,                          /* tp_call */
@@ -613,7 +655,7 @@ PyTypeObject ObjectRow_PyObject_Type = {
     0,                          /* tp_clear */
     0,                          /* tp_richcompare */
     0,                          /* tp_weaklistoffset */
-    0,                          /* tp_iter */
+    (getiterfunc)ObjectRow_PyObject__iter,   /* tp_iter */
     0,                          /* tp_iternext */
     ObjectRow_PyObject_methods, /* tp_methods */
     ObjectRow_PyObject_members, /* tp_members */

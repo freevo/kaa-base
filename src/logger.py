@@ -77,6 +77,20 @@ def make_record(self, name, level, fn, lno, msg, args, *_args, **_kwargs):
     # call original function
     return _makeRecord(self, name, level, fn, lno, msg, args, *_args, **_kwargs)
 
+
 # override makeRecord of a logger by our new function that can handle
 # unicode correctly and that will take care of a basic logger.
 logging.Logger.makeRecord = make_record
+
+
+# Replace logger class with a custom logger that implements a debug2() method,
+# using a new DEBUG2 log level.
+class Logger(logging.Logger):
+    def debug2(self, msg, *args, **kwargs):
+        if self.manager.disable >= logging.DEBUG2:
+            return
+        if logging.DEBUG2 >= self.getEffectiveLevel():
+            apply(self._log, (logging.DEBUG2, msg, args), kwargs)
+
+logging.DEBUG2 = 5
+logging.setLoggerClass(Logger)

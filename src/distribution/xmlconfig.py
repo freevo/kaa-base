@@ -46,6 +46,8 @@ def get_value(value, type):
         return False
     if value.isdigit():
         return int(value)
+    if value.replace('.', '').isdigit():
+        return float(value)
     return str(value)
 
 

@@ -33,7 +33,7 @@ import atexit
 
 # notifier import
 from callable import Callable, WeakCallable, CallableError
-from signals import Signal
+from signals import Signals
 from utils import property
 
 # get logging object
@@ -54,10 +54,7 @@ class NotifierCallback(Callable):
         super(NotifierCallback, self).__init__(callback, *args, **kwargs)
         self._id = None
 
-        self.signals = {
-            "exception": Signal(),
-            "unregistered": Signal()
-        }
+        self.signals = Signals('exception', 'unregistered')
 
 
     @property

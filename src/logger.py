@@ -74,6 +74,12 @@ def make_record(self, name, level, fn, lno, msg, args, *_args, **_kwargs):
     msg = unicode_to_str(msg)
     # convert args to string
     args = tuple([ unicode_to_str(x) for x in args ])
+    # Allow caller to override default location by specifying a 2-tuple
+    # (filename, lineno) as 'location' in the extra dict.
+    extra = _args[2]
+    if extra and 'location' in extra:
+        fn, lno = extra['location']
+
     # call original function
     return _makeRecord(self, name, level, fn, lno, msg, args, *_args, **_kwargs)
 

@@ -112,7 +112,8 @@ def rename(oldcls, newcls):
             import traceback
             fname, line, c, content = traceback.extract_stack(limit=2)[0]
             logging.getLogger('base').warning('kaa.%s has been renamed to kaa.%s and will not be '
-                                              'available in kaa.base 1.0:\n%s (%s): %s', oldcls, newcls.__name__, fname, line, content)
+                                              'available in kaa.base 1.0:\n%s (%s): %s', 
+                                              oldcls, newcls.__name__, fname, line, content)
             # Replace old class with new class object, so we only warn once.
             globals()[oldcls] = newcls
             return newcls(*args, **kwargs)

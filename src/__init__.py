@@ -101,3 +101,24 @@ if sys.hexversion < 0x02060000 and os.name == 'posix':
     # See http://bugs.python.org/issue1608818
     import kaa._utils
     os.listdir = kaa._utils.listdir
+
+
+# Allow access to old Callback names, but warn.  This will go away the release
+# after next.
+def rename(oldcls, newcls):
+    class Wrapper(__builtins__['object']):
+        def __new__(cls, *args, **kwargs):
+            import logging
+            logging.getLogger('base').warning('kaa.%s has been renamed to kaa.%s and will not be '
+                                              'available in kaa.base 1.0', oldcls, newcls.__name__)
+            # Replace old class with new class object, so we only warn once.
+            globals()[oldcls] = newcls
+            return newcls(*args, **kwargs)
+    return Wrapper
+
+Callback = rename('Callback', Callable)
+WeakCallback = rename('WeakCallback', WeakCallable)
+InProgressCallback = rename('InProgressCallback', InProgressCallable)
+ThreadCallback = rename('ThreadCallback', ThreadCallable)
+MainThreadCallback = rename('MainThreadCallback', MainThreadCallable)
+NamedThreadCallback = rename('NamedThreadCallback', ThreadPoolCallable)

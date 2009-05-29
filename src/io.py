@@ -38,9 +38,9 @@ import cStringIO
 import re
 
 import nf_wrapper as notifier
-from callback import WeakCallback
+from callable import WeakCallable
 from signals import Signal
-from thread import MainThreadCallback, is_mainthread
+from thread import MainThreadCallable, is_mainthread
 from async import InProgress, inprogress
 from utils import property
 from object import Object
@@ -82,7 +82,7 @@ class IOMonitor(notifier.NotifierCallback):
                 raise ValueError('Existing file descriptor already registered with this IOMonitor.')
             return
         if not is_mainthread():
-            return MainThreadCallback(self.register)(fd, condition)
+            return MainThreadCallable(self.register)(fd, condition)
         notifier.socket_add(fd, self, condition-1)
         self._condition = condition
         # Must be called _id to correspond with base class.
@@ -96,7 +96,7 @@ class IOMonitor(notifier.NotifierCallback):
         if not self.active:
             return
         if not is_mainthread():
-            return MainThreadCallback(self.unregister)()
+            return MainThreadCallable(self.unregister)()
         notifier.socket_remove(self._id, self._condition-1)
         super(IOMonitor, self).unregister()
 
@@ -234,7 +234,7 @@ class IOChannel(Object):
         # the same-named public signals as they get emitted even when data is
         # None.  When these signals get updated, we call _update_read_monitor
         # to register the read IOMonitor.
-        cb = WeakCallback(self._update_read_monitor)
+        cb = WeakCallable(self._update_read_monitor)
         self._read_signal = Signal(cb)
         self._readline_signal = Signal(cb)
         self.signals['read'].changed_cb = cb

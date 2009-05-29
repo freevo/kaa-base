@@ -36,15 +36,15 @@ import logger
 # inside async because it does not exist yet.
 
 # InProgress class
-from async import TimeoutException, InProgress, InProgressCallback, \
+from async import TimeoutException, InProgress, InProgressCallable, \
      InProgressAny, InProgressAll, InProgressAborted, InProgressStatus, \
      inprogress, delay
 
 # Import all classes, functions and decorators that are part of the API
 from object import Object
 
-# Callback classes
-from callback import Callback, WeakCallback, CallbackError
+# Callable classes
+from callable import Callable, WeakCallable, CallableError
 
 # Notifier-aware callbacks
 from nf_wrapper import NotifierCallback, WeakNotifierCallback
@@ -52,8 +52,8 @@ from nf_wrapper import NotifierCallback, WeakNotifierCallback
 # Signal and dict of Signals
 from signals import Signal, Signals
 
-# Thread callbacks, helper functions and decorators
-from thread import MainThreadCallback, NamedThreadCallback, ThreadCallback, \
+# Thread callables, helper functions and decorators
+from thread import MainThreadCallable, ThreadPoolCallable, ThreadCallable, \
      is_mainthread, threaded, synchronized, MAINTHREAD, ThreadInProgress
 
 # Timer classes and decorators

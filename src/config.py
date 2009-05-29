@@ -40,7 +40,7 @@ from new import classobj
 
 # kaa.base modules
 from strutils import str_to_unicode, unicode_to_str, get_encoding
-from callback import Callback, WeakCallback
+from callable import Callable, WeakCallable
 from timer import WeakTimer, WeakOneShotTimer
 from kaa.inotify import INotify
 from utils import property
@@ -116,7 +116,7 @@ class Base(object):
     def add_monitor(self, callback):
         # Wrap the function or method in a class that will ignore deep copies
         # because deepcopy() is unable to copy callables.
-        self._monitors.append(Callback(callback))
+        self._monitors.append(Callable(callback))
 
     def remove_monitor(self, callback):
         for monitor in self._monitors:
@@ -908,9 +908,9 @@ class Config(Group):
     @autosave.setter
     def autosave(self, autosave):
         if autosave and not self._autosave:
-            self.add_monitor(WeakCallback(self._config_changed_cb))
+            self.add_monitor(WeakCallable(self._config_changed_cb))
         elif not autosave and self._autosave:
-            self.remove_monitor(WeakCallback(self._config_changed_cb))
+            self.remove_monitor(WeakCallable(self._config_changed_cb))
             self._autosave_timer.stop()
         self._autosave = autosave
 
@@ -982,7 +982,7 @@ class Config(Group):
             # Config file changed.  Attach a monitor so we can keep track of
             # any values that actually changed.
             changed_names = []
-            cb = Callback(lambda *args: changed_names.append(args[0]))
+            cb = Callable(lambda *args: changed_names.append(args[0]))
             self.add_monitor(cb)
             self.load()
             log.info('Config file %s modified; %d settings changed.' % (self._filename, len(changed_names)))

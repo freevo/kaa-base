@@ -34,7 +34,7 @@ import logging
 
 # kaa.base imports
 from nf_wrapper import NotifierCallback, WeakNotifierCallback
-from thread import MainThreadCallback, is_mainthread
+from thread import MainThreadCallable, is_mainthread
 from timer import OneShotTimer
 from utils import property
 
@@ -83,7 +83,7 @@ class Event(object):
             event = copy.copy(self)
             event._set_args(args)
         if not is_mainthread():
-            return MainThreadCallback(manager.post, event)()
+            return MainThreadCallable(manager.post, event)()
         else:
             return manager.post(event)
 
@@ -138,7 +138,7 @@ class EventHandler(NotifierCallback):
 
     def __call__(self, event):
         """
-        Call callback if the event matches.
+        Invoke wrapped callable if the event matches.
         """
         if not self.events or event in self.events:
             super(EventHandler, self).__call__(event)

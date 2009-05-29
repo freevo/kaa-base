@@ -221,12 +221,12 @@ class TLSLiteConnection(TLSConnection):
     def _iterate_handshake(self, handshake):
         """
         Iterate through the TLS handshake for asynchronous calls using
-        kaa.IOMonitor and kaa.InProgressCallback.
+        kaa.IOMonitor and kaa.InProgressCallable.
         """
         try:
             while True:
                 n = handshake.next()
-                cb = kaa.InProgressCallback()
+                cb = kaa.InProgressCallable()
                 disp = kaa.IOMonitor(cb)
                 if n == 0:
                     disp.register(self.sock.fileno(), kaa.IO_READ)

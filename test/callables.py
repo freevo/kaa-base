@@ -18,21 +18,21 @@ class Cls(object):
 #######################
 print "Callbacks ..." 
 
-cb = kaa.Callback(cb_func)
+cb = kaa.Callable(cb_func)
 test( cb(42), ((42,), {}) )
 
-cb = kaa.Callback(cb_func, 42)
+cb = kaa.Callable(cb_func, 42)
 test( cb(), ((42,), {}) )
 
-cb = kaa.Callback(cb_func)
+cb = kaa.Callable(cb_func)
 test( cb(42, "foo", bar="baz"), ((42,"foo"), {"bar":"baz"}) )
 
 
 cb_meth = Cls().meth
-cb = kaa.Callback(cb_meth)
+cb = kaa.Callable(cb_meth)
 test( cb(42), ((42,), {}) )
 
-cb = kaa.Callback(cb_meth)
+cb = kaa.Callable(cb_meth)
 del cb_meth
 test( cb(42), ((42,), {}) )
 
@@ -46,27 +46,27 @@ print "Weak Callbacks ..."
 def cb_func2(*args, **kwargs):
     return args, kwargs
 
-cb = kaa.WeakCallback(cb_func)
+cb = kaa.WeakCallable(cb_func)
 test( cb(42), ((42,), {}) )
 
 # Lambdas are not weakref'd
-cb = kaa.WeakCallback(lambda arg: arg)
+cb = kaa.WeakCallable(lambda arg: arg)
 test( cb(42), 42)
 
 # Functions are weakref'd
-cb = kaa.WeakCallback(cb_func2)
+cb = kaa.WeakCallable(cb_func2)
 del cb_func2
 try:
     cb(42)
-except kaa.CallbackError:
+except kaa.CallableError:
     pass
 
 cb_meth = Cls().meth
-cb = kaa.WeakCallback(cb_meth)
+cb = kaa.WeakCallable(cb_meth)
 del cb_meth
 try:
     cb(42)
-except kaa.CallbackError:
+except kaa.CallableError:
     pass
 
 

@@ -43,7 +43,7 @@ import urllib
 import urllib2
 
 # kaa imports
-from kaa import ThreadCallback, InProgressStatus, Signals, InProgress
+from kaa import ThreadCallable, InProgressStatus, Signals, InProgress
 
 # add password manager to urllib
 pm = urllib2.HTTPPasswordMgrWithDefaultRealm()
@@ -72,7 +72,7 @@ class URLOpener(object):
         The function returns the 'completed' signal which is an InProgress
         object.
         """
-        t = ThreadCallback(self._fetch_thread, length)
+        t = ThreadCallable(self._fetch_thread, length)
         t.wait_on_exit = False
         return t()
 
@@ -139,7 +139,7 @@ def _fetch_HTTP(url, filename, tmpname):
               urllib.quote(url[8+url[8:].find('/'):])
     # FIXME: use kaa.threaded()
     s = InProgressStatus()
-    t = ThreadCallback(download, url, filename, tmpname, s)
+    t = ThreadCallable(download, url, filename, tmpname, s)
     t.wait_on_exit = False
     async = t()
     async.progress = s

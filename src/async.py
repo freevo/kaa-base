@@ -26,7 +26,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallback',
+__all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallable',
             'AsyncException', 'InProgressAny', 'InProgressAll', 'InProgressAborted',
             'AsyncExceptionBase', 'make_exception_class', 'inprogress',
             'delay', 'InProgressStatus' ]
@@ -40,7 +40,7 @@ import _weakref
 import threading
 
 # kaa.base imports
-from callback import Callback
+from callable import Callable
 from utils import property
 from object import Object
 
@@ -104,7 +104,7 @@ def delay(seconds):
     :param obj: object to represent as an InProgress.
     :return: :class:`~kaa.InProgress`
     """
-    ip = InProgressCallback()
+    ip = InProgressCallable()
     timer = OneShotTimer(ip)
     # If the IP gets aborted, stop the timer.  Otherwise the timer
     # will fire and the IP would attempt to get finished a second
@@ -172,8 +172,8 @@ class InProgressAborted(BaseException):
     This exception is thrown into an InProgress object when 
     :meth:`~kaa.InProgress.abort` is called.
 
-    For :class:`~kaa.ThreadCallback` and  :class:`~kaa.NamedThreadCallback`
-    this exception is raised inside the threaded callback.  This makes
+    For :class:`~kaa.ThreadCallable` and  :class:`~kaa.ThreadPoolCallable`
+    this exception is raised inside the threaded callable.  This makes
     potentially an asynchronous exception (when used this way), and therefore
     it subclasses BaseException, similar in rationale to KeyboardInterrupt
     and SystemExit, and also (for slightly different reasons) GeneratorExit,
@@ -512,7 +512,7 @@ class InProgress(Signal, Object):
             #
             # If the exception is passed back via result property, then it is
             # considered handled, and it will not be logged.
-            cb = Callback(InProgress._log_exception, trace, value, self._stack)
+            cb = Callable(InProgress._log_exception, trace, value, self._stack)
             self._unhandled_exception = _weakref.ref(self, cb)
 
         # Remove traceback from stored exception.  If any waiting threads
@@ -750,7 +750,7 @@ class InProgress(Signal, Object):
 
 
 
-class InProgressCallback(InProgress):
+class InProgressCallable(InProgress):
     """
     InProgress object that can be used as a callback for an async
     function. The InProgress object will be finished when it is
@@ -758,7 +758,7 @@ class InProgressCallback(InProgress):
     object when the signal is emited.
     """
     def __init__(self, func=None, abortable=False, frame=0):
-        super(InProgressCallback, self).__init__(abortable, frame=frame-1)
+        super(InProgressCallable, self).__init__(abortable, frame=frame-1)
         if func is not None:
             # connect self as callback
             func(self)
@@ -766,7 +766,7 @@ class InProgressCallback(InProgress):
 
     def __call__(self, *args, **kwargs):
         """
-        Call the InProgressCallback by the external function. This will
+        Call the InProgressCallable by the external function. This will
         finish the InProgress object.
         """
         # try to get the results as the caller excepts them
@@ -907,7 +907,7 @@ class InProgressAny(InProgress):
         super(InProgressAny, self).finish((index, result) if self._pass_index else result)
 
         # We're done with the underlying IP objects so unref them.  In the
-        # case of InProgressCallbacks connected weakly to signals (which
+        # case of InProgressCallable connected weakly to signals (which
         # happens when signals are given to us on the constructor), they'll
         # get deleted and disconnected from the signals.
         self._objects = None
@@ -957,7 +957,7 @@ class InProgressAll(InProgressAny):
         # Unlike InProgressAny, we don't unref _objects because the caller
         # may want to access them by iterating us.  That's fine, because
         # unlike InProgressAny where we'd prefer not to have useless
-        # transient InProgressCallbacks connected to any provided signals,
+        # transient InProgressCallables connected to any provided signals,
         # here we know we won't because they will all have been emitted
         # in order for us to be here.
 

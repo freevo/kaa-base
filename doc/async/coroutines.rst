@@ -14,15 +14,16 @@ similar API.
 
 A function or method is designated a coroutine by using the @kaa.coroutine
 decorator.  A coroutine allows a larger tasks to be broken down into smaller
-ones by yielding control back to the "scheduler" (the notifier), implementing
-a kind of cooperative multitasking.  More usefully, coroutines can yield at
-points where they may otherwise block on resources (e.g. disk or network), and
-when the resource becomes available, the coroutine resumes where it left off.
-With coroutines and InProgress objects, it is possible to construct non-trivial
-state machines, whose state is modified by asynchronous events, using a single
-coroutine.  Without coroutines, this is typically implemented as a series of
-smaller callback functions.  (For more information on coroutines, see
-`Wikipedia's treatment of the subject <http://en.wikipedia.org/wiki/Coroutine>`_.)
+ones by yielding control back to the "scheduler" (the :ref:`notifier
+<notifier>`), implementing a kind of cooperative multitasking.  More usefully,
+coroutines can yield at points where they may otherwise block on resources
+(e.g. disk or network), and when the resource becomes available, the coroutine
+resumes where it left off.  With coroutines and :ref:`InProgress <inprogress>`
+objects, it is possible to construct non-trivial state machines, whose state is
+modified by asynchronous events, using a single coroutine.  Without coroutines,
+this is typically implemented as a series of smaller callback functions.  (For
+more information on coroutines, see `Wikipedia's treatment of the subject
+<http://en.wikipedia.org/wiki/Coroutine>`_.)
 
 Any function decorated with coroutine will return an InProgress object, and the
 caller can connect a callback to the InProgress object in order to be notified
@@ -37,7 +38,7 @@ a "time slice" so that other tasks may run.
 
 When a coroutine yields any value other than kaa.NotFinished (including None),
 the coroutine is considered finished and the InProgress returned to the caller
-will be emitted (i.e. it is finished). As with return, if no value is
+will be :ref:`emitted <emitting>` (i.e. it is finished). As with return, if no value is
 explicitly yielded and the coroutine terminates, the InProgress is finished
 with None.
 

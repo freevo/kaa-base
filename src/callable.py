@@ -1,6 +1,6 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# callback.py - Callback classes
+# callable.py - Callable classes
 # -----------------------------------------------------------------------------
 # $Id$
 #
@@ -26,7 +26,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Callback', 'WeakCallback', 'CallbackError' ]
+__all__ = [ 'Callable', 'WeakCallable', 'CallableError' ]
 
 # Python imports
 import _weakref
@@ -54,7 +54,7 @@ def weakref_data(data, destroy_cb = None):
         # Naive optimization for common immutable cases.
         return data
     elif type(data) == types.MethodType:
-        cb = WeakCallback(data)
+        cb = WeakCallable(data)
         if destroy_cb:
             cb.weakref_destroyed_cb = destroy_cb
             cb.ignore_caller_args = True
@@ -87,8 +87,8 @@ def unweakref_data(data):
         return data
     elif type(data) == _weakref.ReferenceType:
         return data()
-    elif type(data) == WeakCallback:
-        return data._get_callback()
+    elif type(data) == WeakCallable:
+        return data._get_func()
     elif type(data) in (list, tuple):
         d = []
         for item in data:
@@ -105,28 +105,28 @@ def unweakref_data(data):
         return data
 
 
-class CallbackError(Exception):
+class CallableError(Exception):
     pass
 
 
-class Callback(object):
+class Callable(object):
     """
-    Wraps an existing callable, binding to it the given args and kwargs.
+    Wraps an existing callable, binding to it any given args and kwargs.
 
-    When the Callback object is invoked, the arguments passed on invocation
+    When the Callable object is invoked, the arguments passed on invocation
     are combined with the arguments specified at construction time and the
-    underlying callback function is invoked with those arguments.
+    underlying callable is invoked with those arguments.
     """
-    def __init__(self, callback, *args, **kwargs):
+    def __init__(self, func, *args, **kwargs):
         """
-        :param callback: callable function or object
-        :param args: arguments for the callback
-        :param kwargs: keyword arguments for the callback
+        :param func: callable function or object
+        :param args: arguments to be passed to func when invoked
+        :param kwargs: keyword arguments to be passed to func when invoked
         """
-        super(Callback, self).__init__()
-        assert(callable(callback))
-        self._callback = callback
-        self._callback_name = str(callback)
+        super(Callable, self).__init__()
+        assert(callable(func))
+        self._func = func
+        self._func_name = str(func)
         self._args = args
         self._kwargs = kwargs
         self._ignore_caller_args = False
@@ -136,7 +136,7 @@ class Callback(object):
     @property
     def ignore_caller_args(self):
         """
-        If True, any arguments passed when invoking the Callback object are not
+        If True, any arguments passed when invoking the Callable object are not
         passed to the underlying callable.
 
         Default value is False, so all arguments are passed to the callable.
@@ -151,12 +151,12 @@ class Callback(object):
     @property
     def user_args_first(self):
         """
-        If True, any arguments passed upon invocation of the Callback object take
+        If True, any arguments passed upon invocation of the Callable object take
         precedence over those arguments passed to the constructor ("user args").
-        e.g. ``callback(constructor_args..., invocation_args...)``
+        e.g. ``func(constructor_args..., invocation_args...)``
 
         Default value is False, so invocation arguments take precedence over user
-        arguments. e.g. ``callback(invocation_args..., constructor_args...)``
+        arguments. e.g. ``func(invocation_args..., constructor_args...)``
 
         "A takes precedence over B" means that non-keyword arguments are passed
         in order of A + B, and keyword arguments from A override same-named keyword
@@ -176,8 +176,8 @@ class Callback(object):
         return self._args, self._kwargs
 
 
-    def _get_callback(self):
-        return self._callback
+    def _get_func(self):
+        return self._func
 
 
     def _merge_args(self, args, kwargs):
@@ -197,16 +197,16 @@ class Callback(object):
 
     def __call__(self, *args, **kwargs):
         """
-        Invoke the callback function passed upon construction.
+        Invoke the callable.
 
         The arguments passed here take precedence over constructor arguments
-        if the :attr:`~kaa.Callback.user_args_first` property is False (default).
-        The underlying callback's return value is returned.
+        if the :attr:`~kaa.Callable.user_args_first` property is False (default).
+        The wrapped callable's return value is returned.
         """
-        cb = self._get_callback()
+        cb = self._get_func()
         cb_args, cb_kwargs = self._merge_args(args, kwargs)
         if not cb:
-            raise CallbackError('The callback (%s) has become invalid.' % self._callback_name)
+            raise CallableError('The Callable (%s) has become invalid.' % self._func_name)
 
         self._entered = True
         result = cb(*cb_args, **cb_kwargs)
@@ -218,7 +218,7 @@ class Callback(object):
         """
         Convert to string for debug.
         """
-        return '<%s for %s>' % (self.__class__.__name__, self._callback)
+        return '<%s for %s>' % (self.__class__.__name__, self._func)
 
 
     def __deepcopy__(self, memo):
@@ -229,14 +229,14 @@ class Callback(object):
 
     def __eq__(self, func):
         """
-        Compares the given function with the callback function we're wrapping.
+        Compares the given function with the function we're wrapping.
         """
-        return id(self) == id(func) or self._get_callback() == func
+        return id(self) == id(func) or self._get_func() == func
 
 
-class WeakCallback(Callback):
+class WeakCallable(Callable):
     """
-    Weak variant of the Callback class.  Only weak references are held for
+    Weak variant of the Callable class.  Only weak references are held for
     non-intrinsic types (i.e. any user-defined object).
 
     If the callable is a method, only a weak reference is kept to the instance
@@ -247,17 +247,17 @@ class WeakCallback(Callback):
     ``kwarg=[1, [2, [3, my_object]]]``, only a weak reference is held for my_object.
     """
 
-    def __init__(self, callback, *args, **kwargs):
-        super(WeakCallback, self).__init__(callback, *args, **kwargs)
-        if type(callback) == types.MethodType:
+    def __init__(self, func, *args, **kwargs):
+        super(WeakCallable, self).__init__(func, *args, **kwargs)
+        if type(func) == types.MethodType:
             # For methods
-            self._instance = _weakref.ref(callback.im_self, self._weakref_destroyed)
-            self._callback = callback.im_func.func_name
+            self._instance = _weakref.ref(func.im_self, self._weakref_destroyed)
+            self._func = func.im_func.func_name
         else:
             self._instance = None
             # Don't weakref lambdas.
-            if not hasattr(callback, 'func_name') or callback.func_name != '<lambda>':
-                self._callback = _weakref.ref(callback, self._weakref_destroyed)
+            if not hasattr(func, 'func_name') or func.func_name != '<lambda>':
+                self._func = _weakref.ref(func, self._weakref_destroyed)
 
         self._args = weakref_data(args, self._weakref_destroyed)
         self._kwargs = weakref_data(kwargs, self._weakref_destroyed)
@@ -266,19 +266,19 @@ class WeakCallback(Callback):
 
     def __repr__(self):
         if self._instance and self._instance():
-            name = "method %s of %s" % (self._callback, self._instance())
+            name = "method %s of %s" % (self._func, self._instance())
         else:
-            name = self._callback
+            name = self._func
         return '<%s for %s>' % (self.__class__.__name__, name)
 
-    def _get_callback(self):
+    def _get_func(self):
         if self._instance:
             if self._instance() != None:
-                return getattr(self._instance(), self._callback)
-        elif isinstance(self._callback, _weakref.ReferenceType):
-            return self._callback()
+                return getattr(self._instance(), self._func)
+        elif isinstance(self._func, _weakref.ReferenceType):
+            return self._func()
         else:
-            return self._callback
+            return self._func
 
 
     def _get_user_args(self):
@@ -290,7 +290,7 @@ class WeakCallback(Callback):
             # Shutdown
             return False
 
-        return super(WeakCallback, self).__call__(*args, **kwargs)
+        return super(WeakCallable, self).__call__(*args, **kwargs)
 
 
     @property
@@ -300,21 +300,20 @@ class WeakCallback(Callback):
         for the callable or any of the arguments passed on the constructor)
         become dead.
 
-        When this happens, the Callback is invalid and any attempt to invoke
-        it will raise a kaa.CallbackError.
+        When this happens, the Callable is invalid and any attempt to invoke
+        it will raise a kaa.CallableError.
 
         The callback is passed the weakref object (which is probably dead).
         If the callback requires additional arguments, they can be encapsulated
-        in a :class:`kaa.Callback` object.
+        in a :class:`kaa.Callable` object.
         """
         return self._weakref_destroyed_user_cb
 
     @weakref_destroyed_cb.setter
     def weakref_destroyed_cb(self, callback):
         if not callable(callback):
-            raise ValueError('Value must be a callable')
+            raise ValueError('Value must be callable')
         self._weakref_destroyed_user_cb = callback
-
 
 
     def _weakref_destroyed(self, object):
@@ -327,8 +326,8 @@ class WeakCallback(Callback):
         except Exception:
             log.exception("Exception raised during weakref destroyed callback")
         finally:
-            # One of the weak refs has died, consider this WeakCallback invalid.
-            self._instance = self._callback = None
+            # One of the weak refs has died, consider this WeakCallable invalid.
+            self._instance = self._func = None
 
 
 

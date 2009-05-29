@@ -37,9 +37,9 @@ import signal
 from io import IOChannel, IO_WRITE, IO_READ
 from signals import Signals
 from timer import timed, Timer, OneShotTimer, POLICY_ONCE
-from thread import MainThreadCallback, is_mainthread, threaded, MAINTHREAD
+from thread import MainThreadCallable, is_mainthread, threaded, MAINTHREAD
 from async import InProgress, InProgressAny, InProgressAll, delay, inprogress
-from callback import Callback, WeakCallback, CallbackError
+from callable import Callable, WeakCallable, CallableError
 from coroutine import coroutine, POLICY_SINGLETON
 from utils import property
 from object import Object
@@ -343,7 +343,7 @@ class Process(Object):
         for fd in self._stdout, self._stderr:
             fd.signals['read'].connect_weak(self.signals['read'].emit)
             fd.signals['readline'].connect_weak(self.signals['readline'].emit)
-            # We need to keep track of the WeakCallbacks for _cleanup()
+            # We need to keep track of the WeakCallables for _cleanup()
             cb = fd.signals['closed'].connect_weak(self._check_dead)
             self._weak_closed_cbs.append(cb)
         self._stdin.signals['closed'].connect_weak(self._check_dead)
@@ -355,7 +355,7 @@ class Process(Object):
         # (If we didn't do this, the fd would not get registered and therefore
         # data never read and therefore the callbacks connected to the global
         # read/readline signals never invoked.)
-        cb = WeakCallback(self._update_read_monitor)
+        cb = WeakCallable(self._update_read_monitor)
         self.signals['read'].changed_cb = cb
         self.signals['readline'].changed_cb = cb
 
@@ -479,7 +479,7 @@ class Process(Object):
         Stop command for this process.
         
         The command can be either a callable or a string.  The command is
-        invoked (if it is a callback) or the command is written to the child's
+        invoked (if it is a callable) or the command is written to the child's
         stdin (if cmd is a string or unicode) when the process is being
         terminated with a call to stop().
 
@@ -837,8 +837,8 @@ class Process(Object):
             # callbacks are on the chopping block already, and would get
             # disconnected automatically after this function.  (In other words,
             # _cleanup() is invoked before Signal._weakref_destroyed.)  So
-            # we need to disconnect the WeakCallback before invoking close()
-            # in order to avoid a CallbackError that Signal.emit() reraises.
+            # we need to disconnect the WeakCallable before invoking close()
+            # in order to avoid a CallableError that Signal.emit() reraises.
             channel.signals['closed'].disconnect(callback)
             channel.close(immediate=True)
 
@@ -873,7 +873,7 @@ class Process(Object):
             # Use weakref finializer callback kludge to invoke Process._cleanup
             # when Process object goes away in order to close stdout
             # and stderr IOChannels.
-            cb = Callback(self.__class__._cleanup, (self._stdout, self._stderr), self._weak_closed_cbs)
+            cb = Callable(self.__class__._cleanup, (self._stdout, self._stderr), self._weak_closed_cbs)
             self._cleanup_weakref = weakref.ref(self, cb)
         else:
             # Child exit and stdout/stderr closed.  We're finished.

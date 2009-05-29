@@ -59,7 +59,7 @@ def thread(x):
 @kaa.threaded()
 def thread2(c, x):
     # call rpc in thread using MainThreadCallback
-    cb = kaa.MainThreadCallback(c.rpc)
+    cb = kaa.MainThreadCallable(c.rpc)
     # we not only wait to get the InProgress back, we also wait
     # for the real return from rpc
     #cb.set_async(False)
@@ -110,27 +110,27 @@ def foo():
     # call some async function with different types of
     # results (given as parameter)
     
-    callback = kaa.InProgressCallback()
+    callback = kaa.InProgressCallable()
     async(callback, 7, 8)
     yield callback
     print callback.result                # (7, 8)
 
-    callback = kaa.InProgressCallback()
+    callback = kaa.InProgressCallable()
     async(callback)
     yield callback
     print callback.result                # None
 
-    callback = kaa.InProgressCallback()
+    callback = kaa.InProgressCallable()
     async(callback, 9)
     yield callback
     print callback.result                # 9
 
-    callback = kaa.InProgressCallback()
+    callback = kaa.InProgressCallable()
     async(callback, foo=10)
     yield callback
     print callback.result                # 10
 
-    callback = kaa.InProgressCallback()
+    callback = kaa.InProgressCallable()
     async(callback, foo=11, bar=12)
     yield callback
     print callback.result                # {'foo': 11, 'bar': 12}
@@ -201,20 +201,20 @@ def foo():
     yield x                             # print 19
     print x.result                           # 20
     
-    # Test InProgressCallback destruction cleans up signal connection.
+    # Test InProgressCallable destruction cleans up signal connection.
     ip = kaa.inprogress(sig['one'])
     assert(len(sig['one']) == 1)
     del ip
     gc.collect()
     assert(len(sig['one']) == 0)
-    print 'InProgressCallback cleanup ok'
+    print 'InProgressCallable cleanup ok'
 
     # Test InProgressAny via Signals.any()
     kaa.OneShotTimer(sig['three'].emit, 'worked').start(0.5)
     print 'Testing InProgressAny, should return in 0.5s'
     n, args = yield sig.subset('one', 'three').any()
     print 'InProgressAny returned:', n, args
-    # Force InProgressCallbacks implicitly created by any() to be deleted.
+    # Force InProgressCallables implicitly created by any() to be deleted.
     gc.collect()
     # Verify that they _are_ deleted and detached from the signal.
     print sig['one']._callbacks

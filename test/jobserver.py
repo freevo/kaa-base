@@ -2,7 +2,7 @@ import time
 import logging
 
 import kaa
-from kaa import NamedThreadCallback
+from kaa import ThreadPoolCallable
 
 def foo(i):
     time.sleep(0.1)
@@ -16,11 +16,11 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
-NamedThreadCallback('x', foo, 1)()
-NamedThreadCallback('x', foo, 2)()
-NamedThreadCallback(('x', 5), foo, 3)()
-j = NamedThreadCallback('x', foo, 4)()
-NamedThreadCallback('x', foo, 5)()
-NamedThreadCallback('y', foo, 6)()
+ThreadPoolCallable('x', foo, 1)()
+ThreadPoolCallable('x', foo, 2)()
+ThreadPoolCallable(('x', 5), foo, 3)()
+j = ThreadPoolCallable('x', foo, 4)()
+ThreadPoolCallable('x', foo, 5)()
+ThreadPoolCallable('y', foo, 6)()
 j.abort()
 kaa.main.run()

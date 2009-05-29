@@ -299,7 +299,7 @@ class Channel(Object):
             # create InProgress object and return
             callback = kaa.InProgress()
             kwargs['_kaa_rpc_callback'] = callback
-            kaa.MainThreadCallback(self.rpc)(cmd, *args, **kwargs)
+            kaa.MainThreadCallable(self.rpc)(cmd, *args, **kwargs)
             return callback
         seq = self._next_seq
         self._next_seq += 1
@@ -328,7 +328,7 @@ class Channel(Object):
         """
         Writes data to the channel.
         """
-        cb = kaa.WeakCallback(self._handle_close, False)
+        cb = kaa.WeakCallable(self._handle_close, False)
         cb.ignore_caller_args = True
         self._socket.write(data).exception.connect(cb)
 

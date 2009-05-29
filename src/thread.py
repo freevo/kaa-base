@@ -12,10 +12,10 @@
 #
 # You can create a Thread object with the function and it's
 # arguments. After that you can call the start function to start the
-# thread. This function has an optional parameter with a callback
+# thread. This function has an optional parameter with a callable
 # which will be called from the main loop once the thread is
 # finished. The result of the thread function is the parameter for the
-# callback.
+# callable.
 #
 # In most cases this module is not needed, please add a good reason why you
 # wrap a function in a thread.
@@ -42,7 +42,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'MainThreadCallback', 'ThreadCallback', 'is_mainthread',
+__all__ = [ 'MainThreadCallable', 'ThreadCallable', 'is_mainthread',
             'wakeup', 'set_as_mainthread', 'create_thread_notifier_pipe',
             'threaded', 'MAINTHREAD', 'synchronized', 'ThreadInProgress' ]
 
@@ -58,7 +58,7 @@ import types
 
 # kaa imports
 import nf_wrapper as notifier
-from callback import Callback
+from callable import Callable
 from object import Object
 from async import InProgress, InProgressAborted, InProgressStatus
 from utils import wraps, DecoratorDataStore, sysimport, property
@@ -112,11 +112,11 @@ def threaded(name=None, priority=0, async=True, progress=False):
                 if not async and is_mainthread():
                     # Fast-path case: mainthread synchronous call from the mainthread
                     return func(*args, **kwargs)
-                callback = MainThreadCallback(func)
+                callback = MainThreadCallable(func)
             elif name:
-                callback = NamedThreadCallback((name, priority), func)
+                callback = ThreadPoolCallable((name, priority), func)
             else:
-                callback = ThreadCallback(func)
+                callback = ThreadCallable(func)
                 callback.wait_on_exit = False
 
             # callback will always return InProgress
@@ -343,16 +343,16 @@ def _thread_notifier_run_queue(fd):
     return True
 
 
-class MainThreadCallback(Callback):
+class MainThreadCallable(Callable):
     """
-    Callback that is invoked from the main thread.
+    Wraps a callable and ensures it is invoked from the main thread.
     """
     def __call__(self, *args, **kwargs):
         in_progress = InProgress()
 
         if is_mainthread():
             try:
-                result = super(MainThreadCallback, self).__call__(*args, **kwargs)
+                result = super(MainThreadCallable, self).__call__(*args, **kwargs)
             except BaseException, e:
                 # All exceptions, including SystemExit and KeyboardInterrupt,
                 # are caught and thrown to the InProgress, because it may be
@@ -375,14 +375,14 @@ class MainThreadCallback(Callback):
 
 
 class ThreadInProgress(InProgress):
-    def __init__(self, callback, *args, **kwargs):
-        InProgress.__init__(self)
-        self._callback = Callback(callback, *args, **kwargs)
+    def __init__(self, func, *args, **kwargs):
+        super(ThreadInProgress, self).__init__()
+        self._callable = Callable(func, *args, **kwargs)
 
 
     def __call__(self, *args, **kwargs):
         """
-        Execute the callback.
+        Execute the wrapped callable.
         """
         if self.finished:
             # We're finished before we even started.  The only sane reason for
@@ -398,12 +398,12 @@ class ThreadInProgress(InProgress):
             # error will have to suffice.
             log.error('Attempting to start thread which has already finished')
 
-        if self._callback is None:
+        if self._callable is None:
             # Attempting to invoke multiple times?  Shouldn't happen.
             return None
 
         try:
-            result = self._callback()
+            result = self._callable()
             # Kludge alert: InProgressAborted gets raised asynchronously inside
             # the thread.  Assuming it doesn't inadvertently get cleared out
             # by PyErr_Clear(), it may take up to check-interval bytecodes for
@@ -420,10 +420,10 @@ class ThreadInProgress(InProgress):
             pass
         except:
             # FIXME: should we really be catching KeyboardInterrupt and SystemExit?
-            MainThreadCallback(self.throw)(*sys.exc_info())
+            MainThreadCallable(self.throw)(*sys.exc_info())
         else:
             if type(result) == types.GeneratorType or isinstance(result, InProgress):
-                # Looks like the callback is yielding something, or callback is a
+                # Looks like the callable is yielding something, or callable is a
                 # coroutine-decorated function.  Not supported (yet?).  In the
                 # case of coroutines, the first entry will execute in the
                 # thread, but subsequent entries (via the generator's next())
@@ -432,45 +432,45 @@ class ThreadInProgress(InProgress):
                 log.warning('NYI: coroutines cannot (yet) be executed in threads.')
 
             # If we're finished, it means we were aborted, but probably caught the
-            # InProgressAborted inside the threaded callback.  If so, we discard the
-            # return value from the callback, as we're considered finished.  Otherwise
+            # InProgressAborted inside the threaded callable.  If so, we discard the
+            # return value from the callable, as we're considered finished.  Otherwise
             # finish up in the mainthread.
             if not self.finished:
-                MainThreadCallback(self.finish)(result)
+                MainThreadCallable(self.finish)(result)
 
-        self._callback = None
+        self._callable = None
 
 
     @property
     def active(self):
         """
-        True if the callback is still waiting to be processed.
+        True if the callable is still waiting to be processed.
         """
-        return self._callback is not None
+        return self._callable is not None
 
 
     def abort(self, exc=None):
         """
-        Aborts the callback being executed inside a thread.  (Or attempts to.)
+        Aborts the callable being executed inside a thread.  (Or attempts to.)
 
-        Invocation of a :class:`~kaa.ThreadCallback` or
-        :class:`~kaa.NamedThreadCallback` will return a ``ThreadInProgress``
+        Invocation of a :class:`~kaa.ThreadCallable` or
+        :class:`~kaa.ThreadPoolCallable` will return a ``ThreadInProgress``
         object which may be aborted by calling this method.  When an
         in-progress thread is aborted, an ``InProgressAborted`` exception is
         raised inside the thread.
 
         Just prior to raising ``InProgressAborted`` inside the thread, the
-        :attr:`~ThreadCallback.signals.abort` signal will be emitted.
+        :attr:`~ThreadCallable.signals.abort` signal will be emitted.
         Callbacks connected to this signal are invoked within the thread from
         which ``abort()`` was called.  If any of the callbacks return
         ``False``, ``InProgressAborted`` will not be raised in the thread.
 
         It is possible to catch InProgressAborted within the thread to
-        deal with cleanup, but any return value from the threaded callback
+        deal with cleanup, but any return value from the threaded callable
         will be discarded.  It is therefore not possible abort an abort.
         However, if the InProgress is aborted before the thread has a chance
         to start, the thread is not started at all, and so obviously the threaded
-        callback will not receive ``InProgressAborted``.
+        callable will not receive ``InProgressAborted``.
 
         .. warning::
         
@@ -480,18 +480,18 @@ class ThreadInProgress(InProgress):
            up to 100 bytecodes for it to trigger within the thread.  This 
            approach still has uses as a general-purposes aborting mechanism,
            but, if possible, it is preferable for you to implement custom logic
-           by attaching an abort handler to the :class:`~kaa.ThreadCallback` or
-           :class:`~kaa.NamedThreadCallback` object.
+           by attaching an abort handler to the :class:`~kaa.ThreadCallable` or
+           :class:`~kaa.ThreadPoolCallable` object.
 
         """
         return super(ThreadInProgress, self).abort(exc)
 
 
-class ThreadCallbackBase(Callback, Object):
+class ThreadCallableBase(Callable, Object):
     __kaasignals__ = {
         'abort':
             '''
-            Emitted when the thread callback is aborted.
+            Emitted when the threaded callable is aborted.
 
             .. describe:: def callback()
 
@@ -503,7 +503,7 @@ class ThreadCallbackBase(Callback, Object):
             being raised inside the thread.  However, the ThreadInProgress is
             still considered aborted regardless.  Handlers of this signal are
             intended to implement more appropriate logic to cancel the threaded
-            callback.
+            callable.
 
             '''
     }
@@ -540,7 +540,7 @@ class ThreadCallbackBase(Callback, Object):
 
 
 
-class ThreadCallback(ThreadCallbackBase):
+class ThreadCallable(ThreadCallableBase):
     """
     Notifier aware wrapper for threads. When a thread is started, it is
     impossible to fork the current process into a second one without exec both
@@ -564,7 +564,7 @@ class ThreadCallback(ThreadCallbackBase):
         """
         Create and start the thread.
         """
-        cb = Callback._get_callback(self)
+        cb = Callable._get_func(self)
         async = ThreadInProgress(cb, *args, **kwargs)
         # create thread and setDaemon
         t = threading.Thread(target=async)
@@ -572,8 +572,8 @@ class ThreadCallback(ThreadCallbackBase):
         # connect thread.join to the InProgress
         join = lambda *args, **kwargs: t.join()
 
-        # Hook the aborted signal for the ThreadInProgress to stop the thread
-        # callback.
+        # Hook the aborted signal for the ThreadInProgress to stop the threaded
+        # callable.
         self._setup_abort(t, async)
         # XXX: this was in the original abort code but I don't think it's necessary.
         # If I'm wrong, uncomment and explain why it's needed.
@@ -585,7 +585,7 @@ class ThreadCallback(ThreadCallbackBase):
         return async
 
 
-    def _get_callback(self):
+    def _get_func(self):
         """
         Return callable for this Callback.
         """
@@ -593,13 +593,13 @@ class ThreadCallback(ThreadCallbackBase):
 
 
 
-class NamedThreadCallback(ThreadCallbackBase):
+class ThreadPoolCallable(ThreadCallableBase):
     """
     A callback to run a function in a thread. This class is used by the
     threaded decorator, but it is also possible to use this call directly.
     """
     def __init__(self, thread_information, func, *args, **kwargs):
-        super(NamedThreadCallback, self).__init__(func, *args, **kwargs)
+        super(ThreadPoolCallable, self).__init__(func, *args, **kwargs)
         self.priority = 0
         if isinstance(thread_information, (list, tuple)):
             thread_information, self.priority = thread_information
@@ -607,7 +607,7 @@ class NamedThreadCallback(ThreadCallbackBase):
 
 
     def _create_job(self, *args, **kwargs):
-        cb = Callback._get_callback(self)
+        cb = Callable._get_func(self)
         job = ThreadInProgress(cb, *args, **kwargs)
         job.priority = self.priority
 
@@ -621,13 +621,13 @@ class NamedThreadCallback(ThreadCallbackBase):
         return job
 
 
-    def _get_callback(self):
+    def _get_func(self):
         return self._create_job
 
 
 class _JobServer(threading.Thread):
     """
-    Thread processing NamedThreadCallback jobs.
+    Thread processing ThreadPoolCallable jobs.
     """
     def __init__(self, name):
         super(_JobServer, self).__init__()
@@ -652,7 +652,7 @@ class _JobServer(threading.Thread):
 
     def add(self, job):
         """
-        Add a NamedThreadCallback to the thread.
+        Add a ThreadPoolCallable to the thread.
         """
         self.condition.acquire()
         self.jobs.append(job)
@@ -663,7 +663,7 @@ class _JobServer(threading.Thread):
 
     def remove(self, job):
         """
-        Remove a NamedThreadCallback from the schedule.
+        Remove a ThreadPoolCallable from the schedule.
         """
         if job in self.jobs:
             self.condition.acquire()

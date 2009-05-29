@@ -44,7 +44,7 @@ if twisted.version.major < 8:
 from twisted.internet import _threadedselect as threadedselectreactor
 
 # kaa imports
-from thread import MainThreadCallback
+from thread import MainThreadCallable
 import main
 
 class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
@@ -59,14 +59,14 @@ class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
         Callback from the Twisted thread kaa should execute from
         the mainloop.
         """
-        MainThreadCallback(func)()
+        MainThreadCallable(func)()
 
     def _twisted_stopped_callback(self):
         """
         Callback when Twisted wants to stop.
         """
         if not main.is_mainthread():
-            return MainThreadCallback(self._twisted_stopped_callback)()
+            return MainThreadCallable(self._twisted_stopped_callback)()
         self._twisted_stopped = True
         # shut down kaa mainloop in case the reactor was shut down and
         # not kaa.main

@@ -19,9 +19,9 @@
 # a normal return, the function can also return 'NotFinished' in the yield
 # statement. In that case, the function call continues at this point in the
 # next main loop iteration. If the function itself has to wait for a result of
-# a function call (either another yield function are something else working
-# async with an InProgress object) and it can create a 'InProgressCallback'
-# object and use this as callback.
+# a function call (either another yield function or something else working
+# asynchronously with an InProgress object) and it can create a
+# 'InProgressCallable' object and use this as callback.
 #
 # The 'coroutine' decorator has a parameter interval. This is the
 # interval used to schedule when the function should continue after a yield.

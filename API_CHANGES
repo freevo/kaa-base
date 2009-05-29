@@ -11,6 +11,18 @@ path (similar to that of Python's __future__ module).
 Compatible API changes (new methods and properties, or addition of kwargs to
 existing methods) may be introduced at any time.
 
+Changes for 0.x.0
+-----------------
+
+1. Callback -> Callable, WeakCallback, WeakCallable, 
+   CallbackError -> CallableError
+
+2. InProgressCallback -> InProgressCallable
+
+3. ThreadCallback -> ThreadCallable, MainThreadCallback -> MainThreadCallable
+
+4. NamedThreadCallback -> ThreadPoolCallable
+
 
 Changes for 0.6.0
 -----------------

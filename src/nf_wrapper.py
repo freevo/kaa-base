@@ -32,7 +32,7 @@ import sys
 import atexit
 
 # notifier import
-from callback import Callback, WeakCallback, CallbackError
+from callable import Callable, WeakCallable, CallableError
 from signals import Signal
 from utils import property
 
@@ -48,7 +48,7 @@ log = logging.getLogger('base')
 _python_shutting_down = False
 
 
-class NotifierCallback(Callback):
+class NotifierCallback(Callable):
 
     def __init__(self, callback, *args, **kwargs):
         super(NotifierCallback, self).__init__(callback, *args, **kwargs)
@@ -77,15 +77,15 @@ class NotifierCallback(Callback):
 
 
     def __call__(self, *args, **kwargs):
-        if not self._get_callback():
+        if not self._get_func():
             if self.active:
                 self.unregister()
             return False
 
         try:
             ret = super(NotifierCallback, self).__call__(*args, **kwargs)
-        except CallbackError:
-            # A WeakCallback that's no longer valid.  Unregister.
+        except CallableError:
+            # A WeakCallable that's no longer valid.  Unregister.
             ret = False
         except Exception:
             # If there are exception handlers for this notifier callback, we
@@ -108,7 +108,7 @@ class NotifierCallback(Callback):
         return True
 
 
-class WeakNotifierCallback(WeakCallback, NotifierCallback):
+class WeakNotifierCallback(WeakCallable, NotifierCallback):
 
     def _weakref_destroyed(self, object):
         if _python_shutting_down == False:

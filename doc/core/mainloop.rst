@@ -1,9 +1,11 @@
 The Main Loop
 =============
 
+.. _notifier:
+
 The plumbing within Kaa that orchestrates the main loop -- dispatching
 callbacks triggered by events (such as activity on a file descriptor or timers)
--- is collectively referred to as "the notifier."  If you're familiar with the
+-- is collectively referred to as "*the notifier*."  If you're familiar with the
 Twisted framework, it is very similar to Twisted's reactor.
 
 This main loop facility depends on pyNotifier. A system-wide installation of

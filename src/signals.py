@@ -33,7 +33,7 @@ import logging
 import atexit
 
 # kaa imports
-from callback import Callback, WeakCallback, CallbackError
+from callable import Callable, WeakCallable, CallableError
 from utils import property
 
 # Recursive import. async itself exists, but not the async.InProgress*
@@ -119,11 +119,11 @@ class Signal(object):
         """
         Connects a new callback to the signal.  args and kwargs will be bound
         to the callback and merged with the args and kwargs passed during
-        emit().  If weak is True, a WeakCallback will be created.  If once is
+        emit().  If weak is True, a WeakCallable will be created.  If once is
         True, the callback will be automatically disconnected after the next
         emit().
 
-        This method returns the Callback (or WeakCallback) object created.
+        This method returns the Callable (or WeakCallable) object created.
         """
 
         assert(callable(callback))
@@ -136,13 +136,13 @@ class Signal(object):
             raise Exception("Signal callbacks exceeds 40")
 
         if weak:
-            callback = WeakCallback(callback, *args, **kwargs)
+            callback = WeakCallable(callback, *args, **kwargs)
             # We create a callback for weakref destruction for both the
             # signal callback as well as signal data.
-            destroy_cb = Callback(self._weakref_destroyed, callback)
+            destroy_cb = Callable(self._weakref_destroyed, callback)
             callback.weakref_destroyed_cb = destroy_cb
         else:
-            callback = Callback(callback, *args, **kwargs)
+            callback = Callable(callback, *args, **kwargs)
 
         callback._signal_once = once
 
@@ -168,7 +168,7 @@ class Signal(object):
         :param callback: callable invoked when signal emits
         :param args: optional non-keyword arguments passed to the callback
         :param kwargs: optional keyword arguments passed to the callback.
-        :return: a new :class:`~kaa.Callback` object encapsulating the supplied
+        :return: a new :class:`~kaa.Callable` object encapsulating the supplied
                  callable and arguments.
         """
         return self._connect(callback, args, kwargs)
@@ -178,7 +178,7 @@ class Signal(object):
         Weak variant of :meth:`~kaa.Signal.connect` where only weak references are
         held to the callback and arguments.
 
-        :return: a new :class:`~kaa.WeakCallback` object encapsulating the
+        :return: a new :class:`~kaa.WeakCallable` object encapsulating the
                  supplied callable and arguments.
         """
         return self._connect(callback, args, kwargs, weak = True)
@@ -248,7 +248,7 @@ class Signal(object):
         if self._changed_cb:
             try:
                 self._changed_cb(self, action)
-            except CallbackError:
+            except CallableError:
                 self._changed_cb = None
 
 
@@ -261,7 +261,7 @@ class Signal(object):
         callback (regardless of what arguments they were originally connected with)
         will be disconnected.
 
-        :param callback: either the callback originally connected, or the :class:`~kaa.Callback`
+        :param callback: either the callback originally connected, or the :class:`~kaa.Callable`
                          object returned by :meth:`~kaa.Signal.connect`.
         :return: True if any callbacks were disconnected, and False if none were found.
         """
@@ -295,7 +295,7 @@ class Signal(object):
             try:
                 if cb(*args, **kwargs) == False:
                     retval = False
-            except CallbackError:
+            except CallableError:
                 if self._disconnect(cb, (), {}) != False:
                     # If _disconnect returned False, it means that this callback
                     # wasn't still connected, which almost certainly means that
@@ -357,7 +357,7 @@ class Signal(object):
 
         :return: a new :class:`~kaa.InProgress` object
         """
-        return async.InProgressCallback(self.connect_weak_once)
+        return async.InProgressCallable(self.connect_weak_once)
 
 
 
@@ -466,7 +466,7 @@ class Signals(dict):
         """
         if attr.startswith('_') or not hasattr(Signal, attr):
             return getattr(super(Signals, self), attr)
-        callback = Callback(self._callattr, attr)
+        callback = Callable(self._callattr, attr)
         callback.user_args_first = True
         return callback
 

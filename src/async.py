@@ -872,6 +872,15 @@ class InProgressAny(InProgress):
         """
         Called when a callback connects or disconnects from us.
         """
+        if not self._objects:
+            # Already finished.  This can happen when IPAny finishes, and
+            # then wait() is called on it.  One possible normal scenario for
+            # this is when wait() is called in another thread.  If the IP is
+            # finished by the mainthread before wait() is called, then we
+            # don't want to attempt to iterate over _objects, which was set
+            # to None in finish().
+            return super(InProgressAny, self)._changed(action)
+
         if len(self) == 1 and action == Signal.CONNECTED and not self.finished:
             # Someone wants to know when we finish, so now we connect to the
             # underlying InProgress objects to find out when they finish.

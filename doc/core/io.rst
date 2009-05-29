@@ -16,6 +16,9 @@ Monitoring I/O
    .. autosignals::
 
 
+.. kaaclass:: kaa.WeakIOMonitor
+
+
 Communication over I/O channels
 -------------------------------
 

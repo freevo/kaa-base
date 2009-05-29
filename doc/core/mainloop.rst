@@ -12,7 +12,8 @@ This main loop facility depends on pyNotifier. A system-wide installation of
 pynotifier will be used if it exists, otherwise kaa will fallback to an
 internal version which supports integration with gtk and Twisted main loops.
 kaa.base fully wraps and enhances stock pyNotifier API with process, thread and
-signal handling and a wide variety of callback classes.
+signal handling and a wide variety of classes suitable for constructing
+callables used as callbacks.
 
 To start the main loop, import kaa and call :func:`kaa.main.run`.  The main
 loop (but *not* the program) will terminate when SIGTERM or SIGINT (ctrl-c) is
@@ -93,9 +94,9 @@ signals, however by default ``kaa.signals`` contains:
 
    This signal is probably not suitable as an 'idle worker' because the
    interval between emissions may be as much as 30 seconds.  However it is
-   useful for functions which need to be called after notifier callbacks.
-   One example use-case is rendering a canvas after notifier callbacks have
-   manipulated objects upon it.
+   useful for functions which need to be called after notifier callbacks
+   such as timers and IO monitors.  One example use-case is rendering a
+   canvas after notifier callbacks have manipulated objects upon it.
 
    .. describe:: def callback()
 

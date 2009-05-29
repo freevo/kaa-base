@@ -1,33 +1,34 @@
-Signals and Callbacks
+Signals and Callables
 =====================
 
-Signal and Callback objects are among the core building blocks of Kaa and are
+Signal and Callable objects are among the core building blocks of Kaa and are
 used extensively throughout the framework.
 
 
-Callbacks
+Callables
 ---------
 
-Callback objects encapsulate a callable (such as a function or method) and, optionally,
-any number of arguments and keyword arguments.  Callback objects are in turn callable,
-and upon invocation will call the underlying (wrapped) callable, passing it all
-arguments passed on invocation and all arguments passed to the constructor.  As
-the name suggests, the main use-case of Callback objects is any time a callback
-function is required, such as with signals (described later).
+Callable objects encapsulate a callable (such as a function or method) and,
+optionally, any number of arguments and keyword arguments.  Callable objects
+are in turn invokable like any other native callable, and upon invocation will
+call the underlying (wrapped) function or method, passing it all arguments
+passed during invocation combined with all arguments passed to the constructor.
 
-Callbacks can be used to construct partial functions::
+One very common use-case of Callable objects is any time a callback function is
+required, such as with signals (described later).  They can be used to construct
+partial functions; the following example demonstrates currying::
 
-    >>> square = kaa.Callback(pow, 2)
+    >>> square = kaa.Callable(pow, 2)
     >>> print square(5)
     25
 
 (Of course this example is a bit contrived, because you could use lambda to
 achieve the same result with less overhead.  But it helps to start simple.)
 
-By default, all arguments passed upon invocation of the Callback are passed to the
+By default, all arguments passed upon invocation of the Callable are passed to the
 wrapped callable first, followed by arguments passed upon construction.  So the
 above example translates to ``pow(5, 2)``.  It is possible to reverse this behaviour
-by setting the :attr:`~kaa.Callback.user_args_first` property to True::
+by setting the :attr:`~kaa.Callable.user_args_first` property to True::
 
     >>> square.user_args_first = True
     >>> square(5)  # Of course, now this isn't a square
@@ -43,30 +44,30 @@ constructor take precedence over those passed upon invocation.
 Here's an example that more clearly demonstrates the rules of precedence::
 
     >>> def func(*args, **kwargs):
-    ...     print 'Callback:', args, kwargs
+    ...     print 'Callable:', args, kwargs
     ... 
-    >>> cb = kaa.Callback(func, 1, 2, foo=42, bar='kaa')
+    >>> cb = kaa.Callable(func, 1, 2, foo=42, bar='kaa')
     >>> cb()
-    Callback: (1, 2) {'foo': 42, 'bar': 'kaa'}
+    Callable: (1, 2) {'foo': 42, 'bar': 'kaa'}
     >>> cb('hello world', foo='overrides', another='kwarg')
-    Callback: ('hello world', 1, 2) {'foo': 'overrides', 'bar': 'kaa', 'another': 'kwarg'}
+    Callable: ('hello world', 1, 2) {'foo': 'overrides', 'bar': 'kaa', 'another': 'kwarg'}
     >>> cb.user_args_first = True
     >>> cb('hello world', foo="doesn't override", another='kwarg')
-    Callback: (1, 2, 'hello world') {'foo': 42, 'bar': 'kaa', 'another': 'kwarg'}
+    Callable: (1, 2, 'hello world') {'foo': 42, 'bar': 'kaa', 'another': 'kwarg'}
 
 
-Because Callback objects hold references to the callable (or more specifically,
-the instance if the callable is a method) and any arguments passed at construction
-time, those objects remain alive as long as the Callback is referenced.  This is
-not always what's wanted, and in those cases the :class:`~kaa.WeakCallback` variant
-can be used.
+Because Callable objects hold references to the function, or to the class
+instance in the case of a method, and any arguments passed at construction
+time, those objects remain alive as long as the Callable is referenced.  This
+is not always what's wanted, and in those cases the :class:`~kaa.WeakCallable`
+variant can be used.
 
-With :class:`~kaa.WeakCallback`, only weak references are held to the callable
+With :class:`~kaa.WeakCallable`, only weak references are held to the callable
 and constructor arguments.  When any of the wrapped objects are destroyed,
-the WeakCallback ceases to be valid.  One common use-case for WeakCallback
+the WeakCallable ceases to be valid.  One common use-case for WeakCallable
 is to avoid cyclical references.  For example, an object may hold an
 :class:`~kaa.IOMonitor` on some file descriptor, and have a method invoked
-when there's activity.  Consider this example::
+when there's activity.  Consider this code fragment::
 
     class MyClass(object):
         def __init__(self, fd):
@@ -78,24 +79,26 @@ a reference to the IOMonitor, which holds a reference to the _handle_read method
 of the MyClass instance (which implicitly holds a reference to the MyClass instance
 itself).
 
-You might be thinking this isn't a problem: after all, Python has a garbage collector
-that will detect and break orphaned cyclic references.  However, because the fd is
-registered (with the :ref:`notifier <notifier>`), Kaa keeps an internal
-reference to the IOMonitor.  Therefore, even if all user-visible references to
-the MyClass instance are gone, neither that object nor the IOMonitor ever get
-deleted (at least so long as the fd is open).
+You might be thinking this isn't a problem: after all, Python has a garbage
+collector that will detect and break orphaned cyclic references.  However,
+because the file descriptor ``fd`` is registered (with the :ref:`notifier
+<notifier>`), Kaa keeps an internal reference to the IOMonitor.  Therefore,
+even if all user-visible references to the MyClass instance are gone, neither
+that object nor the IOMonitor ever get deleted (at least so long as the fd is
+open).  And furthermore, ``MyClass._handle_read()`` will continue to be invoked
+upon activity of the fd.
 
 If you want the IOMonitor to automatically become unregistered when the callback
 (or specifically the instance the method belongs to) is destroyed, you can use a
-WeakCallback::
+WeakCallable::
 
-    self._monitor = kaa.IOMonitor(kaa.WeakCallback(self._handle_read))
+    self._monitor = kaa.IOMonitor(kaa.WeakCallable(self._handle_read))
 
 In this example, when the :ref:`notifier <notifier>` would normally invoke the
 callback (when there is activity on the registered file descriptor), it will
-find the callback is in fact dead and automatically unregister the monitor.
-With this, the instance of MyClass is allowed to be destroyed  (at least
-insofar as Kaa would not hold any internal references to it).
+find the weak callable is in fact dead and automatically unregister the
+monitor.  With this, the instance of MyClass is allowed to be destroyed (at
+least insofar as Kaa would not hold any internal references to it).
 
 Now, the previous example is a bit clumsy because it requires the callback
 to be invoked (or attempted to be) before the monitor is automatically 
@@ -106,14 +109,15 @@ called WeakIOMonitor can be used::
     self._monitor = kaa.WeakIOMonitor(self._handle_read)
 
 Weak variants of these :ref:`notifier <notifier>`-aware classes exist
-throughout Kaa: WeakIOMonitor, WeakTimer, WeakOneShotTimer, WeakEventHandler.
+throughout Kaa: :class:`~kaa.WeakIOMonitor`, :class:`~kaa.WeakTimer`,
+:class:`~kaa.WeakOneShotTimer`, :class:`~kaa.WeakEventHandler`.
 
 
 
-Callback API
+Callable API
 ~~~~~~~~~~~~
 
-.. kaaclass:: kaa.Callback
+.. kaaclass:: kaa.Callable
 
    .. automethods::
       :add: __call__
@@ -121,7 +125,7 @@ Callback API
    .. autoproperties::
 
 
-.. kaaclass:: kaa.WeakCallback
+.. kaaclass:: kaa.WeakCallable
 
    .. autoproperties::
 
@@ -151,13 +155,13 @@ values are :class:`kaa.Signal` objects.  For example::
 The :meth:`~kaa.Signal.connect` method accepts a callable and arbitrary
 non-keyword and keyword arguments, which are passed to the callback.  This
 method, and the whole ``connect_*`` family of methods in general, constructs a
-:class:`~kaa.Callback` object implicitly (and in fact return that newly
-constructed Callback).  So the above example is equivalent to::
+:class:`~kaa.Callable` object implicitly (and in fact return that newly
+constructed Callable).  So the above example is equivalent to::
 
-    iochannel.signals['read'].connect(kaa.Callback(handle_data_chunk, 'this is user data'))
+    iochannel.signals['read'].connect(kaa.Callable(handle_data_chunk, 'this is user data'))
 
 Obviously the earlier form is more convenient.  Similarly, :meth:`~kaa.Signal.connect_weak`
-does the same thing, except it creates a :class:`~kaa.WeakCallback` from the callback and
+does the same thing, except it creates a :class:`~kaa.WeakCallable` from the callback and
 arguments.
 
 It is possible to detect when a Signal changes by assigning a callback to the Signal
@@ -185,7 +189,7 @@ signal.  When all callbacks have been disconnected, the IOChannel must
 unregister itself, so that no data is consumed when it has no listeners.
 
 Signal objects also behave like containers, in that they can be iterated
-over (where each element is the :class:`~kaa.Callback` object), counted
+over (where each element is the :class:`~kaa.Callable` object), counted
 (via ``len()``), and tested for membership (``myfunc in signal``).
 
 A Signal knows how to be coerced into an :class:`~kaa.InProgress` object

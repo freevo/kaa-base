@@ -1,0 +1,380 @@
+# -* -coding: iso-8859-1 -*-
+# -----------------------------------------------------------------------------
+# m2.py - M2Crypto backend for TLSSocket
+# -----------------------------------------------------------------------------
+# $Id$
+#
+# This module wraps TLS for client and server based on tlslite. See
+# http://trevp.net/tlslite/docs/public/tlslite.TLSConnection.TLSConnection-class.html
+# for more information about optional paramater.
+#
+# -----------------------------------------------------------------------------
+# Copyright 2008-2009 Dirk Meyer, Jason Tackaberry
+#
+# Please see the file AUTHORS for a complete list of authors.
+#
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
+#
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
+#
+# -----------------------------------------------------------------------------
+
+# python imports
+import logging
+import os
+import M2Crypto
+from M2Crypto import m2, X509
+
+# kaa imports
+import kaa
+from .common import TLSError, TLSProtocolError, TLSVerificationError, TLSSocketBase
+
+M2Crypto.threading.init()
+kaa.signals['shutdown'].connect(M2Crypto.threading.cleanup)
+
+# get logging object
+log = logging.getLogger('tls')
+
+
+class _SSLProxy:
+    """
+    The purpose of this class is to eliminate the __del__ method from
+    TLSProtocolWrapper, and thus letting it be garbage collected.
+    """
+
+    m2_ssl_free = m2.ssl_free
+
+    def __init__(self, ssl):
+        self.ssl = ssl
+
+    def _ptr(self):
+        return self.ssl
+
+    def __del__(self):
+        if self.ssl is not None:
+            self.m2_ssl_free(self.ssl)
+
+
+class _BioProxy:
+    """
+    The purpose of this class is to eliminate the __del__ method from
+    TLSProtocolWrapper, and thus letting it be garbage collected.
+    """
+
+    m2_bio_free_all = m2.bio_free_all
+
+    def __init__(self, bio, ssl):
+        # Hold reference to SSL object to ensure _BioProxy.__del__ gets
+        # called before _SSLProxy.__del__.  Otherwise, if the SSL obj
+        # gets freed before the BIO object, we will segfault.
+        self.bio = bio
+        self.ssl = ssl
+
+    def _ptr(self):
+        return self.bio
+
+    def __del__(self):
+        if self.bio is not None:
+            self.m2_bio_free_all(self.bio)
+
+
+class M2TLSSocket(TLSSocketBase):
+    """
+    TLSSocket implementation that uses M2Crypto.  This class uses OpenSSL's BIO
+    pairs for guaranteed async IO; all socket communication is handled by us
+    (via the IOChannel).  See:
+        http://www.openssl.org/docs/crypto/BIO_new_bio_pair.html
+    
+    Inspired heavily by TwistedProtocolWrapper.py from M2Crypto.
+    """
+    # list of suuported TLS authentication mechanisms
+    supported_methods = [ 'X.509' ]
+
+    def __init__(self):
+        super(M2TLSSocket, self).__init__()
+        self._tls_started = False
+        self._reset()
+
+
+    def _is_read_connected(self):
+        """
+        Returns True if we're interested in read events.
+        """
+        # While doing initial handshake from ClientHello, we are interested
+        # in read events internally, even if we have no listeners.
+        return self._handshake or super(M2TLSSocket, self)._is_read_connected()
+
+
+    def _reset(self):
+        if self._tls_started:
+            self._bio_ssl = None
+            self._bio_internal = None
+            self._bio_network = None
+            self._ssl = None
+
+        self._buffers = {
+            'plain': [],
+            'cipher': []
+        }
+
+        self._tls_started = False
+        self._validated = False
+        self._is_client = False
+        self._hello_done = False
+        self._starttls_kwargs = None
+        self._tls_ip = kaa.InProgress()
+
+
+    def _close(self):
+        super(M2TLSSocket, self)._close()
+        self._reset()
+
+
+    def write(self, data):
+        if not self._tls_started:
+            return super(M2TLSSocket, self).write(data)
+
+        self._buffers['plain'].append(data)
+        try:
+            ip = super(M2TLSSocket, self).write(self._encrypt())
+            self._hello_done = True
+            return ip
+        except M2Crypto.BIO.BIOError, e:
+            # See http://www.openssl.org/docs/apps/verify.html#DIAGNOSTICS
+            # for the error codes returned by SSL_get_verify_result.
+            raise TLSProtocolError(m2.ssl_get_verify_result(self._ssl._ptr()), e.args[0])
+
+
+    def _check(self):
+        if self._validated or not m2.ssl_is_init_finished(self._ssl._ptr()):
+            return
+
+        kwargs = self._starttls_kwargs
+        if kwargs.get('verify'):
+            if m2.ssl_get_verify_result(self._ssl._ptr()) != m2.X509_V_OK:
+                raise TLSVerificationError('Peer certificate is not signed by a known CA')
+
+        x509 = m2.ssl_get_peer_cert(self._ssl._ptr())
+        if x509 is not None:
+            self.peer_cert = X509.X509(x509, 1)
+        else:
+            self.peer_cert = None
+
+        if 'check' in kwargs or self.peer_cert:
+            check = kwargs.get('check', (None, None))
+            if check[0] is None:
+                # Validate peer CN by default.
+                host = self.address[0]
+            elif check[0] is False:
+                # User requested to disable CN verification.
+                host = None
+            else:
+                # User override for peer CN.
+                host = check[0]
+            fingerprint = check[1] if len(check) > 1 else None
+            # TODO: normalize exceptions raised by Checker.
+            M2Crypto.SSL.Checker.Checker(host, fingerprint)(self.peer_cert)
+
+        self._validated = True
+
+
+    def _read(self, chunk):
+        data = super(M2TLSSocket, self)._read(chunk)
+        if not self._tls_started or not data:
+            if self._tls_started and not self._tls_ip.finished:
+                e = TLSProtocolError('Peer terminated connection before TLS handshake completed')
+                self._tls_ip.throw(TLSProtocolError, e, None)
+            return data
+
+        self._buffers['cipher'].append(data)
+        decrypted = ''
+
+        try:
+            while True:
+                plaintext = self._decrypt()
+                self._check()
+                ciphertext = self._encrypt()
+                if ciphertext:
+                    super(M2TLSSocket, self).write(ciphertext)
+
+                if not plaintext and not ciphertext:
+                    break
+                decrypted += plaintext
+        except M2Crypto.BIO.BIOError, e:
+            # See http://www.openssl.org/docs/apps/verify.html#DIAGNOSTICS
+            # for the error codes returned by SSL_get_verify_result.
+            e = TLSProtocolError(m2.ssl_get_verify_result(self._ssl._ptr()), e.args[0])
+            if not self._tls_ip.finished:
+                self._tls_ip.throw(e.__class__, e, None)
+            raise e
+
+        if not self._tls_ip.finished and m2.ssl_is_init_finished(self._ssl._ptr()):
+            self._handshake = False
+            self._update_read_monitor()
+            self._tls_ip.finish(True)
+
+        if not decrypted:
+            # We read data from the socket, but after passing through the BIO pair
+            # there was no decrypted data.  So what we read was protocol traffic.
+            # We signal to the underlying IOHandler that we want to continue
+            # later by raising this.
+            raise IOError(11, 'Resource temporarily unavailable')
+
+        return decrypted
+
+
+    def _hello(self):
+        try:
+            # We rely on OpenSSL implicitly starting with client hello
+            # when we haven't yet established an SSL connection
+            super(M2TLSSocket, self).write(self._encrypt(clientHello=True))
+            self._hello_done = True
+        except M2Crypto.BIO.BIOError, e:
+            # See http://www.openssl.org/docs/apps/verify.html#DIAGNOSTICS
+            # for the error codes returned by SSL_get_verify_result.
+            raise TLSProtocolError(m2.ssl_get_verify_result(self._ssl._ptr()), e.args[0])
+
+
+    def _starttls(self, **kwargs):
+        self._is_client = kwargs['client']
+        self._handshake = True
+        self._update_read_monitor()
+        ctx = M2Crypto.SSL.Context()
+
+        if 'dh' in kwargs:
+            ctx.set_tmp_dh(kwargs['dh'])
+
+        if 'cert' in kwargs:
+            try:
+                ctx.load_cert_chain(kwargs['cert'], keyfile=kwargs.get('key'))
+            except M2Crypto.SSL.SSLError, e:
+                # Reraise wrapped as TLSSocketError
+                raise TLSError('Invalid certificate and/or key: %s' % e.message)
+
+        if kwargs.get('verify'):
+            if not self._cafile:
+                # Verification was requested but on CA bundle found, therefore
+                # impossible to verify.
+                raise TLSError('CA bundle not found but verification requested.')
+            else:
+                # Load CA bundle.
+                ctx.load_verify_locations(self._cafile)
+
+
+        ctx.set_options(M2Crypto.SSL.op_all | M2Crypto.SSL.op_no_sslv2)
+        ctx.set_verify(M2Crypto.SSL.verify_none, 10)
+
+        self._ssl = _SSLProxy(m2.ssl_new(ctx.ctx))
+
+        self._bio_internal = m2.bio_new(m2.bio_s_bio())
+        m2.bio_set_write_buf_size(self._bio_internal, 0)
+        self._bio_network = _BioProxy(m2.bio_new(m2.bio_s_bio()), self._ssl)
+        m2.bio_set_write_buf_size(self._bio_network._ptr(), 0)
+        m2.bio_make_bio_pair(self._bio_internal, self._bio_network._ptr())
+
+        self._bio_ssl = _BioProxy(m2.bio_new(m2.bio_f_ssl()), self._ssl)
+
+        if kwargs['client']:
+            m2.ssl_set_connect_state(self._ssl._ptr())
+        else:
+            m2.ssl_set_accept_state(self._ssl._ptr())
+            
+        m2.ssl_set_bio(self._ssl._ptr(), self._bio_internal, self._bio_internal)
+        m2.bio_set_ssl(self._bio_ssl._ptr(), self._ssl._ptr(), m2.bio_noclose)
+
+        # Need this for writes that are larger than BIO pair buffers
+        mode = m2.ssl_get_mode(self._ssl._ptr())
+        m2.ssl_set_mode(self._ssl._ptr(), mode | m2.SSL_MODE_ENABLE_PARTIAL_WRITE | m2.SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER)
+
+        self._tls_started = True
+        self._starttls_kwargs = kwargs
+        if kwargs['client']:
+            self._hello()
+        return self._tls_ip
+
+
+    def starttls_client(self, **kwargs):
+        """
+        TODO: document me.
+
+        Possible kwargs:
+            cert: filename to pem cert for local side
+            key: private key file (if None, assumes key is in cert)
+            dh: filename for Diffie-Hellman parameters (only used for server)
+            verify: if True, checks that the peer cert is signed by a known CA
+            check: 2-tuple (host, fingerprint) to control further peer cert checks:
+                   host: None: validate CN from host from connect();
+                         False: don't do any CN checking
+                         string: require CN match the string
+                   fingerprint: peer cert digest must match fingerprint, or None not to check.
+        """
+        return self._starttls(client=True, **kwargs)
+
+
+    def starttls_server(self, **kwargs):
+        return self._starttls(client=False, **kwargs)
+ 
+
+    def _translate(self, write_bio, write_bio_buf, read_bio, force_write=False):
+        data = []
+        encrypting = write_bio is self._bio_ssl
+        write_bio = write_bio._ptr()
+        read_bio = read_bio._ptr()
+
+        while True:
+            writable = m2.bio_ctrl_get_write_guarantee(write_bio) > 0
+            if (writable and self._buffers[write_bio_buf]) or force_write:
+                # If force_write is True, we want to start the handshake.  We
+                # call bio_write() even if there's nothing in the buffer, to
+                # cause OpenSSL to implicitly send the client hello.
+                chunk = self._buffers[write_bio_buf].pop(0) if self._buffers[write_bio_buf] else ''
+                r = m2.bio_write(write_bio, chunk)
+                if r <= 0:
+                    assert(m2.bio_should_retry(write_bio))
+                else:
+                    if encrypting:
+                        # We are encrypting user data to send to peer.  Require the
+                        # remote end be validated first.  We should not normally
+                        # get here until ClientHello is completed successfully.
+                        assert(self._validated)
+                    chunk = chunk[r:]
+
+                if chunk:
+                    # Insert remainder of chunk back into the buffer.
+                    self._buffers[write_bio_buf].insert(0, chunk)
+                  
+            pending = m2.bio_ctrl_pending(read_bio)
+            if not pending:
+                break
+
+            chunk  = m2.bio_read(read_bio, pending)
+            if chunk is not None:
+                data.append(chunk)
+            else:
+                # It's possible for chunk to be None, even though bio_ctrl_pending()
+                # told us there was data waiting in the BIO.  I suspect this happens
+                # when all the bytes in the BIO are used for the SSL protocol and
+                # none are user data.
+                assert(m2.bio_should_retry(read_bio))
+
+        return ''.join(data)
+
+
+    def _encrypt(self, clientHello=False):
+        #print 'ENCRYPT: buffers=', self._buffers['plain']
+        return self._translate(self._bio_ssl, 'plain', self._bio_network, clientHello)
+
+
+    def _decrypt(self):
+        #print 'DECRYPT: buffers=', self._buffers['cipher']
+        return self._translate(self._bio_network, 'cipher', self._bio_ssl)

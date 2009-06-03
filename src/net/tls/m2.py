@@ -96,6 +96,7 @@ class M2TLSSocket(TLSSocketBase):
         super(M2TLSSocket, self).__init__()
         self._reset()
 
+
     def _m2_check_err(self, r=None, cls=TLSError):
         if m2.err_peek_error():
             err = m2.err_reason_error_string(m2.err_get_error())
@@ -260,7 +261,6 @@ class M2TLSSocket(TLSSocketBase):
             # later by raising this.
             raise IOError(11, 'Resource temporarily unavailable')
 
-        # TODO: if no read monitors, append to _read_queue and raise IOError(11)
         return decrypted
 
 

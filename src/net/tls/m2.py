@@ -45,26 +45,25 @@ log = logging.getLogger('tls')
 class _SSLProxy:
     """
     Proxy to a SSL object, which calls the low-level ssl_free() on the SSL
-    object during destruction.
+    object during destruction.  Also by pushing __del__ into here, it allows
+    M2TLSSocket to be garbage collected.
     """
 
     m2_ssl_free = m2.ssl_free
 
     def __init__(self, ssl):
-        self.ssl = ssl
-
-    def _ptr(self):
-        return self.ssl
+        self.obj = ssl
 
     def __del__(self):
-        if self.ssl is not None:
-            self.m2_ssl_free(self.ssl)
+        if self.obj is not None:
+            self.m2_ssl_free(self.obj)
 
 
 class _BioProxy:
     """
     Proxy to a BIO object, which calls the low-level bio_free_all() on the BIO
-    during destruction.
+    during destruction.  Also by pushing __del__ into here, it allows
+    M2TLSSocket to be garbage collected.
     """
 
     m2_bio_free_all = m2.bio_free_all
@@ -73,15 +72,12 @@ class _BioProxy:
         # Hold reference to SSL object to ensure _BioProxy.__del__ gets
         # called before _SSLProxy.__del__.  Otherwise, if the SSL obj
         # gets freed before the BIO object, we will segfault.
-        self.bio = bio
+        self.obj = bio
         self.ssl = ssl
 
-    def _ptr(self):
-        return self.bio
-
     def __del__(self):
-        if self.bio is not None:
-            self.m2_bio_free_all(self.bio)
+        if self.obj is not None:
+            self.m2_bio_free_all(self.obj)
 
 
 class M2TLSSocket(TLSSocketBase):
@@ -142,7 +138,7 @@ class M2TLSSocket(TLSSocketBase):
         """
         # While doing initial handshake from ClientHello, we are interested
         # in read events internally, even if we have no listeners.
-        should_read = m2.bio_should_read(self._bio_ssl._ptr()) if self._bio_ssl else False
+        should_read = m2.bio_should_read(self._bio_ssl.obj) if self._bio_ssl else False
         return should_read or self._handshake or super(M2TLSSocket, self)._is_read_connected()
 
 
@@ -172,17 +168,17 @@ class M2TLSSocket(TLSSocketBase):
 
 
     def _check(self):
-        if self._validated or not m2.ssl_is_init_finished(self._ssl._ptr()):
+        if self._validated or not m2.ssl_is_init_finished(self._ssl.obj):
             return
 
         kwargs = self._starttls_kwargs
         if kwargs.get('verify'):
             # See http://www.openssl.org/docs/apps/verify.html#DIAGNOSTICS
             # for the error codes returned by SSL_get_verify_result.
-            if m2.ssl_get_verify_result(self._ssl._ptr()) != m2.X509_V_OK:
+            if m2.ssl_get_verify_result(self._ssl.obj) != m2.X509_V_OK:
                 raise TLSVerificationError('Peer certificate is not signed by a known CA')
 
-        x509 = self._m2_check_err(m2.ssl_get_peer_cert(self._ssl._ptr()), TLSVerificationError)
+        x509 = self._m2_check_err(m2.ssl_get_peer_cert(self._ssl.obj), TLSVerificationError)
         if x509 is not None:
             self.peer_cert = X509.X509(x509, 1)
         else:
@@ -234,7 +230,7 @@ class M2TLSSocket(TLSSocketBase):
                 self._tls_ip.throw(e.__class__, e, None)
             raise e
 
-        if not self._tls_ip.finished and m2.ssl_is_init_finished(self._ssl._ptr()):
+        if not self._tls_ip.finished and m2.ssl_is_init_finished(self._ssl.obj):
             # TLS handshake completed successfully, peer cert validated.
             self._handshake = False
             self._update_read_monitor()
@@ -319,9 +315,9 @@ class M2TLSSocket(TLSSocketBase):
         # Create a lower level (SWIG) SSL object using this context.
         self._ssl = _SSLProxy(m2.ssl_new(ctx.ctx))
         if kwargs['client']:
-            self._m2_check_err(m2.ssl_set_connect_state(self._ssl._ptr()))
+            self._m2_check_err(m2.ssl_set_connect_state(self._ssl.obj))
         else:
-            self._m2_check_err(m2.ssl_set_accept_state(self._ssl._ptr()))
+            self._m2_check_err(m2.ssl_set_accept_state(self._ssl.obj))
 
         # Setup the BIO pair.  This diagram is instructive:
         #
@@ -350,13 +346,13 @@ class M2TLSSocket(TLSSocketBase):
         self._bio_network = _BioProxy(bio_network, self._ssl)
 
         self._bio_ssl = _BioProxy(m2.bio_new(m2.bio_f_ssl()), self._ssl)
-        self._m2_check_err(m2.ssl_set_bio(self._ssl._ptr(), bio_internal, bio_internal))
-        self._m2_check_err(m2.bio_set_ssl(self._bio_ssl._ptr(), self._ssl._ptr(), m2.bio_noclose))
+        self._m2_check_err(m2.ssl_set_bio(self._ssl.obj, bio_internal, bio_internal))
+        self._m2_check_err(m2.bio_set_ssl(self._bio_ssl.obj, self._ssl.obj, m2.bio_noclose))
 
         # Need this for writes that are larger than BIO pair buffers
-        mode = m2.ssl_get_mode(self._ssl._ptr())
+        mode = m2.ssl_get_mode(self._ssl.obj)
         mode |= m2.SSL_MODE_ENABLE_PARTIAL_WRITE | m2.SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER
-        self._m2_check_err(m2.ssl_set_mode(self._ssl._ptr(), mode))
+        self._m2_check_err(m2.ssl_set_mode(self._ssl.obj, mode))
 
         self._tls_started = True
         self._starttls_kwargs = kwargs
@@ -390,8 +386,8 @@ class M2TLSSocket(TLSSocketBase):
     def _translate(self, write_bio, write_bio_buf, read_bio, force_write=False):
         data = []
         encrypting = write_bio is self._bio_ssl
-        write_bio = write_bio._ptr()
-        read_bio = read_bio._ptr()
+        write_bio = write_bio.obj
+        read_bio = read_bio.obj
 
         while True:
             writable = m2.bio_ctrl_get_write_guarantee(write_bio) > 0
@@ -409,7 +405,7 @@ class M2TLSSocket(TLSSocketBase):
                         raise TLSProtocolError('Unexpected internal state: should_retry()'
                                                'is False without error')
 
-                    if not self._rmon.active and m2.bio_should_read(self._bio_ssl._ptr()):
+                    if not self._rmon.active and m2.bio_should_read(self._bio_ssl.obj):
                         # The BIO write failed, the SSL BIO is now telling us we should
                         # read, and the read monitor is not active.  Update the read
                         # monitor now, which will register with the notifier because the

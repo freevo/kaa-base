@@ -42,9 +42,9 @@ kaa.signals['shutdown'].connect(M2Crypto.threading.cleanup)
 log = logging.getLogger('tls')
 
 
-class _SSLProxy:
+class _SSLWrapper:
     """
-    Proxy to a SSL object, which calls the low-level ssl_free() on the SSL
+    Wrapper for an SSL object, which calls the low-level ssl_free() on the SSL
     object during destruction.  Also by pushing __del__ into here, it allows
     M2TLSSocket to be garbage collected.
     """
@@ -59,18 +59,18 @@ class _SSLProxy:
             self.m2_ssl_free(self.obj)
 
 
-class _BioProxy:
+class _BIOWrapper:
     """
-    Proxy to a BIO object, which calls the low-level bio_free_all() on the BIO
-    during destruction.  Also by pushing __del__ into here, it allows
+    Wrapper for a BIO object, which calls the low-level bio_free_all() on the
+    BIO during destruction.  Also by pushing __del__ into here, it allows
     M2TLSSocket to be garbage collected.
     """
 
     m2_bio_free_all = m2.bio_free_all
 
     def __init__(self, bio, ssl):
-        # Hold reference to SSL object to ensure _BioProxy.__del__ gets
-        # called before _SSLProxy.__del__.  Otherwise, if the SSL obj
+        # Hold reference to SSL object to ensure _BIOWrapper.__del__ gets
+        # called before _SSLWrapper.__del__.  Otherwise, if the SSL obj
         # gets freed before the BIO object, we will segfault.
         self.obj = bio
         self.ssl = ssl
@@ -86,7 +86,7 @@ class M2TLSSocket(TLSSocketBase):
     pairs for guaranteed async IO; all socket communication is handled by us
     (via the IOChannel).  See:
         http://www.openssl.org/docs/crypto/BIO_new_bio_pair.html
-    
+
     Inspired heavily by TwistedProtocolWrapper.py from M2Crypto.
     """
     # list of suuported TLS authentication mechanisms
@@ -105,11 +105,10 @@ class M2TLSSocket(TLSSocketBase):
 
 
     def _reset(self):
-        self._buffers = {
-            'plaintext': [],
-            'ciphertext': []
-        }
+        self._buf_plaintext = []
+        self._buf_ciphertext = []
 
+        # Delete wrapper objects so the BIO/SSL objects get freed.
         self._bio_ssl = None
         self._bio_network = None
         self._ssl = None
@@ -122,7 +121,7 @@ class M2TLSSocket(TLSSocketBase):
         self._validated = False
         # True if starttls_client() was called, False otherwise.
         self._is_client = False
-        # kwargs passed to starttls_(client|server) for use by _check() 
+        # kwargs passed to starttls_(client|server) for use by _check()
         self._starttls_kwargs = None
         # InProgress finished when starttls completes or fails.
         self._tls_ip = kaa.InProgress()
@@ -158,7 +157,7 @@ class M2TLSSocket(TLSSocketBase):
         if not self._tls_started:
             return super(M2TLSSocket, self).write(data)
 
-        self._buffers['plaintext'].append(data)
+        self._buf_plaintext.append(data)
         try:
             ip = super(M2TLSSocket, self).write(self._encrypt())
             # FIXME: this IP might not reflect the given data for this write()
@@ -211,7 +210,7 @@ class M2TLSSocket(TLSSocketBase):
                 self._tls_ip.throw(TLSProtocolError, e, None)
             return data
 
-        self._buffers['ciphertext'].append(data)
+        self._buf_ciphertext.append(data)
         decrypted = ''
 
         try:
@@ -310,10 +309,10 @@ class M2TLSSocket(TLSSocketBase):
                 # is a constant that m2crypto doesn't export. :/
                 if err != 185057381:
                     raise TLSError(m2.err_reason_error_string(err))
-                
+
 
         # Create a lower level (SWIG) SSL object using this context.
-        self._ssl = _SSLProxy(m2.ssl_new(ctx.ctx))
+        self._ssl = _SSLWrapper(m2.ssl_new(ctx.ctx))
         if kwargs['client']:
             self._m2_check_err(m2.ssl_set_connect_state(self._ssl.obj))
         else:
@@ -343,9 +342,9 @@ class M2TLSSocket(TLSSocketBase):
         bio_internal = m2.bio_new(m2.bio_s_bio())
         bio_network = m2.bio_new(m2.bio_s_bio())
         self._m2_check_err(m2.bio_make_bio_pair(bio_internal, bio_network))
-        self._bio_network = _BioProxy(bio_network, self._ssl)
+        self._bio_network = _BIOWrapper(bio_network, self._ssl)
 
-        self._bio_ssl = _BioProxy(m2.bio_new(m2.bio_f_ssl()), self._ssl)
+        self._bio_ssl = _BIOWrapper(m2.bio_new(m2.bio_f_ssl()), self._ssl)
         self._m2_check_err(m2.ssl_set_bio(self._ssl.obj, bio_internal, bio_internal))
         self._m2_check_err(m2.bio_set_ssl(self._bio_ssl.obj, self._ssl.obj, m2.bio_noclose))
 
@@ -381,7 +380,7 @@ class M2TLSSocket(TLSSocketBase):
 
     def starttls_server(self, **kwargs):
         return self._starttls(client=False, **kwargs)
- 
+
 
     def _translate(self, write_bio, write_bio_buf, read_bio, force_write=False):
         data = []
@@ -391,11 +390,11 @@ class M2TLSSocket(TLSSocketBase):
 
         while True:
             writable = m2.bio_ctrl_get_write_guarantee(write_bio) > 0
-            if (writable and self._buffers[write_bio_buf]) or force_write:
+            if (writable and write_bio_buf) or force_write:
                 # If force_write is True, we want to start the handshake.  We call
                 # bio_write() even if there's nothing in the buffer, to cause OpenSSL to
                 # implicitly send the client hello.
-                chunk = self._buffers[write_bio_buf].pop(0) if self._buffers[write_bio_buf] else ''
+                chunk = write_bio_buf.pop(0) if write_bio_buf else ''
                 r = m2.bio_write(write_bio, chunk)
                 if r <= 0:
                     # If BIO_write returns <= 0 due to an error condition, it should
@@ -422,8 +421,8 @@ class M2TLSSocket(TLSSocketBase):
 
                 if chunk:
                     # Insert remainder of chunk back into the buffer.
-                    self._buffers[write_bio_buf].insert(0, chunk)
-                  
+                    write_bio_buf.insert(0, chunk)
+
             pending = m2.bio_ctrl_pending(read_bio)
             if not pending:
                 break
@@ -442,10 +441,10 @@ class M2TLSSocket(TLSSocketBase):
 
 
     def _encrypt(self, clientHello=False):
-        #print 'ENCRYPT: buffers=', self._buffers['plaintext']
-        return self._translate(self._bio_ssl, 'plaintext', self._bio_network, clientHello)
+        #print 'ENCRYPT: buffers=', self._buf_plaintext
+        return self._translate(self._bio_ssl, self._buf_plaintext, self._bio_network, clientHello)
 
 
     def _decrypt(self):
-        #print 'DECRYPT: buffers=', self._buffers['ciphertext']
-        return self._translate(self._bio_network, 'ciphertext', self._bio_ssl)
+        #print 'DECRYPT: buffers=', self._buf_ciphertext
+        return self._translate(self._bio_network, self._buf_ciphertext, self._bio_ssl)

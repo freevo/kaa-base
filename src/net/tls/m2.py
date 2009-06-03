@@ -4,10 +4,6 @@
 # -----------------------------------------------------------------------------
 # $Id$
 #
-# This module wraps TLS for client and server based on tlslite. See
-# http://trevp.net/tlslite/docs/public/tlslite.TLSConnection.TLSConnection-class.html
-# for more information about optional paramater.
-#
 # -----------------------------------------------------------------------------
 # Copyright 2008-2009 Dirk Meyer, Jason Tackaberry
 #
@@ -48,8 +44,8 @@ log = logging.getLogger('tls')
 
 class _SSLProxy:
     """
-    The purpose of this class is to eliminate the __del__ method from
-    TLSProtocolWrapper, and thus letting it be garbage collected.
+    Proxy to a SSL object, which calls the low-level ssl_free() on the SSL
+    object during destruction.
     """
 
     m2_ssl_free = m2.ssl_free
@@ -67,8 +63,8 @@ class _SSLProxy:
 
 class _BioProxy:
     """
-    The purpose of this class is to eliminate the __del__ method from
-    TLSProtocolWrapper, and thus letting it be garbage collected.
+    Proxy to a BIO object, which calls the low-level bio_free_all() on the BIO
+    during destruction.
     """
 
     m2_bio_free_all = m2.bio_free_all

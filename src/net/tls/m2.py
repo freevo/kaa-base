@@ -267,7 +267,7 @@ class M2TLSSocket(TLSSocketBase):
         try:
             # We rely on OpenSSL implicitly starting with client hello
             # when we haven't yet established an SSL connection
-            super(M2TLSSocket, self).write(self._encrypt(clientHello=True))
+            super(M2TLSSocket, self).write(self._encrypt(hello=True))
         except M2Crypto.BIO.BIOError, e:
             raise TLSProtocolError(e.args[0])
 
@@ -440,9 +440,9 @@ class M2TLSSocket(TLSSocketBase):
         return ''.join(data)
 
 
-    def _encrypt(self, clientHello=False):
+    def _encrypt(self, hello=False):
         #print 'ENCRYPT: buffers=', self._buf_plaintext
-        return self._translate(self._bio_ssl, self._buf_plaintext, self._bio_network, clientHello)
+        return self._translate(self._bio_ssl, self._buf_plaintext, self._bio_network, hello)
 
 
     def _decrypt(self):

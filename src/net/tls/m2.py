@@ -102,7 +102,41 @@ class M2TLSSocket(TLSSocketBase):
 
     def __init__(self):
         super(M2TLSSocket, self).__init__()
+        self._reset()
+
+    def _m2_check_err(self, r=None, cls=TLSError):
+        if m2.err_peek_error():
+            err = m2.err_reason_error_string(m2.err_get_error())
+            raise cls(err)
+        return r
+
+
+    def _reset(self):
+        self._buffers = {
+            'plaintext': [],
+            'ciphertext': []
+        }
+
+        self._bio_ssl = None
+        self._bio_network = None
+        self._ssl = None
+
+        # True while performing initial handshake, False once it completes.
+        self._handshake = False
+        # True once starttls_*() has been called.
         self._tls_started = False
+        # True once the peer's certificate has been verified (or ignored if verify=False)
+        self._validated = False
+        # True if starttls_client() was called, False otherwise.
+        self._is_client = False
+        # kwargs passed to starttls_(client|server) for use by _check() 
+        self._starttls_kwargs = None
+        # InProgress finished when starttls completes or fails.
+        self._tls_ip = kaa.InProgress()
+
+
+    def _close(self):
+        super(M2TLSSocket, self)._close()
         self._reset()
 
 
@@ -112,47 +146,33 @@ class M2TLSSocket(TLSSocketBase):
         """
         # While doing initial handshake from ClientHello, we are interested
         # in read events internally, even if we have no listeners.
-        return self._handshake or super(M2TLSSocket, self)._is_read_connected()
+        should_read = m2.bio_should_read(self._bio_ssl._ptr()) if self._bio_ssl else False
+        return should_read or self._handshake or super(M2TLSSocket, self)._is_read_connected()
 
 
-    def _reset(self):
-        if self._tls_started:
-            self._bio_ssl = None
-            self._bio_internal = None
-            self._bio_network = None
-            self._ssl = None
-
-        self._buffers = {
-            'plain': [],
-            'cipher': []
-        }
-
-        self._tls_started = False
-        self._validated = False
-        self._is_client = False
-        self._hello_done = False
-        self._starttls_kwargs = None
-        self._tls_ip = kaa.InProgress()
-
-
-    def _close(self):
-        super(M2TLSSocket, self)._close()
-        self._reset()
+    # Useful for debug.
+    #def _write(self, data):
+    #    print 'm2: write len=%d data=%r...' % (len(data), data[:20])
+    #    return super(M2TLSSocket, self)._write(data)
 
 
     def write(self, data):
+        # A write can require us to read from the socket, even when there are
+        # no callbacks attached to 'read' or 'readline', such as in the
+        # case when a handshake is still pending.  If this is the case,
+        # _encrypt() called below will cause _rmon to get registered while
+        # the TLS layer needs data from the peer.
         if not self._tls_started:
             return super(M2TLSSocket, self).write(data)
 
-        self._buffers['plain'].append(data)
+        self._buffers['plaintext'].append(data)
         try:
             ip = super(M2TLSSocket, self).write(self._encrypt())
-            self._hello_done = True
+            # FIXME: this IP might not reflect the given data for this write()
+            # if we're currently doing a handshake.
             return ip
         except M2Crypto.BIO.BIOError, e:
-            # See http://www.openssl.org/docs/apps/verify.html#DIAGNOSTICS
-            # for the error codes returned by SSL_get_verify_result.
-            raise TLSProtocolError(m2.ssl_get_verify_result(self._ssl._ptr()), e.args[0])
+            raise TLSProtocolError(e.args[0])
 
 
     def _check(self):
@@ -161,10 +181,12 @@ class M2TLSSocket(TLSSocketBase):
 
         kwargs = self._starttls_kwargs
         if kwargs.get('verify'):
+            # See http://www.openssl.org/docs/apps/verify.html#DIAGNOSTICS
+            # for the error codes returned by SSL_get_verify_result.
             if m2.ssl_get_verify_result(self._ssl._ptr()) != m2.X509_V_OK:
                 raise TLSVerificationError('Peer certificate is not signed by a known CA')
 
-        x509 = m2.ssl_get_peer_cert(self._ssl._ptr())
+        x509 = self._m2_check_err(m2.ssl_get_peer_cert(self._ssl._ptr()), TLSVerificationError)
         if x509 is not None:
             self.peer_cert = X509.X509(x509, 1)
         else:
@@ -196,7 +218,7 @@ class M2TLSSocket(TLSSocketBase):
                 self._tls_ip.throw(TLSProtocolError, e, None)
             return data
 
-        self._buffers['cipher'].append(data)
+        self._buffers['ciphertext'].append(data)
         decrypted = ''
 
         try:
@@ -211,17 +233,33 @@ class M2TLSSocket(TLSSocketBase):
                     break
                 decrypted += plaintext
         except M2Crypto.BIO.BIOError, e:
-            # See http://www.openssl.org/docs/apps/verify.html#DIAGNOSTICS
-            # for the error codes returned by SSL_get_verify_result.
-            e = TLSProtocolError(m2.ssl_get_verify_result(self._ssl._ptr()), e.args[0])
+            e = TLSProtocolError(e.args[0])
             if not self._tls_ip.finished:
                 self._tls_ip.throw(e.__class__, e, None)
             raise e
 
         if not self._tls_ip.finished and m2.ssl_is_init_finished(self._ssl._ptr()):
+            # TLS handshake completed successfully, peer cert validated.
             self._handshake = False
             self._update_read_monitor()
             self._tls_ip.finish(True)
+
+        if decrypted and not self._is_read_connected() and not self._is_readline_connected():
+            # There is decrypted (user) data from the socket, but no one external is wants
+            # it yet.  So this data was decrypted as a consequence of our handshaking.
+            # (SSL BIO said we should read in _translate()).  We can stuff this data
+            # into the read queue (from IOChannel superclass), so subsequent user reads
+            # will consume it.
+            if len(decrypted) + self.read_queue_used > self.queue_size + self.chunk_size:
+                # This shouldn't happen in normal circumstances.  It's more of a sanity
+                # check.
+                raise TLSError('Read queue overflow')
+
+            self._read_queue.write(decrypted)
+            decrypted = None
+            # We probably no longer need to read from the socket, given that we
+            # have user data.
+            self._update_read_monitor()
 
         if not decrypted:
             # We read data from the socket, but after passing through the BIO pair
@@ -230,6 +268,7 @@ class M2TLSSocket(TLSSocketBase):
             # later by raising this.
             raise IOError(11, 'Resource temporarily unavailable')
 
+        # TODO: if no read monitors, append to _read_queue and raise IOError(11)
         return decrypted
 
 
@@ -238,30 +277,30 @@ class M2TLSSocket(TLSSocketBase):
             # We rely on OpenSSL implicitly starting with client hello
             # when we haven't yet established an SSL connection
             super(M2TLSSocket, self).write(self._encrypt(clientHello=True))
-            self._hello_done = True
         except M2Crypto.BIO.BIOError, e:
-            # See http://www.openssl.org/docs/apps/verify.html#DIAGNOSTICS
-            # for the error codes returned by SSL_get_verify_result.
-            raise TLSProtocolError(m2.ssl_get_verify_result(self._ssl._ptr()), e.args[0])
+            raise TLSProtocolError(e.args[0])
 
 
     def _starttls(self, **kwargs):
         self._is_client = kwargs['client']
         self._handshake = True
         self._update_read_monitor()
-        ctx = M2Crypto.SSL.Context()
+
+        ctx = kwargs.get('ctx', M2Crypto.SSL.Context())
 
         if 'dh' in kwargs:
             ctx.set_tmp_dh(kwargs['dh'])
 
         if 'cert' in kwargs:
             try:
-                ctx.load_cert_chain(kwargs['cert'], keyfile=kwargs.get('key'))
+                ctx.load_cert(kwargs['cert'], keyfile=kwargs.get('key'))
             except M2Crypto.SSL.SSLError, e:
                 # Reraise wrapped as TLSSocketError
                 raise TLSError('Invalid certificate and/or key: %s' % e.message)
 
         if kwargs.get('verify'):
+            # TODO: apply appropriate verify options.
+            #ctx.set_verify(M2Crypto.SSL.verify_none, 10)
             if not self._cafile:
                 # Verification was requested but on CA bundle found, therefore
                 # impossible to verify.
@@ -269,32 +308,59 @@ class M2TLSSocket(TLSSocketBase):
             else:
                 # Load CA bundle.
                 ctx.load_verify_locations(self._cafile)
+                # M2Crypto does no error checking on this function, and at
+                # least on my system it yields the delightfully inscrutable
+                # "cert already in hash table" error (perhaps my distro's
+                # CA bundle has duplicate certs?).  It doesn't seem there's
+                # anything that can be done about it, so just eat it.
+                err = m2.err_get_error()
+                # The magic number is X509_R_CERT_ALREADY_IN_HASH_TABLE, which
+                # is a constant that m2crypto doesn't export. :/
+                if err != 185057381:
+                    raise TLSError(m2.err_reason_error_string(err))
+                
 
-
-        ctx.set_options(M2Crypto.SSL.op_all | M2Crypto.SSL.op_no_sslv2)
-        ctx.set_verify(M2Crypto.SSL.verify_none, 10)
-
+        # Create a lower level (SWIG) SSL object using this context.
         self._ssl = _SSLProxy(m2.ssl_new(ctx.ctx))
+        if kwargs['client']:
+            self._m2_check_err(m2.ssl_set_connect_state(self._ssl._ptr()))
+        else:
+            self._m2_check_err(m2.ssl_set_accept_state(self._ssl._ptr()))
 
-        self._bio_internal = m2.bio_new(m2.bio_s_bio())
-        m2.bio_set_write_buf_size(self._bio_internal, 0)
-        self._bio_network = _BioProxy(m2.bio_new(m2.bio_s_bio()), self._ssl)
-        m2.bio_set_write_buf_size(self._bio_network._ptr(), 0)
-        m2.bio_make_bio_pair(self._bio_internal, self._bio_network._ptr())
+        # Setup the BIO pair.  This diagram is instructive:
+        #
+        #     Application         |   TLS layer
+        #                         |
+        #    Your Code            |
+        #     /\    ||            |
+        #     ||    \/            |
+        #    Application buffer <===> TLS read/write/etc
+        #                         |     /\    ||
+        #                         |     ||    \/
+        #                         |   BIO pair (internal_bio)
+        #                         |   BIO pair (network_bio)
+        #                         |     /\    ||
+        #                         |     ||    \/
+        #    socket read/write  <===> BIO read/write
+        #     /\    ||            |
+        #     ||    \/            |
+        #     network             |
+        #
+        # [From http://www.mail-archive.com/openssl-users@openssl.org/msg57297.html]
+
+        bio_internal = m2.bio_new(m2.bio_s_bio())
+        bio_network = m2.bio_new(m2.bio_s_bio())
+        self._m2_check_err(m2.bio_make_bio_pair(bio_internal, bio_network))
+        self._bio_network = _BioProxy(bio_network, self._ssl)
 
         self._bio_ssl = _BioProxy(m2.bio_new(m2.bio_f_ssl()), self._ssl)
-
-        if kwargs['client']:
-            m2.ssl_set_connect_state(self._ssl._ptr())
-        else:
-            m2.ssl_set_accept_state(self._ssl._ptr())
-            
-        m2.ssl_set_bio(self._ssl._ptr(), self._bio_internal, self._bio_internal)
-        m2.bio_set_ssl(self._bio_ssl._ptr(), self._ssl._ptr(), m2.bio_noclose)
+        self._m2_check_err(m2.ssl_set_bio(self._ssl._ptr(), bio_internal, bio_internal))
+        self._m2_check_err(m2.bio_set_ssl(self._bio_ssl._ptr(), self._ssl._ptr(), m2.bio_noclose))
 
         # Need this for writes that are larger than BIO pair buffers
         mode = m2.ssl_get_mode(self._ssl._ptr())
-        m2.ssl_set_mode(self._ssl._ptr(), mode | m2.SSL_MODE_ENABLE_PARTIAL_WRITE | m2.SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER)
+        mode |= m2.SSL_MODE_ENABLE_PARTIAL_WRITE | m2.SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER
+        self._m2_check_err(m2.ssl_set_mode(self._ssl._ptr(), mode))
 
         self._tls_started = True
         self._starttls_kwargs = kwargs
@@ -334,13 +400,26 @@ class M2TLSSocket(TLSSocketBase):
         while True:
             writable = m2.bio_ctrl_get_write_guarantee(write_bio) > 0
             if (writable and self._buffers[write_bio_buf]) or force_write:
-                # If force_write is True, we want to start the handshake.  We
-                # call bio_write() even if there's nothing in the buffer, to
-                # cause OpenSSL to implicitly send the client hello.
+                # If force_write is True, we want to start the handshake.  We call
+                # bio_write() even if there's nothing in the buffer, to cause OpenSSL to
+                # implicitly send the client hello.
                 chunk = self._buffers[write_bio_buf].pop(0) if self._buffers[write_bio_buf] else ''
                 r = m2.bio_write(write_bio, chunk)
                 if r <= 0:
-                    assert(m2.bio_should_retry(write_bio))
+                    # If BIO_write returns <= 0 due to an error condition, it should
+                    # raise.  Otherwise we expect bio_should_retry() to return True.  Do a
+                    # quick sanity check.
+                    if not m2.bio_should_retry(write_bio):
+                        raise TLSProtocolError('Unexpected internal state: should_retry()'
+                                               'is False without error')
+
+                    if not self._rmon.active and m2.bio_should_read(self._bio_ssl._ptr()):
+                        # The BIO write failed, the SSL BIO is now telling us we should
+                        # read, and the read monitor is not active.  Update the read
+                        # monitor now, which will register with the notifier because the
+                        # SSL BIO should read, allowing us to read from the socket to
+                        # satisfy whatever the underlying SSL protocol is doing.
+                        self._update_read_monitor()
                 else:
                     if encrypting:
                         # We are encrypting user data to send to peer.  Require the
@@ -371,10 +450,10 @@ class M2TLSSocket(TLSSocketBase):
 
 
     def _encrypt(self, clientHello=False):
-        #print 'ENCRYPT: buffers=', self._buffers['plain']
-        return self._translate(self._bio_ssl, 'plain', self._bio_network, clientHello)
+        #print 'ENCRYPT: buffers=', self._buffers['plaintext']
+        return self._translate(self._bio_ssl, 'plaintext', self._bio_network, clientHello)
 
 
     def _decrypt(self):
-        #print 'DECRYPT: buffers=', self._buffers['cipher']
-        return self._translate(self._bio_network, 'cipher', self._bio_ssl)
+        #print 'DECRYPT: buffers=', self._buffers['ciphertext']
+        return self._translate(self._bio_network, 'ciphertext', self._bio_ssl)

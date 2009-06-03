@@ -59,16 +59,12 @@ class TLSProtocolError(TLSError):
     """
     Raised when a protocol-related problem occurs, such as the remote end does
     not speak TLS, or when no shared cipher could be established.
-
-    Exception args is a 2-tuple of (errno, message).
     """
     pass
 
 class TLSVerificationError(TLSError):
     """
     Raised when the remote end's certificate did not verify correctly.
-
-    Exception args is a message string.
     """
     pass
 

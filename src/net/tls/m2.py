@@ -304,11 +304,15 @@ class M2TLSSocket(TLSSocketBase):
                 # "cert already in hash table" error (perhaps my distro's
                 # CA bundle has duplicate certs?).  It doesn't seem there's
                 # anything that can be done about it, so just eat it.
-                err = m2.err_get_error()
-                # The magic number is X509_R_CERT_ALREADY_IN_HASH_TABLE, which
-                # is a constant that m2crypto doesn't export. :/
-                if err != 185057381:
-                    raise TLSError(m2.err_reason_error_string(err))
+                # (There may be multiple such errors, so clear them all.)
+                while True:
+                    err = m2.err_get_error()
+                    if not err:
+                        break
+                    # The magic number is X509_R_CERT_ALREADY_IN_HASH_TABLE, which
+                    # is a constant that m2crypto doesn't export. :/
+                    if err != 185057381:
+                        raise TLSError(m2.err_reason_error_string(err))
 
 
         # Create a lower level (SWIG) SSL object using this context.

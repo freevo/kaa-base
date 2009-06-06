@@ -45,7 +45,7 @@ import threading
 import atexit
 
 import nf_wrapper as notifier
-from signals import Signal, Signals
+from signals import Signals
 from timer import OneShotTimer
 from process import supervisor
 from thread import is_mainthread, wakeup, set_as_mainthread, threaded, MAINTHREAD
@@ -174,7 +174,7 @@ def run(threaded=False):
         # start mainloop as thread and wait until it is started
         event = threading.Event()
         OneShotTimer(event.set).start(0)
-        threading.Thread(target=run).start()
+        threading.Thread(target=run, name='kaa mainloop').start()
         return event.wait()
 
     try:

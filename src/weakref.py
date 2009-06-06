@@ -58,7 +58,7 @@ class weakref(object):
         # callable.
         if callable(object):
             cls = _callable_weakref
-        return super(weakref, weakref).__new__(cls, object)
+        return super(weakref, weakref).__new__(cls)
 
     def __init__(self, object):
         if object is not None:

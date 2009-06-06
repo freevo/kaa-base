@@ -34,7 +34,7 @@ import re
 import copy
 import logging
 import stat
-import md5
+import hashlib
 import textwrap
 from new import classobj
 
@@ -104,7 +104,7 @@ class Base(object):
         a hash of the schema only.
         """
         value = repr(self._value) if values else ''
-        return md5.new(repr(self._name) + repr(self._desc) + repr(self._default) + value).hexdigest()
+        return hashlib.md5(repr(self._name) + repr(self._desc) + repr(self._default) + value).hexdigest()
 
 
     def copy(self):
@@ -228,7 +228,7 @@ class Var(Base):
         """
         Returns a hash of the config item.
         """
-        return md5.new(super(Var, self)._hash(values) + repr(self._type)).hexdigest()
+        return hashlib.md5(super(Var, self)._hash(values) + repr(self._type)).hexdigest()
 
 
     def _cfg_string(self, prefix, print_desc=True):
@@ -356,7 +356,7 @@ class Group(Base):
         """
         Returns a hash of the config item.
         """
-        hash = md5.new(super(Group, self)._hash(values))
+        hash = hashlib.md5(super(Group, self)._hash(values))
         for name in self._vars:
             hash.update(self._dict[name]._hash(values))
         return hash.hexdigest()
@@ -509,7 +509,7 @@ class Dict(Base):
         """
         Returns a hash of the config item.
         """
-        hash = md5.new(super(Dict, self)._hash(values))
+        hash = hashlib.md5(super(Dict, self)._hash(values))
         for key in self.keys():
             hash.update(self._dict[key]._hash(values))
         return hash.hexdigest()
@@ -680,7 +680,7 @@ class Config(Group):
         """
         Returns a hash of the config item.
         """
-        return md5.new(super(Config, self)._hash(values) + repr(self._bad_lines)).hexdigest()
+        return hashlib.md5(super(Config, self)._hash(values) + repr(self._bad_lines)).hexdigest()
 
 
     def copy(self):

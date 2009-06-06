@@ -103,7 +103,7 @@ import cPickle
 import pickle
 import struct
 import sys
-import sha
+import hashlib
 import time
 import traceback
 
@@ -702,7 +702,7 @@ class Channel(Object):
         value is not by design a nonce, but in practice it probably is.
         """
         rbytes = file("/dev/urandom").read(64)
-        return sha.sha(str(time.time()) + rbytes).digest()
+        return hashlib.sha1(str(time.time()) + rbytes).digest()
 
 
     def _send_auth_challenge(self):
@@ -732,7 +732,7 @@ class Channel(Object):
 
         def H(s):
             # Returns the 20 byte SHA-1 digest of string s.
-            return sha.sha(s).digest()
+            return hashlib.sha1(s).digest()
 
         if not salt:
             salt = self._get_rand_value()

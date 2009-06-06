@@ -28,7 +28,6 @@
 # python imports
 import os
 import textwrap
-import popen2
 import re
 import xml.sax
 
@@ -146,7 +145,7 @@ def svn2log(module):
     # Create a parser
     parser = xml.sax.make_parser()
 
-    reader = popen2.popen2('svn log -v --xml')[0]
+    reader = os.popen('svn log -v --xml')
     writer = open('ChangeLog', 'w')
 
     dh = LogParser(writer, prefix, users)

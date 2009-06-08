@@ -72,7 +72,7 @@ If an InProgress finishes with an exception (in which case the
 :attr:`~kaa.InProgress.failed` property is True) but it is not handled
 by one of the above methods (either by connecting a callback to the
 *exception* attribute, or by catching the exception raised by a yield
-in a coroutine), the exception will be logged to stdout with the heading
+in a coroutine), the exception will be logged to stderr with the heading
 "Unhandled asynchronous exception."
 
 
@@ -95,6 +95,7 @@ in a coroutine), the exception will be logged to stdout with the heading
    .. autosignals::
 
 
+
 InProgress Collections
 ----------------------
 
@@ -107,6 +108,16 @@ InProgress Collections
 
    .. automethods::
    .. autosignals::
+
+
+InProgress Exceptions
+---------------------
+
+The following exceptions can be raised by InProgress methods.
+
+.. kaaclass:: kaa.TimeoutException
+
+.. kaaclass:: kaa.InProgressAborted
 
 
 Functions

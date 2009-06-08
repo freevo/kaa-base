@@ -543,8 +543,8 @@ class Process(Object):
         .. warning::
            If timeout() is called on the returned InProgress and the timeout
            occurs, the InProgress returned by ``start()`` will be finished with
-           a TimeoutException even though the child process isn't actually
-           dead.  You can always test the :attr:`~kaa.Process.running`
+           a :class:`~kaa.TimeoutException` even though the child process isn't
+           actually dead.  You can always test the :attr:`~kaa.Process.running`
            property, or use the :attr:`~kaa.Process.signals.finished` signal,
            which doesn't emit until the child process is genuinely dead.
 

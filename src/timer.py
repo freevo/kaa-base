@@ -130,13 +130,16 @@ class Timer(notifier.NotifierCallback):
         """
         Start the timer, invoking the callback every *interval* seconds.
 
+        :param interval: interval between invocations of the callback, in seconds
+
         If the timer is already running, it is stopped and restarted with
         the given interval.  The timer's precision is at the mercy of other
         tasks running in the main loop.  For example, if another task
         (a different timer, or I/O callback) blocks the mainloop for longer
         than the given timer interval, the callback will be invoked late.
 
-        :param interval: interval between invocations of the callback, in seconds
+        This method may safely be called from a thread, however the timer
+        callback will be invoked from the main thread.
         """
         if self.active:
             if not self.restart_when_active:
@@ -161,7 +164,10 @@ class Timer(notifier.NotifierCallback):
         """
         Stop a running timer.
 
-        This method can be called safely even if the timer is already stopped.
+        This method is a no-op if the timer is already stopped.  It may also be
+        called from a thread, however if the timer callback is currently
+        executing in the main thread, it will of course have to finish, but it
+        will not be called again unless the timer is restarted.
         """
         self.unregister()
 

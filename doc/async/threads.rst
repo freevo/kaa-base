@@ -111,10 +111,7 @@ The following thread-related functions are available:
 
 .. autofunction:: kaa.is_mainthread
 
-.. function:: kaa.main.wakeup()
-
-   Wake up main thread. A thread can use this function to wake up a
-   mainloop waiting on a select.
+.. autofunction:: kaa.main.wakeup
 
 
 Callable Classes for Threads

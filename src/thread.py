@@ -166,6 +166,7 @@ class synchronized(object):
         Create a synchronized object. Note: when used on classes a new
         member _kaa_synchronized_lock will be added to that class.
         """
+        print "SYNC", obj
         if obj is None:
             # decorator in classes
             self._lock = None
@@ -236,8 +237,12 @@ def is_mainthread():
 
 def wakeup():
     """
-    Wake up main thread. A thread can use this function to wake up a mainloop
-    waiting on a select.
+    Wakes up the mainloop.
+
+    The mainloop sleeps when there are no timers to process and no activity on
+    any registered :class:`~kaa.IOMonitor` objects.  This function can be used
+    by another thread to wake up the mainloop.  For example, when a
+    :class:`~kaa.MainThreadCallable` is invoked, it calls ``wakeup()``.
     """
     if _thread_notifier_pipe and len(_thread_notifier_queue) == 0:
         os.write(_thread_notifier_pipe[1], "1")
@@ -456,21 +461,21 @@ class ThreadInProgress(InProgress):
         Invocation of a :class:`~kaa.ThreadCallable` or
         :class:`~kaa.ThreadPoolCallable` will return a ``ThreadInProgress``
         object which may be aborted by calling this method.  When an
-        in-progress thread is aborted, an ``InProgressAborted`` exception is
-        raised inside the thread.
+        in-progress thread is aborted, an :class:`~kaa.InProgressAborted`
+        exception is raised inside the thread.
 
-        Just prior to raising ``InProgressAborted`` inside the thread, the
+        Just prior to raising :class:`~kaa.InProgressAborted` inside the thread, the
         :attr:`~ThreadCallable.signals.abort` signal will be emitted.
         Callbacks connected to this signal are invoked within the thread from
         which ``abort()`` was called.  If any of the callbacks return
-        ``False``, ``InProgressAborted`` will not be raised in the thread.
+        ``False``, :class:`~kaa.InProgressAborted` will not be raised in the thread.
 
-        It is possible to catch InProgressAborted within the thread to
-        deal with cleanup, but any return value from the threaded callable
-        will be discarded.  It is therefore not possible abort an abort.
-        However, if the InProgress is aborted before the thread has a chance
-        to start, the thread is not started at all, and so obviously the threaded
-        callable will not receive ``InProgressAborted``.
+        It is possible to catch :class:`~kaa.InProgressAborted` within the
+        thread to deal with cleanup, but any return value from the threaded
+        callable will be discarded.  It is therefore not possible abort an
+        abort.  However, if the InProgress is aborted before the thread has a
+        chance to start, the thread is not started at all, and so obviously the
+        threaded callable will not receive :class:`~kaa.InProgressAborted`.
 
         .. warning::
         
@@ -499,12 +504,11 @@ class ThreadCallableBase(Callable, Object):
 
             See :meth:`~ThreadInProgress.abort` for a more detailed discussion.
 
-            Handlers may return False to prevent ``InProgressAborted`` from
-            being raised inside the thread.  However, the ThreadInProgress is
-            still considered aborted regardless.  Handlers of this signal are
-            intended to implement more appropriate logic to cancel the threaded
-            callable.
-
+            Handlers may return False to prevent
+            :class:`~kaa.InProgressAborted` from being raised inside the
+            thread.  However, the ThreadInProgress is still considered aborted
+            regardless.  Handlers of this signal are intended to implement more
+            appropriate logic to cancel the threaded callable.
             '''
     }
 

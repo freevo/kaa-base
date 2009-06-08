@@ -158,6 +158,19 @@ class AsyncException(AsyncExceptionBase):
 
 
 class TimeoutException(Exception):
+    """
+    This exception is raised by an :class:`~kaa.InProgress` returned by
+    :meth:`~kaa.InProgress.timeout` when the timeout occurs.
+
+    For example::
+
+        sock = kaa.Socket()
+        try:
+            yield sock.connect('deadhost.com:80').timeout(10)
+        except kaa.TimeoutException:
+            print 'Connection timed out after 10 seconds'
+
+    """
     def __init__(self, msg, inprogress):
         super(TimeoutException, self).__init__(msg)
         self.args = (msg, inprogress)
@@ -173,7 +186,7 @@ class InProgressAborted(BaseException):
     :meth:`~kaa.InProgress.abort` is called.
 
     For :class:`~kaa.ThreadCallable` and  :class:`~kaa.ThreadPoolCallable`
-    this exception is raised inside the threaded callable.  This makes
+    this exception is raised inside the threaded callable.  This makes it
     potentially an asynchronous exception (when used this way), and therefore
     it subclasses BaseException, similar in rationale to KeyboardInterrupt
     and SystemExit, and also (for slightly different reasons) GeneratorExit,
@@ -278,7 +291,7 @@ class InProgress(Signal, Object):
             .. describe:: def callback(exc)
 
                :param exc: an exception object the InProgress was aborted with.
-               :type exc: InProgressAborted
+               :type exc: :class:`~kaa.InProgressAborted`
 
             If the task cannot be aborted, the callback can return False, which
             will cause an exception to be raised by abort().
@@ -563,17 +576,17 @@ class InProgress(Signal, Object):
         Aborts the asynchronous task this InProgress represents.
 
         :param exc: optional exception object with which to abort the InProgress; if
-                    None is given, a general InProgressAborted exception will
-                    be used.
-        :type exc: InProgressAborted
+                    None is given, a general :class:`~kaa.InProgressAborted`
+                    exception will be used.
+        :type exc: :class:`~kaa.InProgressAborted`
 
         Not all such tasks can be aborted.  If aborting is not supported, or if
         the InProgress is already finished, a RuntimeError exception is raised.
 
         If a coroutine is aborted, the CoroutineInProgress object returned by
-        the coroutine will be finished with InProgressAborted, while the underlying
-        generator used by the coroutine will have the standard GeneratorExit
-        raised inside it.
+        the coroutine will be finished with :class:`~kaa.InProgressAborted`,
+        while the underlying generator used by the coroutine will have the
+        standard GeneratorExit raised inside it.
         """
         if self.finished:
             raise RuntimeError('InProgress is already finished.')
@@ -592,26 +605,38 @@ class InProgress(Signal, Object):
     def timeout(self, timeout, callback=None, abort=False):
         """
         Create a new InProgress object linked to this one that will throw
-        a TimeoutException if this object is not finished by the given timeout.
+        :class:`~kaa.TimeoutException` if this object is not finished by the
+        given timeout.
 
         :param callback: called (with no additional arguments) just prior
                          to TimeoutException
+        :type callback: callable
+        :param abort: invoke :meth:`~kaa.InProgress.abort` on the original InProgress
+                      if the timeout occurs.
+        :type abort: bool
         :return: a new :class:`~kaa.InProgress` object that is subject to the timeout
 
         If the original InProgress finishes before the timeout, the new InProgress
         (returned by this method) is finished with the result of the original.
 
-        If a timeout does occur, the original InProgress object is not affected:
-        it is not finished with the TimeoutException, nor is it aborted.  If you
-        want to abort the original task you must do it explicitly::
+        If a timeout does occur and the ``abort`` argument is False, the
+        original InProgress object is not affected: it is not finished with the
+        :class:`~TimeoutException`, nor is it aborted.  You can explicitly
+        abort the original InProgress::
 
             @kaa.coroutine()
             def read_from_socket(sock):
                 try:
                     data = yield sock.read().timeout(3)
-                except TimeoutException, (msg, inprogress):
+                except kaa.TimeoutException, (msg, inprogress):
                     print 'Error:', msg
                     inprogress.abort()
+
+        Aside from the print statement, this is equivalent::
+        
+            @kaa.coroutine()
+            def read_from_socket(sock):
+                data = yield sock.read().timeout(3, abort=True)
         """
         async = InProgress()
         def trigger():

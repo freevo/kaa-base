@@ -272,7 +272,7 @@ class Socket(IOChannel):
             addr = (addr[0], sock.getsockname()[1])
         sock.listen(qlen)
         self._listening = True
-        self.wrap(sock, addr)
+        self.wrap(sock, IO_READ | IO_WRITE, addr)
 
 
     @threaded()
@@ -291,7 +291,7 @@ class Socket(IOChannel):
         finally:
             self._connecting = False
 
-        self.wrap(sock, addr)
+        self.wrap(sock, IO_READ | IO_WRITE, addr)
 
 
     def connect(self, addr):
@@ -316,13 +316,13 @@ class Socket(IOChannel):
         return self._connect(addr)
 
 
-    def wrap(self, sock, addr=None):
+    def wrap(self, sock, mode=IO_READ|IO_WRITE, addr=None):
         """
         Wraps an existing low-level socket object.
         
         addr specifies the address corresponding to the socket.
         """
-        super(Socket, self).wrap(sock, IO_READ|IO_WRITE)
+        super(Socket, self).wrap(sock, mode)
         self._addr = addr or self._addr
 
         if self._buffer_size:
@@ -352,7 +352,7 @@ class Socket(IOChannel):
         sock, addr = self._channel.accept()
         # create new Socket from the same class this object is
         client_socket = self.__class__()
-        client_socket.wrap(sock, addr)
+        client_socket.wrap(sock, IO_READ | IO_WRITE, addr)
         self.signals['new-client'].emit(client_socket)
 
 
@@ -382,3 +382,12 @@ class Socket(IOChannel):
                 pass
 
         self._addr = None
+
+
+    def steal(self, socket):
+        if not isinstance(socket, Socket):
+            raise TypeError('Can only steal from other sockets')
+
+        self._addr = socket._addr
+        self._buffer_size = socket._buffer_size
+        return super(Socket, self).steal(socket)

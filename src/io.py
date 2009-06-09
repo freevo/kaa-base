@@ -378,6 +378,16 @@ class IOChannel(Object):
         self._delimiter = value
 
 
+    @property
+    def mode(self):
+        """
+        Whether the channel is read-only, or read/write.
+
+        A bitmask of IO_READ and/or IO_WRITE.
+        """
+        return self._mode
+
+
     def _is_read_connected(self):
         """
         Returns True if an outside caller is interested in reads (not readlines).
@@ -883,6 +893,52 @@ class IOChannel(Object):
             # out for now.
             #main.signals['shutdown'].disconnect(self.close)
 
+
+    def steal(self, channel):
+        """
+        Steal all state from the given channel, assuming control over the underlying
+        file descriptor or socket.
+
+        :param channel: the channel to steal from
+        :type channel: :class:`~kaa.IOChannel`
+        :return: self
+
+        The use-case for this method is primarily to convert one type of
+        IOChannel into another.  For example, it's possible to convert a
+        standard :class:`~kaa.Socket` into a :class:`~kaa.TLSSocket` in the
+        middle of a session.  This method returns ``self`` so that this idiom
+        is possible::
+        
+            from kaa.net.tls import TLSSocket
+            sock = TLSSocket().steal(sock)
+
+        This method is similar to :meth:`~kaa.IOChannel.wrap`, but additionally
+        all state is moved from the supplied IOChannel, including read/write
+        queues, and all callbacks connected to signals are added to ``self``,
+        and removed from ``channel``.
+
+        Once stolen, the given ``channel`` is rendered basically inert.
+        """
+        self._delimiter = channel.delimiter
+        self._write_queue = channel._write_queue
+        self._read_queue = channel._read_queue
+        self._queue_size = channel._queue_size
+        self._chunk_size = channel._chunk_size
+        self._queue_close = channel._queue_close
+
+        self.wrap(channel, channel.mode)
+        channel._write_queue = channel._read_queue = channel._channel = None
+
+        def clone(src, dst):
+            [dst.connect(cb) for cb in src.callbacks]
+            src.disconnect_all()
+        clone(channel._read_signal, self._read_signal)
+        clone(channel._readline_signal, self._readline_signal)
+        clone(channel.signals['read'], self.signals['read'])
+        clone(channel.signals['readline'], self.signals['readline'])
+
+        return self
+        
 
 # We have have a problem with recursive imports. We need main here,
 # but main depends (through various other modules) on io.py. Since we

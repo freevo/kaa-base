@@ -92,6 +92,17 @@ class Signal(object):
         self._changed_cb = callback
 
 
+    @property
+    def callbacks(self):
+        """
+        Tuple containing the callbacks connected to this signal.
+
+        Because this value is a tuple, it cannot be manipulated directly.  Use
+        :meth:`~kaa.Signal.connect` and :meth:`~kaa.Signal.disconnect` instead.
+        """
+        return tuple(self._callbacks)
+
+
     def __iter__(self):
         for cb in self._callbacks:
             yield cb

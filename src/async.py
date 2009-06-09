@@ -396,7 +396,7 @@ class InProgress(Signal, Object):
         This property may be explicitly set to ``True``, in which case
         :meth:`~kaa.InProgress.abort` will succeed regardless.  An InProgress is
         therefore abortable if the ``abortable`` property has been explicitly
-        set to True, if if there are callbacks connected to the
+        set to True, or if there are callbacks connected to the
         :attr:`~kaa.InProgress.signals.abort` signal.
 
         This is useful when constructing an InProgress object that corresponds

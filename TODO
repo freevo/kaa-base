@@ -1,6 +1,7 @@
 TODO before 1.0:
 ----------------
 
+- Fix places that raise ValueError when they should be raising TypeError
 - Complete documentation
 
 

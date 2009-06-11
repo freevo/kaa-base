@@ -7,6 +7,10 @@ import kaa.rpc
 
 sig = kaa.Signals('one', 'two', 'three')
 
+# Named thread pools used later.
+kaa.register_thread_pool('yield', kaa.ThreadPool())
+kaa.register_thread_pool('foo', kaa.ThreadPool())
+
 class Server(object):
     def __init__(self):
         self.s = kaa.rpc.Server('test')

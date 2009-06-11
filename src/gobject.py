@@ -34,6 +34,8 @@
 #
 # -----------------------------------------------------------------------------
 
+from __future__ import absolute_import
+
 __all__ = [ 'GOBJECT', 'gobject_set_threaded' ]
 
 # python imports
@@ -41,7 +43,8 @@ import threading
 
 # get import helper since this file conflicts with the
 # global gobject module.
-from utils import sysimport
+from .utils import sysimport
+from .weakref import weakref
 try:
     # try to import gobject
     gobject = sysimport('gobject')
@@ -49,22 +52,23 @@ except ImportError:
     gobject = None
 
 # get thread module
-import thread as thread_support
-import main as main_module
+from . import thread as thread_support
+from . import main as main_module
 
 # object for kaa.threaded decorator
 GOBJECT = object()
 
 class Wrapper(object):
     """
-    Glib wrapper with JobServer interface.
+    Glib wrapper with ThreadPool interface.
     """
     def __init__(self):
-        # register this class as thread.JobServer
-        thread_support._threads[GOBJECT] = self
         self.stopped = False
         self.thread = False
         self.init = False
+        # Fake pool members, needed by ThreadPool interface.
+        self._members = [weakref(self)]
+
 
     def set_threaded(self, mainloop=None):
         """
@@ -82,12 +86,17 @@ class Wrapper(object):
         if self.thread:
             return
         self.thread = True
+
+        # Register this class as a thread pool
+        thread_support._thread_pools[GOBJECT] = self
+
         if gobject is not None:
             # init thread support in the module importing gobject
             gobject.threads_init()
             self.loop(mainloop)
             # make sure we get a clean shutdown
             main_module.signals['shutdown'].connect_once(self.stop, True)
+
 
     @thread_support.threaded()
     def loop(self, mainloop):
@@ -100,7 +109,8 @@ class Wrapper(object):
         self._loop = mainloop
         self._loop.run()
 
-    def add(self, callback):
+
+    def enqueue(self, callback, priority=0):
         """
         Add a callback.
         """
@@ -108,6 +118,7 @@ class Wrapper(object):
         if not self.thread or threading.currentThread() == self.thread:
             return callback()
         gobject.idle_add(self._execute, callback)
+
 
     def _execute(self, callback):
         """
@@ -119,6 +130,7 @@ class Wrapper(object):
             self._loop.quit()
         return False
 
+
     def stop(self, wait=False):
         """
         Stop the glib thread.
@@ -126,10 +138,11 @@ class Wrapper(object):
         if not self.stopped:
             self.stopped = True
             if self.thread:
-                self.add(None)
+                self.enqueue(None)
         if wait:
             # wait until the thread is done
             self.join()
+
 
     def join(self):
         """
@@ -138,6 +151,7 @@ class Wrapper(object):
         if self.thread:
             # join the thread
             self.thread.join()
+
 
 # create object and expose set_threaded
 gobject_set_threaded = Wrapper().set_threaded

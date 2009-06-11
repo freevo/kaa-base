@@ -480,7 +480,6 @@ class InProgress(Signal, Object):
         # custom traceback object in C code that preserves the parts of the
         # stack frames needed for printing tracebacks, but discarding objects
         # that would create circular references.  This might be a TODO.
-
         self._finished = True
         self._exception = type, value, tb
         self._unhandled_exception = True

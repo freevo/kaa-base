@@ -931,7 +931,9 @@ class IOChannel(Object):
 
         def clone(src, dst):
             [dst.connect(cb) for cb in src.callbacks]
+            # FIXME: need to take care of abort callbacks for IP
             src.disconnect_all()
+
         clone(channel._read_signal, self._read_signal)
         clone(channel._readline_signal, self._readline_signal)
         clone(channel.signals['read'], self.signals['read'])

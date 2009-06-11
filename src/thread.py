@@ -4,22 +4,6 @@
 # -----------------------------------------------------------------------------
 # $Id$
 #
-# This module contains some wrapper classes for threading while running the
-# main loop. It should only be used when non blocking handling is not
-# possible. The main loop itself is not thread save, the the function called in
-# the thread should not touch any variables inside the application which are
-# not protected by by a lock.
-#
-# You can create a Thread object with the function and it's
-# arguments. After that you can call the start function to start the
-# thread. This function has an optional parameter with a callable
-# which will be called from the main loop once the thread is
-# finished. The result of the thread function is the parameter for the
-# callable.
-#
-# In most cases this module is not needed, please add a good reason why you
-# wrap a function in a thread.
-#
 # -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
 # Copyright 2005-2009 Dirk Meyer, Jason Tackaberry, et al.
@@ -42,9 +26,12 @@
 #
 # -----------------------------------------------------------------------------
 
+from __future__ import absolute_import
+
 __all__ = [ 'MainThreadCallable', 'ThreadCallable', 'is_mainthread',
             'wakeup', 'set_as_mainthread', 'create_thread_notifier_pipe',
-            'threaded', 'MAINTHREAD', 'synchronized', 'ThreadInProgress' ]
+            'threaded', 'MAINTHREAD', 'synchronized', 'ThreadInProgress',
+            'ThreadPool', 'register_thread_pool', 'get_thread_pool' ]
 
 # python imports
 import sys
@@ -55,16 +42,15 @@ import fcntl
 import socket
 import errno
 import types
+import time
+from thread import LockType
 
 # kaa imports
-import nf_wrapper as notifier
-from callable import Callable
-from object import Object
-from async import InProgress, InProgressAborted, InProgressStatus
-from utils import wraps, DecoratorDataStore, sysimport, property
-
-# import python thread file
-LockType = sysimport('thread').LockType
+from . import nf_wrapper as notifier
+from .callable import Callable
+from .object import Object
+from .async import InProgress, InProgressAborted, InProgressStatus
+from .utils import wraps, DecoratorDataStore, property
 
 # get logging object
 log = logging.getLogger('base')
@@ -81,143 +67,51 @@ _thread_notifier_queue = []
 # (kaa.utils.daemonize does not have this problem.)
 _thread_notifier_pipe = None
 
-# internal list of named threads
-_threads = {}
+# Thread pool name -> ThreadPool object
+_thread_pools = {}
 
 # For threaded decorator
 MAINTHREAD = object()
 
-def threaded(name=None, priority=0, async=True, progress=False):
-    """
-    The decorator makes sure the function is always called in the thread
-    with the given name. The function will return an InProgress object if
-    async=True (default), otherwise it will cause invoking the decorated
-    function to block (the main loop is kept alive) and its result is
-    returned. If progress is True, the first argument to the function is
-    an InProgressStatus object to return execution progress.
 
-    If name=kaa.MAINTHREAD, the decorated function will be invoked from
-    the main thread.  (In this case, currently the priority kwarg is
-    ignored.)
-    """
-    if progress is True:
-        progress = InProgressStatus
-
-    def decorator(func):
-        @wraps(func, lshift=int(not not progress))
-        def newfunc(*args, **kwargs):
-            if progress:
-                args = (progress(),) + args
-            if name is MAINTHREAD:
-                if not async and is_mainthread():
-                    # Fast-path case: mainthread synchronous call from the mainthread
-                    return func(*args, **kwargs)
-                callback = MainThreadCallable(func)
-            elif name:
-                callback = ThreadPoolCallable((name, priority), func)
-            else:
-                callback = ThreadCallable(func)
-                callback.wait_on_exit = False
-
-            # callback will always return InProgress
-            in_progress = callback(*args, **kwargs)
-            if not async:
-                return in_progress.wait()
-            if progress:
-                in_progress.progress = args[0]
-            return in_progress
-
-        # Boilerplate for @kaa.generator
-        newfunc.decorator = threaded
-        newfunc.origfunc = func
-        newfunc.redecorate = lambda: threaded(name, priority, async, progress)
-        return newfunc
-
-    return decorator
+def _thread_notifier_queue_callback(callback, args, kwargs, in_progress):
+    _thread_notifier_lock.acquire()
+    _thread_notifier_queue.append((callback, args, kwargs, in_progress))
+    if len(_thread_notifier_queue) == 1:
+        if _thread_notifier_pipe:
+            os.write(_thread_notifier_pipe[1], "1")
+    _thread_notifier_lock.release()
 
 
-# XXX: we import generator here because generator.py requires
-# threaded and MAINTHREAD from this module, so this is necessary
-# to avoid import loop.
-from generator import generator
-
-@generator.register(threaded)
-def _generator_threaded(generator, func, args, kwargs):
-    """
-    kaa.generator support for kaa.threaded
-    """
-    for g in func(*args, **kwargs):
-        generator.send(g)
-
-
-
-class synchronized(object):
-    """
-    synchronized decorator and `with` statement similar to synchronized
-    in Java. When decorating a non-member function, a lock or any class
-    inheriting from object may be provided.
-
-    :param obj: object were all calls should be synchronized to.
-      if not provided it will be the object for member functions
-      or an RLock for functions.
-    """
-    def __init__(self, obj=None):
-        """
-        Create a synchronized object. Note: when used on classes a new
-        member _kaa_synchronized_lock will be added to that class.
-        """
-        print "SYNC", obj
-        if obj is None:
-            # decorator in classes
-            self._lock = None
-            return
-        if isinstance(obj, (threading._RLock, LockType)):
-            # decorator from functions
-            self._lock = obj
-            return
-        # with statement or function decorator with object
-        if not hasattr(obj, '_kaa_synchronized_lock'):
-            obj._kaa_synchronized_lock = threading.RLock()
-        self._lock = obj._kaa_synchronized_lock
-
-    def __enter__(self):
-        """
-        with statement enter
-        """
-        if self._lock is None:
-            raise RuntimeError('synchronized in with needs a parameter')
-        self._lock.acquire()
-        return self._lock
-
-    def __exit__(self, type, value, traceback):
-        """
-        with statement exit
-        """
-        self._lock.release()
-        return False
-
-    def __call__(self, func):
-        """
-        decorator init
-        """
-        def call(*args, **kwargs):
-            """
-            decorator call
-            """
-            lock = self._lock
-            if lock is None:
-                # Lock not specified, use one attached to decorated function.
-                store = DecoratorDataStore(func, call, args)
-                if 'synchronized_lock' not in store:
-                    store.synchronized_lock = threading.RLock()
-                lock = store.synchronized_lock
-
-            lock.acquire()
+def _thread_notifier_run_queue(fd):
+    try:
+        os.read(_thread_notifier_pipe[0], 1000)
+    except socket.error, (err, msg):
+        if err == errno.EAGAIN:
+            # Resource temporarily unavailable -- we are trying to read
+            # data on a socket when none is avilable.  This should not
+            # happen under normal circumstances, so log an error.
+            log.error("Thread notifier pipe woke but no data available.")
+    except OSError:
+        pass
+    _thread_notifier_lock.acquire()
+    try:
+        while _thread_notifier_queue:
+            callback, args, kwargs, in_progress = _thread_notifier_queue.pop(0)
             try:
-                return func(*args, **kwargs)
-            finally:
-                lock.release()
-        return call
+                in_progress.finish(callback(*args, **kwargs))
+            except BaseException, e:
+                # All exceptions, including SystemExit and KeyboardInterrupt,
+                # are caught and thrown to the InProgress, because it may be
+                # waiting in another thread.  However SE and KI are reraised
+                # in here the main thread so they can be propagated back up
+                # the mainloop.
+                in_progress.throw(*sys.exc_info())
+                if isinstance(e, (KeyboardInterrupt, SystemExit)):
+                    raise
+    finally:
+        _thread_notifier_lock.release()
+    return True
 
 
 def is_mainthread():
@@ -226,9 +120,8 @@ def is_mainthread():
 
     Note that the "main thread" is considered to be the thread in which the
     kaa main loop is running.  This is usually, but not necessarily, what
-    Python considers to be the main thread.  (If you call kaa.main.run()
+    Python considers to be the main thread.  (If you call :func:`kaa.main.run`
     in the main Python thread, then they are equivalent.)
-    
     """
     # If threading module is None, assume main thread.  (Silences pointless
     # exceptions on shutdown.)
@@ -248,7 +141,7 @@ def wakeup():
         os.write(_thread_notifier_pipe[1], "1")
 
 
-def create_thread_notifier_pipe(new = True, purge = False):
+def create_thread_notifier_pipe(new=True, purge=False):
     """
     Creates a new pipe for the thread notifier.  If new is True, a new pipe
     will always be created; if it is False, it will only be created if one
@@ -303,49 +196,45 @@ def killall():
     Kill all running job server. This function will be called by the main
     loop when it shuts down.
     """
-    for j in _threads.values():
-        j.stop()
-        j.join()
+    for pool in _thread_pools.values():
+        for thread in pool._members:
+            thread.stop()
+            thread.join()
 
 
-def _thread_notifier_queue_callback(callback, args, kwargs, in_progress):
-    _thread_notifier_lock.acquire()
-    _thread_notifier_queue.append((callback, args, kwargs, in_progress))
-    if len(_thread_notifier_queue) == 1:
-        if _thread_notifier_pipe:
-            os.write(_thread_notifier_pipe[1], "1")
-    _thread_notifier_lock.release()
+def register_thread_pool(name, pool):
+    """
+    Registers a :class:`~kaa.ThreadPool` under the given name.
+
+    :param name: the name under which to register this thread pool
+    :type name: str
+    :param pool: the thread pool object
+    :type pool: :class:`~kaa.ThreadPool`
+    :returns: the supplied :class:`~kaa.ThreadPool` object
+
+    Once registered, the thread pool may be referenced by name when using the
+    :func:`@kaa.threaded() <kaa.threaded>` decorator or 
+    :class:`~kaa.ThreadPoolCallable` class.
+
+    Thread pool names are arbitrary strings, but the recommended convention
+    is to format the pool name as ``appname::poolname``, where ``appname``
+    uniquely identifies the application, and ``poolname`` describes the purpose
+    of the thread pool.  An example might be ``beacon::thumbnailer``.
+    """
+    if name in _thread_pools:
+        raise ValueError('A registered pool already exists with name "%s"' % name)
+    assert(isinstance(pool, ThreadPool))
+    _thread_pools[name] = pool
+    pool._rename(name)
+    return pool
 
 
-def _thread_notifier_run_queue(fd):
-    try:
-        os.read(_thread_notifier_pipe[0], 1000)
-    except socket.error, (err, msg):
-        if err == errno.EAGAIN:
-            # Resource temporarily unavailable -- we are trying to read
-            # data on a socket when none is avilable.  This should not
-            # happen under normal circumstances, so log an error.
-            log.error("Thread notifier pipe woke but no data available.")
-    except OSError:
-        pass
-    _thread_notifier_lock.acquire()
-    try:
-        while _thread_notifier_queue:
-            callback, args, kwargs, in_progress = _thread_notifier_queue.pop(0)
-            try:
-                in_progress.finish(callback(*args, **kwargs))
-            except BaseException, e:
-                # All exceptions, including SystemExit and KeyboardInterrupt,
-                # are caught and thrown to the InProgress, because it may be
-                # waiting in another thread.  However SE and KI are reraised
-                # in here the main thread so they can be propagated back up
-                # the mainloop.
-                in_progress.throw(*sys.exc_info())
-                if isinstance(e, (KeyboardInterrupt, SystemExit)):
-                    raise
-    finally:
-        _thread_notifier_lock.release()
-    return True
+def get_thread_pool(name):
+    """
+    Returns the :class:`~kaa.ThreadPool` previously registered with the given
+    name, or None if no :class:`~kaa.ThreadPool` was registered with that name.
+    """
+    return _thread_pools.get(name)
 
 
 class MainThreadCallable(Callable):
@@ -380,9 +269,19 @@ class MainThreadCallable(Callable):
 
 
 class ThreadInProgress(InProgress):
+    """
+    An :class:`~kaa.InProgress` class that represents threaded tasks.  These
+    objects are returned when invoking :class:`~kaa.ThreadCallable` or
+    :class:`~kaa.ThreadPoolCallable` objects, or functions decorated with
+    :func:`@kaa.threaded() <kaa.threaded>`.
+
+    Callbacks connected to this InProgress are invoked from the main thread.
+    """
     def __init__(self, func, *args, **kwargs):
         super(ThreadInProgress, self).__init__()
         self._callable = Callable(func, *args, **kwargs)
+        # The Thread object the callback is running in.
+        self._thread = None
 
 
     def __call__(self, *args, **kwargs):
@@ -407,6 +306,7 @@ class ThreadInProgress(InProgress):
             # Attempting to invoke multiple times?  Shouldn't happen.
             return None
 
+        self._thread = threading.currentThread()  # for abort()
         try:
             result = self._callable()
             # Kludge alert: InProgressAborted gets raised asynchronously inside
@@ -443,6 +343,7 @@ class ThreadInProgress(InProgress):
             if not self.finished:
                 MainThreadCallable(self.finish)(result)
 
+        self._thread = None
         self._callable = None
 
 
@@ -512,11 +413,11 @@ class ThreadCallableBase(Callable, Object):
             '''
     }
 
-    def _setup_abort(self, thread, inprogress):
+    def _setup_abort(self, inprogress):
         # Hook an abort callback for this ThreadInProgress.
         def abort(exc):
-            if not thread.isAlive():
-                # Already stopped.
+            if not inprogress._thread:
+                # Already stopped or never ran.
                 return
 
             if self.signals['abort'].emit(exc) == False:
@@ -525,7 +426,7 @@ class ThreadCallableBase(Callable, Object):
 
             # This magic uses Python/C to raise an exception inside the thread.
             import ctypes
-            tids = [tid for tid, tobj in threading._active.items() if tobj == thread]
+            tids = [tid for tid, tobj in threading._active.items() if tobj == inprogress._thread]
             if not tids:
                 # Thread not found.  It must already have finished.
                 return
@@ -546,9 +447,9 @@ class ThreadCallableBase(Callable, Object):
 
 class ThreadCallable(ThreadCallableBase):
     """
-    Notifier aware wrapper for threads. When a thread is started, it is
-    impossible to fork the current process into a second one without exec both
-    using the main loop because of the shared _thread_notifier_pipe.
+    A special :class:`~kaa.Callable` used to execute a function or method
+    inside a thread.  A new thread is created each time the ThreadCallable is
+    invoked.
     """
     _wait_on_exit = True
 
@@ -578,7 +479,7 @@ class ThreadCallable(ThreadCallableBase):
 
         # Hook the aborted signal for the ThreadInProgress to stop the threaded
         # callable.
-        self._setup_abort(t, async)
+        self._setup_abort(async)
         # XXX: this was in the original abort code but I don't think it's necessary.
         # If I'm wrong, uncomment and explain why it's needed.
         #async.signals['abort'].connect(lambda: async.exception.disconnect(join))
@@ -599,29 +500,43 @@ class ThreadCallable(ThreadCallableBase):
 
 class ThreadPoolCallable(ThreadCallableBase):
     """
-    A callback to run a function in a thread. This class is used by the
-    threaded decorator, but it is also possible to use this call directly.
+    A special :class:`~kaa.Callable` used to execute a function or method
+    inside a thread as part of a thread pool.  If all threads in the thread
+    pool are busy, it is queued and will be invoked when one of the threads
+    become available.
     """
-    def __init__(self, thread_information, func, *args, **kwargs):
+    def __init__(self, poolinfo, func, *args, **kwargs):
+        """
+        :param poolinfo: a :class:`~kaa.ThreadPool` object or name of a previously
+                         registered thread pool, or a 2-tuple (``pool``, ``priority``),
+                         where ``pool`` is a :class:`~kaa.ThreadPool` object or registered
+                         name, and ``priority`` is the integer priority that controls
+                         where in the queue the job will be placed.
+        :param func: the underlying callable that will be called from within a
+                     thread.
+        """
         super(ThreadPoolCallable, self).__init__(func, *args, **kwargs)
-        self.priority = 0
-        if isinstance(thread_information, (list, tuple)):
-            thread_information, self.priority = thread_information
-        self._thread = thread_information
+        if isinstance(poolinfo, (list, tuple)):
+            self._pool, self.priority = poolinfo
+        else:
+            self._pool, self.priority = poolinfo, 0
+
+        if not isinstance(self._pool, ThreadPool):
+            try:
+                self._pool = _thread_pools[self._pool]
+            except KeyError:
+                log.warning('Implicitly registering thread pool "%s"; use register_thread_pool() instead',
+                            self._pool)
+                self._pool = register_thread_pool(self._pool, ThreadPool())
 
 
     def _create_job(self, *args, **kwargs):
-        cb = Callable._get_func(self)
-        job = ThreadInProgress(cb, *args, **kwargs)
-        job.priority = self.priority
-
-        if not _threads.has_key(self._thread):
-            _threads[self._thread] = _JobServer(self._thread)
-        server = _threads[self._thread]
-        server.add(job)
+        cb = super(ThreadPoolCallable, self)._get_func()
+        job = self._pool.enqueue(ThreadInProgress(cb, *args, **kwargs), self.priority)
         # Hook the aborted signal for the ThreadInProgress to stop the thread
         # callback.
-        self._setup_abort(server, job)
+        if job:
+            self._setup_abort(job)
         return job
 
 
@@ -629,18 +544,18 @@ class ThreadPoolCallable(ThreadCallableBase):
         return self._create_job
 
 
-class _JobServer(threading.Thread):
+
+class _ThreadPoolMember(threading.Thread):
     """
-    Thread processing ThreadPoolCallable jobs.
+    Member thread for thread pools.  This class dips its fingers into 
+    ThreadPool private members.
     """
-    def __init__(self, name):
-        super(_JobServer, self).__init__()
-        log.debug('start jobserver %s' % name)
+    def __init__(self, pool, name):
+        super(_ThreadPoolMember, self).__init__(name=name)
         self.setDaemon(True)
-        self.condition = threading.Condition()
         self.stopped = False
-        self.jobs = []
-        self.name = name
+        self.pool = pool
+        log.debug('thread pool member "%s" starting', name)
         self.start()
 
 
@@ -648,31 +563,19 @@ class _JobServer(threading.Thread):
         """
         Stop the thread.
         """
-        self.condition.acquire()
+        self.pool._condition.acquire()
         self.stopped = True
-        self.condition.notify()
-        self.condition.release()
+        self.pool._condition.notify()
+        self.pool._condition.release()
 
 
-    def add(self, job):
-        """
-        Add a ThreadPoolCallable to the thread.
-        """
-        self.condition.acquire()
-        self.jobs.append(job)
-        self.jobs.sort(lambda x,y: -cmp(x.priority, y.priority))
-        self.condition.notify()
-        self.condition.release()
-
-
-    def remove(self, job):
-        """
-        Remove a ThreadPoolCallable from the schedule.
-        """
-        if job in self.jobs:
-            self.condition.acquire()
-            self.jobs.remove(job)
-            self.condition.release()
+    def _exit(self):
+        try:
+            self.pool._members.remove(self)
+        except ValueError:
+            # We were stopped by the pool, which removed us already.
+            pass
+        log.debug('thread pool member "%s" exited', self.getName())
 
 
     def run(self):
@@ -681,15 +584,351 @@ class _JobServer(threading.Thread):
         """
         while not self.stopped:
             # get a new job to process
-            self.condition.acquire()
-            while not self.jobs and not self.stopped:
+            self.pool._condition.acquire()
+            t0 = time.time()
+            while not self.pool._queue and not self.stopped:
                 # nothing to do, wait
-                self.condition.wait()
+                self.pool._condition.wait(self.pool._timeout - (time.time() - t0))
+                if time.time() - t0 >= self.pool._timeout:
+                    # Timeout waiting for a job, exit.
+                    self.pool._condition.release()
+                    return self._exit()
+
             if self.stopped:
-                self.condition.release()
-                continue
-            job = self.jobs.pop(0)
-            self.condition.release()
+                self.pool._condition.release()
+                return self._exit()
+
+            job = self.pool._queue.pop(0)
+            self.pool._busy += 1
+            self.pool._condition.release()
             job()
-        # server stopped
-        log.debug('stop thread %s' % self.name)
+            self.pool._busy -= 1
+
+        self._exit()
+
+
+class ThreadPool(object):
+    """
+    Manages a pool of one or more threads for use with the
+    :func:`@kaa.threaded() <kaa.threaded>` decorator, or
+    :class:`~kaa.ThreadPoolCallable` objects.
+
+    ThreadPool objects may be assigned a name by calling
+    :func:`kaa.register_thread_pool`.  When done, the name can be referenced
+    instead of passing the ThreadPool object.
+    """
+    def __init__(self, size=1):
+        """
+        :param size: maximum number of threads this thread pool will grow to.
+        :type size: int
+        """
+        self._size = size
+        # List of ThreadPoolMember objects for this thread pool.
+        self._members = []
+        # Shared condition for all pool members
+        self._condition = threading.Condition()
+        # Shared work queue of 2-tuples (callback, priority)
+        self._queue = []
+        # Shared thread timeout.
+        self._timeout = 30
+        # Thread pool name.  Set using register_thread_pool()
+        self._name = None
+        # Number of pool members that are busy.
+        self._busy = 0
+
+
+    def __repr__(self):
+        if not self._name:
+            return '<Anonymous ThreadPool object at 0x%x>' % id(self)
+        else:
+            return '<ThreadPool "%s" object at 0x%x>' % (self._name, id(self))
+
+
+    def _resize(self):
+        """
+        Grows or shrinks pool members based on current number of jobs and
+        size limits.
+        """
+        while len(self._members) - self._busy < len(self._queue) and len(self._members) < self._size:
+            # We have jobs waiting and slots free, so spawn new members.
+            member = _ThreadPoolMember(self, '%s#%d' % (self._name, len(self._members)+1))
+            self._members.append(member)
+
+        while len(self._members) > self._size:
+            # Too many pool members.
+            # FIXME: rather than indiscriminantly removing the last member,
+            # first try to remove any that aren't processing jobs.
+            self._members.pop().stop()
+
+
+    def enqueue(self, callback, priority=0):
+        """
+        Creates a job from the given callback and adds it to the thread pool
+        work queue.
+
+        :param callback: a callable which will be invoked inside one of the
+                         pool threads.
+        :type callback: callable
+        :param priority: determines the relative priority of the job; higher
+                         values are higher priority.
+        :type priority: int
+        :returns: a :class:`~kaa.ThreadInProgress` object for this job.
+
+        It should generally not be necessary to call this method directly.
+        It is called implicitly when using the :func:`@kaa.threaded() <kaa.threaded>`
+        decorator, or :class:`~kaa.ThreadPoolCallable` objects.
+        """
+        if not isinstance(callback, ThreadInProgress):
+            callback = ThreadInProgress(callback)
+
+        callback.priority = priority
+
+        self._condition.acquire()
+        self._queue.append(callback)
+        self._queue.sort(key=lambda job: job.priority, reverse=True)
+        self._resize()
+        self._condition.notify()
+        self._condition.release()
+        return callback
+
+
+    def dequeue(self, job):
+        """
+        Removes the given job from the thread queue.
+
+        :param job: the job as returned by :meth:`~kaa.ThreadPool.enqueue`
+        :type job: :class:`~kaa.ThreadInProgress` object
+        :returns: True if the job existed and was removed, and False if the
+                  job was not found.
+        """
+        self._condition.acquire()
+        try:
+            self._queue.remove(job)
+        except ValueError:
+            found = False
+        else:
+            found = True
+        self._condition.release()
+        return found
+
+
+    @property
+    def size(self):
+        """
+        The maxium number of threads this pool may grow to.
+
+        If this value is increased and jobs are waiting to be processed, new
+        threads will be spawned as needed (but will not exceed the limit).
+        
+        If this value is decreased and there are too many active pool members
+        as a result, the necessary number of pool members will be stopped.  If
+        those members are currently processing jobs, they will exit once the job
+        is complete.
+        """
+        return self._size
+
+    @size.setter
+    def size(self, value):
+        self._size = value
+        self._resize()
+
+
+    @property
+    def timeout(self):
+        """
+        Number of seconds a thread pool member will wait for a job before stopping.
+
+        A thread which stopped due to timeout may be restarted if new jobs are
+        enqueued that would put that thread to work.
+        """
+        return self._timeout
+
+
+    @timeout.setter
+    def timeout(self, value):
+        self._condition.acquire()
+        do_notify = value < self._timeout
+        self._timeout = value
+        if do_notify:
+            # We reduced the timeout value, so wakeup all threads so they can
+            # decide if they've been waiting too long for a new job.
+            self._condition.notifyAll()
+        self._condition.release()
+
+
+    @property
+    def name(self):
+        """
+        The name under which this thread pool was registered.
+
+        Thread pools are registered via :func:`kaa.register_thread_pool`.  Once
+        registered, the thread pool may subsequently be referenced by name when
+        using :class:`~kaa.ThreadPoolCallable` or the 
+        :func:`@kaa.threaded() <kaa.threaded>` decorator.
+
+        An ThreadPool which has not been registered is called an anonymous thread
+        pool, and may be passed directly to :func:`@kaa.threaded() <kaa.threaded>`
+        and :class:`~kaa.ThreadPoolCallable`.
+        """
+        return self._name
+
+
+    def _rename(self, name):
+        # This is called by register_thread_pool().
+        self._condition.acquire()
+        self._name = name
+        for member in self._members:
+            member.name = self._name
+        self._condition.release()
+
+
+
+def threaded(pool=None, priority=0, async=True, progress=False):
+    """
+    Decorator causing the decorated function to be executed within a thread
+    when invoked.
+
+    :param pool: a :class:`~kaa.ThreadPool` object or name of a registered 
+                 thread pool; if None, a new thread will be created for each
+                 invocation.
+    :type pool: :class:`~kaa.ThreadPool`, str, :const:`kaa.MAINTHREAD`, or None
+    :param priority: priority for the job in the thread pool
+    :type priority: int
+    :param async: if False, blocks until the decorated function completes
+    :type async: bool
+    :param progress: if True, the first argument passed to the decorated function
+                     will be an :class:`~kaa.InProgressStatus` object in order
+                     to indicate execution progress to the caller.
+    :type progress: bool
+    :returns: :class:`~kaa.InProgress` if ``progress=False``, or the return value
+              or the decorated function if ``progress=True``
+
+    A special pool constant :const:`kaa.MAINTHREAD` is available, which causes
+    the decorated function to always be invoked from the main thread.  In this
+    case, currently the ``priority`` argument is ignored.
+    
+    If ``pool`` is None, the decorated function will be wrapped in a 
+    :class:`~kaa.ThreadCallable` for execution.  Otherwise, ``pool`` specifies
+    either a :class:`~kaa.ThreadPool` object or pool name previously registered
+    with :func:`kaa.register_thread_pool`, and the decorated function will be
+    wrapped in a :class:`~kaa.ThreadPoolCallable` for execution.
+    """
+    if progress is True:
+        progress = InProgressStatus
+
+    def decorator(func):
+        args = (progress(),) if progress else ()
+        if pool is MAINTHREAD:
+            callback = MainThreadCallable(func, *args)
+        elif pool:
+            callback = ThreadPoolCallable((pool, priority), func, *args)
+        else:
+            callback = ThreadCallable(func, *args)
+            callback.wait_on_exit = False
+
+        @wraps(func, lshift=int(not not progress))
+        def newfunc(*args, **kwargs):
+            if pool is MAINTHREAD and not async and is_mainthread():
+                # Fast-path case: mainthread synchronous call from the mainthread
+                return func(*args, **kwargs)
+
+            # callback will always return InProgress
+            in_progress = callback(*args, **kwargs)
+            if not async:
+                return in_progress.wait()
+            if progress:
+                in_progress.progress = args[0]
+            return in_progress
+
+        # Boilerplate for @kaa.generator
+        newfunc.decorator = threaded
+        newfunc.origfunc = func
+        newfunc.redecorate = lambda: threaded(pool, priority, async, progress)
+        return newfunc
+
+    return decorator
+
+
+# XXX: we import generator here because generator.py requires
+# threaded and MAINTHREAD from this module, so this is necessary
+# to avoid import loop.
+from .generator import generator
+
+@generator.register(threaded)
+def _generator_threaded(generator, func, args, kwargs):
+    """
+    kaa.generator support for kaa.threaded
+    """
+    for g in func(*args, **kwargs):
+        generator.send(g)
+
+
+
+class synchronized(object):
+    """
+    synchronized decorator and `with` statement similar to synchronized
+    in Java. When decorating a non-member function, a lock or any class
+    inheriting from object may be provided.
+
+    :param obj: object were all calls should be synchronized to.
+      if not provided it will be the object for member functions
+      or an RLock for functions.
+    """
+    def __init__(self, obj=None):
+        """
+        Create a synchronized object. Note: when used on classes a new
+        member _kaa_synchronized_lock will be added to that class.
+        """
+        if obj is None:
+            # decorator in classes
+            self._lock = None
+            return
+        if isinstance(obj, (threading._RLock, LockType)):
+            # decorator from functions
+            self._lock = obj
+            return
+        # with statement or function decorator with object
+        if not hasattr(obj, '_kaa_synchronized_lock'):
+            obj._kaa_synchronized_lock = threading.RLock()
+        self._lock = obj._kaa_synchronized_lock
+
+    def __enter__(self):
+        """
+        with statement enter
+        """
+        if self._lock is None:
+            raise RuntimeError('synchronized in with needs a parameter')
+        self._lock.acquire()
+        return self._lock
+
+    def __exit__(self, type, value, traceback):
+        """
+        with statement exit
+        """
+        self._lock.release()
+        return False
+
+    def __call__(self, func):
+        """
+        decorator init
+        """
+        def call(*args, **kwargs):
+            """
+            decorator call
+            """
+            lock = self._lock
+            if lock is None:
+                # Lock not specified, use one attached to decorated function.
+                store = DecoratorDataStore(func, call, args)
+                if 'synchronized_lock' not in store:
+                    store.synchronized_lock = threading.RLock()
+                lock = store.synchronized_lock
+
+            lock.acquire()
+            try:
+                return func(*args, **kwargs)
+            finally:
+                lock.release()
+        return call
+
+

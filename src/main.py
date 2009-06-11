@@ -94,15 +94,21 @@ def loop(condition, timeout=None):
     """
     Executes the main loop until condition is met.
 
-    This function may be called recursively, however two loops may not
-    run in parallel threads.
-
     :param condition: a callable or object that is evaluated after each step
                       of the loop.  If it evaluates False, the loop
                       terminates.  (If condition is therefore ``True``, the
                       loop will run forever.)
     :param timeout: number of seconds after which the loop will terminate
                     (regardless of the condition).
+
+    This function may be called recursively, however two loops may not
+    run in parallel threads.
+
+    Generally it is not necessary to call this function.  You probably want
+    to use :func:`kaa.main.run` instead.
+
+    .. warning::
+       Refer to the warning detailed in :func:`kaa.main.run`.
     """
     _loop_lock.acquire()
     if is_running() and not is_mainthread():
@@ -162,10 +168,29 @@ def run(threaded=False):
     to terminate, and execution will resume after run() was called.
 
     :param threaded: if True, the Kaa mainloop will start in a new thread.
-                     This is useful if the main Python thread has been co-opted
-                     by another mainloop framework and you want to use Kaa
-                     in parallel.
     :type threaded: bool
+
+    Specifying ``threaded=True`` is useful if the main Python thread has been
+    co-opted by another mainloop framework and you want to use Kaa in parallel.
+    Another use-case would be using kaa from the interactive Python shell::
+
+        >>> import kaa, sys, time
+        >>> kaa.main.run(threaded=True)
+        >>> @kaa.threaded()
+        ... def foo():
+        ...     time.sleep(5)
+        ...     return 'Background task finished\\n'
+        ...
+        >>> foo().connect(sys.stdout.write)
+        <Callable for <built-in method write of file object at 0xb7de5068>>
+        >>> Background task finished
+
+    .. warning::
+
+       Once the main loop has been started, do not fork using :func:`os.fork`.
+       Doing so may cause peculiar interactions when using threads.  To safely
+       fork, use :func:`kaa.utils.fork`, which may be called whether the main
+       loop has been started or not.
     """
     if is_running():
         raise RuntimeError('Mainthread is already running')
@@ -202,8 +227,8 @@ def run(threaded=False):
 @threaded(MAINTHREAD)
 def stop():
     """
-    Stop the main loop and terminate all child processes and named
-    threads started via the Kaa API.
+    Stop the main loop and terminate all child processes and thread
+    pools started via the Kaa API.
 
     Any notifier callback can also cause the main loop to terminate
     by raising SystemExit.

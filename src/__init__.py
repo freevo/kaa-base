@@ -54,7 +54,8 @@ from signals import Signal, Signals
 
 # Thread callables, helper functions and decorators
 from thread import MainThreadCallable, ThreadPoolCallable, ThreadCallable, \
-     is_mainthread, threaded, synchronized, MAINTHREAD, ThreadInProgress
+     is_mainthread, threaded, synchronized, MAINTHREAD, ThreadInProgress, \
+     ThreadPool, register_thread_pool, get_thread_pool
 
 # Timer classes and decorators
 from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, \

@@ -12,7 +12,7 @@ Any function or method may be decorated with ``@kaa.threaded()`` which takes
 two optional arguments: a thread name, and a priority. If a thread name is
 specified, the decorated function is wrapped in
 :class:`~kaa.ThreadPoolCallable`, and invocations of that function are queued
-to be executed in a single thread. If the thread name is ``kaa.MAINTHREAD`` the
+to be executed across one or more threads. If the thread name is ``kaa.MAINTHREAD`` the
 decorated function is invoked from the main thread. If no thread name is
 specified, the function is wrapped in :class:`~kaa.ThreadCallable` so that each
 invocation is executed in a separate thread. Because these callables return
@@ -107,24 +107,34 @@ provided::
 
 
 
+Thread Functions
+----------------
+
 The following thread-related functions are available:
 
 .. autofunction:: kaa.is_mainthread
 
 .. autofunction:: kaa.main.wakeup
 
+.. autofunction:: kaa.register_thread_pool
 
-Callable Classes for Threads
-----------------------------
+.. autofunction:: kaa.get_thread_pool
+
+
+Callables and Supporting Classes
+--------------------------------
 
 Kaa provides a :class:`~kaa.ThreadCallable` class which can be used to invoke a
 callable in a new thread every time the ThreadCallable object is invoked.
 
 With the :class:`~kaa.ThreadPoolCallable` class, invocations are queued and
-each executed in the same thread. A priority may also be specified, and
-ThreadPoolCallable objects with the highest priority is first in the queue
-(and hence executed first). This allows you to create a priority-based job
-queue that executes asynchronously.
+each executed in an available thread within a pool of one or more threads. A
+priority may also be specified, and ThreadPoolCallable objects with the highest
+priority are first in the queue (and hence executed first). This allows you to
+create a priority-based job queue that executes asynchronously.
+
+Although the :func:`@kaa.threaded() <kaa.threaded>` decorator provides a more
+convenient means to make use of these classes, they may still be used directly.
 
 Instances of the two classes above are callable, and they return
 :class:`~kaa.ThreadInProgress` objects::
@@ -140,10 +150,14 @@ Instances of the two classes above are callable, and they return
    .. automethods::
       :remove: active
    .. autoproperties::
-   .. autosignals::
-      :remove: abort
 
 .. kaaclass:: kaa.ThreadCallable
+
+   .. automethods::
+   .. autoproperties::
+   .. autosignals::
+
+.. kaaclass:: kaa.ThreadPool
 
    .. automethods::
    .. autoproperties::

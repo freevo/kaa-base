@@ -101,13 +101,7 @@ InProgress Collections
 
 .. kaaclass:: kaa.InProgressAny
 
-   .. automethods::
-   .. autosignals::
-
 .. kaaclass:: kaa.InProgressAll
-
-   .. automethods::
-   .. autosignals::
 
 
 InProgress Exceptions

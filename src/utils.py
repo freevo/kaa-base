@@ -194,6 +194,20 @@ def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None,
     return lock
 
 
+def fork():
+    """
+    Forks the process.  May safely be called after the main loop has been
+    started.
+    """
+    pid = os.fork()
+    if not pid:
+        # Child must replace thread notifier pipe, otherwise we'll be listening
+        # to our parent's thread pipe.
+        from thread import create_thread_notifier_pipe
+        create_thread_notifier_pipe(new=False, purge=True)
+    return pid
+
+
 def is_running(name):
     """
     Check if the program with the given name is running. The program

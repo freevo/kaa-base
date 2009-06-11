@@ -8,5 +8,6 @@ Write me.
 .. autofunction:: kaa.generator
 
 .. kaaclass:: kaa.Generator
+   :synopsis:
 
    .. automethods::

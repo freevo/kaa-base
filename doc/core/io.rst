@@ -10,6 +10,7 @@ Monitoring I/O
 --------------
 
 .. kaaclass:: kaa.IOMonitor
+   :synopsis:
 
    .. automethods::
    .. autoproperties::
@@ -17,12 +18,14 @@ Monitoring I/O
 
 
 .. kaaclass:: kaa.WeakIOMonitor
+   :synopsis:
 
 
 Communication over I/O channels
 -------------------------------
 
 .. kaaclass:: kaa.IOChannel
+   :synopsis:
 
    .. automethods::
    .. autoproperties::

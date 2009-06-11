@@ -146,48 +146,52 @@ Instances of the two classes above are callable, and they return
 
 
 .. kaaclass:: kaa.ThreadInProgress
+   :synopsis:
 
    .. automethods::
       :remove: active
    .. autoproperties::
 
 .. kaaclass:: kaa.ThreadCallable
+   :synopsis:
 
    .. automethods::
    .. autoproperties::
    .. autosignals::
 
 .. kaaclass:: kaa.ThreadPool
+   :synopsis:
 
    .. automethods::
    .. autoproperties::
    .. autosignals::
 
 .. kaaclass:: kaa.ThreadPoolCallable
+   :synopsis:
 
    .. automethods::
    .. autoproperties::
    .. autosignals::
-
-
-The MainThreadCallable ensures that the wrapped function or method is executed
-via main loop.  The thread calling this function will return immediately after
-calling the MainThreadCallable, without waiting for the result. Invoking
-MainThreadCallables always returns an InProgress object::
-
-  def needs_to_be_called_from_main(param):
-      print param
-      return 5
-
-  # ... suppose we are in a thread here ...
-  cb = kaa.MainThreadCallable(needs_to_be_called_from_main)
-  print cb(3).wait()
 
 
 .. kaaclass:: kaa.MainThreadCallable
 
-   .. automethods::
-   .. autoproperties::
-   .. autosignals::
+   The MainThreadCallable ensures that the wrapped function or method is executed
+   via main loop.  The thread calling this function will return immediately after
+   calling the MainThreadCallable, without waiting for the result. Invoking
+   MainThreadCallables always returns an InProgress object::
+   
+     def needs_to_be_called_from_main(param):
+         print param
+         return 5
+   
+     # ... suppose we are in a thread here ...
+     cb = kaa.MainThreadCallable(needs_to_be_called_from_main)
+     print cb(3).wait()
 
+   .. autosynopsis::
+
+      .. automethods::
+      .. autoproperties::
+      .. autosignals::
 

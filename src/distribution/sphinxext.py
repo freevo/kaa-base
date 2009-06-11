@@ -439,11 +439,17 @@ def kaaclass_directive(name, arguments, options, content, lineno,
                        content_offset, block_text, state, state_machine):
     env = state.document.settings.env
     env._kaa_class_info = []
+
+    cls = get_class(arguments[0])
+    env._kaa_current_class = cls
+    env._kaa_current_class_name = clsname = arguments[0]
+
     list = ViewList()
     list.append('.. autoclass:: %s' % arguments[0], '')
     list.append('', '')
-    list.append('   .. autosynopsis:: %s' % arguments[0], '')
-    list.append('', '')
+    if 'synopsis' in options:
+        list.append('   .. autosynopsis::', '')
+        list.append('', '')
     for line in content:
         list.append('      ' + line, '')
 
@@ -455,9 +461,8 @@ def kaaclass_directive(name, arguments, options, content, lineno,
 def synopsis_directive(name, arguments, options, content, lineno,
                        content_offset, block_text, state, state_machine):
     env = state.document.settings.env
-    cls = get_class(arguments[0])
-    env._kaa_current_class = cls
-    env._kaa_current_class_name = clsname = arguments[0]
+    cls = env._kaa_current_class
+    clsname = env._kaa_current_class_name
     env.currmodule, env.currclass = clsname.rsplit('.', 1)
 
     para = nodes.paragraph()
@@ -577,7 +582,7 @@ def setup(app):
     app.add_node(synopsis, html=(synopsis.visit, synopsis.depart))
     app.add_node(td, html=(td.visit, td.depart))
     app.add_node(hierarchy_row, html=(hierarchy_row.visit, hierarchy_row.depart))
-    app.add_directive('kaaclass', kaaclass_directive, 1, (0, 1, 1))
+    app.add_directive('kaaclass', kaaclass_directive, 1, (0, 1, 1), synopsis=directives.flag)
     app.add_directive('autosynopsis', synopsis_directive, 1, (0, 1, 1))
     app.add_directive('autoproperties', auto_directive, 1, (0, 1, 1), **auto_options)
     app.add_directive('automethods', auto_directive, 1, (0, 1, 1), **auto_options)

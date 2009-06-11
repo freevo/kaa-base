@@ -17,6 +17,7 @@ Timer Callbacks
 FIXME: this section is not yet written
 
 .. kaaclass:: kaa.Timer
+   :synopsis:
 
    .. automethods::
       :remove: unregister
@@ -24,12 +25,16 @@ FIXME: this section is not yet written
    .. autosignals::
 
 .. kaaclass:: kaa.WeakTimer
-    
+   :synopsis:
+   
 .. kaaclass:: kaa.OneShotTimer
+   :synopsis:
 
 .. kaaclass:: kaa.WeakOneShotTimer
+   :synopsis:
 
 .. kaaclass:: kaa.OneShotAtTimer
+   :synopsis:
 
    .. automethods::
       :remove: start
@@ -37,3 +42,4 @@ FIXME: this section is not yet written
       .. automethod:: start(hour=range(24), min=range(60), sec=0)
 
 .. kaaclass:: kaa.AtTimer
+   :synopsis:

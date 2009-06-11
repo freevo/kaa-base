@@ -118,6 +118,7 @@ Callable API
 ~~~~~~~~~~~~
 
 .. kaaclass:: kaa.Callable
+   :synopsis:
 
    .. automethods::
       :add: __call__
@@ -126,6 +127,7 @@ Callable API
 
 
 .. kaaclass:: kaa.WeakCallable
+   :synopsis:
 
    .. autoproperties::
 
@@ -218,6 +220,7 @@ Signals API
 ~~~~~~~~~~~
 
 .. kaaclass:: kaa.Signal
+   :synopsis:
 
    .. automethods::
    .. autoproperties::
@@ -225,6 +228,7 @@ Signals API
 
 
 .. kaaclass:: kaa.Signals
+   :synopsis:
 
    .. automethods::
    .. autoproperties::

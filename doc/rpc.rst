@@ -29,6 +29,7 @@ will fail without notifing the user (I know this is bad, but it is designed
 to work internaly where everything is correct).
 
 .. kaaclass:: kaa.rpc.Server
+   :synopsis:
 
    .. automethods::
    .. autoproperties::
@@ -36,6 +37,7 @@ to work internaly where everything is correct).
 
 
 .. kaaclass:: kaa.rpc.Client
+   :synopsis:
 
    .. automethods::
       :inherit:

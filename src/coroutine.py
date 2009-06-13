@@ -204,7 +204,7 @@ def coroutine(interval=0, policy=None, progress=False, group=None):
                 # coroutine is wrapping a @threaded decorated function which is
                 # itself a generator, wrapping the result will silently not work
                 # with any indication why.  It's better to raise an exception.
-                raise ValueError('@coroutine decorated function is not a generator')
+                raise TypeError('@coroutine decorated function is not a generator')
 
             function = result
             if policy == POLICY_SYNCHRONIZED and store.lock is not None and not store.lock.finished:

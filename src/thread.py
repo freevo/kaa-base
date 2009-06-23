@@ -377,9 +377,10 @@ class ThreadInProgress(InProgress):
         It is possible to catch :class:`~kaa.InProgressAborted` within the
         thread to deal with cleanup, but any return value from the threaded
         callable will be discarded.  It is therefore not possible abort an
-        abort.  However, if the InProgress is aborted before the thread has a
-        chance to start, the thread is not started at all, and so obviously the
-        threaded callable will not receive :class:`~kaa.InProgressAborted`.
+        abort within the thread itself.  However, if the InProgress is aborted
+        before the thread has a chance to start, the thread is not started at
+        all, and so obviously the threaded callable will not receive
+        :class:`~kaa.InProgressAborted`.
 
         .. warning::
         

@@ -392,7 +392,8 @@ class ThreadInProgress(InProgress):
            A tick is one or more Python VM bytecodes, which means that if the
            thread is currently executing non-CPython C code, the thread cannot
            be interrupted.  The worst case scenario would be a blocking system
-           call, which cannot be reliably aborted.
+           call, which cannot be reliably interrupted when running inside a
+           thread.
            
            This approach still has uses as a general-purposes aborting
            mechanism, but, if possible, it is preferable for you to implement

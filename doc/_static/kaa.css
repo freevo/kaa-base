@@ -51,6 +51,12 @@ div.kaa.synopsis div.heading {
 
 }
 
+div.kaa.synopsis div.nomembers {
+    font-style: italic;
+    color: #666;
+    padding-bottom: 1em;
+}
+
 dl.class > dt:first-child {
     font-size: 105%;
     border: 1px solid #dbb1ea;

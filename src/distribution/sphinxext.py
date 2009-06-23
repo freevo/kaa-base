@@ -192,12 +192,16 @@ class synopsis(nodes.paragraph):
     def visit(document, node):
         document.body.append('<div class="heading">%s</div>' % node['title'])
         if node['title'] != 'Class Hierarchy':
-            document.body.append('\n<table>\n')
+            if node['has_members']:
+                document.body.append('\n<table>\n')
+            else:
+                document.body.append('<div class="nomembers">This class has no %s.</div>' % node['title'].lower())
 
     @staticmethod
     def depart(document, node):
         if node['title'] != 'Class Hierarchy':
-            document.body.append('</table>\n')
+            if node['has_members']:
+                document.body.append('</table>\n')
 
 
 class hierarchy_row(nodes.paragraph):
@@ -538,11 +542,8 @@ def append_synopsis_section(state, section_synopsis, search_node, title, role, o
         return
 
     # Create a new synopsis section with the given title.
-    syn = synopsis(title=title)
+    syn = synopsis(title=title, has_members=bool(members))
     section_synopsis.append(syn)
-    if not members:
-        # Mandatory section and no members, so we say so.
-        syn.append(nodes.paragraph('', 'This class has no %s.' % title.lower()))
 
     # Loop through all members and add rows to the synopsis section table.
     for info in members:

@@ -270,7 +270,8 @@ class MainThreadCallable(Callable):
 
 class ThreadInProgress(InProgress):
     """
-    An :class:`~kaa.InProgress` class that represents threaded tasks.  These
+    An :class:`~kaa.InProgress` class that represents threaded tasks.  You will
+    likely not need to instantiate this class directly, but ``ThreadInProgress``
     objects are returned when invoking :class:`~kaa.ThreadCallable` or
     :class:`~kaa.ThreadPoolCallable` objects, or functions decorated with
     :func:`@kaa.threaded() <kaa.threaded>`.
@@ -311,11 +312,13 @@ class ThreadInProgress(InProgress):
             result = self._callable()
             # Kludge alert: InProgressAborted gets raised asynchronously inside
             # the thread.  Assuming it doesn't inadvertently get cleared out
-            # by PyErr_Clear(), it may take up to check-interval bytecodes for
-            # it to trigger.  So we do a dummy loop to chew up that many byte
-            # codes (roughly) to cause any pending async InProgressAborted to
-            # raise here, which we'll catch next.  The overhead added by this
-            # loop is negligible.  [About 10us on my system]
+            # by PyErr_Clear(), it may take up to check-interval ticks for
+            # it to trigger.  So we do a dummy loop to chew up that many ticks
+            # (roughly) to cause any pending async InProgressAborted to raise
+            # here, which we'll catch next.  The overhead added by this loop is
+            # negligible.  [About 10us on my system.]  It has been empirically
+            # determined that each pass of the loop consumes a tick.  (We end
+            # up consuming a few more for loop setup / teardown.)
             for i in xrange(sys.getcheckinterval()):
                 pass
         except InProgressAborted:
@@ -380,15 +383,21 @@ class ThreadInProgress(InProgress):
 
         .. warning::
         
-           This method raises an exception asynchronously within the thread, and
-           this is unreliable.  The asynchronous exception may get inadvertently
-           cleared internally, and if it doesn't, it will in any case take
-           up to 100 bytecodes for it to trigger within the thread.  This 
-           approach still has uses as a general-purposes aborting mechanism,
-           but, if possible, it is preferable for you to implement custom logic
-           by attaching an abort handler to the :class:`~kaa.ThreadCallable` or
-           :class:`~kaa.ThreadPoolCallable` object.
-
+           This method raises an exception asynchronously within the thread,
+           and this is unreliable.  The asynchronous exception may get
+           inadvertently cleared internally, and if it doesn't, it will in any
+           case take up to 100 ticks for it to trigger within the thread.
+           
+           A tick is one or more Python VM bytecodes, which means that if the
+           thread is currently executing non-CPython C code, the thread cannot
+           be interrupted.  The worst case scenario would be a blocking system
+           call, which cannot be reliably aborted.
+           
+           This approach still has uses as a general-purposes aborting
+           mechanism, but, if possible, it is preferable for you to implement
+           custom logic by attaching an abort handler to the
+           :class:`~kaa.ThreadCallable` or :class:`~kaa.ThreadPoolCallable`
+           object.
         """
         return super(ThreadInProgress, self).abort(exc)
 

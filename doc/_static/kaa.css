@@ -62,3 +62,12 @@ dl.class > dt:first-child {
 dt:target, .highlight {
     background-color: #fbe54e !important;
 }
+
+/* Allow multiline warnings */
+div.warning p.first {
+    margin: 0px 0px;
+}
+
+div.warning p {
+    margin: 0.7em 0 0.7em 0;
+}   

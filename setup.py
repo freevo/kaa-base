@@ -94,7 +94,10 @@ setup(
     module       = 'base',
     version      = '0.99.0',
     license      = 'LGPL',
-    summary      = 'Base module for all Kaa modules.',
+    summary      = 'An application framework specializing asynchronous programming.',
+    description  = 'kaa.base is an LGPL-licensed generic application framework, providing the '
+                   'foundation for other modules within Kaa, and can be used in any type of project, '
+                   'from small event-driven tools, to larger, complex applications.',
     rpminfo      = {
         'requires':       'glib2 >= 2.6.0, python-sqlite2 >= 2.3.0, libxml2-python >= 2.6.0',
         'build_requires': 'glib2-devel >= 2.6.0, python-devel >= 2.4.0'

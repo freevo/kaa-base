@@ -94,7 +94,7 @@ setup(
     module       = 'base',
     version      = '0.99.0',
     license      = 'LGPL',
-    summary      = 'An application framework specializing asynchronous programming.',
+    summary      = 'An application framework specializing in asynchronous programming.',
     description  = 'kaa.base is an LGPL-licensed generic application framework, providing the '
                    'foundation for other modules within Kaa, and can be used in any type of project, '
                    'from small event-driven tools, to larger, complex applications.',

@@ -1,3 +1,5 @@
+.. _callables:
+
 Signals and Callables
 =====================
 
@@ -131,6 +133,8 @@ Callable API
 
    .. autoproperties::
 
+
+.. _signals:
 
 Signals
 -------

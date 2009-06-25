@@ -139,11 +139,19 @@ convenient means to make use of these classes, they may still be used directly.
 Instances of the two classes above are callable, and they return
 :class:`~kaa.ThreadInProgress` objects::
 
-  def handle_result(result):
-     print "Thread returned with", result
+    def handle_result(result):
+        # This runs in the main thread.
+        print 'Thread returned with', result
 
-  kaa.ThreadCallable(do_blocking_task)(arg1, arg2).connect(handle_result)
+    kaa.ThreadCallable(do_blocking_task)(arg1, arg2).connect(handle_result)
 
+Or, alternatively::
+
+    @kaa.coroutine()
+    def some_coroutine():
+        [...]
+        result = yield kaa.ThreadCallable(do_blocking_task)(arg1, arg2)
+    
 
 .. kaaclass:: kaa.ThreadInProgress
    :synopsis:

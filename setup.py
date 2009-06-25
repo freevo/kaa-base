@@ -94,6 +94,7 @@ setup(
     module       = 'base',
     version      = '0.99.0',
     license      = 'LGPL',
+    url          = 'http://doc.freevo.org/api/kaa/base/',
     summary      = 'An application framework specializing in asynchronous programming.',
     description  = 'kaa.base is an LGPL-licensed generic application framework, providing the '
                    'foundation for other modules within Kaa, and can be used in any type of project, '

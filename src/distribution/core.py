@@ -33,6 +33,12 @@ import time
 import distutils.core
 import distutils.cmd
 import distutils.sysconfig
+try:
+    import setuptools
+except ImportError:
+    # If setuptools is installed, no big deal, we just lose bdist_egg and
+    # some other features.
+    pass
 
 # internal imports
 from version import Version
@@ -409,6 +415,7 @@ class Doc(distutils.cmd.Command):
     """
     Epydoc support
     """
+    description = 'generate kaa documentation'
     user_options = []
     docfiles = []
 

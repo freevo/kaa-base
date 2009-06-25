@@ -541,7 +541,7 @@ def setup(**kwargs):
     if 'author_email' not in kwargs:
         kwargs['author_email'] = 'freevo-devel@lists.sourceforge.net'
     if 'url' not in kwargs:
-        kwargs['url'] = 'http://freevo.sourceforge.net/kaa'
+        kwargs['url'] = 'http://freevo.org/kaa/'
 
     # We use summary and description as keywords that map to distutils
     # description and long_description

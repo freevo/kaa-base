@@ -193,7 +193,7 @@ def run(threaded=False):
        loop has been started or not.
     """
     if is_running():
-        raise RuntimeError('Mainthread is already running')
+        raise RuntimeError('Main loop is already running')
 
     if threaded:
         # start mainloop as thread and wait until it is started

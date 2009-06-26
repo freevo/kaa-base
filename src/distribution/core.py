@@ -36,9 +36,9 @@ import distutils.sysconfig
 try:
     import setuptools
 except ImportError:
-    # If setuptools is installed, no big deal, we just lose bdist_egg and
-    # some other features.
-    pass
+    # If setuptools is installed, no big deal, we just lose support for eggs;
+    # installation will be standard on-disk source tree.
+    setuptools = None
 
 # internal imports
 from version import Version
@@ -457,6 +457,22 @@ def setup(**kwargs):
     if 'module' not in kwargs and 'name' not in kwargs:
         raise AttributeError('\'module\' not defined')
 
+    # Handle plugin kwargs; setuptools uses entry_points, but without setuptools
+    # we use our custom 'plugins' kwarg.
+    plugin_args = kwargs.get('plugins'), kwargs.get('entry_points')
+    if plugin_args != (None, None):
+        if None in plugin_args:
+            raise ValueError('For plugins, both "plugins" and "entry_points" kwargs are required')
+        del kwargs['plugins' if setuptools else 'entry_points']
+
+    if not setuptools:
+        # Setuptools not available, so remove any kwarg that would cause stock
+        # distutils to complain.
+        for kw in ('namespace_packages', 'zipsafe'):
+            if kw in kwargs:
+                del kwargs[kw]
+
+    # run the distutils.setup function
     project = kwargs.pop('project', 'kaa')
 
     # create name

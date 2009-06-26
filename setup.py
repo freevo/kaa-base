@@ -34,7 +34,7 @@ if sys.hexversion < 0x02050000:
     sys.exit(1)
 
 # We have some extensions but kaa.distribution isn't installed yet.  So import
-# it directly from the source tree.  First add src/ to the modules patch ...
+# it directly from the source tree.  First add src/ to the modules path ...
 sys.path.append("src")
 # ... and now import it.
 from distribution.core import Extension, setup
@@ -91,16 +91,18 @@ else:
 
 # call setup
 setup(
-    module       = 'base',
-    version      = '0.99.0',
-    license      = 'LGPL',
-    url          = 'http://doc.freevo.org/api/kaa/base/',
-    summary      = 'An application framework specializing in asynchronous programming.',
+    module = 'base',
+    version = '0.99.0',
+    license = 'LGPL',
+    url = 'http://doc.freevo.org/api/kaa/base/',
+    summary = 'An application framework specializing in asynchronous programming.',
     description  = 'kaa.base is an LGPL-licensed generic application framework, providing the '
                    'foundation for other modules within Kaa, and can be used in any type of project, '
                    'from small event-driven tools, to larger, complex applications.',
-    rpminfo      = {
-        'requires':       'glib2 >= 2.6.0, python-sqlite2 >= 2.3.0, libxml2-python >= 2.6.0',
-        'build_requires': 'glib2-devel >= 2.6.0, python-devel >= 2.4.0'
+    rpminfo = {
+        'requires': 'glib2 >= 2.6.0, python-sqlite2 >= 2.3.0, libxml2-python >= 2.6.0',
+        'build_requires': 'glib2-devel >= 2.6.0, python-devel >= 2.5.0'
     },
-    ext_modules  = extensions)
+    ext_modules = extensions,
+    namespace_packages = ['kaa']
+)

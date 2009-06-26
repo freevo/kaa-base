@@ -18,10 +18,10 @@ with an API for :ref:`signals <signals>` and :ref:`callables <callables>`,
 support), inter-process communication, and much more.
 
 Kaa also -- and perhaps most importantly -- provides a rich, practically
-magical API for asynchronous programming.  Threads and coroutines in
-combination with :class:`~kaa.InProgress` objects, which are used extensively
-throughout Kaa, allow you to implement complex state machines responding
-to asynchronous events in very compact, readable code.
+magical API for :ref:`asynchronous programming <async>`.  Threads and
+coroutines in combination with :ref:`InProgress <inprogress>` objects,
+which are used extensively throughout Kaa, allow you to implement complex state
+machines responding to asynchronous events in very compact, readable code.
 
 Where do I get kaa.base?
 ------------------------

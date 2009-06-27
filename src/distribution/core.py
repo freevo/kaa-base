@@ -430,7 +430,43 @@ class Doc(distutils.cmd.Command):
         for doc in self.docfiles:
             os.system('epydoc --config=%s' % doc)
         if os.path.isfile('doc/Makefile'):
-            os.system('(cd doc; make clean; make html)')
+            # PROBLEM: if an egg exists for the module we're creating docs for,
+            # it appears to take precedence over directories in sys.path, even
+            # if those directories are listed first in sys.path.
+            #
+            # SOLUTION: this repulsive kludge creates a bootstrap script for
+            # sphinx-build that fiddles with sys.path by adding the build/
+            # directories and removing conflicting eggs before calling into the
+            # real sphinx-build.
+
+            # Create list of paths inside build/ for this python version.
+            ver = '%s.%s' % sys.version_info[:2]
+            path = [os.path.abspath('build/' + lib) for lib in os.listdir('build') if ver in lib]
+            # Module name, e.g. 'kaa_base'
+            name = self.distribution.metadata.name.replace('-', '_')
+            # Create bootstrapper script for sphinx-build.
+            fd, srcname = tempfile.mkstemp('sphinx-build.py')
+            src = os.fdopen(fd, 'w')
+            src.write('import sys\n'
+                      # Add build/ directories for this python version to sys.path
+                      'sys.path = %r + sys.path\n'
+                      # Remove any egg for this module name, which would take precedence
+                      '[sys.path.remove(x) for x in sys.path[:] if "/%s" in x and x.endswith(".egg")]\n'
+                      # Remove path to temporary script, which gets automatically added.
+                      'sys.path.remove("%s")\n'
+                      # Now handoff to sphinx-build, which we require to be in $PATH
+                      'import kaa.utils\n'
+                      'execfile(kaa.utils.which("sphinx-build"))\n' %\
+                      (path, name, os.path.dirname(srcname)))
+            src.close()
+
+            try:
+                # The -e switch tells make to let environment variables (like SPHINXBUILD)
+                # override variables defined in the Makefile.
+                os.system('(cd doc; make clean; SPHINXBUILD="python %s" make -e html)' % srcname)
+            finally:
+                os.unlink(srcname)
+
 
 def setup(**kwargs):
     """

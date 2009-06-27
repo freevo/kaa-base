@@ -463,7 +463,7 @@ class Doc(distutils.cmd.Command):
             try:
                 # The -e switch tells make to let environment variables (like SPHINXBUILD)
                 # override variables defined in the Makefile.
-                os.system('(cd doc; make clean; SPHINXBUILD="python %s" make -e html)' % srcname)
+                os.system('(cd doc; SPHINXBUILD="python %s" make -e html)' % srcname)
             finally:
                 os.unlink(srcname)
 

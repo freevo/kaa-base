@@ -36,9 +36,9 @@ import distutils.sysconfig
 try:
     import setuptools
 except ImportError:
-    # If setuptools is installed, no big deal, we just lose support for eggs;
+    # If setuptools isn't installed, no big deal, we just lose support for eggs;
     # installation will be standard on-disk source tree.
-    setuptools = None
+    pass
 
 # internal imports
 from version import Version
@@ -463,9 +463,9 @@ def setup(**kwargs):
     if plugin_args != (None, None):
         if None in plugin_args:
             raise ValueError('For plugins, both "plugins" and "entry_points" kwargs are required')
-        del kwargs['plugins' if setuptools else 'entry_points']
+        del kwargs['plugins' if 'setuptools' in sys.modules else 'entry_points']
 
-    if not setuptools:
+    if 'setuptools' not in sys.modules:
         # Setuptools not available, so remove any kwarg that would cause stock
         # distutils to complain.
         for kw in ('namespace_packages', 'zipsafe'):

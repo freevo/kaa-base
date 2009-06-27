@@ -36,6 +36,7 @@ import os
 import stat
 import time
 import imp
+import zipimport
 import logging
 import inspect
 import re
@@ -272,28 +273,176 @@ def get_num_cpus():
     raise RuntimeError('Could not determine number of processors')
 
 
-def get_plugins(path, include_files=True, include_directories=True):
+
+def get_plugins(group=None, location=None, attr=None, filter=None):
     """
-    Get a list of plugins in the given plugin directory. The 'path' argument
-    can also be a full path of an __init__ file.
+    Flexible plugin loader, supporting Python eggs as well as on-disk trees.
+    All modules at the specified location or entry point group (for eggs) are
+    loaded and returned as a dict mapping plugin names to plugin objects.
+
+    :param group: a setuptools entry point group name (more below)
+    :type group: str or None
+    :param location: path within which to load plugins.  If a filename is
+                     included, it will be stripped, which means you can
+                     conveniently pass ``__file__`` here.  Paths inside eggs are
+                     also supported.  All modules at the given location will
+                     be imported except for ``__init__``.
+    :type location: str or None
+    :param attr: if specified, this attribute is fetched from all modules loaded
+                 from the specified ``location`` and used as the value in the
+                 plugin dict; if not specified, the module itself is used as the
+                 module.
+    :type attr: str or None
+    :param filter: an optional callable to which all candidate module names
+                   found at ``location`` will be passed. If the filter returns
+                   a zero value that module will skipped, otherwise it will be
+                   imported; if the filter returns a string, it specifies the
+                   name of a module to be imported instead.
+    :type filter: callable or None
+    :returns: a dict mapping plugin names to plugin objects.
+
+    Plugins can be loaded by one or both of the following methods:
+        #. Loading modules from a specified directory location either on-disk
+           or inside a zipped egg
+        #. Entry point groups offered by setuptools
+
+    Method 1 is the more traditional approach to plugins in Python.  For example,
+    you might have a directory structure like::
+
+        module/
+            plugins/
+                __init__.py
+                plugin1.py
+                plugin2.py
+
+    There is typically logic inside ``plugins/__init__.py`` to import all other
+    files in the same directory (``os.path.dirname(__file__)``).  It can pass
+    ``location=__file__`` to ``kaa.utils.get_plugins()`` to do this:
+
+        >>> kaa.utils.get_plugins(location=__file__)
+        {'plugin1': <module 'plugin1' from '.../module/plugins/plugin1.py'>, 
+         'plugin2': <module 'plugin2' from '.../module/plugins/plugin2.py'>}
+
+    This also works when ``plugins/__init__.py`` is inside a zipped egg.
+    However, if you reference ``__file__`` as above, setuptools (assuming it's
+    available on the system), when it examines the source code during
+    installation, will think it's not safe to zip the tree into an egg file,
+    and so it will install it as an on-disk directory tree instead.  You can
+    override this by passing ``zip_safe=True`` to ``setup()`` in the setup
+    script for the application that loads plugins.
+
+    Method 2 is the approach to take when setuptools is available.  Plugin modules
+    register themselves with an entry point group name.  For example, a plugin
+    module's ``setup.py`` may call ``setup()`` with::
+
+        setup(
+            module='myplugin',
+            # ...
+            entry_points = {'someapplication.plugins': 'plugname = myplugin.submodule:SomeClass'},
+        )
+
+    When SomeApplication wants to load all registered modules, it can do::
+
+        >>> kaa.utils.get_plugins(group='someapplication.plugins')
+        {'plugname': <class myplugin.submodule.SomeClass at 0xdeadbeef>}
+
+    The ``entry_points`` kwarg specified in the plugin module can specify multiple
+    plugin names, and ``SomeClass`` could be any python object, as long as it is
+    exposed within ``myplugin.submodule``.  For more information on entry
+    points, refer to `setuptools documentation
+    <http://peak.telecommunity.com/DevCenter/PkgResources#entry-points>`_.
+
+    It is possible and in fact recommended to mix both methods.  (If your
+    project makes setuptools a mandatory dependency, then you can use entry
+    point groups exclusively.)  If ``group`` is not specified, then it becomes
+    impossible for either the application or the plugin to be installed as
+    eggs.
+
+    The ``attr`` kwarg makes it more convenient to combine both methods.
+    Plugins loaded from entry points will be SomeClass objects.  If (assuming
+    now the application is not installed as a zipped egg but rather an on-disk
+    source tree) some plugins were installed to the applications source tree,
+    while others installed as eggs registered with the entry point group,
+    you would want to pull ``SomeClass`` from those modules loaded from
+    ``location``.  So::
+    
+        >>> kaa.utils.get_plugins(group='someapplication.plugins', location=__file__, attr='SomeClass')
+        {'plugin1': <class module.plugins.plugin1.SomeClass at 0xdeadbeef>,
+         'plugin2': <class module.plugins.plugin2.SomeClass at 0xcafebabe>,
+         'plugname': <class myplugin.submodule.SomeClass at 0xbaadf00d>}
+
     """
-    if os.path.isfile(path):
-        path = os.path.dirname(path)
-    result = []
-    for plugin in os.listdir(path):
-        for ext in ('.py', '.pyc', '.pyo'):
-            if plugin.endswith(ext) and include_files:
-                plugin = plugin[:-len(ext)]
-                break
+    plugins = {}
+
+    # If a path is specified, fetch all modules at the same level as the
+    # given path.  This can also look into .egg files.
+    if location:
+        if os.path.splitext(location)[1] in ('.py', '.pyc', '.pyo'):
+            # location is a file, so take the directory (probably __file__ was passed)
+            location = os.path.dirname(location)
+        if not location.endswith('/'):
+            # Ensure location has a trialing /
+            location += '/'
+
+        if os.path.isdir(location):
+            # location is an on-disk source tree.
+            ls = os.listdir(location)
+        elif '.egg/' in location:
+            # location is an egg zip file.
+            subpath = location.split('.egg/')[1]
+            zip = zipimport.zipimporter(location)
+            # Fetch list of all files inside the egg at the same level as the
+            # given location.
+            ls = [k[len(subpath):] for k in zip._files.keys() \
+                                   if k.startswith(subpath) and k.count('/') == subpath.count('/')]
+
+        # Insert the normalized location into the front of sys.path so that when we import
+        # the plugins the location is searched first.
+        sys.path.insert(0, location)
+        try:
+            for fname in ls:
+                name, ext = os.path.splitext(fname)
+                # don't attempt to import if file is not a python file or
+                # directory.  Also, skip __init__.py from the location dir.
+                if ext not in ('.py', 'pyc', '.pyo', '') or fname.startswith('__init__.py'):
+                    continue
+
+                allowed = filter(name) if filter else name
+                # if filter returned a string, use that as module name.
+                name = allowed if isinstance(allowed, basestring) else name
+                if not allowed or name in plugins:
+                    # filter returned zero value.
+                    continue
+
+                # Now we try to import the module
+                mod = __import__(name)
+                # And add it to the plugins dict.
+                plugins[name] = getattr(mod, attr) if attr else mod
+        finally:
+            sys.path.pop(0)
+
+    # If an entry point group was specified, fetch all entry points for that
+    # group and load them into the plugins dict.
+    if group:
+        try:
+            import pkg_resources
+        except ImportError:
+            # No setuptools.
+            pass
         else:
-            if not include_directories or not os.path.isdir(os.path.join(path, plugin)):
-                continue
-        if not plugin in result and not plugin == '__init__' and \
-               not plugin.startswith('.'):
-            result.append(plugin)
-    return result
+            # Fetch a list of all entry points (defined as entry_points kwarg passed to
+            # setup() for plugin modules) and load them, which returns the Plugin class
+            # they were registered with.
+            for entrypoint in pkg_resources.iter_entry_points(group):
+                plugins[entrypoint.name] = entrypoint.load()
 
 
+    return plugins
+
+
+
+# FIXME: this is not really what a Singleton is.  This should be called LazyObject
+# or something.
 class Singleton(object):
     """
     Create Singleton object from classref on demand.

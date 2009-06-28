@@ -447,9 +447,7 @@ class Doc(distutils.cmd.Command):
         if os.path.isfile('doc/Makefile'):
             # PROBLEM: if an egg exists for the module we're creating docs for,
             # it appears to take precedence over directories in sys.path, even
-            # if those directories are listed first in sys.path.  (XXX: This
-            # might only happen for kaa.base because it declares kaa namespace
-            # and so gets implicitly imported when pkg_resources is imported.)
+            # if those directories are listed first in sys.path.
             #
             # SOLUTION: this repulsive kludge creates a bootstrap script for
             # sphinx-build that fiddles with sys.path by adding the build/

@@ -33,12 +33,27 @@ import time
 import distutils.core
 import distutils.cmd
 import distutils.sysconfig
-try:
-    import setuptools
-except ImportError:
-    # If setuptools isn't installed, no big deal, we just lose support for eggs;
-    # installation will be standard on-disk source tree.
-    pass
+
+# setuptools hooks into distutils when it's imported.  So if we want to
+# bypass setuptools, we need to check before it's imported.  This switch is
+# mostly useful for testing non-setuptools configurations on systems that
+# has setuptools installed.  End users probably won't use it.
+if '--noegg' in sys.argv:
+    sys.modules['setuptools'] = None
+    sys.argv.remove('--noegg')
+else:
+    try:
+        import setuptools
+    except ImportError:
+        # If setuptools isn't installed, no big deal, we just lose support for eggs;
+        # installation will be standard on-disk source tree.
+        pass
+    else:
+        # Setuptools is imported, add --noegg option.
+        import distutils.dist
+        opt = ('noegg', None, "Do not install using setuptools (don't use eggs)")
+        distutils.dist.Distribution.global_options.append(opt)
+
 
 # internal imports
 from version import Version
@@ -432,7 +447,9 @@ class Doc(distutils.cmd.Command):
         if os.path.isfile('doc/Makefile'):
             # PROBLEM: if an egg exists for the module we're creating docs for,
             # it appears to take precedence over directories in sys.path, even
-            # if those directories are listed first in sys.path.
+            # if those directories are listed first in sys.path.  (XXX: This
+            # might only happen for kaa.base because it declares kaa namespace
+            # and so gets implicitly imported when pkg_resources is imported.)
             #
             # SOLUTION: this repulsive kludge creates a bootstrap script for
             # sphinx-build that fiddles with sys.path by adding the build/
@@ -499,9 +516,9 @@ def setup(**kwargs):
     if plugin_args != (None, None):
         if None in plugin_args:
             raise ValueError('For plugins, both "plugins" and "entry_points" kwargs are required')
-        del kwargs['plugins' if 'setuptools' in sys.modules else 'entry_points']
+        del kwargs['plugins' if sys.modules.get('setuptools') else 'entry_points']
 
-    if 'setuptools' not in sys.modules:
+    if not sys.modules.get('setuptools'):
         # Setuptools not available, so remove any kwarg that would cause stock
         # distutils to complain.
         for kw in ('namespace_packages', 'zipsafe'):

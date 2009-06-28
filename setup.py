@@ -34,9 +34,12 @@ if sys.hexversion < 0x02050000:
     sys.exit(1)
 
 # We have some extensions but kaa.distribution isn't installed yet.  So import
-# it directly from the source tree.  First add src/ to the modules path ...
-sys.path.append("src")
-# ... and now import it.
+# it directly from the source tree.  First add src/ to the modules path.
+sys.path.insert(0, 'src')
+# Remove any previously installed kaa.base egg which might take precedence
+# over src/
+[sys.path.remove(x) for x in sys.path if '/kaa_base' in x and x.endswith('.egg')]
+# And now import it.
 from distribution.core import Extension, setup
 
 extensions = []

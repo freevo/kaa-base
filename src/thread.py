@@ -848,7 +848,7 @@ def threaded(pool=None, priority=0, async=True, progress=False):
             if not async:
                 return in_progress.wait()
             if progress:
-                in_progress.progress = args[0]
+                in_progress.progress = callback._args[0]
             return in_progress
 
         # Boilerplate for @kaa.generator

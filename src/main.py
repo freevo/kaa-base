@@ -45,11 +45,10 @@ import threading
 import atexit
 
 import nf_wrapper as notifier
-from signals import Signals
-from timer import OneShotTimer
-from process import supervisor
-from thread import is_mainthread, wakeup, set_as_mainthread, threaded, MAINTHREAD
-from thread import killall as kill_jobserver
+# rename as kaasignals; a bit cumbersome, but we're using signals for something else.
+import signals as kaasignals
+import timer
+import thread
 
 # get logging object
 log = logging.getLogger('base')
@@ -68,9 +67,9 @@ _loop_lock = threading.Lock()
 #:  - exception: emitted when an unhandled async exceptions occurs
 #:  - step: emitted on each step of the mainloop
 #:  - shutdown: emitted on kaa mainloop termination
+#:  - shutdown-after: emitted after shutdown signals.
 #:  - exit: emitted when process exits
-signals = Signals('exception', 'shutdown', 'step', 'exit')
-
+signals = kaasignals.Signals('exception', 'shutdown', 'shutdown-after', 'step', 'exit')
 
 def select_notifier(module, **options):
     """
@@ -111,7 +110,7 @@ def loop(condition, timeout=None):
        Refer to the warning detailed in :func:`kaa.main.run`.
     """
     _loop_lock.acquire()
-    if is_running() and not is_mainthread():
+    if is_running() and not thread.is_mainthread():
         # race condition. Two threads started a mainloop and the other
         # one is executed right now. Raise a RuntimeError
         _loop_lock.release()
@@ -122,7 +121,7 @@ def loop(condition, timeout=None):
         # no mainloop is running, set this thread as mainloop and
         # set the internal running state.
         initial_mainloop = True
-        set_as_mainthread()
+        thread.set_as_mainthread()
         _set_running(True)
     # ok, that was the critical part
     _loop_lock.release()
@@ -135,7 +134,7 @@ def loop(condition, timeout=None):
         # timeout handling to stop the mainloop after the given timeout
         # even when the condition is still True.
         sec = timeout
-        timeout = OneShotTimer(lambda: abort.append(True))
+        timeout = timer.OneShotTimer(lambda: abort.append(True))
         timeout.start(sec)
 
     try:
@@ -198,7 +197,7 @@ def run(threaded=False):
     if threaded:
         # start mainloop as thread and wait until it is started
         event = threading.Event()
-        OneShotTimer(event.set).start(0)
+        timer.OneShotTimer(event.set).start(0)
         threading.Thread(target=run, name='kaa mainloop').start()
         return event.wait()
 
@@ -223,8 +222,7 @@ def run(threaded=False):
         stop()
 
 
-# Ensure stop() is called from main thread.
-@threaded(MAINTHREAD)
+# Don't use @threaded decorator because this module participates in import cycles.
 def stop():
     """
     Stop the main loop and terminate all child processes and thread
@@ -233,6 +231,10 @@ def stop():
     Any notifier callback can also cause the main loop to terminate
     by raising SystemExit.
     """
+    if not thread.is_mainthread():
+        # Ensure stop() is called from main thread.
+        return thread.MainThreadCallable(stop)()
+
     global _shutting_down
 
     if _shutting_down:
@@ -249,11 +251,12 @@ def stop():
     signals["shutdown"].disconnect_all()
     signals["step"].disconnect_all()
 
-    # Kill processes _after_ shutdown emits to give callbacks a chance to
-    # close them properly.
-    supervisor.stopall()
+    # Process.supervisor.stopall() is attached to shutdown-after.  We emit this
+    # after 'shutdown' so that callbacks connected to 'shutdown' get a chance
+    # to terminate any processes.
+    signals['shutdown-after'].emit()
 
-    kill_jobserver()
+    thread.killall()
     # One final attempt to reap any remaining zombies
     try:
         os.waitpid(-1, os.WNOHANG)
@@ -268,10 +271,10 @@ def step(*args, **kwargs):
     This function should almost certainly never be called directly.  Use it
     at your own peril.
     """
-    if not is_mainthread():
+    if not thread.is_mainthread():
         # If step is being called from a thread, wake up the mainthread
         # instead of allowing the thread into notifier.step.
-        wakeup()
+        thread.wakeup()
         # Sleep for epsilon to prevent busy loops.
         time.sleep(0.001)
         return
@@ -304,6 +307,16 @@ def is_stopped():
     return _running == False
 
 
+# wakeup and set_as_mainthread are thread module functions, but expose them
+# in the main namespace.  However, we don't pull them from the thread module
+# now because this module participates in import cycles.
+def wakeup():
+    return thread.wakeup()
+
+def set_as_mainthread():
+    return thread.set_as_mainthread()
+
+
 def _set_running(status):
     """
     Set mainloop running status.
@@ -324,7 +337,7 @@ def _shutdown_check(*args):
         # is not the program's main thread, then is_mainthread() will be False
         # and we don't need to set running=False since shutdown() will raise a
         # SystemExit and things will exit normally.
-        if is_mainthread():
+        if thread.is_mainthread():
             _set_running(False)
         stop()
 

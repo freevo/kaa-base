@@ -27,7 +27,8 @@
 import inspect
 
 # kaa imports
-from signals import Signals
+# XXX: see bottom of file for additional imports (circular)
+
 
 def get_all_signals(cls):
     """
@@ -104,3 +105,11 @@ class Object(object):
             self.signals = Signals(*signals.keys())
             for name in signals:
                 self.signals[name].__doc__ = signals[name]
+
+
+
+# XXX: Circular import:
+# object -> signals -> async -> object
+#   - signals: no deps
+#   - async: Object
+from signals import Signals

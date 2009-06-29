@@ -29,8 +29,6 @@
 __all__ = [ 'Generator', 'generator' ]
 
 # kaa imports
-from async import InProgress, inprogress
-from thread import MAINTHREAD, threaded
 from utils import wraps
 
 class Generator(object):
@@ -41,7 +39,7 @@ class Generator(object):
         self._waiting = None
         self._finished = []
         self._generator_exit = False
-        self._populate = InProgress()
+        self._populate = async.InProgress()
 
     def __inprogress__(self):
         """
@@ -50,12 +48,15 @@ class Generator(object):
         """
         return self._populate
 
-    @threaded(MAINTHREAD)
+    # Don't use @threaded decorator because this module participates in import cycles.
     def send(self, result, exception=False):
         """
         Send a new value (producer)
         """
-        delayed = [ InProgress(), result, False, exception ]
+        if not thread.is_mainthread():
+            return thread.MainThreadCallable(self.send)(result, exception)
+
+        delayed = [ async.InProgress(), result, False, exception ]
         if result is GeneratorExit:
             self._generator_exit = True
             delayed = None
@@ -140,7 +141,7 @@ def generator(generic=False):
                 ip.exception.connect(generator.throw)
             except AttributeError:
                 raise ValueError('@kaa.generator decorated function (%s) must return InProgress' % func.func_name)
-            return inprogress(generator)
+            return async.inprogress(generator)
         return newfunc
 
     return _decorator
@@ -156,3 +157,12 @@ def register(wrapper):
     return decorator
 
 generator.register = register
+
+# XXX: Circular imports
+# generator -> async -> main -> timer -> thread -> generator
+#   - async: no deps
+#   - main: no deps
+#   - timer: no deps
+#   - thread: generator
+import async
+import thread

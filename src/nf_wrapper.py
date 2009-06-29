@@ -33,7 +33,6 @@ import atexit
 
 # notifier import
 from callable import Callable, WeakCallable, CallableError
-from signals import Signals
 from utils import property
 
 # get logging object
@@ -54,6 +53,14 @@ class NotifierCallback(Callable):
         super(NotifierCallback, self).__init__(callback, *args, **kwargs)
         self._id = None
 
+        # XXX: nf_wrapper participates in a lot of circular import chains,
+        # and importing signals (which imports async, which imports main,
+        # which imports [etc, etc]) is the source of a lot of problems.
+        # Unfortunately, importing signals at the end of this module isn't late
+        # enough.  Fortunately, because NotifierCallback is not intended to be
+        # used by the user directly, signals is almost certainly already
+        # in sys.modules at this time anyway.
+        from signals import Signals
         self.signals = Signals('exception', 'unregistered')
 
 

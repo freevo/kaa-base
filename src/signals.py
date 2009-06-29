@@ -35,10 +35,8 @@ import atexit
 # kaa imports
 from callable import Callable, WeakCallable, CallableError
 from utils import property
+# XXX: see bottom of file for additional imports (circular)
 
-# Recursive import. async itself exists, but not the async.InProgress*
-# objects we need. When we need to access them, they are available.
-import async
 
 # get logging object
 log = logging.getLogger('base')
@@ -495,3 +493,10 @@ def _shutdown_weakref_destroyed():
     _python_shutting_down = True
 
 atexit.register(_shutdown_weakref_destroyed)
+
+# XXX: Circular imports
+# signals -> async -> signals
+#                  -> object -> signals
+#   - async: Signal
+#   - object: Signals
+import async

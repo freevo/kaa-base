@@ -942,8 +942,10 @@ class IOChannel(Object):
         return self
         
 
-# We have have a problem with recursive imports. We need main here,
-# but main depends (through various other modules) on io.py. Since we
-# only need main during runtime, we import it at the end of this
-# module.
+# XXX: Circular imports
+# io -> signals -> async -> main -> process -> io
+#   - signals: no deps
+#   - async: no deps
+#   - main: no deps
+#   - process: IOChannel, IO_WRITE, IO_READ
 import main

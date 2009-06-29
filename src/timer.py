@@ -33,10 +33,10 @@ __all__ = [ 'timed', 'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer',
 import logging
 import datetime
 
-import nf_wrapper as notifier
-from thread import threaded, MAINTHREAD
 from weakref import weakref
 from utils import wraps, DecoratorDataStore, property
+import nf_wrapper as notifier
+import thread
 
 POLICY_ONCE = 'once'
 POLICY_MANY = 'many'
@@ -125,7 +125,7 @@ class Timer(notifier.NotifierCallback):
         self.restart_when_active = True
 
 
-    @threaded(MAINTHREAD)
+    # Don't use @threaded decorator because this module participates in import cycles.
     def start(self, interval):
         """
         Start the timer, invoking the callback every *interval* seconds.
@@ -141,6 +141,9 @@ class Timer(notifier.NotifierCallback):
         This method may safely be called from a thread, however the timer
         callback will be invoked from the main thread.
         """
+        if not thread.is_mainthread():
+            return MainThreadCallable(self.start)(interval)
+
         if self.active:
             if not self.restart_when_active:
                 return
@@ -159,7 +162,7 @@ class Timer(notifier.NotifierCallback):
         return self.__interval
 
 
-    @threaded(MAINTHREAD)
+    # Don't use @threaded decorator because this module participates in import cycles.
     def stop(self):
         """
         Stop a running timer.
@@ -169,6 +172,8 @@ class Timer(notifier.NotifierCallback):
         executing in the main thread, it will of course have to finish, but it
         will not be called again unless the timer is restarted.
         """
+        if not thread.is_mainthread():
+            return MainThreadCallable(self.unregister)()
         self.unregister()
 
 

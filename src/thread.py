@@ -47,9 +47,9 @@ from thread import LockType
 
 # kaa imports
 from . import nf_wrapper as notifier
+from .async import InProgress, InProgressAborted, InProgressStatus
 from .callable import Callable
 from .object import Object
-from .async import InProgress, InProgressAborted, InProgressStatus
 from .utils import wraps, DecoratorDataStore, property
 
 # get logging object
@@ -941,5 +941,3 @@ class synchronized(object):
             finally:
                 lock.release()
         return call
-
-

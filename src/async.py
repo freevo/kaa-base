@@ -43,15 +43,13 @@ import threading
 from callable import Callable
 from utils import property
 from object import Object
+# XXX: see bottom of file for additional imports (circular)
 
 # Recursive imports. The Signal requires InProgress which does not
 # exist at this point. But async itself does exist. To avoid any
 # problems, signal.py can only import async, not InProgress itself.
 from signals import Signal
 
-# We have more recursive imports: main, thread, and timer. It is hard
-# to fix, but unlike Signal, InProgress needs this during runtime, not
-# for class creation. So we import them at the end of this module.
 
 # get logging object
 log = logging.getLogger('base.async')
@@ -105,12 +103,12 @@ def delay(seconds):
     :return: :class:`~kaa.InProgress`
     """
     ip = InProgressCallable()
-    timer = OneShotTimer(ip)
+    t = timer.OneShotTimer(ip)
     # If the IP gets aborted, stop the timer.  Otherwise the timer
     # will fire and the IP would attempt to get finished a second
     # time (and would therefore raise an exception).
-    ip.signals['abort'].connect_weak(lambda exc: timer.stop())
-    timer.start(seconds)
+    ip.signals['abort'].connect_weak(lambda exc: t.stop())
+    t.start(seconds)
     return ip
 
 
@@ -649,7 +647,7 @@ class InProgress(Signal, Object):
                 if abort:
                     self.abort()
         async.waitfor(self)
-        OneShotTimer(trigger).start(timeout)
+        timer.OneShotTimer(trigger).start(timeout)
         return async
 
 
@@ -703,7 +701,7 @@ class InProgress(Signal, Object):
         dummy = lambda *args, **kwargs: None
         self.connect(dummy)
 
-        if is_mainthread():
+        if thread.is_mainthread():
             # We're waiting in the main thread, so we must keep the mainloop
             # alive by calling main.loop() until we're finished.
             main.loop(lambda: not self.finished, timeout)
@@ -1002,11 +1000,12 @@ class InProgressAll(InProgressAny):
     def __getitem__(self, idx):
         return self._objects[idx]
 
-# We have some additional modules InProgress needs during
-# runtime. They are imported here at the end because these modules
-# require InProgress again. Yes, we know, it is a mess. But at least
-# we are not importing inside a function which could get us into
-# trouble when using threads.
+
+# XXX: Circular imports
+# async -> main -> timer -> thread -> async
+#   - main: no deps on async
+#   - timer: no deps on async
+#   - thread: InProgress, InProgressAborted, InProgressStatus
 import main
-from timer import OneShotTimer
-from thread import is_mainthread
+import timer
+import thread

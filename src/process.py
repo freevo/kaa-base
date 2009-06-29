@@ -43,6 +43,7 @@ from callable import Callable, WeakCallable, CallableError
 from coroutine import coroutine, POLICY_SINGLETON
 from utils import property
 from object import Object
+import main
 
 # get logging object
 log = logging.getLogger('base.process')
@@ -176,8 +177,9 @@ class _Supervisor(object):
                 log.error(e.message)
 
 
-
 supervisor = _Supervisor()
+# Stop all processes as last part of mainloop termination.
+main.signals['shutdown-after'].connect(supervisor.stopall)
 
 class IOSubChannel(IOChannel):
     """

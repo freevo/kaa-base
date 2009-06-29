@@ -25,103 +25,280 @@
 #
 # -----------------------------------------------------------------------------
 
-# Declare 'kaa' namespace for setuptools.
-try:
-    # http://peak.telecommunity.com/DevCenter/setuptools#namespace-packages
-    # offers a stern admonition that after declaring a namespace, we must not
-    # add any other code to __init__.py.  However, this isn't possible for us,
-    # and, near as I can tell, our approach is safe because kaa sub-modules
-    # don't include kaa/__init__.py.  The only module that does is kaa.base.
-    # So there's no risk of some other egg getting loaded when we do 'import
-    # kaa'.
-    #
-    # See below for more discussion.
-    __import__('pkg_resources').declare_namespace('kaa')
-except ImportError:
-    # No setuptools installed, no egg support.
-    pass
+import sys
+import os
+import imp
 
-# import logger to update the Python logging module
-import logger
 
-# TODO: importing kaa is a bit expensive, and this is especially relevant when
-# some submodule kaa.foo is imported which doesn't end up using much of kaa.base.
-# We would benefit from lazy imports on everything below.
+# Enable on-demand importing of all modules.  Improves speed of importing kaa
+# by almost 50x with warm cache (from 0.065s to 0.0015s) and 325x with cold
+# cache (2.6s to 0.008s) on my system.  Although it does of course defer a lot
+# of that time to later, it still improves overall performance because it only
+# imports the files that actually get used during operation.
+#
+# It's especially beneficial to reduce import time on systems where any kaa
+# module (not just kaa.base) is installed as an egg.  In this case, kaa is
+# declared as a namespace package, and (for whatever reason), namespace
+# packages get implicitly imported when pkg_resources is imported, which can
+# happen when kaa isn't going to be used.
+#
+# Lazy importing should be completely user-transparent.  See the _LazyProxy
+# docstring for more info.
+# 
+# XXX: recognizing that this is a new feature and possibly (probably :))
+# buggy, this constant lets you easily disable this functionality.
+ENABLE_LAZY_IMPORTS = 1
 
-# We have some problems with recursive imports. One is InProgress from
-# async. It is a Signal, but Signal itself has an __inprogress__
-# function. To avoid any complications, we import async first. This
-# will import other file that require InProgress. To avoid problems,
-# these modules only import async as complete module, not InProgress
-# inside async because it does not exist yet.
+def _activate():
+    """
+    Invoked when the first kaa object is accessed.  Lets us do initial
+    bootstrapping, like setup our logger hooks and replace the buggy
+    system os.listdir.
+    """
+    # import logger to update the Python logging module
+    import logger
 
-# InProgress class
-from async import TimeoutException, InProgress, InProgressCallable, \
-     InProgressAny, InProgressAll, InProgressAborted, InProgressStatus, \
-     inprogress, delay
+    if sys.hexversion < 0x02060000 and os.name == 'posix':
+        # Python 2.5 (all point releases) have a bug with listdir on POSIX
+        # systems causing improper out of memory exceptions.  We replace the
+        # standard os.listdir with a version from kaa._utils that doesn't have
+        # this bug.  Some distros will have patched their 2.5 packages, but
+        # since we can't discriminate those, we replace os.listdir regardless.
+        #
+        # See http://bugs.python.org/issue1608818
+        import kaa._utils
+        os.listdir = kaa._utils.listdir
 
-# Import all classes, functions and decorators that are part of the API
-from object import Object
+    # Kill this function so it only gets invoked once.
+    globals()['_activate'] = None
+
+
+def _lazy_import(mod, names=None):
+    """
+    If lazy importing is enabled, creates _LazyProxy objects for each name
+    specified in the names list and adds it to the global scope.  When
+    the _LazyProxy object is accessed, 'mod' gets imported and the global
+    name replaced with the actual object from 'mod'.
+
+    If lazy importing is disabled, then names are imported from mod
+    immediately, and then added to the global scope.  (It is equivalent
+    to 'from mod import <names>')
+    """
+    if ENABLE_LAZY_IMPORTS:
+        # Lazy importing is enabled, so created _LazyProxy classes.
+        if names:
+            # from mod import <names>
+            for name in names:
+                lazy = _LazyProxy(name, (__builtins__['object'],), {'_mod': mod, '_name': name, '_names': names})
+                globals()[name] = lazy
+        else:
+            # import mod
+            globals()[mod] = _LazyProxy(mod, (__builtins__['object'],), {'_mod': mod})
+    else:
+        # No lazy importing, import everything immediately.
+        if globals()['_activate']:
+            globals()['_activate']()
+        omod = __import__(mod, globals(), fromlist=names)
+        if names:
+            # from mod import <names>
+            for name in names:
+                globals()[name] = getattr(omod, name)
+        else:
+            # import mod
+            globals()[mod] = omod
+
+
+class _LazyProxy(type):
+    """
+    Metaclass used to construct individual proxy classes for all names within
+    the kaa namespace.  When the proxy class for a given name is accessed in
+    any meaningful way the underlying module is imported and the name from
+    that module replaces the _LazyProxy in the kaa namespace.
+
+    By "meaninful" access, in each of the following code snippets, behaviour
+    is as if the underlying module had been imported all along:
+
+        # imports callable (repr() hook)
+        >>> print kaa.Callable
+
+        # imports process (dir() hook, but python 2.6 only; python 2.5 will
+        # still automatically import, but dir() returns [])
+        >>> dir(kaa.Process)
+
+        # imports io (deep metaclass magic)
+        >>> class MyIO(kaa.IOMonitor):
+        ...    pass
+
+        # imports io and callable (MI is supported)
+        >>> class MyIO(kaa.IOMonitor, kaa.Callable):
+        ...     pass
+
+        # imports coroutine (== hook)
+        >>> print policy == kaa.POLICY_PASS_LAST
+
+        # imports main
+        >>> kaa.main.run()
+
+        # imports thread
+        >>> @kaa.threaded()
+        ... def foo():
+        ...     pass
+
+        # imports timer; this works, but it's suboptimal because it means the
+        # user is _always_ interfacing through a proxy object.
+        >>> from kaa import timed
+        >>> @timed(1.0)
+        ... def foo():
+        ...     pass
+    """
+    def __new__(cls, name, bases, dict):
+        if bases != (__builtins__['object'],):
+            bases = ((b.__get() if type(b) == _LazyProxy else b) for b in bases)
+            return type(name, tuple(bases), dict)
+
+        else:
+            return type.__new__(cls, name, (__builtins__['object'],), dict)
+
+
+    def __get(cls):
+        """
+        Returns the underlying proxied object, importing the module if necessary.
+        """
+        try:
+            return type.__getattribute__(cls, '_obj')
+        except AttributeError:
+            pass
+
+        if globals()['_activate']:
+            # First kaa module loaded, invoke _activate()
+            globals()['_activate']()
+
+        mod = type.__getattribute__(cls, '_mod')
+        try:
+            names = type.__getattribute__(cls, '_names')
+        except AttributeError:
+            names = []
+
+        # Keep a copy of the current global scope, see later for why.
+        before = globals().copy()
+        # Load the module and pull in the specified names.
+        imp.acquire_lock()
+        omod = __import__(mod, globals(), fromlist=names)
+        imp.release_lock()
+
+        if not names:
+            # Proxying whole module.
+            globals()[mod] = omod
+            cls._obj = omod
+            return omod
+        else:
+            # Kludge: if we import a module with the same name as an existing
+            # global (e.g.  coroutine, generator, signals), the module will
+            # replace the _LazyProxy.  If a previous _LazyProxy has now been
+            # replaced by a module, restore the original _LazyProxy.
+            for key in before:
+                if type(before[key]) == _LazyProxy and type(globals().get(key)).__name__ == 'module':
+                    globals()[key] = before[key]
+
+            # Replace the _LazyProxy objects with the actual module attributes.
+            for n in names:
+                globals()[n] = getattr(omod, n)
+            name = type.__getattribute__(cls, '_name')
+            obj = getattr(omod, name)
+            # Need to wrap obj in staticmethod or else it becomes an unbound class method.
+            cls._obj = staticmethod(obj)
+            return obj
+
+
+    def __getattribute__(cls, attr):
+        # __get gets mangled
+        if attr == '_LazyProxy__get':
+            return type.__getattribute__(cls, attr)
+        return getattr(cls.__get(), attr)
+
+    def __getitem__(cls, item):
+        return cls.__get()[item]
+
+    def __setitem__(cls, item, value):
+        cls.__get()[item] = value
+
+    def __call__(cls, *args, **kwargs):
+        return cls.__get()(*args, **kwargs)
+
+    def __repr__(cls):
+        return repr(cls.__get())
+
+    def __dir__(cls):
+        # Python 2.6 only
+        return dir(cls.__get())
+
+    def __eq__(cls, other):
+        return cls.__get() == other
+
+
+# Base object class for all kaa classes
+_lazy_import('object', ['Object'])
 
 # Callable classes
-from callable import Callable, WeakCallable, CallableError
+_lazy_import('callable', ['Callable', 'WeakCallable', 'CallableError'])
 
 # Notifier-aware callbacks
-from nf_wrapper import NotifierCallback, WeakNotifierCallback
+_lazy_import('nf_wrapper', ['NotifierCallback', 'WeakNotifierCallback'])
 
 # Signal and dict of Signals
-from signals import Signal, Signals
+_lazy_import('signals', ['Signal', 'Signals'])
+
+# Async programming classes, namely InProgress
+_lazy_import('async', [
+    'TimeoutException', 'InProgress', 'InProgressCallable', 'InProgressAny',
+    'InProgressAll', 'InProgressAborted', 'InProgressStatus', 'inprogress',
+    'delay'
+])
 
 # Thread callables, helper functions and decorators
-from thread import MainThreadCallable, ThreadPoolCallable, ThreadCallable, \
-     is_mainthread, threaded, synchronized, MAINTHREAD, ThreadInProgress, \
-     ThreadPool, register_thread_pool, get_thread_pool
+_lazy_import('thread', [
+    'MainThreadCallable', 'ThreadPoolCallable', 'ThreadCallable',
+    'is_mainthread', 'threaded', 'synchronized', 'MAINTHREAD',
+    'ThreadInProgress', 'ThreadPool', 'register_thread_pool', 'get_thread_pool'
+])
 
 # Timer classes and decorators
-from timer import Timer, WeakTimer, OneShotTimer, WeakOneShotTimer, AtTimer, \
-     OneShotAtTimer, timed, POLICY_ONCE, POLICY_MANY, POLICY_RESTART
+_lazy_import('timer', [
+    'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer', 'AtTimer',
+    'OneShotAtTimer', 'timed', 'POLICY_ONCE', 'POLICY_MANY', 'POLICY_RESTART'
+])
 
 # IO/Socket handling
-from io import IOMonitor, WeakIOMonitor, IO_READ, IO_WRITE, IOChannel
-from sockets import Socket, SocketError
+_lazy_import('io', ['IOMonitor', 'WeakIOMonitor', 'IO_READ', 'IO_WRITE', 'IOChannel'])
+_lazy_import('sockets', ['Socket', 'SocketError'])
 
 # Event and event handler classes
-from event import Event, EventHandler, WeakEventHandler
+_lazy_import('event', ['Event', 'EventHandler', 'WeakEventHandler'])
 
 # coroutine decorator and helper classes
-from coroutine import NotFinished, coroutine, \
-     POLICY_SYNCHRONIZED, POLICY_SINGLETON, POLICY_PASS_LAST
+_lazy_import('coroutine', [
+    'NotFinished', 'coroutine', 'POLICY_SYNCHRONIZED', 'POLICY_SINGLETON',
+    'POLICY_PASS_LAST'
+])
 
 # generator support
-from generator import Generator, generator
+_lazy_import('generator', ['Generator', 'generator'])
 
 # process management
-from process import Process
+_lazy_import('process', ['Process'])
 
 # special gobject thread support
-from gobject import GOBJECT, gobject_set_threaded
+_lazy_import('gobject', ['GOBJECT', 'gobject_set_threaded'])
 
 # Import the two important strutils functions
-from strutils import str_to_unicode, unicode_to_str
+_lazy_import('strutils', ['str_to_unicode', 'unicode_to_str'])
 
 # Add tempfile support.
-from utils import tempfile
+_lazy_import('utils', ['tempfile'])
 
 # Expose main loop functions under kaa.main
-import main
-from main import signals
-
-import sys, os
-if sys.hexversion < 0x02060000 and os.name == 'posix':
-    # Python 2.5 (all point releases) have a bug with listdir on POSIX systems
-    # causing improper out of memory exceptions.  We replace the standard
-    # os.listdir with a version from kaa._utils that doesn't have this bug.
-    # Some distros will have patched their 2.5 packages, but since we can't
-    # discriminate those, we replace os.listdir regardless.
-    #
-    # See http://bugs.python.org/issue1608818
-    import kaa._utils
-    os.listdir = kaa._utils.listdir
+_lazy_import('main')
+_lazy_import('main', ['signals'])
 
 
 
@@ -155,6 +332,7 @@ if sys.hexversion < 0x02060000 and os.name == 'posix':
 # or properly load kaa/foo/__init__.py if kaa.foo is installed as an on-disk
 # tree while kaa.base is an egg.
 
+
 class KaaLoader:
     """
     Custom import hook loader module loader, used when importing non-egg
@@ -169,17 +347,20 @@ class KaaLoader:
         if name in sys.modules:
             return sys.modules[name]
 
-        # Import imp in here so as not to pollute kaa namespace.
-        import imp
+        imp.acquire_lock()
         try:
-            # Try form kaa/foo/__init__.py
-            mod = imp.load_module(name[4:], *self._info)
-            mod.__name__ = name
-        except ImportError:
-            # Try form kaa/foo.py
-            mod = imp.load_module(name, *self._info)
-
-        sys.modules[name] = mod
+            try:
+                # Try form kaa/foo/__init__.py
+                mod = imp.load_module(name[4:], *self._info)
+                mod.__name__ = name
+            except ImportError:
+                # Try form kaa/foo.py
+                mod = imp.load_module(name, *self._info)
+            sys.modules[name] = mod
+        finally:
+            if self._info[0]:
+                self._info[0].close()
+            imp.release_lock()
         return mod
         
 
@@ -194,6 +375,7 @@ class KaaFinder:
                 submod_name = 'kaa.' + name[4:].split('-')[0]
                 self.kaa_eggs[submod_name] = mod
 
+
     def find_module(self, name, path):
         # Bypass import hooks if module isn't in the form kaa.foo.  We also
         # don't need any custom import hooks if there are no kaa eggs.  If
@@ -205,21 +387,26 @@ class KaaFinder:
         if name not in self.kaa_eggs or os.path.isdir(self.kaa_eggs[name]):
             # There's no egg, or the egg is actually uncompressed as an
             # on-disk tree (i.e. kaa_foo.egg is actually a directory).
+            imp.acquire_lock()
             try:
-                import imp
                 info = imp.find_module(name.replace('.', '/'), sys.path)
             except ImportError:
                 return
+            finally:
+                imp.release_lock()
             return KaaLoader(info)
 
         # Egg is available for requested module, so attempt to import it.
         import zipimport
-        o = zipimport.zipimporter(self.kaa_eggs[name] + '/kaa')
+        imp.acquire_lock()
+        try:
+            o = zipimport.zipimporter(self.kaa_eggs[name] + '/kaa')
+        finally:
+            imp.release_lock()
         return o
 
 # Now install our custom hooks.
 sys.meta_path.append(KaaFinder())
-
 
 
 # Allow access to old Callback names, but warn.  This will go away the release

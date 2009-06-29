@@ -209,6 +209,9 @@ def run(threaded=False):
         t.start()
         return event.wait()
 
+    global _shutting_down
+    _shutting_down = False
+
     try:
         # Nested try necessary because python 2.4 doesn't support
         # try/except/finally.

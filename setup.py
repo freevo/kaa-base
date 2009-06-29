@@ -107,5 +107,6 @@ setup(
         'build_requires': 'glib2-devel >= 2.6.0, python-devel >= 2.5.0'
     },
     ext_modules = extensions,
+    zip_safe=True,
     namespace_packages = ['kaa']
 )

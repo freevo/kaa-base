@@ -41,6 +41,9 @@ try:
     # kaa'.
     #
     # See below for more discussion.
+    #
+    # This is primarily needed for situations where multiple egg versions
+    # are installed.
     __import__('pkg_resources').declare_namespace('kaa')
 except ImportError:
     # No setuptools installed, no egg support.
@@ -344,10 +347,18 @@ _lazy_import('main', ['signals'])
 #   1. kaa.base as egg, kaa.foo as egg
 #   2. kaa.base as egg, kaa.foo as source tree
 #   3. kaa.base as source tree, kaa.foo as egg
-#   4. kaa.base as source tree, kaa.foo as source tree
+#   4. kaa.base as source tree, kaa.foo as source tree; this should be easiest
+#      as the import hooks are basically bypassed.
 #
-# The import trickery (which is always scary) below deals with these 
-# scenarios.
+# Some other uncommon but possible scenarios involving multiple versions we
+# should consider.  We should prefer eggs in these cases:
+#
+#   5. kaa.base as source tree AND egg; ensure that 'kaa' and e.g. 'kaa.rpc'
+#      come from the same module.
+#
+# If kaa.foo exists as both an on-disk tree and an egg, the egg will be preferred.
+# However, if kaa.base exists as both, we can't easily control which one gets
+# loaded.  In this case we should print a warning.
 #
 # We add a custom finder to sys.meta_path so that when the user later does
 # 'import kaa.foo' we'll zipimport a kaa_foo egg if it existed at start time,
@@ -373,9 +384,11 @@ class KaaLoader:
         try:
             try:
                 # Try form kaa/foo/__init__.py
+                # The import can raise ValueError as well (attempted relative
+                # import in non-package).
                 mod = imp.load_module(name[4:], *self._info)
                 mod.__name__ = name
-            except ImportError:
+            except (ValueError, ImportError):
                 # Try form kaa/foo.py
                 mod = imp.load_module(name, *self._info)
             sys.modules[name] = mod
@@ -386,8 +399,9 @@ class KaaLoader:
         return mod
         
 
-class KaaFinder:
+class KaaFinder(object):
     def __init__(self):
+        self.warn_on_mixed = True
         # Discover kaa eggs
         self.kaa_eggs = {}
         for mod in sys.path:
@@ -407,35 +421,44 @@ class KaaFinder:
         if not name.startswith('kaa.') or name.count('.') > 1 or not self.kaa_eggs:
             return
 
-        # If we're importing from within an egg, check the egg first for the
-        # requested module before checking the on-disk tree.  Solves a problem
-        # where, for example, kaa.base has multiple versions installed as an
-        # egg and on-disk tree, and a submodule (e.g. kaa.distribution) is
-        # imported, we should prefer the version we came from (the egg) over
-        # the on-disk tree.
-        if path and '.egg/' in path[0]:
-            imp.acquire_lock()
-            try:
-                if zipimport.zipimporter(path[0]).find_module(name):
-                    # Found in the zipped egg, use that one.
-                    return
-            except (zipimport.ZipImportError, AttributeError):
-                # Not found within zipped egg (or egg not a zip).  Ok, move on.
-                pass
-            finally:
-                imp.release_lock()
+        basename = os.path.dirname(__file__)
+        if len(path) > 1 and any('.egg/' not in p for p in path) and self.warn_on_mixed:
+            # This probably isn't what the user wants.  At any rate we can't easily
+            # control which one to use.
+            print('WARNING: Multiple and mixed (egg and non-egg) versions of kaa.base installed.\n'
+                  '         Using: %s' % basename)
+            # Just spam the warning once.
+            self.warn_on_mixed = False
 
+        # For relative imports, prefer those relative to current module instance as opposed
+        # to some other version.  (XXX: not sure if this is a good idea.)
+        path = [basename] + path
 
         if name not in self.kaa_eggs or os.path.isdir(self.kaa_eggs[name]):
             # There's no egg, or the egg is actually uncompressed as an
             # on-disk tree (i.e. kaa_foo.egg is actually a directory).
             imp.acquire_lock()
+            # problem: kaa.base tree, kaa.foo egg
             try:
-                info = imp.find_module(name.replace('.', '/'), sys.path)
-            except ImportError:
-                return
+                searches = (
+                    # Check given path first for relative imports.
+                    lambda: imp.find_module(name, path),
+                    # Check sys.path for the given name.  (kaa.base tree, kaa.foo egg)
+                    lambda: imp.find_module(name, sys.path),
+                    # Check for kaa/foo in sys.path (kaa.base egg, kaa.foo tree)
+                    lambda: imp.find_module(name.replace('.', '/'), sys.path)
+                )
+                for doimp in searches:
+                    try:
+                        info = doimp()
+                        break
+                    except ImportError:
+                        pass
+                else:
+                    return
             finally:
                 imp.release_lock()
+
             return KaaLoader(info)
 
         # Egg is available for requested module, so attempt to import it.
@@ -446,7 +469,10 @@ class KaaFinder:
             imp.release_lock()
         return o
 
-# Now install our custom hooks.
+# Now install our custom hooks.  Remove any existing KaaFinder import hooks, which
+# could exist from other versions of kaa.base being imported by pkg_resources,
+# or perhaps kaa was reload()ed.
+[sys.meta_path.remove(x) for x in sys.meta_path if type(x).__name__ == 'KaaFinder']
 sys.meta_path.append(KaaFinder())
 
 

@@ -519,7 +519,7 @@ def setup(**kwargs):
     if not sys.modules.get('setuptools'):
         # Setuptools not available, so remove any kwarg that would cause stock
         # distutils to complain.
-        for kw in ('namespace_packages', 'zipsafe'):
+        for kw in ('namespace_packages', 'zip_safe'):
             if kw in kwargs:
                 del kwargs[kw]
 

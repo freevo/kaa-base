@@ -28,6 +28,23 @@
 import sys
 import os
 import imp
+import zipimport
+
+# Declare 'kaa' namespace for setuptools.
+try:
+    # http://peak.telecommunity.com/DevCenter/setuptools#namespace-packages
+    # offers a stern admonition that after declaring a namespace, we must not
+    # add any other code to __init__.py.  However, this isn't possible for us,
+    # and, near as I can tell, our approach is safe because kaa sub-modules
+    # don't include kaa/__init__.py.  The only module that does is kaa.base.
+    # So there's no risk of some other egg getting loaded when we do 'import
+    # kaa'.
+    #
+    # See below for more discussion.
+    __import__('pkg_resources').declare_namespace('kaa')
+except ImportError:
+    # No setuptools installed, no egg support.
+    pass
 
 
 # Enable on-demand importing of all modules.  Improves speed of importing kaa
@@ -371,6 +388,7 @@ class KaaLoader:
 
 class KaaFinder:
     def __init__(self):
+        # Discover kaa eggs
         self.kaa_eggs = {}
         for mod in sys.path:
             name = os.path.basename(mod)
@@ -389,6 +407,25 @@ class KaaFinder:
         if not name.startswith('kaa.') or name.count('.') > 1 or not self.kaa_eggs:
             return
 
+        # If we're importing from within an egg, check the egg first for the
+        # requested module before checking the on-disk tree.  Solves a problem
+        # where, for example, kaa.base has multiple versions installed as an
+        # egg and on-disk tree, and a submodule (e.g. kaa.distribution) is
+        # imported, we should prefer the version we came from (the egg) over
+        # the on-disk tree.
+        if path and '.egg/' in path[0]:
+            imp.acquire_lock()
+            try:
+                if zipimport.zipimporter(path[0]).find_module(name):
+                    # Found in the zipped egg, use that one.
+                    return
+            except (zipimport.ZipImportError, AttributeError):
+                # Not found within zipped egg (or egg not a zip).  Ok, move on.
+                pass
+            finally:
+                imp.release_lock()
+
+
         if name not in self.kaa_eggs or os.path.isdir(self.kaa_eggs[name]):
             # There's no egg, or the egg is actually uncompressed as an
             # on-disk tree (i.e. kaa_foo.egg is actually a directory).
@@ -402,7 +439,6 @@ class KaaFinder:
             return KaaLoader(info)
 
         # Egg is available for requested module, so attempt to import it.
-        import zipimport
         imp.acquire_lock()
         try:
             o = zipimport.zipimporter(self.kaa_eggs[name] + '/kaa')

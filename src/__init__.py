@@ -152,12 +152,17 @@ class _LazyProxy(type):
         ...     pass
     """
     def __new__(cls, name, bases, dict):
-        if bases != (__builtins__['object'],):
+        if bases == (__builtins__['object'],):
+            # called by _lazy_import(), create a new LazyProxy class for the
+            # given module/name, which is defined in dict.
+            return type.__new__(cls, name, (__builtins__['object'],), dict)
+        else:
+            # called when something tries to subclass a LazyProxy.  Replace all
+            # LazyProxy bases with the actual object (importing as needed) and
+            # construct the new class subclassed from the newly imported kaa
+            # objects.
             bases = ((b.__get() if type(b) == _LazyProxy else b) for b in bases)
             return type(name, tuple(bases), dict)
-
-        else:
-            return type.__new__(cls, name, (__builtins__['object'],), dict)
 
 
     def __get(cls):

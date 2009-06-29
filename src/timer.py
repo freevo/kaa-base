@@ -142,7 +142,7 @@ class Timer(notifier.NotifierCallback):
         callback will be invoked from the main thread.
         """
         if not thread.is_mainthread():
-            return MainThreadCallable(self.start)(interval)
+            return thread.MainThreadCallable(self.start)(interval)
 
         if self.active:
             if not self.restart_when_active:
@@ -173,7 +173,7 @@ class Timer(notifier.NotifierCallback):
         will not be called again unless the timer is restarted.
         """
         if not thread.is_mainthread():
-            return MainThreadCallable(self.unregister)()
+            return thread.MainThreadCallable(self.unregister)()
         self.unregister()
 
 

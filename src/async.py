@@ -319,7 +319,8 @@ class InProgress(Signal, Object):
 
 
     def __repr__(self):
-        return '<%s object at 0x%08x, %s>' % (self.__class__.__name__, id(self), self._name)
+        finished = 'finished' if self.finished else 'not finished'
+        return '<%s object (%s) at 0x%08x, %s>' % (self.__class__.__name__, finished, id(self), self._name)
 
 
     def __inprogress__(self):

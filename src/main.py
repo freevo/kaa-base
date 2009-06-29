@@ -198,7 +198,15 @@ def run(threaded=False):
         # start mainloop as thread and wait until it is started
         event = threading.Event()
         timer.OneShotTimer(event.set).start(0)
-        threading.Thread(target=run, name='kaa mainloop').start()
+        t = threading.Thread(target=run, name='kaa mainloop')
+        if 'readline' in sys.modules:
+            # If the readline module is loaded, this almost certainly means
+            # that we're running interactively.  If so, and the main loop is
+            # being run in a separate thread, make that thread a daemon thread
+            # so when the user exits the interactive interpreter it doesn't
+            # block.
+            t.setDaemon(True)
+        t.start()
         return event.wait()
 
     try:
@@ -219,7 +227,13 @@ def run(threaded=False):
             except:
                 pass
     finally:
-        stop()
+        # stop might be None if mainloop was run in a thread at interactive prompt
+        # (and therefore is a daemon thread).  In that case, we get here when
+        # the interpreter is shutting down, and we've shutdown enough that stop
+        # no longer exists.  It doesn't matter, because the atexit handler will
+        # have called stop already.
+        if stop:
+            stop()
 
 
 # Don't use @threaded decorator because this module participates in import cycles.
@@ -339,7 +353,12 @@ def _shutdown_check(*args):
         # SystemExit and things will exit normally.
         if thread.is_mainthread():
             _set_running(False)
-        stop()
+        r = stop()
+        if r:
+            # If stop() returns non-None, it's an InProgress, which means the
+            # main loop was running in a separate thread.  Wait for it to
+            # finish.
+            r.wait()
 
 
 # catch SIGTERM and SIGINT if possible for a clean shutdown

@@ -401,7 +401,7 @@ class KaaLoader:
         return mod
         
 
-class KaaFinder(object):
+class KaaFinder(__builtins__['object']):
     def __init__(self):
         self.warn_on_mixed = True
         # Discover kaa eggs

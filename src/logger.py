@@ -99,4 +99,5 @@ class Logger(logging.Logger):
             apply(self._log, (logging.DEBUG2, msg, args), kwargs)
 
 logging.DEBUG2 = 5
+logging.addLevelName(logging.DEBUG2, 'DEBUG2')
 logging.setLoggerClass(Logger)

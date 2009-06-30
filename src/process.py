@@ -33,6 +33,7 @@ import errno
 import logging
 import weakref
 import signal
+import cStringIO
 
 from io import IOChannel, IO_WRITE, IO_READ
 from signals import Signals
@@ -776,6 +777,41 @@ class Process(Object):
         if not self._stdin.alive:
             raise IOError(9, 'Cannot write to closed child stdin')
         return self._stdin.write(data)
+
+
+    @coroutine()
+    def communicate(self, input=None):
+        """
+        One-time interaction with the process, sending the given input, and
+        receiving all output from the child.
+
+        :param input: the data to send to the child's stdin
+        :type input: str
+        :return: an :class:`~kaa.InProgress`, which will be finished with a a
+                 2-tuple (stdoutdata, stderrdata)
+
+        Any data previously written to the child with :meth:`~kaa.Process.write`
+        will be flushed and the pipe to the child's stdin will be closed.  All
+        subsequent data from the child's stdout and stderr will be read until
+        EOF.  The child will be terminated before returning.
+
+        This method is modeled after Python's standard library call
+        ``subprocess.Popen.communicate()``.
+        """
+        if input:
+            yield self.write(input)
+        self.stdin.close()
+
+        buf_out = cStringIO.StringIO()
+        while self.stdout.readable:
+            buf_out.write((yield self.stdout.read()))
+
+        buf_err = cStringIO.StringIO()
+        while self.stderr.readable:
+            buf_err.write((yield self.stderr.read()))
+
+        yield self.stop()
+        yield (buf_out.getvalue(), buf_err.getvalue())
 
 
     def _emit_finished(self):

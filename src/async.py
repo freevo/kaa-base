@@ -908,13 +908,16 @@ class InProgressAny(InProgress):
             # Someone wants to know when we finish, so now we connect to the
             # underlying InProgress objects to find out when they finish.
             self._check_prefinished()
-            for n, ip in enumerate(self._objects):
-                if ip.finished:
-                    # This one is finished already, no need to connect to it.
-                    continue
-                args = self._get_connect_args(ip, n)
-                ip.connect(self.finish, False, *args).user_args_first = True
-                ip.exception.connect(self.finish, True, *args).user_args_first = True
+            # _check_prefinished() could have implicitly called finish(),
+            # setting self._objects to None.
+            if self._objects:
+                for n, ip in enumerate(self._objects):
+                    if ip.finished:
+                        # This one is finished already, no need to connect to it.
+                        continue
+                    args = self._get_connect_args(ip, n)
+                    ip.connect(self.finish, False, *args).user_args_first = True
+                    ip.exception.connect(self.finish, True, *args).user_args_first = True
 
         elif len(self) == 0 and action == Signal.DISCONNECTED:
             for ip in self._objects:

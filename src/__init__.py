@@ -50,6 +50,12 @@ except ImportError:
     pass
 
 
+# Import custom logger to update the Python logging module. Unfortunately. we
+# can't import this lazy because we add logging.DEBUG2, and that should be
+# available immediately after importing kaa.
+import logger
+
+
 # Enable on-demand importing of all modules.  Improves speed of importing kaa
 # by almost 50x with warm cache (from 0.065s to 0.0015s) and 325x with cold
 # cache (2.6s to 0.008s) on my system.  Although it does of course defer a lot
@@ -72,12 +78,8 @@ ENABLE_LAZY_IMPORTS = 1
 def _activate():
     """
     Invoked when the first kaa object is accessed.  Lets us do initial
-    bootstrapping, like setup our logger hooks and replace the buggy
-    system os.listdir.
+    bootstrapping, like replace the buggy system os.listdir.
     """
-    # import logger to update the Python logging module
-    import logger
-
     if sys.hexversion < 0x02060000 and os.name == 'posix':
         # Python 2.5 (all point releases) have a bug with listdir on POSIX
         # systems causing improper out of memory exceptions.  We replace the

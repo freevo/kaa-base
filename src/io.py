@@ -633,7 +633,7 @@ class IOChannel(Object):
         """
         try:
             data = self._read(self._chunk_size)
-            log.debug("IOChannel read data: channel=%s fd=%s len=%d" % (self._channel, self.fileno, len(data)))
+            log.debug2('IOChannel read data: channel=%s fd=%s len=%d', self._channel, self.fileno, len(data))
         except (IOError, socket.error), (errno, msg):
             if errno == 11:
                 # Resource temporarily unavailable -- we are trying to read
@@ -779,6 +779,8 @@ class IOChannel(Object):
             while self._write_queue:
                 data, inprogress = self._write_queue.pop(0)
                 sent = self._write(data)
+                log.debug2('IOChannel write data: channel=%s fd=%s len=%d (of %d)', 
+                           self._channel, self.fileno, sent, len(data))
                 if sent != len(data):
                     # Not all data was able to be sent; push remaining data
                     # back onto the write buffer.
@@ -833,6 +835,7 @@ class IOChannel(Object):
             os.close(self.fileno)
 
 
+    # TODO: return an InProgress (relevant is immediate=False)
     def close(self, immediate=False, expected=True):
         """
         Closes the channel.

@@ -40,7 +40,10 @@ from timer import timed, Timer, OneShotTimer, POLICY_ONCE
 from thread import MainThreadCallable, is_mainthread, threaded, MAINTHREAD
 from async import InProgress, InProgressAny, InProgressAll, delay, inprogress
 from callable import Callable, WeakCallable, CallableError
-from coroutine import coroutine, POLICY_SINGLETON
+# Import coroutine from kaa rather than .coroutine, because importing coroutine
+# here will replace a kaa.coroutine LazyProxy with the module if coroutine was
+# not imported yet.
+from kaa import coroutine, POLICY_SINGLETON
 from utils import property
 from object import Object
 import main

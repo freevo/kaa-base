@@ -301,6 +301,10 @@ def get_plugins(group=None, location=None, attr=None, filter=None):
     :type filter: callable or None
     :returns: a dict mapping plugin names to plugin objects.
 
+    If a plugin raises an exception while it is being imported, the value in
+    the returned dictionary for that plugin will be the Exception object that
+    was raised.
+
     Plugins can be loaded by one or both of the following methods:
         #. Loading modules from a specified directory location either on-disk
            or inside a zipped egg
@@ -415,9 +419,14 @@ def get_plugins(group=None, location=None, attr=None, filter=None):
                     continue
 
                 # Now we try to import the module
-                mod = __import__(name)
-                # And add it to the plugins dict.
-                plugins[name] = getattr(mod, attr) if attr else mod
+                try:
+                    mod = __import__(name)
+                except Exception, e:
+                    # Pass the exception back.
+                    plugins[name] = e
+                else:
+                    # Import successful, add it to the plugins dict.
+                    plugins[name] = getattr(mod, attr) if attr else mod
         finally:
             sys.path.pop(0)
 
@@ -434,7 +443,11 @@ def get_plugins(group=None, location=None, attr=None, filter=None):
             # setup() for plugin modules) and load them, which returns the Plugin class
             # they were registered with.
             for entrypoint in pkg_resources.iter_entry_points(group):
-                plugins[entrypoint.name] = entrypoint.load()
+                try:
+                    plugins[entrypoint.name] = entrypoint.load()
+                except Exception, e:
+                    # Load failed, pass the exception back.
+                    plugins[entrypoint.name] = e
 
 
     return plugins

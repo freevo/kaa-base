@@ -522,6 +522,12 @@ def setup(**kwargs):
         for kw in ('namespace_packages', 'zip_safe'):
             if kw in kwargs:
                 del kwargs[kw]
+    else:
+        if 'zip_safe' not in kwargs:
+            # zip_safe not specifically specified, so override the setuptools
+            # default and set it to False.  Zipped eggs have a number of problems:
+            # http://bugs.python.org/setuptools/issue33
+            kwargs['zip_safe'] = False
 
     # run the distutils.setup function
     project = kwargs.pop('project', 'kaa')

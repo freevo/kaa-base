@@ -213,22 +213,19 @@ def run(threaded=False):
     _shutting_down = False
 
     try:
-        # Nested try necessary because python 2.4 doesn't support
-        # try/except/finally.
+        loop(True)
+    except (KeyboardInterrupt, SystemExit):
         try:
-            loop(True)
-        except (KeyboardInterrupt, SystemExit):
-            try:
-                # This looks stupid, I know that. The problem is that if we have
-                # a KeyboardInterrupt, that flag is still valid somewhere inside
-                # python. The next system call will fail because of that. Since we
-                # don't want a join of threads or similar fail, we use a very short
-                # sleep here. In most cases we won't sleep at all because this sleep
-                # fails. But after that everything is back to normal.
-                # XXX: (tack) this sounds like an interpreter bug, does it still do this?
-                time.sleep(0.001)
-            except:
-                pass
+            # This looks stupid, I know that. The problem is that if we have
+            # a KeyboardInterrupt, that flag is still valid somewhere inside
+            # python. The next system call will fail because of that. Since we
+            # don't want a join of threads or similar fail, we use a very short
+            # sleep here. In most cases we won't sleep at all because this sleep
+            # fails. But after that everything is back to normal.
+            # XXX: (tack) this sounds like an interpreter bug, does it still do this?
+            time.sleep(0.001)
+        except:
+            pass
     finally:
         # stop might be None if mainloop was run in a thread at interactive prompt
         # (and therefore is a daemon thread).  In that case, we get here when

@@ -384,16 +384,7 @@ class KaaLoader:
 
         imp.acquire_lock()
         try:
-            try:
-                # Try form kaa/foo/__init__.py
-                # The import can raise ValueError as well (attempted relative
-                # import in non-package).
-                mod = imp.load_module(name[4:], *self._info)
-                mod.__name__ = name
-            except (ValueError, ImportError):
-                # Try form kaa/foo.py
-                mod = imp.load_module(name, *self._info)
-            sys.modules[name] = mod
+            mod = imp.load_module(name, *self._info)
         finally:
             if self._info[0]:
                 self._info[0].close()
@@ -443,7 +434,9 @@ class KaaFinder(__builtins__['object']):
             # problem: kaa.base tree, kaa.foo egg
             try:
                 searches = (
-                    # Check given path first for relative imports.
+                    # Relative import of submodule (strip kaa.) from given path
+                    lambda: imp.find_module(name[4:], path),
+                    # Absolute import from given path
                     lambda: imp.find_module(name, path),
                     # Check sys.path for the given name.  (kaa.base tree, kaa.foo egg)
                     lambda: imp.find_module(name, sys.path),

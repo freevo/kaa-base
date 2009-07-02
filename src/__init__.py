@@ -30,11 +30,13 @@ import os
 import imp
 import zipimport
 
-# Declare 'kaa' namespace for setuptools.
+# Declare 'kaa' namespace for setuptools. XXX: disabled for now.
 try:
     # http://peak.telecommunity.com/DevCenter/setuptools#namespace-packages
     # offers a stern admonition that after declaring a namespace, we must not
-    # add any other code to __init__.py.  However, this isn't possible for us,
+    # add any other code to __init__.py.  The reason is that we can't control
+    # 
+    # However, this isn't possible for us,
     # and, near as I can tell, our approach is safe because kaa sub-modules
     # don't include kaa/__init__.py.  The only module that does is kaa.base.
     # So there's no risk of some other egg getting loaded when we do 'import
@@ -44,7 +46,8 @@ try:
     #
     # This is primarily needed for situations where multiple egg versions
     # are installed.
-    __import__('pkg_resources').declare_namespace('kaa')
+    #__import__('pkg_resources').declare_namespace('kaa')
+    pass
 except ImportError:
     # No setuptools installed, no egg support.
     pass
@@ -414,18 +417,13 @@ class KaaFinder(__builtins__['object']):
         if not name.startswith('kaa.') or name.count('.') > 1 or not self.kaa_eggs:
             return
 
-        basename = os.path.dirname(__file__)
         if len(path) > 1 and any('.egg/' not in p for p in path) and self.warn_on_mixed:
             # This probably isn't what the user wants.  At any rate we can't easily
             # control which one to use.
             print('WARNING: Multiple and mixed (egg and non-egg) versions of kaa.base installed.\n'
-                  '         Using: %s' % basename)
+                  '         This MIGHT appear to mostly work, but this configuration is not supported.')
             # Just spam the warning once.
             self.warn_on_mixed = False
-
-        # For relative imports, prefer those relative to current module instance as opposed
-        # to some other version.  (XXX: not sure if this is a good idea.)
-        path = [basename] + path
 
         if name not in self.kaa_eggs or os.path.isdir(self.kaa_eggs[name]):
             # There's no egg, or the egg is actually uncompressed as an
@@ -467,8 +465,9 @@ class KaaFinder(__builtins__['object']):
 # Now install our custom hooks.  Remove any existing KaaFinder import hooks, which
 # could exist from other versions of kaa.base being imported by pkg_resources,
 # or perhaps kaa was reload()ed.
-[sys.meta_path.remove(x) for x in sys.meta_path if type(x).__name__ == 'KaaFinder']
-sys.meta_path.append(KaaFinder())
+if '.egg/' in __file__:
+    [sys.meta_path.remove(x) for x in sys.meta_path if type(x).__name__ == 'KaaFinder']
+    sys.meta_path.append(KaaFinder())
 
 
 # Allow access to old Callback names, but warn.  This will go away the release

@@ -34,25 +34,13 @@ import distutils.core
 import distutils.cmd
 import distutils.sysconfig
 
-# setuptools hooks into distutils when it's imported.  So if we want to
-# bypass setuptools, we need to check before it's imported.  This switch is
-# mostly useful for testing non-setuptools configurations on systems that
-# has setuptools installed.  End users probably won't use it.
-if '--noegg' in sys.argv:
-    sys.modules['setuptools'] = None
-    sys.argv.remove('--noegg')
-else:
-    try:
-        import setuptools
-    except ImportError:
-        # If setuptools isn't installed, no big deal, we just lose support for eggs;
-        # installation will be standard on-disk source tree.
-        pass
-    else:
-        # Setuptools is imported, add --noegg option.
-        import distutils.dist
-        opt = ('noegg', None, "Do not install using setuptools (don't use eggs)")
-        distutils.dist.Distribution.global_options.append(opt)
+if '--egg' in sys.argv:
+    sys.argv.remove('--egg')
+    import setuptools
+# Add --egg option
+import distutils.dist
+opt = ('egg', None, "Install using setuptools (use eggs)")
+distutils.dist.Distribution.global_options.append(opt)
 
 
 # internal imports

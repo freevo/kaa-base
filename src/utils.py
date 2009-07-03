@@ -324,8 +324,13 @@ def get_plugins(group=None, location=None, attr=None, filter=None):
     ``location=__file__`` to ``kaa.utils.get_plugins()`` to do this:
 
         >>> kaa.utils.get_plugins(location=__file__)
-        {'plugin1': <module 'plugin1' from '.../module/plugins/plugin1.py'>, 
-         'plugin2': <module 'plugin2' from '.../module/plugins/plugin2.py'>}
+        {'plugin1': <module 'module.plugins.plugin1' from '.../module/plugins/plugin1.py'>, 
+         'plugin2': <module 'module.plugins.plugin2' from '.../module/plugins/plugin2.py'>}
+
+    .. note::
+       Plugins will be imported relative to the caller's module name.  So if
+       the caller is module ``module.plugins``, plugin1 will be imported as
+       ``module.plugins.plugins``.
 
     This also works when ``plugins/__init__.py`` is inside a zipped egg.
     However, if you reference ``__file__`` as above, setuptools (assuming it's
@@ -420,7 +425,14 @@ def get_plugins(group=None, location=None, attr=None, filter=None):
 
                 # Now we try to import the module
                 try:
-                    mod = __import__(name)
+                    try:
+                        # Import using the global scope of the caller, so
+                        # that if the caller is module kaa.foo.bar, plugin
+                        # baz is imported as kaa.foo.baz.
+                        globs = inspect.currentframe().f_back.f_globals
+                    except (TypeError, KeyError):
+                        globs = None
+                    mod = __import__(name, globs)
                 except Exception, e:
                     # Pass the exception back.
                     plugins[name] = e

@@ -69,11 +69,11 @@ dt:target, .highlight {
     background-color: #fbe54e !important;
 }
 
-/* Allow multiline warnings */
-div.warning p.first {
+/* Allow multiline warnings and notes */
+div.warning p.first, div.note p.first {
     margin: 0px 0px;
 }
 
-div.warning p {
+div.warning p, div.note p {
     margin: 0.7em 0 0.7em 0;
 }   

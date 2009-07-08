@@ -41,13 +41,10 @@ __all__ = [ 'GOBJECT', 'gobject_set_threaded' ]
 # python imports
 import threading
 
-# get import helper since this file conflicts with the
-# global gobject module.
-from .utils import sysimport
 from .weakref import weakref
 try:
     # try to import gobject
-    gobject = sysimport('gobject')
+    import gobject
 except ImportError:
     gobject = None
 
@@ -117,6 +114,8 @@ class Wrapper(object):
         self.init = True
         if not self.thread or threading.currentThread() == self.thread:
             return callback()
+        if gobject is None:
+            raise RuntimeError('gobject not available')
         gobject.idle_add(self._execute, callback)
 
 

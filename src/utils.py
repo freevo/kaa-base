@@ -28,7 +28,7 @@
 __all__ = [
     'tempfile', 'which', 'Lock', 'daemonize', 'is_running', 'set_running',
     'set_process_name', 'get_num_cpus', 'get_plugins', 'Singleton', 
-    'property', 'sysimport', 'wraps', 'DecoratorDataStore',
+    'property', 'wraps', 'DecoratorDataStore',
 ]
 
 import sys
@@ -533,30 +533,6 @@ else:
 
         def getter(self, fget):
             return self._add_doc(property(fget, self.fset, self.fdel), fget.__doc__ or self.fget.__doc__)
-
-
-def sysimport(name):
-    """
-    Help to import modules with name conflict. E.g. thread.py uses sysimport('thread').
-    """
-    # Fast path: see if the module has already been imported.
-    try:
-        return sys.modules[name]
-    except KeyError:
-        pass
-
-    # Remove the current directory and anything below it from the
-    # search path.
-    cwd = os.path.realpath(os.getcwd())
-    path = [ x for x in sys.path if x and not os.path.realpath(x).startswith(cwd) ]
-    fp, pathname, description = imp.find_module(name, path)
-    try:
-        return imp.load_module(name, fp, pathname, description)
-    finally:
-        # Since we may exit via an exception, close fp explicitly.
-        if fp:
-            fp.close()
-
 
 
 def wraps(origfunc, lshift=0):

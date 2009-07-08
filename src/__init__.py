@@ -272,8 +272,8 @@ _lazy_import('object', ['Object'])
 # Callable classes
 _lazy_import('callable', ['Callable', 'WeakCallable', 'CallableError'])
 
-# Notifier-aware callbacks
-_lazy_import('nf_wrapper', ['NotifierCallback', 'WeakNotifierCallback'])
+# Notifier-aware callbacks do not need to be exported outside kaa.base
+# _lazy_import('nf_wrapper', ['NotifierCallback', 'WeakNotifierCallback'])
 
 # Signal and dict of Signals
 _lazy_import('signals', ['Signal', 'Signals'])

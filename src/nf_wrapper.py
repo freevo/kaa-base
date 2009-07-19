@@ -53,16 +53,6 @@ class NotifierCallback(Callable):
         super(NotifierCallback, self).__init__(callback, *args, **kwargs)
         self._id = None
 
-        # XXX: nf_wrapper participates in a lot of circular import chains,
-        # and importing signals (which imports async, which imports main,
-        # which imports [etc, etc]) is the source of a lot of problems.
-        # Unfortunately, importing signals at the end of this module isn't late
-        # enough.  Fortunately, because NotifierCallback is not intended to be
-        # used by the user directly, signals is almost certainly already
-        # in sys.modules at this time anyway.
-        from signals import Signals
-        self.signals = Signals('exception', 'unregistered')
-
 
     @property
     def active(self):
@@ -76,7 +66,6 @@ class NotifierCallback(Callable):
 
     def unregister(self):
         # Unregister callback with notifier.  Must be implemented by subclasses.
-        self.signals["unregistered"].emit()
         self._id = None
 
 
@@ -91,19 +80,6 @@ class NotifierCallback(Callable):
         except CallableError:
             # A WeakCallable that's no longer valid.  Unregister.
             ret = False
-        except Exception:
-            # If there are exception handlers for this notifier callback, we
-            # catch the exception and pass it to the handler, giving it the
-            # opportunity to abort the unregistering.  If no handlers are
-            # attached and an exception is raised, it will be propagated up to
-            # our caller.
-            if self.signals["exception"].count() > 0:
-                # If any of the exception handlers return False, then the
-                # object is not unregistered from the Notifier.  Otherwise
-                # ret = False and it will unregister.
-                ret = self.signals["exception"].emit(*sys.exc_info()) == False
-            else:
-                raise
 
         # If Notifier callbacks return False, they get unregistered.
         if ret == False:

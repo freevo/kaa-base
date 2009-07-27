@@ -38,8 +38,12 @@ import cPickle
 import copy_reg
 import _weakref
 import threading
-#from sets import Set
-from pysqlite2 import dbapi2 as sqlite
+try:
+    # Try a system install of pysqlite
+    from pysqlite2 import dbapi2 as sqlite
+except ImportError:
+    # Python 2.6 provides sqlite natively, so try that next.
+    from sqlite3 import dbapi2 as sqlite
 
 # kaa base imports
 from strutils import str_to_unicode
@@ -255,10 +259,11 @@ class Database:
         #            attributes.
         self._inverted_indexes = {}
 
+        # True when there are uncommitted changes
+        self._dirty = False
         self._dbfile = os.path.realpath(dbfile)
         self._lock = threading.RLock()
         self._open_db()
-        main.signals['shutdown'].connect_weak(self.commit)
 
 
     def _open_db(self):
@@ -292,6 +297,13 @@ class Database:
 
         self._load_inverted_indexes()
         self._load_object_types()
+
+
+    def _set_dirty(self):
+        if self._dirty:
+            return
+        self._dirty = True
+        main.signals['exit'].connect(self.commit)
 
 
     def _db_query(self, statement, args = (), cursor = None, many = False):
@@ -670,6 +682,7 @@ class Database:
 
         defn['objectcount'] = 0
         self._inverted_indexes[name] = defn
+        self.commit()
 
 
     def _load_inverted_indexes(self):
@@ -902,6 +915,8 @@ class Database:
             # delete those now.
             count += self._delete_multiple_objects(child_objects)
 
+        if count:
+            self._set_dirty()
         return count
 
 
@@ -969,6 +984,7 @@ class Database:
         # Populate dictionary with keys for this object type not specified in kwargs.
         attrs.update(dict.fromkeys([k for k in type_attrs if k not in attrs.keys() + ['pickle']]))
 
+        self._set_dirty()
         return ObjectRow(None, None, attrs)
 
 
@@ -1107,9 +1123,18 @@ class Database:
 
         query, values = self._make_query_from_attrs("update", orig_attrs, object_type)
         self._db_query(query, values)
+        self._set_dirty()
 
 
     def commit(self):
+        """
+        Explicitly commits any changes made to the database.
+
+        Note that any uncommitted changes will automatically be committed at
+        program exit.
+        """
+        main.signals['exit'].disconnect(self.commit)
+        self._dirty = False
         self._lock.acquire()
         self._db.commit()
         self._lock.release()
@@ -1835,6 +1860,41 @@ class Database:
         return info
 
 
+    def set_metadata(self, key, value):
+        """
+        Associates simple key/value pairs with the database.
+
+        :param key: the key name for the metadata; it is required that key
+                    is prefixed with ``appname::`` in order to avoid namespace
+                    collisions.
+        :type key: str or unicode
+        :param value: the value to associate with the given key
+        :type value: str or unicode
+        """
+        if '::' not in key:
+            raise ValueError('Invalid key %s; must be prefixed with "appname::"' % key)
+
+        self._db_query('DELETE FROM meta WHERE attr=?', (key,)) 
+        self._db_query('INSERT INTO meta VALUES (?, ?)', (key, value)) 
+        self._set_dirty()
+
+
+    def get_metadata(self, key, default=None):
+        """
+        Fetches metadata previously set by :meth:`~kaa.db.Database.set_metadata`.
+
+        :param key: the key name for the metadata, prefixed with ``appname::``.
+        :type key: str
+        :param default: value to return if key is not found
+        :returns: unicode string containing the value for this key, or 
+                  the ``default`` parameter if the key was not found.
+        """
+        row = self._db_query_row('SELECT value FROM meta WHERE attr=?', (key,))
+        if row:
+            return row[0]
+        return default
+
+
     def vacuum(self):
         # We need to do this eventually, but there's no index on count, so
         # this could potentially be slow.  It doesn't hurt to leave rows
@@ -1842,4 +1902,3 @@ class Database:
         for ivtidx in self._inverted_indexes:
             self._db_query('DELETE FROM ivtidx_%s_terms WHERE count=0' % ivtidx)
         self._db_query("VACUUM")
-

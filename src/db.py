@@ -723,15 +723,18 @@ class Database:
     def _make_query_from_attrs(self, query_type, attrs, type_name):
         type_attrs = self._get_type_attrs(type_name)
 
+        # True if an attribute from the pickle was removed and we must force an update.
+        pickle_attr_removed = False
         columns = []
         values = []
         placeholders = []
 
         for key in attrs.keys():
-            if attrs[key] == None:
-                del attrs[key]
             if key not in type_attrs:
                 raise ValueError, "Reference to undefined attribute '%s' for type '%s'" % (key, type_name)
+            if attrs[key] == None and type_attrs[key][1] & ATTR_SIMPLE:
+                pickle_attr_removed = True
+                del attrs[key]
 
         attrs_copy = attrs.copy()
         for name, (attr_type, flags, attr_ivtidx, attr_split) in type_attrs.items():
@@ -761,7 +764,7 @@ class Database:
                 values.append(value)
                 del attrs_copy[name]
 
-        if len(attrs_copy) > 0:
+        if len(attrs_copy) > 0 or (pickle_attr_removed and query_type == 'update'):
             # From the remaining attributes, remove those named after inverted
             # indexes that aren't explicitly registered as attributes in the
             # object type.  Here is where we keep our cached copy of inverted
@@ -1116,7 +1119,7 @@ class Database:
                 # terms in object.
                 if not terms and ivtidx in orig_attrs:
                     # Update removed all terms for this ivtidx, remove from pickle.
-                    del orig_attrs[ivtidx]
+                    orig_attrs[ivtidx] = None
                 elif terms:
                     # There are terms for this ivtidx, store in pickle.
                     orig_attrs[ivtidx] = terms.keys()
@@ -1124,6 +1127,7 @@ class Database:
         query, values = self._make_query_from_attrs("update", orig_attrs, object_type)
         self._db_query(query, values)
         self._set_dirty()
+        # TODO: if an objectrow was given, return an updated objectrow
 
 
     def commit(self):
@@ -1655,10 +1659,10 @@ class Database:
 
                     if object_type == None:
                         q %= ''
-                        v = (id, rank, sql_limit, state[id]["offset"][rank])
+                        v = [id, rank, sql_limit, state[id]["offset"][rank]]
                     else:
                         q %= 'AND object_type=?'
-                        v = (id, rank, object_type, sql_limit, state[id]["offset"][rank])
+                        v = [id, rank, object_type, sql_limit, state[id]["offset"][rank]]
 
                     if id_constraints:
                         # We know about all objects that match one or more of the other
@@ -1668,6 +1672,10 @@ class Database:
                         # XXX: This can't benefit from the index if object_type
                         # is not specified.
                         q %= ' AND object_id IN %s' % _list_to_printable(tuple(id_constraints))
+                        # But since we're specifying a list of ids to search for with this
+                        # term, we can't use limit/offset, since the constraints might be
+                        # different since the last iteration.
+                        v[-2:] = [-1, 0]
                     else:
                         q %= ''
 
@@ -1686,7 +1694,7 @@ class Database:
                         # all the results we just got now intersect with our
                         # constraints set, we're done this term and don't bother
                         # querying it at other ranks.
-                        #print 'Done term '%s' at rank %d' % (terms[id]['term'], rank)
+                        #print "Done term '%s' at rank %d" % (terms[id]['term'], rank)
                         state[id]['done'] = True
                         if id_constraints is not None:
                             id_constraints = id_constraints.intersection(terms[id]['ids'])

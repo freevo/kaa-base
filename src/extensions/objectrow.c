@@ -62,7 +62,8 @@ typedef struct {
 typedef struct {
     int index,       // Index in the sql row for this attribute, or -1 if none
         pickled,     // If we need to look in the pickle for this attribute.
-        flags;       // Attribute flags from kaa.Database definition.
+        flags,       // Attribute flags from kaa.Database definition.
+        named_ivtidx;// Attribute has same name as inverted index
     PyObject *type;  // Type object for this attribute
 } ObjectAttribute;
 
@@ -191,6 +192,7 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
             }
             attr->type = PySequence_Fast_GET_ITEM(value, 0);
             attr->flags = PyInt_AsLong(PySequence_Fast_GET_ITEM(value, 1));
+            attr->named_ivtidx = PyObject_Compare(PySequence_Fast_GET_ITEM(value, 2), key) == 0;
             if (IS_ATTR_INDEXED_IGNORE_CASE(attr->flags) || attr->flags & ATTR_SIMPLE)
                 // attribute is set to ignore case, or it's ATTR_SIMPLE, so we
                 // need to look in the pickle for this attribute.
@@ -298,8 +300,8 @@ convert(ObjectRow_PyObject *self, ObjectAttribute *attr, PyObject *value)
 static PyObject *
 get_default_for_attr(ObjectAttribute *attr)
 {
-    if (attr->flags & ATTR_INVERTED_INDEX)
-        // If the attr is an inverted index, return an empty list.
+    if (attr->named_ivtidx)
+        // If the attr named after an inverted index, return an empty list.
         return PyList_New(0);
 
     // Otherwise return None.

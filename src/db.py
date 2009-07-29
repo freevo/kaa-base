@@ -731,9 +731,14 @@ class Database:
 
         for key in attrs.keys():
             if key not in type_attrs:
-                raise ValueError, "Reference to undefined attribute '%s' for type '%s'" % (key, type_name)
-            if attrs[key] == None and type_attrs[key][1] & ATTR_SIMPLE:
-                pickle_attr_removed = True
+                raise ValueError("Reference to undefined attribute '%s' for type '%s'" % (key, type_name))
+            if attrs[key] == None:
+                # Remove all None attributes (even ATTR_SEARCHABLE), otherwise we will
+                # raise a TypeError later, since NoneType isn't the right type.
+                if type_attrs[key][1] & ATTR_SIMPLE:
+                    # Attribute removed from a pickle, be sure we update the pickle in
+                    # the db if this is an 'update' query_type.
+                    pickle_attr_removed = True
                 del attrs[key]
 
         attrs_copy = attrs.copy()
@@ -756,8 +761,8 @@ class Database:
                     value = value.lower()
 
                 if attr_type != type(value):
-                    raise ValueError, "Type mismatch in query for %s: '%s' (%s) is not a %s" % \
-                                          (name, str(value), str(type(value)), str(attr_type))
+                    raise TypeError("Type mismatch in query for %s: '%s' (%s) is not a %s" % \
+                                    (name, str(value), str(type(value)), str(attr_type)))
                 if attr_type == str:
                     # Treat strings (non-unicode) as buffers.
                     value = buffer(value)

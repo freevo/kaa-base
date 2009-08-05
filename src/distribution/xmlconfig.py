@@ -29,6 +29,8 @@ __all__ = [ 'convert' ]
 
 # python imports
 import pprint
+import cStringIO
+import os
 
 # use minidom because it is part of the python distribution.
 # pyxml replaces the parser but everything used here should
@@ -140,7 +142,7 @@ class Parser(object):
             fd.write(',\n\n' + deep)
         deep = deep[:-2]
         fd.write(']\n' + deep)
-        if node.nodeName == 'config':
+        if node.nodeName == 'config' and self._package:
             fd.write(", module='%s.config'" % self._package)
         fd.write(')')
 
@@ -177,14 +179,10 @@ class Parser(object):
         self._parse_list(node, fd, deep, first)
 
 
-
-def convert(xml, python, package):
-    tree = minidom.parse(xml).firstChild
+def _convert(xml, package, out):
+    tree = minidom.parseString(xml).firstChild
     if tree.nodeName != 'config':
         raise RuntimeError('%s is no valid cxml file' % xml)
-
-    # out = sys.__stdout__
-    out = open(python, 'w')
 
     out.write('# auto generated file\n\n')
     out.write('from kaa.config import Var, Group, Dict, List, Config\n\n')
@@ -196,3 +194,33 @@ def convert(xml, python, package):
         if child.nodeName != 'code':
             continue
         out.write(format_content(child) + '\n\n')
+    
+
+def convert(infile, outfile, package):
+    """
+    Converts the xml contained in infile to the Python code stored in outfile.
+    """
+    out = open(outfile, 'w')
+    try:
+        _convert(file(infile).read(), package, out)
+    except RuntimeError:
+        os.unlink(outfile)
+
+
+def to_code(xml, package=None):
+    """
+    Returns python code from the xml in the given string.
+    """
+    out = cStringIO.StringIO()
+    _convert(xml, package, out)
+    return out.getvalue()
+
+
+def to_object(xml, package=None):
+    """
+    Returns a Config object generated from the given xml string.
+    """
+    code = to_code(xml, package)
+    scope = {}
+    eval(compile(code, 'foo', 'exec'), scope, scope)
+    return scope['config']

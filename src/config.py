@@ -460,58 +460,71 @@ class Group(Base):
         return self._vars.__iter__()
 
 
-class Dict(Base):
+class Container(Base):
     """
-    A config dict.
+    "Abstract" base class for containers like dict and list.
+
+    Subclasses must implement:
+        _real_cfg_get(key):
+            returns the cfg Var for the given key (or index)
+
+        _cfg_set_item(key, var):
+            sets the cfg Var for the given key (or index)
+
+        _vars():
+            iterator producing all Vars in container
     """
-    def __init__(self, schema, desc=u'', name='', type=unicode, defaults={}):
-        super(Dict, self).__init__(name, desc)
+    def __init__(self, name, desc, schema, type, defaults):
+        super(Container, self).__init__(name, desc)
         if isinstance(schema, (list, tuple)):
             schema = Group(schema=schema, desc=desc, name=name)
         self._schema = schema
-        self._dict = {}
         self._type = type
-        # the value of a dict is the dict itself
         self._value = self
         schema._parent = self
-        for key, value in defaults.items():
+
+        for key, value in defaults:
             # FIXME: how to handle complex dict defaults with a dict in
             # dict or group in dict?
             var = self._cfg_get(key)
             var._default = var._value = value
 
 
-
-    def keys(self):
+    def __getitem__(self, index):
         """
-        Return the keys (sorted by name)
+        Get group or variable with the given index.
         """
-        keys = self._dict.keys()[:]
-        keys.sort()
-        return keys
+        return self._cfg_get(index)._value
 
 
-    def items(self):
+    def __setitem__(self, index, value):
         """
-        Return key,value list (sorted by key name)
+        Access group or variable with the given index.
         """
-        return [ (key, self._dict[key]._value) for key in self.keys() ]
+        self._cfg_get(index)._cfg_set(value)
 
 
-    def values(self):
+    def __nonzero__(self):
         """
-        Return value list (sorted by key name)
+        Return False if there are no elements in the dict.
         """
-        return [ self._dict[key]._value for key in self.keys() ]
+        return len(self) > 0
+
+
+    def __len__(self):
+        """
+        Returns number of items in the dict.
+        """
+        return len(self._vars())
 
 
     def _hash(self, values=True):
         """
         Returns a hash of the config item.
         """
-        hash = hashlib.md5(super(Dict, self)._hash(values))
-        for key in self.keys():
-            hash.update(self._dict[key]._hash(values))
+        hash = hashlib.md5(super(Container, self)._hash(values))
+        for var in self._vars():
+            hash.update(var._hash(values))
         return hash.hexdigest()
 
 
@@ -527,7 +540,7 @@ class Dict(Base):
 
         prefix = prefix + self._name
 
-        if print_desc: #(type(self._schema) == Var and print_desc) or not self.keys():
+        if print_desc:
             # TODO: more detailed comments, show full spec of var and some examples.
             ret.append('# | %s' % prefix)
             if self._desc:
@@ -536,8 +549,8 @@ class Dict(Base):
 
         var_strings = []
         space_vars = False
-        for key in self.keys():
-            cfgstr = self._dict[key]._cfg_string(prefix, False)
+        for var in self._vars():
+            cfgstr = var._cfg_string(prefix, False)
             var_strings.append(cfgstr)
             if '\n' in cfgstr:
                 space_vars = True
@@ -557,55 +570,59 @@ class Dict(Base):
         return '\n'.join(ret)
 
 
-    def _cfg_get(self, index, create=True):
+    def _cfg_get(self, key, create=True):
         """
-        Get group or variable with the given index (as object, not value).
+        Get group or variable with the given key (as object, not value).
         """
-        if not isinstance(index, self._type):
+        if not isinstance(key, self._type):
             if self._type == str:
-                index = unicode_to_str(index)
+                key = unicode_to_str(key)
             elif self._type == unicode:
-                index = str_to_unicode(index)
+                key = str_to_unicode(key)
             else:
                 # this could crash, we don't care.
-                index = self._type(index)
-        if not index in self._dict and create:
-            newitem = self._dict[index] = self._schema.copy()
+                key = self._type(key)
+
+        try:
+            return self._real_cfg_get(key)
+        except (KeyError, IndexError):
+            if not create:
+                raise
+            newitem = self._schema.copy()
             newitem._parent = self
-            newitem._name = '[%s]' % unicode_to_str(index)
+            newitem._name = '[%s]' % unicode_to_str(key)
             if isinstance(newitem, Group):
                 for item in newitem._schema:
                     item._parent = newitem
             elif isinstance(newitem, Dict):
                 newitem._schema._parent = newitem
 
-        return self._dict[index]
+            self._cfg_set_item(key, newitem)
+            return newitem
 
 
-    def get(self, index):
-        """
-        Get group or variable with the given index. Return None if it does
-        not exist.
-        """
-        try:
-            return self._cfg_get(index, False)._value
-        except KeyError:
-            return None
+class Dict(Container):
+    """
+    A config dict.
+    """
+    def __init__(self, schema, desc=u'', name='', type=unicode, defaults={}):
+        self._dict = {}
+        super(Dict, self).__init__(name, desc, schema, type, defaults.items())
 
 
-    def __getitem__(self, index):
-        """
-        Get group or variable with the given index.
-        """
-        return self._cfg_get(index)._value
+    # These methods are required by Container superclass
+
+    def _vars(self):
+        return self._dict.values()
+
+    def _real_cfg_get(self, key):
+        return self._dict[key]
+
+    def _cfg_set_item(self, key, var):
+        self._dict[key] = var
 
 
-    def __setitem__(self, index, value):
-        """
-        Access group or variable with the given index.
-        """
-        self._cfg_get(index)._cfg_set(value)
-
+    # Methods needed to simulate dict behaviour
 
     def __iter__(self):
         """
@@ -613,43 +630,122 @@ class Dict(Base):
         """
         return self.keys().__iter__()
 
-
-    def __nonzero__(self):
-        """
-        Return False if there are no elements in the dict.
-        """
-        return len(self._dict.keys()) > 0
-
-    def __len__(self):
-        """
-        Returns number of items in the dict.
-        """
-        return len(self._dict.keys())
-
-
     def __repr__(self):
         return repr(self._dict)
 
+    def __delitem__(self, key):
+        del self._dict[key]
 
-class List(Dict):
+    def _cfg_set(self, dict):
+        self._dict.clear()
+        for key, val in dict.items():
+            self[key] = val
+
+
+    def keys(self):
+        """
+        Return the keys (sorted by name)
+        """
+        return sorted(self._dict.keys())
+
+
+    def items(self):
+        """
+        Return key,value list (sorted by key name)
+        """
+        return [ (key, self._dict[key]._value) for key in self.keys() ]
+
+
+    def values(self):
+        """
+        Return value list (sorted by key name)
+        """
+        return [ self._dict[key]._value for key in self.keys() ]
+
+
+    def get(self, index, default=None):
+        """
+        Get group or variable with the given index. Return None if it does
+        not exist.
+        """
+        try:
+            return self._cfg_get(index, False)._value
+        except KeyError:
+            return default
+
+
+
+class List(Container):
     """
-    A config list. A list is only a dict with integers as index.
+    A config list.
     """
     def __init__(self, schema, desc=u'', name='', defaults=[]):
-        defaults_dict = {}
-        for key, value in enumerate(defaults):
-            defaults_dict[key] = value
-        super(List, self).__init__(schema, desc, name, int, defaults_dict)
+        self._list = []
+        super(List, self).__init__(name, desc, schema, int, enumerate(defaults))
 
+
+    # These methods are required by Container superclass
+
+    def _vars(self):
+        return self._list
+
+    def _real_cfg_get(self, key):
+        if self._list[key] is None:
+            # Item exists but is None, so force creation of new Var object at this index
+            raise IndexError
+        return self._list[key]
+
+    def _cfg_set_item(self, key, var):
+        if key == len(self._list):
+            self._list.append(var)
+        else:
+            self._list[key] = var
+        # Remove index name from item, .e.g. [3] -> []
+        var._name = '[]'
+
+
+    # Methods needed to simulate lits behaviour
 
     def __iter__(self):
         """
         Iterate through values.
         """
-        return self.values().__iter__()
+        for var in self._list:
+            yield var._value
 
     def __repr__(self):
-        return repr(self._dict.values())
+        return repr(self._list)
+
+    def __delitem__(self, idx):
+        del self._list[idx]
+
+    def _cfg_set(self, l):
+        del self._list[:]
+        for n, val in enumerate(l):
+            self[n] = val
+
+    def append(self, val):
+        self[len(self)] = val
+
+    def extend(self, vals):
+        for val in vals:
+            self.append(val)
+
+    def insert(self, idx, val):
+        self._list.insert(idx, None)
+        self[idx] = val
+
+    def remove(self, val):
+        for n, var in enumerate(self._list[:]):
+            if var._value == val:
+                del self[n]
+                break
+        else:
+            raise ValueError('list.remove(x): x not in list')
+
+    def pop(self, idx):
+        var = self._list.pop(idx)
+        return var._value
 
 
 class Config(Group):

@@ -328,18 +328,18 @@ class Channel(Object):
         """
         Writes data to the channel.
         """
-        cb = kaa.WeakCallable(self._handle_close, False)
+        cb = self._socket.write(data).exception.connect_weak(self._handle_close, False, write_failed=True)
         cb.ignore_caller_args = True
-        self._socket.write(data).exception.connect(cb)
 
 
-    def _handle_close(self, expected, reset_signals=True):
+    def _handle_close(self, expected, reset_signals=True, write_failed=False):
         """
         kaa.Socket callback invoked when socket is closed.
         """
-        if not self._socket or not self._socket.alive:
+        if not self._socket or (write_failed and not self._socket.alive):
             # Socket already closed.  Return False to indicate the exception
-            # was handled, if invoked from write() exception handler.
+            # was handled, if invoked from write() exception handler (see
+            # Channel._write())
             return False
 
         if not self._authenticated:

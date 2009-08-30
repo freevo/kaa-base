@@ -230,7 +230,7 @@ class Process(Object):
 
             .. describe:: def callback(chunk, ...)
 
-               :param chunk: data read from the child's stdout or stderr.
+               :param chunk: data read from the childs stdout or stderr.
                :type chunk: str
 
             When a callback is connected to the *read* signal, data is automatically
@@ -249,7 +249,7 @@ class Process(Object):
 
             .. describe:: def callback(line, ...)
 
-               :param line: line read from the child's stdout or stderr.
+               :param line: line read from the childs stdout or stderr.
                :type line: str
 
             It is not allowed to have a callback connected to the *readline* signal
@@ -448,6 +448,16 @@ class Process(Object):
         :attr:`~kaa.Process.writable` properties respectively.
         """
         return bool(self._child and self._state not in (Process.STATE_STOPPED, Process.STATE_HUNG))
+
+
+    @property
+    def stopping(self):
+        """
+        True if the child process is currently being shut down.
+
+        True when ``stop()`` was called and the process is not stopped yet.
+        """
+        return bool(self._child and self._state == Process.STATE_STOPPING)
 
 
     @property

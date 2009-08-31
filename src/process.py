@@ -224,13 +224,13 @@ class Process(Object):
 
     __kaasignals__ = {
         'read':
-            '''
+            """
             Emitted for each chunk of data read from either stdout or stderr
             of the child process.
 
             .. describe:: def callback(chunk, ...)
 
-               :param chunk: data read from the childs stdout or stderr.
+               :param chunk: data read from the child's stdout or stderr.
                :type chunk: str
 
             When a callback is connected to the *read* signal, data is automatically
@@ -240,26 +240,26 @@ class Process(Object):
             It is allowed to have a callback connected to the *read* signal
             and simultaneously use the :meth:`~kaa.Process.read` and
             :meth:`~kaa.Process.readline` methods.
-            ''',
+            """,
 
         'readline':
-            '''
+            """
             Emitted for each line read from either stdout or stderr of the
             child process.
 
             .. describe:: def callback(line, ...)
 
-               :param line: line read from the childs stdout or stderr.
+               :param line: line read from the child's stdout or stderr.
                :type line: str
 
             It is not allowed to have a callback connected to the *readline* signal
             and simultaneously use the :meth:`~kaa.Process.readline` method.
 
             Refer to :meth:`~kaa.Process.readline` for more details.
-            ''',
+            """,
 
         'finished':
-            '''
+            """
             Emitted when the child is dead and all data from stdout and stderr
             has been consumed.
 
@@ -276,10 +276,10 @@ class Process(Object):
 
             After this signal emits, the :attr:`~kaa.Process.readable`
             property will be False.
-            ''',
+            """,
 
         'exited':
-            '''
+            """
             Emitted when the child process has terminated.
 
             .. describe:: def callback(exitcode, ...)
@@ -290,7 +290,7 @@ class Process(Object):
             Unlike the :attr:`~kaa.Process.signals.finished` signal, this
             signal emits when the child is dead (and has been reaped), however
             the Process may or may not still be :attr:`~kaa.Process.readable`.
-            '''
+            """
     }
 
     

@@ -338,7 +338,6 @@ class Socket(IOChannel):
             m = re.match(r'^ (\[(?:[\da-fA-F:]+)\] | (?:[^:]+) )? (?::(\w+))? (?:%(\w+))? ', addr, re.X)
             if not m:
                 raise ValueError('Invalid format for address')
-            print "MATCH", addr, m.groups()
             addr = m.group(1) or '', m.group(2) or 0, 0, m.group(3) or 0
             if addr[0].isdigit():
                 # Sanity check: happens when given ipv6 address without []

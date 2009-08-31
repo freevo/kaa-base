@@ -38,11 +38,11 @@ except ImportError:
 
 try:
     from tlslite import TLSAuthenticationError, TLSKey, TLSLiteConnection, TLSLiteSocket
-    # FIXME: for now, keep TLSLiteSocket as general TLSSocket object
-    TLSSocket = TLSLiteSocket
 except ImportError:
     TLSLiteSocket = None
 
+# FIXME: for now, keep TLSLiteSocket as general TLSSocket object
+TLSSocket = TLSLiteSocket or M2TLSSocket
 
 if TLSLiteSocket == M2TLSSocket == None:
     raise ImportError('No suitable TLS backend found: tried tlslite and M2Crypto')

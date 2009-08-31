@@ -188,7 +188,7 @@ class M2TLSSocket(TLSSocketBase):
             check = kwargs.get('check', (None, None))
             if check[0] is None:
                 # Validate peer CN by default.
-                host = self.address[0]
+                host = self.peer[5]
             elif check[0] is False:
                 # User requested to disable CN verification.
                 host = None

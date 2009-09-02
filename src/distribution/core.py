@@ -498,7 +498,6 @@ def setup(**kwargs):
             raise ValueError('For plugins, both "plugins" and "entry_points" kwargs are required')
         del kwargs['plugins' if sys.modules.get('setuptools') else 'entry_points']
 
-
     if not sys.modules.get('setuptools'):
         # Setuptools not available, so remove any kwarg that would cause stock
         # distutils to complain.

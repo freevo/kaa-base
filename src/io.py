@@ -930,7 +930,11 @@ class IOChannel(Object):
         self._queue_close = channel._queue_close
 
         self.wrap(channel, channel.mode)
-        channel._write_queue = channel._read_queue = channel._channel = None
+        # Generate new queues on the channel object whose fd we are stealing, since
+        # we stole its queues too.
+        channel._write_queue = []
+        channel._read_queue = cStringIO.StringIO()
+        channel._channel = None
 
         def clone(src, dst):
             [dst.connect(cb) for cb in src.callbacks]

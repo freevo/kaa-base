@@ -30,29 +30,6 @@ import os
 import imp
 import zipimport
 
-# Declare 'kaa' namespace for setuptools. XXX: disabled for now.
-try:
-    # http://peak.telecommunity.com/DevCenter/setuptools#namespace-packages
-    # offers a stern admonition that after declaring a namespace, we must not
-    # add any other code to __init__.py.  The reason is that we can't control
-    # 
-    # However, this isn't possible for us,
-    # and, near as I can tell, our approach is safe because kaa sub-modules
-    # don't include kaa/__init__.py.  The only module that does is kaa.base.
-    # So there's no risk of some other egg getting loaded when we do 'import
-    # kaa'.
-    #
-    # See below for more discussion.
-    #
-    # This is primarily needed for situations where multiple egg versions
-    # are installed.
-    #__import__('pkg_resources').declare_namespace('kaa')
-    pass
-except ImportError:
-    # No setuptools installed, no egg support.
-    pass
-
-
 # Import custom logger to update the Python logging module. Unfortunately. we
 # can't import this lazy because we add logging.DEBUG2, and that should be
 # available immediately after importing kaa.
@@ -64,12 +41,6 @@ import logger
 # cache (2.6s to 0.008s) on my system.  Although it does of course defer a lot
 # of that time to later, it still improves overall performance because it only
 # imports the files that actually get used during operation.
-#
-# It's especially beneficial to reduce import time on systems where any kaa
-# module (not just kaa.base) is installed as an egg.  In this case, kaa is
-# declared as a namespace package, and (for whatever reason), namespace
-# packages get implicitly imported when pkg_resources is imported, which can
-# happen when kaa isn't going to be used.
 #
 # Lazy importing should be completely user-transparent.  See the _LazyProxy
 # docstring for more info.
@@ -331,52 +302,23 @@ _lazy_import('main')
 _lazy_import('main', ['signals'])
 
 
-
-# So, we have a little bit of a problem if we use eggs.  Because 'kaa' is
-# rather non-standardly _both_ a namespace (holding other modules like beacon,
-# imlib2, etc.) _and_ a module (kaa.base), any kaa module not installed the
-# same way as kaa.base (on-disk tree or egg) would not be found during import.
-# 
-# kaa.base (egg or tree) seems to be reliably imported when 'kaa' is imported,
-# as opposed to some other module (egg or tree), presumably because kaa.base is
-# the only module that defines kaa/__init__.py.  However, if kaa.base is an egg
-# and some module kaa.foo is not, or vice versa, subsequent 'import kaa.foo'
-# will fail because foo/ does not exist inside kaa.base.  This is not a problem
-# when all modules are installed as on-disk trees, but it does become a problem
-# when eggs are used.
+# We treat 'kaa' as both a namespace, where it houses all kaa sub-modules
+# (e.g. import kaa.beacon), AND as a module, where it is essentially an alias
+# for kaa base (e.g. kaa.Timer())
 #
-# Another ugly but possible scenario is if we have a mix of eggs and non-eggs,
-# e.g. kaa.base is an egg and kaa.foo is an on-disk source tree, or vice versa.
-# This means, given kaa.base and module kaa.foo, we have 4 possibilities:
+# Because of the latter, and because kaa.base is installed on the filesystem
+# under kaa/base/, we need a custom import hook to translate imports for
+# kaa.foo to kaa.base.foo when kaa.foo isn't a sub-module (like kaa.beacon).
 #
-#   1. kaa.base as egg, kaa.foo as egg
-#   2. kaa.base as egg, kaa.foo as source tree
-#   3. kaa.base as source tree, kaa.foo as egg
-#   4. kaa.base as source tree, kaa.foo as source tree; this should be easiest
-#      as the import hooks are basically bypassed.
-#
-# Some other uncommon but possible scenarios involving multiple versions we
-# should consider.  We should prefer eggs in these cases:
-#
-#   5. kaa.base as source tree AND egg; ensure that 'kaa' and e.g. 'kaa.rpc'
-#      come from the same module.
-#
-# If kaa.foo exists as both an on-disk tree and an egg, the egg will be preferred.
-# However, if kaa.base exists as both, we can't easily control which one gets
-# loaded.  In this case we should print a warning.
-#
-# We add a custom finder to sys.meta_path so that when the user later does
-# 'import kaa.foo' we'll zipimport a kaa_foo egg if it existed at start time,
-# or properly load kaa/foo/__init__.py if kaa.foo is installed as an on-disk
-# tree while kaa.base is an egg.
-
+# kaa.distribution.core automatically writes a kaa/__init__.py which does "from
+# kaa.base import *" to pull everything from kaa.base into the kaa namespace.
+# These import hooks are the second piece of the puzzle, to handle for example
+# "import kaa.net.tls"
 
 class KaaLoader:
     """
-    Custom import hook loader module loader, used when importing non-egg
-    kaa modules if other kaa modules are installed as eggs.  In other
-    words, this class is unused when everything is installed as eggs,
-    or when everything is installed as on-disk source trees.
+    Custom loader used when kaa.foo is found as kaa.base.foo on a 
+    (non-zipped) on-disk source tree.
     """
     def __init__(self, info):
         self._info = info
@@ -396,10 +338,20 @@ class KaaLoader:
         
 
 class KaaFinder(__builtins__['object']):
+    """
+    Custom finder whose purposes is to intercept imports for kaa.foo, and,
+    provided kaa.foo isn't a kaa sub-module (like kaa.beacon), attempt
+    instead to import it as kaa.base.foo.
+
+    Kaa modules __init__ stubs all do "from kaa.base import *" to pull the
+    contents of kaa.base into the Kaa namespace.  This trick allows us to treat
+    kaa both as a namespace for sub-modules and as a module (kaa.base).
+    """
     def __init__(self):
-        self.warn_on_mixed = True
         # Discover kaa eggs
         self.kaa_eggs = {}
+        # zipimporter object to kaa.base when it is a zipped egg.
+        self.zip = None
         for mod in sys.path:
             name = os.path.basename(mod)
             if name.startswith('kaa_') and mod.endswith('.egg'):
@@ -410,64 +362,41 @@ class KaaFinder(__builtins__['object']):
 
 
     def find_module(self, name, path):
-        # Bypass import hooks if module isn't in the form kaa.foo.  We also
-        # don't need any custom import hooks if there are no kaa eggs.  If
-        # everything kaa is installed as an on-disk source tree, there is
-        # no problem that needs solving.
-        if not name.startswith('kaa.') or name.count('.') > 1 or not self.kaa_eggs:
+        # Ignore anything not in the form kaa.foo, or if kaa.foo is an egg in sys.path.
+        if not name.startswith('kaa.') or name.count('.') > 1 or name in self.kaa_eggs:
             return
 
-        if len(path) > 1 and any('.egg/' not in p for p in path) and self.warn_on_mixed:
-            # This probably isn't what the user wants.  At any rate we can't easily
-            # control which one to use.
-            print('WARNING: Multiple and mixed (egg and non-egg) versions of kaa.base installed.\n'
-                  '         This MIGHT appear to mostly work, but this configuration is not supported.')
-            # Just spam the warning once.
-            self.warn_on_mixed = False
-
-        if name not in self.kaa_eggs or os.path.isdir(self.kaa_eggs[name]):
-            # There's no egg, or the egg is actually uncompressed as an
-            # on-disk tree (i.e. kaa_foo.egg is actually a directory).
-            imp.acquire_lock()
-            # problem: kaa.base tree, kaa.foo egg
-            try:
-                searches = (
-                    # Relative import of submodule (strip kaa.) from given path
-                    lambda: imp.find_module(name[4:], path),
-                    # Absolute import from given path
-                    lambda: imp.find_module(name, path),
-                    # Check sys.path for the given name.  (kaa.base tree, kaa.foo egg)
-                    lambda: imp.find_module(name, sys.path),
-                    # Check for kaa/foo in sys.path (kaa.base egg, kaa.foo tree)
-                    lambda: imp.find_module(name.replace('.', '/'), sys.path)
-                )
-                for doimp in searches:
-                    try:
-                        info = doimp()
-                        break
-                    except ImportError:
-                        pass
-                else:
-                    return
-            finally:
-                imp.release_lock()
-
-            return KaaLoader(info)
-
-        # Egg is available for requested module, so attempt to import it.
+        kaa_base_path = __file__.rsplit('/', 1)[0]
+        name = name[4:].replace('.', '/')
         imp.acquire_lock()
         try:
-            o = zipimport.zipimporter(self.kaa_eggs[name] + '/kaa')
+            # Scenario 1: kaa.base is an on-disk tree (egg or otherwise)
+            if not self.zip:
+                try:
+                    return KaaLoader(imp.find_module(name, [kaa_base_path]))
+                except ImportError:
+                    pass
+
+            # Scenario 2: kaa.base is a zipped egg
+            if '.egg/' in kaa_base_path and self.zip is not False:
+                try:
+                    if not self.zip:
+                        self.zip = zipimport.zipimporter(kaa_base_path)
+                except ImportError:
+                    # Not a valid zipped egg, cache the result so we don't try again.
+                    self.zip = False
+                else:
+                    if self.zip.find_module(name):
+                        # kaa.base.foo found inside egg.
+                        return self.zip
         finally:
             imp.release_lock()
-        return o
+
 
 # Now install our custom hooks.  Remove any existing KaaFinder import hooks, which
-# could exist from other versions of kaa.base being imported by pkg_resources,
-# or perhaps kaa was reload()ed.
-if '.egg/' in __file__:
-    [sys.meta_path.remove(x) for x in sys.meta_path if type(x).__name__ == 'KaaFinder']
-    sys.meta_path.append(KaaFinder())
+# could be caused by reload()ing.
+[sys.meta_path.remove(x) for x in sys.meta_path if type(x).__name__ == 'KaaFinder']
+sys.meta_path.append(KaaFinder())
 
 
 # Allow access to old Callback names, but warn.  This will go away the release

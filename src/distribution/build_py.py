@@ -35,6 +35,18 @@ import distutils.command.build_py
 
 import xmlconfig
 
+kaa_module_bootstrap = '''\
+# This is an auto-generated file.  Package maintainers: please ensure this
+# file is packaged only with the kaa-base package if you are not packaging
+# eggs.
+try:
+    __import__('pkg_resources').declare_namespace('kaa')
+    __import__('pkg_resources').get_distribution('kaa-base').activate()
+except (ImportError, __import__('pkg_resources').DistributionNotFound): 
+    pass
+from kaa.base import *
+'''
+
 class build_py(distutils.command.build_py.build_py):
 
     kaa_compiler = {
@@ -68,6 +80,7 @@ class build_py(distutils.command.build_py.build_py):
 
     def build_packages (self):
         distutils.command.build_py.build_py.build_packages(self)
+        file('%s/kaa/__init__.py' % self.build_lib, 'w').write(kaa_module_bootstrap)
         for package in self.packages:
             package_dir = self.get_package_dir(package)
             for ext in self.kaa_compiler.keys():

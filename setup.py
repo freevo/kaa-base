@@ -33,18 +33,37 @@ if sys.hexversion < 0x02050000:
     print "Python 2.5 or later required."
     sys.exit(1)
 
-# We have some extensions but kaa.distribution isn't installed yet.  So import
-# it directly from the source tree.  First add src/ to the modules path.
+# Check for an old install of kaa.base.  TODO: remove at some suitable
+# time in the future.
+path = os.popen("python -c 'import kaa; print kaa.__path__[0]' 2>/dev/null").readline().strip()
+if path and os.path.exists(os.path.join(path, 'rpc.py')):
+    print ('ERROR: detected conflicting files from a previous kaa.base version.\n\n'
+           "To fix, you'll need to rm -rf the following directories:\n"
+           '   1. build/\n'
+           '   2. %s/\n\n'
+           "Once you delete #2, you'll need to reinstall all the kaa\n"
+           'sub-modules you use.') % path
+    sys.exit(1)
+
+# We have some extensions but kaa.distribution might not be installed yet.  And
+# even if it is, we want to use the one in src/.
 sys.path.insert(0, 'src')
-# Remove any previously installed kaa.base egg which might take precedence
+
+# However, any installed kaa eggs will create a problem.  Because all kaa eggs
+# install kaa/__init__.py stubs that declare the kaa namespace _and_ import
+# kaa.base, some other install of kaa.base could end up getting imported as
+# soon as distribution.core imports setuptools (because importing setuptools
+# implicitly imports all declared namespace packages).  So here we remove any
+# such installed kaa eggs that might cause some other kaa.base to take precedence
 # over src/
-[sys.path.remove(x) for x in sys.path if '/kaa_base' in x and x.endswith('.egg')]
-# And now import it.
+[sys.path.remove(x) for x in sys.path[:] if '/kaa_' in x and x.endswith('.egg')]
+
+# And now import it from the source tree.
 from distribution.core import Extension, setup
 
 extensions = []
 
-shm_ext = Extension('kaa.shmmodule', ['src/extensions/shmmodule.c'])
+shm_ext = Extension('kaa.base.shmmodule', ['src/extensions/shmmodule.c'])
 if not shm_ext.has_python_h():
     print "---------------------------------------------------------------------"
     print "Python headers not found; please install python development package."
@@ -59,20 +78,20 @@ else:
     else:
         extensions.append(shm_ext)
 
-    objectrow_ext = Extension('kaa._objectrow', ['src/extensions/objectrow.c'])
+    objectrow_ext = Extension('kaa.base._objectrow', ['src/extensions/objectrow.c'])
     if objectrow_ext.check_library("glib-2.0", "2.4.0"):
         print '+ glib >= 2.4.0 found; building kaa.db'
         extensions.append(objectrow_ext)
     else:
         print "- glib >= 2.4.0 not found; kaa.db will be unavailable"
 
-    utils_ext = Extension('kaa._utils', ['src/extensions/utils.c'], config='src/extensions/config.h')
+    utils_ext = Extension('kaa.base._utils', ['src/extensions/utils.c'], config='src/extensions/config.h')
     extensions.append(utils_ext)
     if utils_ext.check_cc(['<sys/prctl.h>'], 'prctl(PR_SET_NAME, "x");'):
         utils_ext.config('#define HAVE_PRCTL')
 
     if osname == 'linux':
-        inotify_ext = Extension("kaa.inotify._inotify",
+        inotify_ext = Extension("kaa.base.inotify._inotify",
                                 ["src/extensions/inotify/inotify.c"],
                                 config='src/extensions/inotify/config.h')
         

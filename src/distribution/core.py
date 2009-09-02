@@ -33,29 +33,13 @@ import time
 import distutils.core
 import distutils.cmd
 import distutils.sysconfig
-
-if '--egg' in sys.argv:
-    sys.argv.remove('--egg')
-    import setuptools
-# Add --egg option
 import distutils.dist
-opt = ('egg', None, "Install using setuptools (use eggs)")
-distutils.dist.Distribution.global_options.append(opt)
 
 
 # internal imports
 from version import Version
-try:
-    from build_py import build_py
-    from svn2log import svn2log
-except ImportError, e:
-    # Small hack before the next release. FIXME: this should be
-    # removed for future versions again.
-    print 'Error: detected files from previous kaa.base version!'
-    print 'Please reinstall kaa by deleting all \'build\' subdirs'
-    print 'for all kaa source modules and delete the kaa directory'
-    print 'in the site-package directory'
-    raise
+from build_py import build_py
+from svn2log import svn2log
 
 __all__ = ['compile', 'check_library', 'get_library', 'setup', 'ConfigFile',
            'Extension', 'Library']
@@ -497,12 +481,23 @@ def setup(**kwargs):
         raise AttributeError('\'module\' not defined')
 
     # Handle plugin kwargs; setuptools uses entry_points, but without setuptools
-    # we use our custom 'plugins' kwarg.
+    # we use our custom 'plugins' kwarg.  Both are mandatory for kaa sub-modules.
     plugin_args = kwargs.get('plugins'), kwargs.get('entry_points')
-#     if plugin_args != (None, None):
-#         if None in plugin_args:
-#             raise ValueError('For plugins, both "plugins" and "entry_points" kwargs are required')
-#         del kwargs['plugins' if sys.modules.get('setuptools') else 'entry_points']
+    if plugin_args != (None, None):
+        if None in plugin_args:
+            raise ValueError('For plugins, both "plugins" and "entry_points" kwargs are required')
+        del kwargs['plugins' if sys.modules.get('setuptools') else 'entry_points']
+
+
+    # Use setuptools if --egg was passed.  We don't use setuptools by default (yet?)
+    # because it changes certain behaviours (like install --prefix=[...]).
+    if '--egg' in sys.argv:
+        sys.argv.remove('--egg')
+        import setuptools
+
+    # Add --egg option
+    opt = ('egg', None, "Install with setuptools (use eggs)")
+    distutils.dist.Distribution.global_options.append(opt)
 
     if not sys.modules.get('setuptools'):
         # Setuptools not available, so remove any kwarg that would cause stock
@@ -511,6 +506,7 @@ def setup(**kwargs):
             if kw in kwargs:
                 del kwargs[kw]
     else:
+        # Setup tools is available on this system.
         if 'zip_safe' not in kwargs:
             # zip_safe not specifically specified, so override the setuptools
             # default and set it to False.  Zipped eggs have a number of problems:
@@ -527,9 +523,7 @@ def setup(**kwargs):
     # search for source files and add it package_dir and packages
     kwargs['package_dir'] = {}
     kwargs['packages']    = []
-    if kwargs.get('module') == 'base':
-        os.path.walk('src', _find_packages, (kwargs, project))
-    elif kwargs.get('module') == None:
+    if kwargs.get('module') == None:
         os.path.walk('src', _find_packages, (kwargs, kwargs.get('name')))
     else:
         os.path.walk('src', _find_packages, (kwargs, project + '.' + kwargs['module']))
@@ -666,7 +660,8 @@ def setup(**kwargs):
         del kwargs['rpminfo']
 
     # run the distutils.setup function
-    result = distutils.core.setup(**kwargs)
+    distutils.core.setup(**kwargs)
+
     # Run cleanup on extensions (for example to delete config.h)
     for ext in kwargs['ext_modules']:
         ext._kaa_ext.clean()

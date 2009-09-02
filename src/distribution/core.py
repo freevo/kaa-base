@@ -480,15 +480,6 @@ def setup(**kwargs):
     if 'module' not in kwargs and 'name' not in kwargs:
         raise AttributeError('\'module\' not defined')
 
-    # Handle plugin kwargs; setuptools uses entry_points, but without setuptools
-    # we use our custom 'plugins' kwarg.  Both are mandatory for kaa sub-modules.
-    plugin_args = kwargs.get('plugins'), kwargs.get('entry_points')
-    if plugin_args != (None, None):
-        if None in plugin_args:
-            raise ValueError('For plugins, both "plugins" and "entry_points" kwargs are required')
-        del kwargs['plugins' if sys.modules.get('setuptools') else 'entry_points']
-
-
     # Use setuptools if --egg was passed.  We don't use setuptools by default (yet?)
     # because it changes certain behaviours (like install --prefix=[...]).
     if '--egg' in sys.argv:
@@ -498,6 +489,15 @@ def setup(**kwargs):
     # Add --egg option
     opt = ('egg', None, "Install with setuptools (use eggs)")
     distutils.dist.Distribution.global_options.append(opt)
+
+    # Handle plugin kwargs; setuptools uses entry_points, but without setuptools
+    # we use our custom 'plugins' kwarg.  Both are mandatory for kaa sub-modules.
+    plugin_args = kwargs.get('plugins'), kwargs.get('entry_points')
+    if plugin_args != (None, None):
+        if None in plugin_args:
+            raise ValueError('For plugins, both "plugins" and "entry_points" kwargs are required')
+        del kwargs['plugins' if sys.modules.get('setuptools') else 'entry_points']
+
 
     if not sys.modules.get('setuptools'):
         # Setuptools not available, so remove any kwarg that would cause stock

@@ -421,3 +421,6 @@ InProgressCallback = rename('InProgressCallback', InProgressCallable)
 ThreadCallback = rename('ThreadCallback', ThreadCallable)
 MainThreadCallback = rename('MainThreadCallback', MainThreadCallable)
 NamedThreadCallback = rename('NamedThreadCallback', ThreadPoolCallable)
+
+# Remove objects we don't want imported into the kaa namespace.
+del os, sys, logger, imp, zipimport, KaaFinder, KaaLoader

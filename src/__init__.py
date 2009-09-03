@@ -47,7 +47,7 @@ import logger
 # 
 # XXX: recognizing that this is a new feature and possibly (probably :))
 # buggy, this constant lets you easily disable this functionality.
-ENABLE_LAZY_IMPORTS = 1
+ENABLE_LAZY_IMPORTS = 0
 
 def _activate():
     """
@@ -331,14 +331,14 @@ class KaaLoader:
         imp.acquire_lock()
         try:
             mod = imp.load_module(fullname, *self._info) if not zipped else self._info.load_module(fullname)
+            # Cache loaded module as both kaa.foo (for external access) and
+            # kaa.base.foo (for internal access by kaa.base code).
+            sys.modules[name] = sys.modules[fullname] = mod
         finally:
             if not zipped and self._info[0]:
                 self._info[0].close()
             imp.release_lock()
 
-        # Cache loaded module as both kaa.foo (for external access) and
-        # kaa.base.foo (for internal access by kaa.base code).
-        sys.modules[name] = sys.modules[fullname] = mod
         return mod
         
 

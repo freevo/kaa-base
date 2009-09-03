@@ -134,8 +134,8 @@ class Signal(object):
 
         This method returns the Callable (or WeakCallable) object created.
         """
-
-        assert(callable(callback))
+        if not callable(callback):
+            raise TypeError('callback must be callable, got %s instead.' % callback)
 
         if len(self._callbacks) > 40:
             # It's a common problem (for me :)) that callbacks get added

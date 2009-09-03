@@ -317,23 +317,28 @@ _lazy_import('main', ['signals'])
 
 class KaaLoader:
     """
-    Custom loader used when kaa.foo is found as kaa.base.foo on a 
-    (non-zipped) on-disk source tree.
+    Custom loader used when kaa.foo is found as kaa.base.foo.
     """
     def __init__(self, info):
         self._info = info
 
     def load_module(self, name):
-        if name in sys.modules:
-            return sys.modules[name]
+        fullname = 'kaa.base.' + name[4:]
+        if fullname in sys.modules:
+            return sys.modules[fullname]
 
+        zipped = isinstance(self._info, zipimport.zipimporter)
         imp.acquire_lock()
         try:
-            mod = imp.load_module(name, *self._info)
+            mod = imp.load_module(fullname, *self._info) if not zipped else self._info.load_module(fullname)
         finally:
-            if self._info[0]:
+            if not zipped and self._info[0]:
                 self._info[0].close()
             imp.release_lock()
+
+        # Cache loaded module as both kaa.foo (for external access) and
+        # kaa.base.foo (for internal access by kaa.base code).
+        sys.modules[name] = sys.modules[fullname] = mod
         return mod
         
 
@@ -386,9 +391,9 @@ class KaaFinder(__builtins__['object']):
                     # Not a valid zipped egg, cache the result so we don't try again.
                     self.zip = False
                 else:
-                    if self.zip.find_module(name):
+                    if self.zip.find_module('kaa.base.' + name):
                         # kaa.base.foo found inside egg.
-                        return self.zip
+                        return KaaLoader(self.zip)
         finally:
             imp.release_lock()
 

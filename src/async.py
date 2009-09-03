@@ -322,8 +322,11 @@ class InProgress(Signal, Object):
         if not self._name:
             # Go no further than 2 frames up for the owner.  TODO: could
             # use a more intelligent heuristic to determine IP owner.
-            frame = self._stack[-min(len(self._stack), 2)]
-            self._name = 'owner=%s:%d:%s()' % frame[:3]
+            if self._stack:
+                frame = self._stack[-min(len(self._stack), 2)]
+                self._name = 'owner=%s:%d:%s()' % frame[:3]
+            else:
+                self._name = 'owner=unknown'
         finished = 'finished' if self.finished else 'not finished'
         return '<%s object (%s) at 0x%08x, %s>' % (self.__class__.__name__, finished, id(self), self._name)
 

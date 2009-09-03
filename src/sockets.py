@@ -313,6 +313,14 @@ class Socket(IOChannel):
         return collections.namedtuple('address', fields)(*addr)
 
 
+    def _to_ipv6(self, addr):
+        """
+        Coerces addr into an IPv6 address.  If addr is already IPv6, just
+        return it.  Otherwise return the IPv4-mapped IPv6 address.
+        """
+        return '::ffff:' + addr if ':' not in addr else addr
+
+
     def _normalize_address(self, addr):
         """
         Converts supported address formats into a normalized 4-tuple (hostname,
@@ -420,9 +428,8 @@ class Socket(IOChannel):
         does not contain ``:``, otherwise it is specified as ``[host]:[service][%scope]``,
         where ``[x]`` indicates that ``x`` is optional, and where:
 
-            * *host* is a hostname, an IPv4 dotted quad, or an IPv6 address
-              wrapped in square brackets.  e.g. freevo.org, 192.168.0.1,
-              [3000::1]
+            * *host* is an IPv4 dotted quad or an IPv6 address
+              wrapped in square brackets.  e.g. 192.168.0.1, [3000::1]
             * *service* is a service name or port number.  e.g. http, 80
             * *scope* is an interface name or number.  e.g. eth0, 2
 
@@ -441,6 +448,9 @@ class Socket(IOChannel):
             bind_info = ('', bind_info, 0, 0)
 
         sock, addr = self._make_socket(bind_info, overwrite=True)
+        if sock.family == socket.AF_INET6:
+            # Ensure given IP is in IPv6 form as our socket
+            addr = (self._to_ipv6(addr[0]),) + addr[1:]
 
         # If link-local address is specified, make sure the scopeid is given.
         if addr[0].lower().startswith('fe80::'):
@@ -472,12 +482,8 @@ class Socket(IOChannel):
                 addrs = socket.getaddrinfo(addr[0], addr[1], socket.AF_INET6 if ipv6 else socket.AF_INET,
                                            socket.SOCK_STREAM, 0, socket.AI_V4MAPPED | socket.AI_ALL)
                 for addrinfo in (a[4] for a in addrs):
+                    addrinfo = (self._to_ipv6(addrinfo[0]),) + addrinfo[1:]
                     try:
-                        if not ipv6:
-                            # Only IPv4 addresses requested, so getaddrinfo will not return
-                            # IPv4-mapped IPv6 addresses, but because our socket is AF_INET6
-                            # we still must map them.
-                            addrinfo = ('::ffff:' + addrinfo[0],) + addrinfo[1:]
                         sock.connect(addrinfo)
                         break
                     except socket.error, e:

@@ -44,7 +44,7 @@ from callable import Callable, WeakCallable, CallableError
 # Import coroutine from kaa rather than .coroutine, because importing coroutine
 # here will replace a kaa.coroutine LazyProxy with the module if coroutine was
 # not imported yet.
-from kaa import coroutine, POLICY_SINGLETON
+from kaa.base import coroutine, POLICY_SINGLETON
 from utils import property
 from object import Object
 import main

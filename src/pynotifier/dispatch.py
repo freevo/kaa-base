@@ -27,8 +27,6 @@
 """generic implementation of external dispatchers, integratable into
 several notifiers."""
 
-from copy import copy
-
 # required for dispatcher use
 MIN_TIMER = 100
 
@@ -53,7 +51,9 @@ def dispatcher_remove( method ):
 
 def dispatcher_run():
     global __dispatchers
-    for disp in copy( __dispatchers ):
+    if not __dispatchers:
+        return
+    for disp in __dispatchers[:]:
         if not disp():
             dispatcher_remove( disp )
 

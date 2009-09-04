@@ -185,7 +185,7 @@ def _convert(xml, package, out):
         raise RuntimeError('%s is no valid cxml file' % xml)
 
     out.write('# auto generated file\n\n')
-    out.write('from kaa.config import Var, Group, Dict, List, Config\n\n')
+    out.write('from kaa.base.config import Var, Group, Dict, List, Config\n\n')
     out.write('config = ')
 
     Parser(package).parse(tree, out)

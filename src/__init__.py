@@ -213,10 +213,11 @@ class _LazyProxy(type):
 
                 name = type.__getattribute__(cls, '_name')
                 obj = getattr(omod, name)
-                # If we just assign cls._obj=obj, it may get translated to an unbound class
-                # method due to mysterios internal python magic.  Wrap the object in a tuple
-                # to prevent that translation from happening, so that later calls to __get()
-                # are able to return the actual original object.
+                # Store the object inside a tuple for future accesses (i.e. at the
+                # top of this method).  Otherwise accessing cls._obj will invoke
+                # _obj's get descriptor, if it exists, which we want to avoid.  For
+                # example, if obj is a function, it will result in cls._obj being
+                # an unbound method rather than the actual function.
                 cls._obj = (obj,)
                 return obj
         finally:

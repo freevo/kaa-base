@@ -42,7 +42,7 @@ from new import classobj
 from strutils import str_to_unicode, unicode_to_str, get_encoding
 from callable import Callable, WeakCallable
 from timer import WeakTimer, WeakOneShotTimer
-from kaa.inotify import INotify
+from kaa.base.inotify import INotify
 from utils import property
 import main
 

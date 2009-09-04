@@ -34,7 +34,7 @@ import xml.sax
 try:
     from saxutils import ElementParser
 except ImportError:
-    from kaa.saxutils import ElementParser
+    from kaa.base.saxutils import ElementParser
 
 class Entry(object):
     def __init__(self, author, date):

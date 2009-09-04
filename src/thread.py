@@ -864,10 +864,7 @@ def threaded(pool=None, priority=0, async=True, progress=False):
 # threaded and MAINTHREAD from this module, so this is necessary
 # to avoid import loop.
 
-# Import generator from kaa rather than .generator, because importing generator
-# here will replace a kaa.generator LazyProxy with the module if generator was
-# not imported yet.
-from kaa.base import generator
+from .generator import generator
 
 @generator.register(threaded)
 def _generator_threaded(generator, func, args, kwargs):

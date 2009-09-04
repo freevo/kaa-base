@@ -47,7 +47,7 @@ import logger
 # 
 # XXX: recognizing that this is a new feature and possibly (probably :))
 # buggy, this constant lets you easily disable this functionality.
-ENABLE_LAZY_IMPORTS = 0
+ENABLE_LAZY_IMPORTS = 1
 
 def _activate():
     """
@@ -166,7 +166,7 @@ class _LazyProxy(type):
         Returns the underlying proxied object, importing the module if necessary.
         """
         try:
-            return type.__getattribute__(cls, '_obj')
+            return type.__getattribute__(cls, '_obj')[0]
         except AttributeError:
             pass
 
@@ -184,31 +184,43 @@ class _LazyProxy(type):
         before = globals().copy()
         # Load the module and pull in the specified names.
         imp.acquire_lock()
-        omod = __import__(mod, globals(), fromlist=names)
-        imp.release_lock()
+        try:
+            omod = __import__(mod, globals(), fromlist=names)
+            if not names:
+                # If we're here, we're proxying a whole module.
+                # Replace LazyProxy in global scope with the actual newly loaded module.
+                globals()[mod] = omod
+                # kaa namespace has imported all these LazyProxy objects, so we must
+                # replace them there too.
+                setattr(sys.modules['kaa'], mod, omod)
+                cls._obj = (omod,)
+                return omod
+            else:
+                # Kludge: if we import a module with the same name as an existing
+                # global (e.g.  coroutine, generator, signals), the module will
+                # replace the _LazyProxy.  If a previous _LazyProxy has now been
+                # replaced by a module, restore the original _LazyProxy.
+                for key in before:
+                    if type(before[key]) == _LazyProxy and type(globals().get(key)).__name__ == 'module':
+                        globals()[key] = before[key]
 
-        if not names:
-            # Proxying whole module.
-            globals()[mod] = omod
-            cls._obj = omod
-            return omod
-        else:
-            # Kludge: if we import a module with the same name as an existing
-            # global (e.g.  coroutine, generator, signals), the module will
-            # replace the _LazyProxy.  If a previous _LazyProxy has now been
-            # replaced by a module, restore the original _LazyProxy.
-            for key in before:
-                if type(before[key]) == _LazyProxy and type(globals().get(key)).__name__ == 'module':
-                    globals()[key] = before[key]
+                # Replace the _LazyProxy objects with the actual module attributes.
+                for n in names:
+                    attr = getattr(omod, n)
+                    globals()[n] = attr
+                    # Must also replace LazyProxy objects in kaa namespace.
+                    setattr(sys.modules['kaa'], n, attr)
 
-            # Replace the _LazyProxy objects with the actual module attributes.
-            for n in names:
-                globals()[n] = getattr(omod, n)
-            name = type.__getattribute__(cls, '_name')
-            obj = getattr(omod, name)
-            # Need to wrap obj in staticmethod or else it becomes an unbound class method.
-            cls._obj = staticmethod(obj)
-            return obj
+                name = type.__getattribute__(cls, '_name')
+                obj = getattr(omod, name)
+                # If we just assign cls._obj=obj, it may get translated to an unbound class
+                # method due to mysterios internal python magic.  Wrap the object in a tuple
+                # to prevent that translation from happening, so that later calls to __get()
+                # are able to return the actual original object.
+                cls._obj = (obj,)
+                return obj
+        finally:
+            imp.release_lock()
 
 
     def __getattribute__(cls, attr):

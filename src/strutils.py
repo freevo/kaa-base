@@ -86,7 +86,7 @@ def str_to_unicode(s, encoding=None):
     for c in (encoding, "utf-8", "latin-1"):
         try:
             return s.decode(c)
-        except UnicodeDecodeError:
+        except (UnicodeDecodeError, UnicodeEncodeError):
             pass
 
     return s.decode(encoding, "replace")
@@ -110,7 +110,7 @@ def unicode_to_str(s, encoding=None):
     for c in (encoding, "utf-8", "latin-1"):
         try:
             return s.encode(c)
-        except UnicodeDecodeError:
+        except (UnicodeDecodeError, UnicodeEncodeError):
             pass
 
     return s.encode(encoding, "replace")
@@ -139,7 +139,7 @@ def to_unicode(s, encoding=None):
         return str_to_unicode(s, encoding)
     try:
         return unicode(s)
-    except UnicodeDecodeError:
+    except (UnicodeDecodeError, UnicodeEncodeError):
         return str_to_unicode(str(s), encoding)
 
 
@@ -157,5 +157,5 @@ def to_str(s, encoding=None):
         return unicode_to_str(s, encoding)
     try:
         return unicode_to_str(unicode(s)), encoding
-    except UnicodeDecodeError:
+    except (UnicodeDecodeError, UnicodeEncodeError):
         return str(s)

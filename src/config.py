@@ -139,6 +139,7 @@ class Base(object):
                     # Happens when deepcopying, callables don't get copied,
                     # they become None.  So remove them now.
                     o._monitors.remove(monitor)
+                    continue
                 if names:
                     name = ".".join(names)
                 else:
@@ -425,7 +426,7 @@ class Group(Base):
         """
         Get variable, subgroup, dict or list object (as object not value).
         """
-        if not key in self._dict:
+        if key not in self._dict:
             if key.replace('_', '-') in self._dict:
                 return self._dict[key.replace('_', '-')]
             return object.__getattribute__(self, key)
@@ -570,19 +571,28 @@ class Container(Base):
         return '\n'.join(ret)
 
 
+    def _coerce_key(self, key):
+        """
+        Given the key, return a type appropriate for the container, or raise
+        ValueError otherwise.
+        """
+        if isinstance(key, self._type):
+            return key
+
+        if self._type == str:
+             return unicode_to_str(key)
+        elif self._type == unicode:
+            return str_to_unicode(key)
+        else:
+            # this will raise if key can't be coerced to _type.
+            return self._type(key)
+
+
     def _cfg_get(self, key, create=True):
         """
         Get group or variable with the given key (as object, not value).
         """
-        if not isinstance(key, self._type):
-            if self._type == str:
-                key = unicode_to_str(key)
-            elif self._type == unicode:
-                key = str_to_unicode(key)
-            else:
-                # this could crash, we don't care.
-                key = self._type(key)
-
+        key = self._coerce_key(key)
         try:
             return self._real_cfg_get(key)
         except (KeyError, IndexError):
@@ -702,6 +712,12 @@ class List(Container):
             self._list[key] = var
         # Remove index name from item, .e.g. [3] -> []
         var._name = '[]'
+
+    def _coerce_key(self, key):
+        # Special case: implicit indexing for lists.
+        if key == '':
+            return len(self._list)
+        return super(List, self)._coerce_key(key)
 
 
     # Methods needed to simulate lits behaviour
@@ -940,22 +956,20 @@ class Config(Group):
             else:
                 key = line.rstrip(' =')
             try:
-                keylist = [x[0] for x in key_regexp.findall(key.strip()) if x[0] ]
+                keylist = [x[0] for x in key_regexp.findall(key.strip()) if x[0]]
                 object = self
+                # Given a.b.c.d, fetch up to c, so object=c
                 while len(keylist) > 1:
                     key = keylist.pop(0)
                     if key.startswith('['):
                         object = object[key[1:-1]]
                     else:
                         object = getattr(object, key)
-                key = keylist[0]
-                value = value.strip()
+                # Now assign the value to object.d
+                key, value = keylist.pop(0), value.strip()
                 if isinstance(object, (Dict, List)):
-                    key = key[1:-1]
-                    if not key and isinstance(object, List):
-                        # Implicit indexing for Lists.
-                        key = len(object)
-                    object[key] = value
+                    # Key could be []; List object will take care of implicit indexing.
+                    object[key[1:-1]] = value
                 else:
                     setattr(object, key, value)
             except Exception, e:

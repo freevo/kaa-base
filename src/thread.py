@@ -468,6 +468,15 @@ class ThreadCallable(ThreadCallableBase):
     def wait_on_exit(self):
         """
         If True (default), wait for the thread on application exit.
+
+        If False, this causes the thread to be a so-called "daemon thread."  A
+        Python program exits when no non-daemon threads are left running.
+
+        .. warning::
+
+           If the main loop is not running (via :func:`kaa.main.run`) it is
+           recommended this not be set to ``False``, otherwise you may experience
+           intermittent exceptions during interpreter shutdown.
         """
         return self._daemon
 
@@ -794,7 +803,7 @@ class ThreadPool(object):
 
 
 
-def threaded(pool=None, priority=0, async=True, progress=False):
+def threaded(pool=None, priority=0, async=True, progress=False, wait=False):
     """
     Decorator causing the decorated function to be executed within a thread
     when invoked.
@@ -811,6 +820,10 @@ def threaded(pool=None, priority=0, async=True, progress=False):
                      will be an :class:`~kaa.InProgressStatus` object in order
                      to indicate execution progress to the caller.
     :type progress: bool
+    :param wait: corresponds to :attr:`kaa.ThreadCallable.wait_on_exit`.  It may
+                 be necessary to set this to True if the kaa main loop is not
+                 running.  (Default: False)
+    :type wait: bool
     :returns: :class:`~kaa.InProgress` if ``progress=False``, or the return value
               or the decorated function if ``progress=True``
 
@@ -835,7 +848,7 @@ def threaded(pool=None, priority=0, async=True, progress=False):
             callback = ThreadPoolCallable((pool, priority), func, *args)
         else:
             callback = ThreadCallable(func, *args)
-            callback.wait_on_exit = False
+            callback.wait_on_exit = wait
 
         @wraps(func, lshift=int(not not progress))
         def newfunc(*args, **kwargs):

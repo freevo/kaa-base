@@ -345,7 +345,7 @@ class Channel(Object):
         if not self._authenticated:
             # Socket closed before authentication completed.  We assume it's
             # because authentication failed (though it may not be).
-            log.error('Socket closed before authentication completed')
+            log.error('rpc peer closed before authentication completed; probably incorrect shared secret.')
 
         log.debug('close socket for %s', self)
         self.signals['closed'].emit()
@@ -465,12 +465,12 @@ class Channel(Object):
         self._send_packet(seq, 'EXCP', payload)
 
 
-    def _handle_packet_after_auth(self, seq, type, payload):
+    def _handle_packet_after_auth(self, seq, packet_type, payload):
         """
         Handle incoming packet (called from _handle_write) after
         authentication has been completed.
         """
-        if type == 'CALL':
+        if packet_type == 'CALL':
             # Remote function call, send answer
             function, args, kwargs = cPickle.loads(payload)
             try:
@@ -492,7 +492,7 @@ class Channel(Object):
 
             return True
 
-        if type == 'RETN':
+        if packet_type == 'RETN':
             # RPC return
             payload = cPickle.loads(payload)
             callback, cmd = self._rpc_in_progress.get(seq)
@@ -502,7 +502,7 @@ class Channel(Object):
             callback.finish(payload)
             return True
 
-        if type == 'EXCP':
+        if packet_type == 'EXCP':
             # Exception for remote call
             exc_value, stack = cPickle.loads(payload)
             callback, cmd = self._rpc_in_progress.get(seq)
@@ -513,11 +513,11 @@ class Channel(Object):
             callback.throw(remote_exc.__class__, remote_exc, None)
             return True
 
-        log.error('unknown packet type %s', type)
+        log.error('unknown packet type %s', packet_type)
         return True
 
 
-    def _handle_packet_before_auth(self, seq, type, payload):
+    def _handle_packet_before_auth(self, seq, packet_type, payload):
         """
         This function handles any packet received by the remote end while we
         are waiting for authentication.  It responds to AUTH or RESP packets
@@ -538,7 +538,7 @@ class Channel(Object):
            * detect in-transit tampering of authentication by third parties
              (and thus preventing successful authentication).
 
-        The parameters 'seq' and 'type' are untainted and safe.  The parameter
+        The parameters 'seq' and 'packet_type' are untainted and safe.  The parameter
         payload is potentially dangerous and this function must handle any
         possible malformed payload gracefully.
 
@@ -589,12 +589,15 @@ class Channel(Object):
         underlying python calls made in these methods (particularly
         struct.unpack) aren't susceptible to attack.
         """
-        if type not in ('AUTH', 'RESP'):
-            # Received a non-auth command while expecting auth.
-            self._connect_inprogress.throw(IOError, IOError('got %s before authentication is complete; closing socket.' % type), None)
-            # Hang up.
+        def panic(exc):
+            # Aborts pending connect inprogress with exc and closes the connection.
+            self._connect_inprogress.throw(type(exc), exc, None)
             self.close()
-            return
+
+
+        if packet_type not in ('AUTH', 'RESP'):
+            # Received a non-auth command while expecting auth.
+            return panic(IOError('got %s before authentication is complete; closing socket.' % packet_type))
 
         try:
             # Payload could safely be longer than 20+20+20 bytes, but if it
@@ -610,14 +613,12 @@ class Channel(Object):
             # challenge to validate the response.
             challenge, response, salt = struct.unpack("20s20s20s", payload)
         except (AssertionError, struct.error):
-            self._connect_inprogress.throw(IOError, IOError('Malformed authentication packet from remote; disconnecting.'), None)
-            self.close()
-            return
+            return panic(IOError('Malformed authentication packet from remote; disconnecting.'))
 
         # At this point, challenge, response, and salt are 20 byte strings of
         # arbitrary binary data.  They're considered benign.
 
-        if type == 'AUTH':
+        if packet_type == 'AUTH':
             # Step 2: We've received a challenge.  If we've already sent a
             # challenge (which is the case if _pending_challenge is not None),
             # then something isn't right.  This could be a DoS so we'll
@@ -635,14 +636,13 @@ class Channel(Object):
             log.debug('Got initial challenge from server, sending response.')
             return
 
-        elif type == 'RESP':
+        elif packet_type == 'RESP':
             # We've received a reply to an auth request.
 
             if self._pending_challenge == None:
                 # We've received a response packet to auth, but we haven't
                 # sent a challenge.  Something isn't right, so disconnect.
-                self.close()
-                return
+                return panic(IOError('Unexpectedly received authentication reply to unissued challenge; disconnecting.'))
 
             # Step 3/4: We are expecting a response to our previous challenge
             # (either the challenge from step 1, or the counter-challenge from
@@ -655,9 +655,7 @@ class Channel(Object):
             self._pending_challenge = None
             # Now check to see if we were sent what we expected.
             if response != expected_response:
-                self._connect_inprogress.throw(IOError, IOError('authentication error.'), None)
-                self.close()
-                return
+                return panic(IOError('Peer failed authentication.'))
 
             # Challenge response was good, so the remote is considered
             # authenticated now.  We increase the chunk size on the socket

@@ -316,9 +316,10 @@ class Socket(IOChannel):
     def _to_ipv6(self, addr):
         """
         Coerces addr into an IPv6 address.  If addr is already IPv6, just
-        return it.  Otherwise return the IPv4-mapped IPv6 address.
+        return it.  Otherwise return the IPv4-mapped IPv6 address.  The
+        empty string is left untouched.
         """
-        return '::ffff:' + addr if ':' not in addr else addr
+        return '::ffff:' + addr if ':' not in addr and addr else addr
 
 
     def _normalize_address(self, addr):
@@ -351,8 +352,12 @@ class Socket(IOChannel):
                 # Sanity check: happens when given ipv6 address without []
                 raise ValueError('Invalid hostname: perhaps ipv6 address is not wrapped in []?')
 
-        elif not isinstance(addr, (tuple, list)) or len(addr) != 4:
+        elif not isinstance(addr, (tuple, list)) or len(addr) not in (2, 4):
             raise ValueError('Invalid address specification (must be str, or 4-tuple)')
+
+        if len(addr) == 2:
+            # Coerce to 4-tuple, assume 0 for both scope and flowid.
+            addr = addr + (0, 0)
 
         host, service, flowinfo, scopeid = addr
         # Strip [] from ipv6 addr
@@ -371,7 +376,7 @@ class Socket(IOChannel):
     def _make_socket(self, addr=None, overwrite=False):
         """
         Constructs a socket based on the given addr.  Returns the socket and
-        the normalized address as a 2-tuple.
+        the normalized address as a 4-tuple.
 
         If overwrite is True, if addr specifies a path to a unix socket and
         that unix socket already exists, it will be removed if the socket is
@@ -417,18 +422,20 @@ class Socket(IOChannel):
                           str, it is either a Unix socket path or represents a TCP
                           socket when in the form ``[host]:[service][%scope]``.  
                           See below for further details.
-        :type bind_info: int, str, or 4-tuple
+        :type bind_info: int, str, or 2- or 4-tuple
         :raises: ValueError if *bind_info* is invalid, or socket.error if the bind fails.
 
-        If *addr* is given as a tuple, it is in the form ``(host, service,
-        flowinfo, scope)``.  See :meth:`~kaa.Socket.connect` for more
+        If *addr* is given as a 4-tuple, it is in the form ``(ip, service,
+        flowinfo, scope)``.  If passed as a 2-tuple, it is in the form
+        ``(ip, service)``, and in this case, it is assumed that *flowinfo* and
+        *scope* are both 0.  See :meth:`~kaa.Socket.connect` for more
         information.
 
         If *addr* is given as a string, it is treated as a Unix socket path if it
-        does not contain ``:``, otherwise it is specified as ``[host]:[service][%scope]``,
+        does not contain ``:``, otherwise it is specified as ``[ip]:[service][%scope]``,
         where ``[x]`` indicates that ``x`` is optional, and where:
 
-            * *host* is an IPv4 dotted quad or an IPv6 address
+            * *ip* is an IPv4 dotted quad or an IPv6 address
               wrapped in square brackets.  e.g. 192.168.0.1, [3000::1]
             * *service* is a service name or port number.  e.g. http, 80
             * *scope* is an interface name or number.  e.g. eth0, 2
@@ -457,6 +464,7 @@ class Socket(IOChannel):
             if not addr[3]:
                 raise ValueError('Binding to a link-local address requires scopeid')
 
+        print 'Bind', addr
         sock.bind(addr)
         sock.listen(qlen)
         self._listening = True
@@ -504,7 +512,7 @@ class Socket(IOChannel):
                      it is either a Unix socket path or represents a TCP
                      socket when in the form ``host:service[%scope]``.  See
                      below for further details.
-        :type addr: str or 4-tuple
+        :type addr: str, or 2- or 4-tuple
         :param ipv6: if True, will connect to the remote host using IPv6 if
                      it is reachable via IPv6.  This is perfectly safe for IPv4
                      only hosts too.  Set this to False if the remote host
@@ -512,13 +520,16 @@ class Socket(IOChannel):
                      it, but you want to force IPv4 anyway.
         :returns: An :class:`~kaa.InProgress` object.
 
-        If *addr* is given as a tuple, it is in the form ``(host, service,
-        flowinfo, scope)``.  The *flowinfo* and *scope* fields are only
-        relevant for IPv6 hosts, where they represent the ``sin6_flowinfo`` and
-        ``sin6_scope_id`` members in :const:`struct sockaddr_in6` in C.
-        *scope* may be the name of an interface (e.g. ``eth0``) or an interface
-        id, and is needed when connecting to link-local addresses
-        (``fe80::/16``).
+        If *addr* is given as a 4-tuple, it is in the form ``(host, service,
+        flowinfo, scope)``.  If given as a 2-tuple, it is in the form ``(host,
+        service)``, and in this case the *flowinfo* and *scope* are assumed to
+        be 0.
+        
+        The *flowinfo* and *scope* fields are only relevant for IPv6 hosts,
+        where they represent the ``sin6_flowinfo`` and ``sin6_scope_id``
+        members in :const:`struct sockaddr_in6` in C.  *scope* may be the name
+        of an interface (e.g. ``eth0``) or an interface id, and is needed when
+        connecting to link-local addresses (``fe80::/16``).
 
         If *addr* is given as a string, it is treated as a Unix socket path if it
         does not contain ``:``, otherwise it is specified as ``host:service[%scope]``,

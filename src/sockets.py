@@ -353,7 +353,7 @@ class Socket(IOChannel):
                 raise ValueError('Invalid hostname: perhaps ipv6 address is not wrapped in []?')
 
         elif not isinstance(addr, (tuple, list)) or len(addr) not in (2, 4):
-            raise ValueError('Invalid address specification (must be str, or 4-tuple)')
+            raise ValueError('Invalid address specification (must be str, or 2- or 4-tuple)')
 
         if len(addr) == 2:
             # Coerce to 4-tuple, assume 0 for both scope and flowid.
@@ -464,7 +464,6 @@ class Socket(IOChannel):
             if not addr[3]:
                 raise ValueError('Binding to a link-local address requires scopeid')
 
-        print 'Bind', addr
         sock.bind(addr)
         sock.listen(qlen)
         self._listening = True

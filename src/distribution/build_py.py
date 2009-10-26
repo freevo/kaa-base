@@ -27,6 +27,7 @@
 
 # python imports
 import os
+import sys
 import glob
 import types
 import stat
@@ -85,7 +86,10 @@ class build_py(distutils.command.build_py.build_py):
 
     def build_packages (self):
         distutils.command.build_py.build_py.build_packages(self)
-        file('%s/kaa/__init__.py' % self.build_lib, 'w').write(kaa_module_bootstrap)
+        if sys.modules.get('setuptools') or 'kaa.base' in self.package_dir:
+            file('%s/kaa/__init__.py' % self.build_lib, 'w').write(kaa_module_bootstrap)
+        elif os.path.isfile('%s/kaa/__init__.py' % self.build_lib):
+            os.unlink('%s/kaa/__init__.py' % self.build_lib)
         for package in self.packages:
             package_dir = self.get_package_dir(package)
             for ext in self.kaa_compiler.keys():

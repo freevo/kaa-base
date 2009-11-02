@@ -180,12 +180,26 @@ class Callable(object):
         return self._func
 
 
-    def _merge_args(self, args, kwargs):
-        user_args, user_kwargs = self._get_user_args()
-        if self.ignore_caller_args:
-            cb_args, cb_kwargs = user_args, user_kwargs
+    def _merge_args(self, args, kwargs, user_args=None, user_kwargs=None):
+        if user_args is None:
+            # We don't use _get_user_args() here to avoid the extra function
+            # call, even though it would make WeakCallable implementation
+            # slightly more elegant.  WeakCallable overrides _merge_args
+            # instead.
+            user_args, user_kwargs = self._args, self._kwargs
+
+        if self._ignore_caller_args:
+            return user_args, user_kwargs
         else:
-            if self.user_args_first:
+            # Fast paths.
+            if not args and not kwargs:
+                return user_args, user_kwargs
+            elif not user_args and not user_kwargs:
+                return args, kwargs
+
+            # Slower paths, where we must copy kwargs in order to merge user
+            # kwargs and invocation-time kwargs.
+            if self._user_args_first:
                 cb_args, cb_kwargs = user_args + args, kwargs.copy()
                 cb_kwargs.update(user_kwargs)
             else:
@@ -204,14 +218,11 @@ class Callable(object):
         The wrapped callable's return value is returned.
         """
         cb = self._get_func()
-        cb_args, cb_kwargs = self._merge_args(args, kwargs)
         if not cb:
             raise CallableError('The Callable (%s) has become invalid.' % self._func_name)
 
-        self._entered = True
-        result = cb(*cb_args, **cb_kwargs)
-        self._entered = False
-        return result
+        cb_args, cb_kwargs = self._merge_args(args, kwargs)
+        return cb(*cb_args, **cb_kwargs)
 
 
     def __repr__(self):
@@ -282,7 +293,13 @@ class WeakCallable(Callable):
 
 
     def _get_user_args(self):
+        # Needed by Signal.disconnect()
         return unweakref_data(self._args), unweakref_data(self._kwargs)
+
+
+    def _merge_args(self, args, kwargs, user_args=None, user_kwargs=None):
+        user_args, user_kwargs = unweakref_data(self._args), unweakref_data(self._kwargs)
+        return super(WeakCallable, self)._merge_args(args, kwargs, user_args, user_kwargs)
 
 
     def __call__(self, *args, **kwargs):

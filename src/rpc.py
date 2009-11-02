@@ -144,11 +144,8 @@ class Server(Object):
     RPC server class.  RPC servers accept incoming connections from client,
     however RPC calls can be issued in either direction.
 
-    address specifies what address to bind the socket to, and can be in
-    the form ip:port or hostname:port or as a 2-tuple (hostname, port).
-    If hostname is an empty string, the socket is bound to all interfaces.
-    If address is a string but not in the above form, it is assumed to be
-    a unix socket.  See :meth:`kaa.Socket.connect` for more info.
+    address specifies what address to bind the socket to, and this argument
+    must correspond to the ``bind_info`` argument of :meth:`kaa.Socket.listen`.
 
     See kaa.Socket.buffer_size docstring for information on buffer_size.
     """

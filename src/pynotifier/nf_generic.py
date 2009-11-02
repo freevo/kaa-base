@@ -22,13 +22,51 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301 USA
 
+#
+# XXX: several optimizations made by tack:
+#
+#     1. Don't use copy() in dispatch.py, but use list[:] instead.
+#        copy() is an order slower.  (5000000 iterations of copying a 5
+#        element list takes l[:] 0.87s and copy(l) 5.5s)
+#     2. Don't incur the overhead of copying an empty list if there are
+#        no dispatchers to begin with.
+#     3. Remove unused copy() from nf_generic.py
+#     4. Replace instances of dict.has_key(key) with 'key in dict', which
+#        is faster by about 40%.
+#     5. Don't bother calling select() if there are no sockets to
+#        monitor; in that case, use time.sleep() instead.
+#     6. And don't bother with _either_ select() or sleep() if there are
+#        no sockets AND timeout is 0.  (Avoids needless system call.)
+#     7. Check if timer was removed from __timers during callback
+#        emission.  This isn't a performance tweak in pynotifier exactly,
+#        but it saves a noticeable amount of time for us in kaa.Timer by moving
+#        the check into this loop.
+#     8. Move a time() call inside a conditional block where it's used.
+#        Avoids needlessly calling time() in cases where interval is 0.
+#     9. Rewrote the socket handling block:
+#             I. Test return value of select() before attempting to
+#                iterate over empty lists (conditional expression is
+#                cheaper than iterating an empty sequence)
+#            II. Remove apparently unnecessary __current_sockets global
+#           III. Test validity of socket using try/except block instead
+#                of some if statements.  This is optimized in the common
+#                case where the socket is valid.  (New check code is over
+#                3 times faster.)
+#            IV. Validity test is also optimized for integer file
+#                descriptors being registered with the notifier.  (Not
+#                sure if this is true for other projects, but at least in
+#                kaa it is.)
+#
+# These changes deviate us from pynotifier.  For kaa.base 1.1 we should look
+# at resyncing with git tip of pynotifier, which is a significant overhaul.
+#
+
 """Simple mainloop that watches sockets and timers."""
 
 # python core packages
-from copy import copy
 from select import select
 from select import error as select_error
-from time import time
+from time import time, sleep as time_sleep
 import errno, os, sys
 
 import socket
@@ -40,6 +78,7 @@ import dispatch
 IO_READ = 1
 IO_WRITE = 2
 IO_EXCEPT = 4
+( INTERVAL, TIMESTAMP, CALLBACK ) = range( 3 )
 
 __sockets = {}
 __sockets[ IO_READ ] = {}
@@ -67,7 +106,7 @@ def socket_remove( id, condition = IO_READ ):
 	"""Removes the given socket from scheduler. If no condition is specified the
 	default is IO_READ."""
 	global __sockets
-	if __sockets[ condition ].has_key( id ):
+	if id in __sockets[ condition ]:
 		del __sockets[ condition ][ id ]
 
 def timer_add( interval, method ):
@@ -92,7 +131,7 @@ def timer_add( interval, method ):
 
 def timer_remove( id ):
 	"""Removes the timer identifed by the unique ID from the main loop."""
-	if __timers.has_key( id ):
+	if id in __timers:
 		del __timers[ id ]
 
 def dispatcher_add( method ):
@@ -102,12 +141,6 @@ def dispatcher_add( method ):
 
 dispatcher_remove = dispatch.dispatcher_remove
 
-__current_sockets = {}
-__current_sockets[ IO_READ ] = []
-__current_sockets[ IO_WRITE ] = []
-__current_sockets[ IO_EXCEPT ] = []
-
-( INTERVAL, TIMESTAMP, CALLBACK ) = range( 3 )
 
 def step( sleep = True, external = True, simulate = False ):
 	"""Do one step forward in the main loop. First all timers are checked for
@@ -154,16 +187,18 @@ def step( sleep = True, external = True, simulate = False ):
 					timeout = 30000
 			if __min_timer and __min_timer < timeout: timeout = __min_timer
 
+
 		# wait for event
-		r = w = e = ()
-		try:
-			if timeout:
-				timeout /= 1000.0
-			r, w, e = select( __sockets[ IO_READ ].keys(), __sockets[ IO_WRITE ].keys(),
-							  __sockets[ IO_EXCEPT ].keys(), timeout )
-		except select_error, e:
-			if e[ 0 ] != errno.EINTR:
-				raise e
+		sockets_ready = None
+		if __sockets[ IO_READ ] or __sockets[ IO_WRITE ] or __sockets[ IO_EXCEPT ]:
+			try:
+				sockets_ready = select( __sockets[ IO_READ ].keys(), __sockets[ IO_WRITE ].keys(),
+				                        __sockets[ IO_EXCEPT ].keys(), timeout / 1000.0 )
+			except select_error, e:
+				if e[ 0 ] != errno.EINTR:
+					raise e
+		elif timeout:
+			time_sleep(timeout / 1000.0)
 
 		if simulate:
 			# we only simulate
@@ -172,8 +207,9 @@ def step( sleep = True, external = True, simulate = False ):
 		# handle timers
 		for i, timer in __timers.items():
 			timestamp = timer[ TIMESTAMP ]
-			if not timestamp:
-				# prevent recursion, ignore this timer
+			if not timestamp or i not in __timers:
+				# timer was unregistered by previous timer, or would
+				# recurse, ignore this timer
 				continue
 			now = int( time() * 1000 )
 			if timestamp <= now:
@@ -182,34 +218,38 @@ def step( sleep = True, external = True, simulate = False ):
 				# step().
 				timer[ TIMESTAMP ] = 0
 				if not timer[ CALLBACK ]():
-					if __timers.has_key( i ):
+					if i in __timers:
 						del __timers[ i ]
 				else:
 					# Find a moment in the future. If interval is 0, we
 					# just reuse the old timestamp, doesn't matter.
-					now = int( time() * 1000 )
 					if timer[ INTERVAL ]:
+						now = int( time() * 1000 )
 						timestamp += timer[ INTERVAL ]
 						while timestamp <= now:
 							timestamp += timer[ INTERVAL ]
 					timer[ TIMESTAMP ] = timestamp
 
 		# handle sockets
-		for sl in ( ( r, IO_READ ), ( w, IO_WRITE ), ( e, IO_EXCEPT ) ):
-			sockets, condition = sl
-			# append all unknown sockets to check list
-			for s in sockets:
-				if not s in __current_sockets[ condition ]:
-					__current_sockets[ condition ].append( s )
-			while len( __current_sockets[ condition ] ):
-				sock = __current_sockets[ condition ].pop( 0 )
-				is_socket = isinstance( sock, ( socket.socket, file, socket._socketobject ) )
-				if ( is_socket and (getattr(sock, 'closed', False) or sock.fileno() != -1 )) or \
-					   ( isinstance( sock, int ) and sock != -1 ):
-					if __sockets[ condition ].has_key( sock ) and \
-						   not __sockets[ condition ][ sock ]( sock ):
+		if sockets_ready:
+			for condition, sockets in zip((IO_READ, IO_WRITE, IO_EXCEPT), sockets_ready):
+				for sock in sockets:
+					# XXX: Not quite sure why these checks are done, since select()
+					# would have raised on these first.
+					try:
+						if isinstance(sock, int):
+							assert(sock != -1)
+						else:
+							assert(getattr(sock, 'closed', False) == False)
+							assert(sock.fileno() != -1)
+					except (AssertionError, socket.error, ValueError):
+						# socket is either closed or not supported.
 						socket_remove( sock, condition )
+						continue
 
+					if not __sockets[ condition ][ sock ]( sock ):
+						socket_remove( sock, condition )
+		
 		# handle external dispatchers
 		if external:
 			dispatch.dispatcher_run()

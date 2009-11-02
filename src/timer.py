@@ -190,19 +190,6 @@ class Timer(notifier.NotifierCallback):
         self.__interval = None
 
 
-    def __call__(self, *args, **kwargs):
-        """
-        Run the callback.  (This is done internally by the notifier; the user will
-        generally never do this directly.)
-        """
-        if not self.active:
-            # This happens if previous timer that has been called
-            # during the same step has stopped us. This should not
-            # happen anymore.
-            log.error('calling callback on inactive timer (%s)' % repr(self))
-            return False
-        return super(Timer, self).__call__(*args, **kwargs)
-
 
 class WeakTimer(notifier.WeakNotifierCallback, Timer):
     """

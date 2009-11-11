@@ -115,7 +115,7 @@ class Parser(object):
             default = get_value(default, deftype)
             fd.write('default=%s' % pprint.pformat(default).strip())
 
-        for child in nodefilter(node, 'values'):
+        for child in nodefilter(node, 'enum') or nodefilter(node, 'values'):
             if not first:
                 fd.write(', ')
             first = False

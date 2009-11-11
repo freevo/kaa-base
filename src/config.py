@@ -1122,7 +1122,7 @@ def get_description(var):
     """
     Get the description for the given config variable or group.
     """
-    if isinstance(var, (Group, Dict)):
+    if isinstance(var, (Group, Container)):
         return var._desc
     elif isinstance(var, VarProxy):
         return var._item._desc

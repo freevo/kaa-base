@@ -135,7 +135,6 @@ class Base(object):
                 self._monitors.remove(monitor)
 
     def _notify_monitors(self, oldval, newval):
-        names = []
         o = self
         name = self._get_fqname() or None
         while o:

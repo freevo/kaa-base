@@ -26,7 +26,8 @@
 # -----------------------------------------------------------------------------
 
 __all__ = [ 'Var', 'Group', 'Dict', 'List', 'Config', 'set_default',
-            'get_description', 'get_config' ]
+            'get_description', 'get_config', 'get_schema',  'get_type',
+            'DELETED', 'DEFAULT' ]
 
 # Python imports
 import os
@@ -52,6 +53,13 @@ log = logging.getLogger('config')
 # align regexp
 align = re.compile(u'\n( *)[^\n]', re.MULTILINE)
 
+# Monitors will be notified a Var is set to DELETED just before it is deleted
+# from either a list or dictionary.
+DELETED = object()
+# Special value to revert a Var to its default value.
+DEFAULT = object()
+
+
 def _format(text):
     """
     Format a description with multiple lines.
@@ -73,7 +81,7 @@ def _format(text):
         strip = min(len(m), strip)
     if strip == 100 or strip < 1:
         # nothing found
-        return text
+        return text.strip()
 
     newtext = []
     for line in text.split(u'\n'):
@@ -89,6 +97,9 @@ class Base(object):
     def __init__(self, name='', desc=u'', default=None):
         super(Base, self).__init__()
         self._parent = None
+        # This name is not authoritative, but rather is the name we should have
+        # in our parent's namespace once added.  For variables under a
+        # Container, _name is None.
         self._name = name
         self._desc = _format(str_to_unicode(desc))
         self._default = default
@@ -104,7 +115,7 @@ class Base(object):
         a hash of the schema only.
         """
         value = repr(self._value) if values else ''
-        return hashlib.md5(repr(self._name) + repr(self._desc) + repr(self._default) + value).hexdigest()
+        return hashlib.md5(repr(self._desc) + repr(self._default) + value).hexdigest()
 
 
     def copy(self):
@@ -123,28 +134,18 @@ class Base(object):
             if callback == monitor:
                 self._monitors.remove(monitor)
 
-    def _notify_monitors(self, oldval):
+    def _notify_monitors(self, oldval, newval):
         names = []
         o = self
+        name = self._get_fqname() or None
         while o:
-            if o._name:
-                if names and names[0][0] == "[":
-                    # List/dict index, just concat to previous name.
-                    names[0] = o._name + names[0]
-                else:
-                    names.insert(0, o._name)
-
             for monitor in o._monitors:
                 if not callable(monitor):
                     # Happens when deepcopying, callables don't get copied,
                     # they become None.  So remove them now.
                     o._monitors.remove(monitor)
                     continue
-                if names:
-                    name = ".".join(names)
-                else:
-                    name = None
-                monitor(name, oldval, self._value)
+                monitor(name, oldval, newval)
             o = o._parent
 
 
@@ -156,6 +157,15 @@ class Base(object):
     def __repr__(self):
         return repr(self._value)
 
+
+    def _get_fqname(self, child=None):
+        """
+        Returns a fully qualified name for the variable.
+        """
+        if not self._parent:
+            return
+        return self._parent._get_fqname(self)
+        
 
 class VarProxy(Base):
     """
@@ -181,6 +191,8 @@ class VarProxy(Base):
         else:
             self = newclass()
 
+        # Merge Base dictionary (for better introspection)
+        self.__dict__.update(Base.__dict__)
         self._class = realclass
         return self
 
@@ -231,13 +243,15 @@ class Var(Base):
         """
         return hashlib.md5(super(Var, self)._hash(values) + repr(self._type)).hexdigest()
 
+    def __eq__(self, value):
+        return self._value == value
 
-    def _cfg_string(self, prefix, print_desc=True):
+    def _stringify(self, print_desc=True):
         """
         Convert object into a string to write into a config file.
         """
         # create description
-        desc = comment = ''
+        desc = ''
         if print_desc:
             if self._desc:
                 desc = '# | %s\n' % unicode_to_str(self._desc).replace('\n', '\n# | ')
@@ -259,28 +273,32 @@ class Var(Base):
                     # in comments for reference.
                     desc += '# | Default: ' + str(self._default) + '\n'
 
-        if self._value == self._default:
-            # Value is set to default, so comment it out in config file.
-            comment = '# '
-
         value = unicode_to_str(self._value)
-        prefix += self._name
-        return '%s%s%s = %s' % (desc, comment, prefix, value)
+        if self._value == self._default:
+            value = '<default: %s>' % (value if value != '' else '(empty string)')
+        return '%s%s = %s' % (desc, unicode_to_str(self._get_fqname()), value)
 
 
     def _cfg_set(self, value, default=False):
         """
-        Set variable to value. If the type is not right, an expection will
-        be raised. The function will convert between string and unicode.
-        If default is set to True, the default value will also be changed.
+        Set variable to value. If the value's type is not right, TypeError will
+        be raised (however string and unicode will be coerced into each other
+        if necessary).  If default is set to True, the default value will also
+        be changed.
         """
+        if value is DEFAULT:
+            value = self._default
+        elif value is DELETED:
+            self._notify_monitors(self._value, DELETED)
+            return
+
         if isinstance(self._type, (list, tuple)):
             if not value in self._type:
                 # This could crash, but that is ok
                 value = self._type[0].__class__(value)
             if not value in self._type:
                 allowed = [ str(x) for x in self._type ]
-                raise AttributeError('Variable must be one of %s' % ', '.join(allowed))
+                raise TypeError('Variable must be one of %s' % ', '.join(allowed))
         elif not isinstance(value, self._type):
             if self._type == str:
                 value = unicode_to_str(value)
@@ -297,9 +315,8 @@ class Var(Base):
         if default:
             self._default = value
         if self._value != value:
-            oldval = self._value
-            self._value = value
-            self._notify_monitors(oldval)
+            oldval, self._value = self._value, value
+            self._notify_monitors(oldval, value)
         return value
 
 
@@ -318,18 +335,27 @@ class Group(Base):
 
         for data in schema:
             if not data._name:
-                raise AttributeError('no name given')
+                raise AttributeError('Variable within group "%s" is missing name.' % name)
             if data._name in self.__class__.__dict__:
                 raise ValueError('Config name "%s" conflicts with internal method or property' % data._name)
             self._dict[data._name] = data
             self._vars.append(data._name)
 
         # the value of a group is the group itself
+        # FIXME: cycle.
         self._value = self
 
         # Parent all the items in the schema
+        # FIXME: cycle.
         for item in schema:
             item._parent = self
+
+
+    def _get_fqname(self, child=None):
+        childname = [k for k,v in self._dict.items() if v is child][0] if child else ''
+        if not self._parent:
+            return childname
+        return (self._parent._get_fqname(self) + '.' + childname).strip('.')
 
 
     def add_variable(self, name, value):
@@ -339,7 +365,6 @@ class Group(Base):
         """
         if name in self.__class__.__dict__:
             raise ValueError('Config name "%s" conflicts with internal method or property' % name)
-        value._name = name
         value._parent = self
         self._dict[name] = value
         self._vars.append(name)
@@ -359,28 +384,27 @@ class Group(Base):
         """
         hash = hashlib.md5(super(Group, self)._hash(values))
         for name in self._vars:
-            hash.update(self._dict[name]._hash(values))
+            hash.update(name + self._dict[name]._hash(values))
         return hash.hexdigest()
 
 
-    def _cfg_string(self, prefix, print_desc=True):
+    def _stringify(self, print_desc=True):
         """
         Convert object into a string to write into a config file.
         """
         ret  = []
         desc = unicode_to_str(self._desc.strip('\n')).replace('\n', '\n# | ')
-        is_anonymous = self._name.endswith(']')
+        fqn = self._get_fqname()
+        is_anonymous = fqn.endswith(']')
 
-        if print_desc and self._name and not is_anonymous:
-            sections = [ x.capitalize() for x in prefix.rstrip('.').split('.') + [self._name] ]
-            breadcrumb = ' > '.join(filter(len, sections))
-            ret.append('#\n# Begin Group: %s\n#' % breadcrumb)
+        if print_desc and fqn and not is_anonymous:
+            sections = [x.capitalize() for x in fqn.split('.')]
+            breadcrumb = ' > '.join(sections)
+            ret.append('#\n# Begin Group: %s' % breadcrumb)
 
-        if self._name:
-            prefix = '%s%s.' % (prefix, self._name)
         print_var_desc = print_desc
 
-        if prefix and desc and not is_anonymous and print_desc:
+        if fqn and desc and not is_anonymous and print_desc:
             ret.append('# | %s\n#' % desc)
             if self._desc_type != 'default':
                 print_var_desc = False
@@ -393,8 +417,8 @@ class Group(Base):
         n_nongroup = 0
         for name in self._vars:
             var = self._dict[name]
-            var_is_group = isinstance(var, (Group, Dict))
-            cfgstr = var._cfg_string(prefix, print_var_desc)
+            var_is_group = isinstance(var, (Group, Container))
+            cfgstr = var._stringify(print_var_desc)
             if not var_is_group:
                 n_nongroup += 1
                 space_vars = space_vars or '\n' in cfgstr
@@ -405,20 +429,18 @@ class Group(Base):
                 # Config item is a group or list, space it down with a blank
                 # line for readability.
                 ret.append('')
+            elif '\n' in cfgstr:
+                ret.append('')
             ret.append(cfgstr)
-            if not var_is_group and space_vars and n_nongroup > 1:
-                # We need to space variables (see above), so add the empty
-                # commented line.
-                ret.append('#')
 
-        if print_desc and self._name and not is_anonymous:
+        if print_desc and fqn and not is_anonymous:
             if n_nongroup != len(self._vars) and (not ret or not ret[-1].endswith('\n')):
                 # One of our variables is a group/dict, so add another
                 # empty line to separate the stanza.
-                ret.append('\n#')
+                ret.append('')
             elif not space_vars or n_nongroup <= 1:
                 ret.append('#')
-            ret.append('# End Group: %s\n#\n' % breadcrumb)
+            ret.append('#\n# End Group: %s\n#' % breadcrumb)
         return '\n'.join(ret)
 
 
@@ -473,11 +495,12 @@ class Container(Base):
             sets the cfg Var for the given key (or index)
 
         _vars():
-            iterator producing all Vars in container
+            iterator producing all Vars in container as (key/index, var)
     """
     def __init__(self, name, desc, schema, type, defaults):
         super(Container, self).__init__(name, desc)
         if isinstance(schema, (list, tuple)):
+            # Wrap all the given config objects into a group.
             schema = Group(schema=schema, desc=desc, name=name)
         self._schema = schema
         self._type = type
@@ -489,6 +512,13 @@ class Container(Base):
             # dict or group in dict?
             var = self._cfg_get(key)
             var._default = var._value = value
+
+
+    def _get_fqname(self, child=None):
+        childname = '[%s]' % [k for k,v in self._vars() if v is child][0] if child else ''
+        if not self._parent:
+            return childname
+        return (self._parent._get_fqname(self) + childname).strip('.')
 
 
     def __getitem__(self, index):
@@ -516,7 +546,7 @@ class Container(Base):
         """
         Returns number of items in the dict.
         """
-        return len(self._vars())
+        return len(list(self._vars()))
 
 
     def _hash(self, values=True):
@@ -524,34 +554,46 @@ class Container(Base):
         Returns a hash of the config item.
         """
         hash = hashlib.md5(super(Container, self)._hash(values))
-        for var in self._vars():
-            hash.update(var._hash(values))
+        for name, var in self._vars():
+            hash.update(repr(name) + var._hash(values))
         return hash.hexdigest()
 
 
-    def _cfg_string(self, prefix, print_desc=True):
+    def _stringify(self, print_desc=True):
         """
         Convert object into a string to write into a config file.
         """
         ret = []
+        fqn = self._get_fqname()
         if print_desc:
-            sections = [ x.capitalize() for x in prefix.rstrip('.').split('.') + [self._name] ]
-            breadcrumb = ' > '.join(filter(len, sections))
+            sections = [x.capitalize() for x in fqn.split('.')]
+            breadcrumb = ' > '.join(sections)
             ret.append('#\n# Begin %s: %s\n#' % (self.__class__.__name__, breadcrumb))
-
-        prefix = prefix + self._name
 
         if print_desc:
             # TODO: more detailed comments, show full spec of var and some examples.
-            ret.append('# | %s' % prefix)
+            ret.append('# | %s' % fqn)
             if self._desc:
                 desc = unicode_to_str(self._desc).replace('\n', '\n# | ')
                 ret.append('# |\n# | %s' % desc)
 
         var_strings = []
         space_vars = False
-        for var in self._vars():
-            cfgstr = var._cfg_string(prefix, False)
+        for name, var in self._vars():
+            cfgstr = var._stringify(False).lstrip('\n')
+
+            if isinstance(self, List):
+                # Replace explicit indexes with implicit indexing tokens.
+                # [+] means append, while [ ] references last element.
+                # FIXME: this logic belongs in the List class instead, but will
+                # require some refactoring first.
+                def replace(m):
+                    ret = fqn + ('[+]' if replace.first else '[ ]')
+                    replace.first = False
+                    return ret
+                replace.first = True
+                cfgstr = re.sub(re.compile('^%s\[\d+\]' % re.escape(fqn), re.M), replace, cfgstr)
+
             var_strings.append(cfgstr)
             if '\n' in cfgstr:
                 space_vars = True
@@ -600,7 +642,6 @@ class Container(Base):
                 raise
             newitem = self._schema.copy()
             newitem._parent = self
-            newitem._name = '[%s]' % unicode_to_str(key)
             if isinstance(newitem, Group):
                 for item in newitem._schema:
                     item._parent = newitem
@@ -623,7 +664,7 @@ class Dict(Container):
     # These methods are required by Container superclass
 
     def _vars(self):
-        return self._dict.values()
+        return self._dict.items()
 
     def _real_cfg_get(self, key):
         return self._dict[key]
@@ -644,12 +685,18 @@ class Dict(Container):
         return repr(self._dict)
 
     def __delitem__(self, key):
+        # Set to DELETED before actually deleting to notify any monitors.
+        self._dict[key]._cfg_set(DELETED)
         del self._dict[key]
 
     def _cfg_set(self, dict):
-        self._dict.clear()
-        for key, val in dict.items():
-            self[key] = val
+        if isinstance(dict, Dist):
+            dict = dict._dict
+
+        if self._dict is not dict:
+            self._dict.clear()
+            for key, val in dict.items():
+                self[key] = val
 
 
     def keys(self):
@@ -691,13 +738,16 @@ class List(Container):
     """
     def __init__(self, schema, desc=u'', name='', defaults=[]):
         self._list = []
+        if isinstance(defaults, dict):
+            # Take values from dictionary sorted by keys.
+            defaults = [defaults[key] for key in sorted(defaults.keys())]
         super(List, self).__init__(name, desc, schema, int, enumerate(defaults))
 
 
     # These methods are required by Container superclass
 
     def _vars(self):
-        return self._list
+        return enumerate(self._list)
 
     def _real_cfg_get(self, key):
         if self._list[key] is None:
@@ -710,14 +760,6 @@ class List(Container):
             self._list.append(var)
         else:
             self._list[key] = var
-        # Remove index name from item, .e.g. [3] -> []
-        var._name = '[]'
-
-    def _coerce_key(self, key):
-        # Special case: implicit indexing for lists.
-        if key == '':
-            return len(self._list)
-        return super(List, self)._coerce_key(key)
 
 
     # Methods needed to simulate lits behaviour
@@ -729,21 +771,40 @@ class List(Container):
         for var in self._list:
             yield var._value
 
+    def __iadd__(self, l):
+        self.extend(l)
+        return self
+
+    def __add__(self, l):
+        new = self.copy()
+        new.extend(l)
+        return new
+
+    def __eq__(self, l):
+        l = l._list if isinstance(l, List) else l
+        return self._list == l
+
+
     def __repr__(self):
         return repr(self._list)
 
     def __delitem__(self, idx):
+        # Set to DELETED before actually deleting to notify any monitors.
+        self._list[idx]._cfg_set(DELETED)
         del self._list[idx]
 
     def _cfg_set(self, l):
-        del self._list[:]
-        for n, val in enumerate(l):
-            self[n] = val
+        l = l._list if isinstance(l, List) else l
+        if self._list is not l:
+            del self._list[:]
+            for n, val in enumerate(l):
+                self[n] = val
 
     def append(self, val):
         self[len(self)] = val
 
     def extend(self, vals):
+        vals = vals._list if isinstance(vals, List) else vals
         for val in vals:
             self.append(val)
 
@@ -828,7 +889,7 @@ class Config(Group):
         main.signals['exit'].disconnect(self.save)
 
         hash_values = self._hash(values=True)
-        if self._loaded_hash_values == hash_values and not force:
+        if self._loaded_hash_values == hash_values and not force and filename == self._filename:
             # Nothing has changed, and forced save not required.
             return True
 
@@ -863,7 +924,7 @@ class Config(Group):
                     '# config settings, which were ignored.  Refer to the end of\n'
                     '# this file for the relevant lines.\n'
                     '# =========================================================\n')
-        f.write(self._cfg_string('') + '\n')
+        f.write(self._stringify() + '\n')
         if self._bad_lines:
             f.write('\n\n\n'
                     '# *************************************************************\n'
@@ -902,6 +963,38 @@ class Config(Group):
             filename = self._filename
         if not self._filename:
             self._filename = filename
+
+        # if list, path -> (lastidx, maxidx); if dict, path -> keys
+        container_indexes = {}
+        def get_container_index_by_path(obj, path, idx):
+            path = tuple(path)
+            if isinstance(obj, Dict):
+                # Container is a dictionary, so just remember key.
+                container_indexes.setdefault(path, set()).add(idx[1:-1])
+                return idx
+
+            # It's a list.
+            if path not in container_indexes:
+                container_indexes[path] = -1, -1
+            if idx == '[+]':
+                nextidx = container_indexes[path][1] + 1
+                container_indexes[path] = nextidx, nextidx
+            elif idx != '[ ]':
+                # FIXME: validate explicit idx
+                idx = int(idx[1:-1])
+                container_indexes[path] = idx, max(idx, container_indexes[path][1])
+            return '[%d]' % container_indexes[path][0]
+
+        def get_object_by_path(path):
+            obj = self
+            # Given a.b.c.d, fetch up to c, so obj=c
+            for idx, key in enumerate(path):
+                if key.startswith('['):
+                    key = keylist[idx] = get_container_index_by_path(obj, keylist[:idx], key)
+                    obj = obj[key[1:-1]]
+                else:
+                    obj = getattr(obj, key)
+            return obj
 
         line_regexp = re.compile('^([a-zA-Z0-9_-]+|\[.*?\]|\.)+ *= *(.*)')
         key_regexp = re.compile('(([a-zA-Z0-9_-]+)|(\[.*?\]))')
@@ -955,29 +1048,43 @@ class Config(Group):
                 key = line[:-len(value)].rstrip(' =')
             else:
                 key = line.rstrip(' =')
+
             try:
                 keylist = [x[0] for x in key_regexp.findall(key.strip()) if x[0]]
-                object = self
-                # Given a.b.c.d, fetch up to c, so object=c
-                while len(keylist) > 1:
-                    key = keylist.pop(0)
-                    if key.startswith('['):
-                        object = object[key[1:-1]]
+                # Given a.b.c.d, set obj to a.b.c
+                obj = get_object_by_path(keylist[:-1])
+                key, value = keylist[-1], value.strip()
+
+                if '<default: ' in value and value.endswith('>'):
+                    if value.startswith('<default: '):
+                        # Set the Var to the default value.  We do this explicitly
+                        # in case we are _re_loading a config and the var has
+                        # reverted to default.
+                        value = DEFAULT
                     else:
-                        object = getattr(object, key)
+                        # User has modified the value but not removed <default: ...>, e.g.:
+                        #   foo.bar = myvalue <default: 42>
+                        # It should be safe to strip the default stuff.
+                        value = value[:value.find('<default: ')].strip()
+
                 # Now assign the value to object.d
-                key, value = keylist.pop(0), value.strip()
-                if isinstance(object, (Dict, List)):
-                    # Key could be []; List object will take care of implicit indexing.
-                    object[key[1:-1]] = value
+                if isinstance(obj, Container):
+                    key = get_container_index_by_path(obj, keylist[:-1], key)
+                    obj[key[1:-1]] = value
                 else:
-                    setattr(object, key, value)
+                    setattr(obj, key, value)
             except Exception, e:
                 error = (str(e), line.encode(local_encoding))
                 if not error in self._bad_lines:
                     log.warning('%s: %s' % error)
                     self._bad_lines.append(error)
         f.close()
+
+        # TODO: now that we know which list indexes / dict keys have been
+        # assigned in the config file (via container_indexes), we need to walk
+        # the whole config tree and delete indexes/keys that weren't referenced
+        # in the file.
+
         self.autosave = autosave_orig
         self._watch_mtime = os.stat(filename)[stat.ST_MTIME]
         if sync and self._loaded_hash_schema != self._hash(values=False):
@@ -1107,15 +1214,26 @@ class Config(Group):
 
 def set_default(var, value):
     """
-    Set default value for the given config variable (proxy).
+    Set default value for the given scalar config variable.
     """
     if isinstance(var, VarProxy):
-        var._item._cfg_set(value, default = True)
+        var._item._cfg_set(value, default=True)
+    elif isinstance(var, Var):
+        var._cfg_set(value, default=True)
+    else:
+        raise ValueError('Supplied config variable is not type Var or VarProxy')
 
 
 def get_default(var):
+    """
+    Returns the default value for the given scalar config variable.
+    """
     if isinstance(var, VarProxy):
         return var._item._default
+    elif isinstance(var, Var):
+        return var._default
+    else:
+        raise ValueError('Supplied config variable is not type Var or VarProxy')
 
 
 def get_description(var):
@@ -1126,15 +1244,54 @@ def get_description(var):
         return var._desc
     elif isinstance(var, VarProxy):
         return var._item._desc
+    elif isinstance(var, Var):
+        return var._desc
+    else:
+        raise ValueError('Supplied config variable is not a config variable')
 
 
 def get_type(var):
     """
     Returns the type of the given config variable.
+
+    If the config variable is a scalar, non-enumerated type, then the return
+    value will be the corresponding python type (int, str, unicode, float, etc.)
+
+    If the variable is a scalar enumerated type, the return value will be a
+    tuple of possible values for that variable.
+
+    For non-scalar types, the return value will be one of :class:`~kaa.config.List`,
+    :class:`~kaa.config.Dict`, or :class:`~kaa.config.Group`.
     """
     if isinstance(var, VarProxy):
         return var._item._type
+    elif isinstance(var, Var):
+        return var._type
     return type(var)
+
+
+def get_schema(var):
+    """
+    Returns the schema for a non-scalar config variable (List, Dict, or Group), or
+    None for scalar variables.
+
+    The schema is another config object (:class:`~kaa.config.Var`,
+    :class:`~kaa.config.List`, :class:`~kaa.config.Dict`, or
+    :class:`~kaa.config.Group).
+
+        >>> kaa.config.get_description(cfg.movies)
+        u'Your favorite movies.'
+        >>> schema = kaa.config.get_schema(cfg.movies)
+        >>> kaa.config.get_description(schema)
+        u'A movie name.'
+        >>> kaa.config.get_type(schema)
+        <type 'str'>
+    """
+    try:
+        return var._schema
+    except AttributeError:
+        return
+
 
 
 def get_config(filename, module = None):

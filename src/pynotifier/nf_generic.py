@@ -247,7 +247,11 @@ def step( sleep = True, external = True, simulate = False ):
 						socket_remove( sock, condition )
 						continue
 
-					if not __sockets[ condition ][ sock ]( sock ):
+					# the timer handling might have removed a socket from the
+					# list and therefore sock is not in __sockets[ condition ]
+					# anymore.
+					callback = __sockets[ condition ].get(sock)
+					if callback is not None and not callback( sock ):
 						socket_remove( sock, condition )
 		
 		# handle external dispatchers

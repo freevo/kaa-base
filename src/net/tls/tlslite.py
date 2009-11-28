@@ -33,16 +33,16 @@
 from __future__ import absolute_import
 import logging
 import os
-import tlslite.api
-import tlslite.errors
+try:
+    import tlslite.api as tlsapi
+    from tlslite.errors import TLSAuthenticationError
+except ImportError:
+    import gdata.tlslite.api as tlsapi
+    from gdata.tlslite.errors import TLSAuthenticationError
 
 # kaa imports
 import kaa
 from .common import TLSError, TLSProtocolError, TLSVerificationError, TLSSocketBase
-
-#: Error to raise in the checker
-# FIXME: create suitable internal exception derived from TLSError
-TLSAuthenticationError = tlslite.errors.TLSAuthenticationError
 
 # get logging object
 log = logging.getLogger('tls')
@@ -54,18 +54,18 @@ class TLSKey(object):
     This class can be used with TLSSocket as key.
     """
     def __init__(self, filename, private, *certs):
-        self.private = tlslite.api.parsePEMKey(open(filename).read(), private=private)
-        self.certificate = tlslite.api.X509()
+        self.private = tlsapi.parsePEMKey(open(filename).read(), private=private)
+        self.certificate = tlsapi.X509()
         self.certificate.parse(open(filename).read())
         chain = []
         for cert in (filename, ) + certs:
-            x509 = tlslite.api.X509()
+            x509 = tlsapi.X509()
             x509.parse(open(cert).read())
             chain.append(x509)
-        self.certificate.chain = tlslite.api.X509CertChain(chain)
+        self.certificate.chain = tlsapi.X509CertChain(chain)
 
 
-class TLSLiteConnection(tlslite.api.TLSConnection):
+class TLSLiteConnection(tlsapi.TLSConnection):
     """
     This class wraps a socket and provides TLS handshaking and data transfer.
     It enhances the tlslite version of the class with the same name with
@@ -96,7 +96,7 @@ class TLSLiteConnection(tlslite.api.TLSConnection):
         """
         Perform a certificate-based handshake in the role of client.
         """
-        handshake = tlslite.api.TLSConnection.handshakeClientCert(
+        handshake = tlsapi.TLSConnection.handshakeClientCert(
             self, certChain=certChain, privateKey=privateKey, session=session,
             settings=settings, checker=checker, async=True)
         return self._iterate_handshake(handshake)
@@ -106,7 +106,7 @@ class TLSLiteConnection(tlslite.api.TLSConnection):
         """
         Perform a SRP-based handshake in the role of client.
         """
-        handshake = tlslite.api.TLSConnection.handshakeClientSRP(
+        handshake = tlsapi.TLSConnection.handshakeClientSRP(
             self, username=username, password=password, session=session,
             settings=settings, checker=checker, async=True)
         return self._iterate_handshake(handshake)
@@ -117,7 +117,7 @@ class TLSLiteConnection(tlslite.api.TLSConnection):
         """
         Start a server handshake operation on the TLS connection.
         """
-        handshake = tlslite.api.TLSConnection.handshakeServerAsync(
+        handshake = tlsapi.TLSConnection.handshakeServerAsync(
             self, sharedKeyDB, verifierDB, certChain, privateKey, reqCert,
             sessionCache, settings, checker)
         return self._iterate_handshake(handshake)
@@ -139,7 +139,7 @@ class TLSLiteConnection(tlslite.api.TLSConnection):
             # force socket close or this will block
             # on kaa shutdown.
             self.sock.close()
-        return tlslite.api.TLSConnection.close(self)
+        return tlsapi.TLSConnection.close(self)
 
 
 
@@ -239,7 +239,7 @@ class TLSLiteSocket(TLSSocketBase):
             raise TLSError('Socket not connected')
 
         if session is None:
-            session = tlslite.api.Session()
+            session = tlsapi.Session()
 
         # create TLS connection object and unregister the read monitor
         tlscon = TLSLiteConnection(self._channel)

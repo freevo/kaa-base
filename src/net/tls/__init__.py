@@ -41,9 +41,16 @@ try:
 except ImportError:
     TLSLiteSocket = None
 
-# FIXME: for now, keep TLSLiteSocket as general TLSSocket object
-TLSSocket = TLSLiteSocket or M2TLSSocket
+try:
+    from gnutls import GNUTLSSocket
+except ImportError:
+    GNUTLSSocket = None
+
+# FIXME: for now, keep TLSLiteSocket as general TLSSocket object. This
+# must change since tlslite is not maintained anymore. IMHO the best
+# solution would be to use gnutls but the python-gnutls bindings have
+# no SRP support.
+TLSSocket = TLSLiteSocket or M2TLSSocket or GNUTLSSocket
 
 if TLSLiteSocket == M2TLSSocket == None:
-    raise ImportError('No suitable TLS backend found: tried tlslite and M2Crypto')
-
+    raise ImportError('No suitable TLS backend found: tried tlslite, M2Crypto and gnutls')

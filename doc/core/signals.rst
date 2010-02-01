@@ -18,7 +18,7 @@ passed during invocation combined with all arguments passed to the constructor.
 
 One very common use-case of Callable objects is any time a callback function is
 required, such as with signals (described later).  They can be used to construct
-partial functions; the following example demonstrates currying::
+partial functions::
 
     >>> square = kaa.Callable(pow, 2)
     >>> print square(5)

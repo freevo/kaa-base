@@ -78,7 +78,7 @@ def select_notifier(module, **options):
     :param module: the mainloop implementation to use.
                    ``"generic"``: Python based mainloop, default;
                    ``"gtk"``: pygtk mainloop;
-                   ``"threaded"``: Python based mainloop in an extra thread;
+                   ``"thread"``: Python based mainloop in an extra thread;
                    ``"twisted"``: Twisted mainloop
     :type module: str
     :param options: module-specific keyword arguments

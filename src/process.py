@@ -28,6 +28,7 @@ __all__ = [ 'Process', 'supervisor' ]
 
 import subprocess
 import os
+import sys
 import shlex
 import errno
 import logging
@@ -62,7 +63,6 @@ class _Supervisor(object):
     def __init__(self):
         self.processes = {}
 
-        signal.signal(signal.SIGCHLD, self._sigchld_handler)
         # Set SA_RESTART bit for the signal, which restarts any interrupted
         # system calls -- however, select (at least on Linux) is NOT restarted
         # for reasons described at:
@@ -70,17 +70,21 @@ class _Supervisor(object):
         #
         # Therefore the purpose of signal.set_wakeup_fd() eludes me, since
         # select calls get interrupted, there is no need to wake it up.
-        try:
-            # Python 2.6+
+        if sys.hexversion >= 0x02060000:
+            # Python 2.6+ has signal.siginterrupt()
             signal.siginterrupt(signal.SIGCHLD, False)
-        except AttributeError:
-            try:
-                # Python 2.5
-                import ctypes
-                ctypes.CDLL("libc.so.6").siginterrupt(signal.SIGCHLD, 0)
-            except (ImportError, OSError):
-                # Python 2.4- is not supported.
-                raise SystemError('kaa.base requires Python 2.5 or later')
+            signal.signal(signal.SIGCHLD, self._sigchld_handler)
+        elif sys.hexversion >= 0x02050000:
+            # Python 2.5
+            import ctypes, ctypes.util
+            libc = ctypes.util.find_library('c')
+            # ctypes.util.find_library() involves a child process, so the
+            # handler should be set after the call.  See Debian bug #575293
+            signal.signal(signal.SIGCHLD, self._sigchld_handler)
+            ctypes.CDLL(libc).siginterrupt(signal.SIGCHLD, 0)
+        else:
+            # Python 2.4- is not supported.
+            raise SystemError('kaa.base requires Python 2.5 or later')
         
 
     def register(self, process):

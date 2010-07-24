@@ -560,7 +560,7 @@ class Socket(IOChannel):
         addr specifies the 4-tuple address corresponding to the socket.
         """
         super(Socket, self).wrap(sock, mode)
-        if self._buffer_size:
+        if sock and self._buffer_size:
             self._set_buffer_size(sock, self._buffer_size)
 
 

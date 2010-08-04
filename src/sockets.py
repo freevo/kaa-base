@@ -413,30 +413,66 @@ class Socket(IOChannel):
         return sock, addr
 
 
-    def listen(self, bind_info, qlen=5):
+    def _resolve_hostname_with_action(self, addr, func, ipv6):
         """
-        Sets the socket to listen.
+        Resolve a host and perform some action on it (e.g. bind or connect).
 
-        :param bind_info: Binds the socket using this value.  If an int, this
-                          specifies a TCP port that is bound on all interfaces; if a
-                          str, it is either a Unix socket path or represents a TCP
-                          socket when in the form ``[host]:[service][%scope]``.  
-                          See below for further details.
-        :type bind_info: int, str, or 2- or 4-tuple
-        :raises: ValueError if *bind_info* is invalid, or socket.error if the bind fails.
+        :param addr: a 4-tuple containing the address spec.  The first
+                     element will be a hostname or IP.
+        :param func: a callback to invoke on the resolved address tuple
+        :param ipv6: if True, will also consider IPv6 addresses.
+        """
+        # At least on Linux, returned list is ordered to prefer IPv6 addresses
+        # provided that a route is available to them.  We try all addresses
+        # until we get a connection, and if all addresses fail, then we raise
+        # the _first_ exception.
+        err = None
+        addrs = socket.getaddrinfo(addr[0], addr[1], socket.AF_INET6 if ipv6 else socket.AF_INET,
+                                   socket.SOCK_STREAM, 0, socket.AI_V4MAPPED | socket.AI_ALL)
+        for addrinfo in (a[4] for a in addrs):
+            addrinfo = (self._to_ipv6(addrinfo[0]),) + addrinfo[1:]
+            try:
+                func(addrinfo)
+                break
+            except socket.error, e:
+                err = sys.exc_info() if not err else err
+        else:
+            raise err[0], err[1], err[2]
 
-        If *addr* is given as a 4-tuple, it is in the form ``(ip, service,
+
+    def listen(self, addr, backlog=5, ipv6=True):
+        """
+        Set the socket to accept incoming connections.
+
+        :param addr: Binds the socket to this address.  If an int, this
+                     specifies a TCP port that is bound on all interfaces; if a
+                     str, it is either a Unix socket path or represents a TCP
+                     socket when in the form ``[host]:[service][%scope]``.  
+                     See below for further details.
+        :type addr: int, str, or 2- or 4-tuple
+        :param backlog: the maximum length to which the queue of pending
+                        connections for the socket may grow.
+        :type backlog: int
+        :param ipv6: if True, will prefer binding to IPv6 addresses if addr is
+                     a hostname that contains both AAAA and A records.  If addr
+                     is specified as an IP address, this argument does nothing.
+        :type ipv6: bool
+        :raises: ValueError if *addr* is invalid, or socket.error if the bind fails.
+
+        If *addr* is given as a 4-tuple, it is in the form ``(host, service,
         flowinfo, scope)``.  If passed as a 2-tuple, it is in the form
-        ``(ip, service)``, and in this case, it is assumed that *flowinfo* and
+        ``(host, service)``, and in this case, it is assumed that *flowinfo* and
         *scope* are both 0.  See :meth:`~kaa.Socket.connect` for more
         information.
 
-        If *addr* is given as a string, it is treated as a Unix socket path if it
-        does not contain ``:``, otherwise it is specified as ``[ip]:[service][%scope]``,
+        If *host* is given as a string, it is treated as a Unix socket path if it
+        does not contain ``:``, otherwise it is specified as ``[host]:[service][%scope]``,
         where ``[x]`` indicates that ``x`` is optional, and where:
 
-            * *ip* is an IPv4 dotted quad or an IPv6 address
-              wrapped in square brackets.  e.g. 192.168.0.1, [3000::1]
+            * *host* is a hostname, an IPv4 dotted quad, or an IPv6 address
+              wrapped in square brackets.  e.g. localhost, 192.168.0.1,
+              [3000::1].  If host is not specified, the socket will listen on
+              all interfaces.
             * *service* is a service name or port number.  e.g. http, 80
             * *scope* is an interface name or number.  e.g. eth0, 2
 
@@ -444,28 +480,35 @@ class Socket(IOChannel):
         specified.  Relative Unix socket names (those not prefixed with
         ``/``) are created via kaa.tempfile.
 
+        .. warning::
+
+           If the bind address supplied is a hostname rather than an IPv4 or
+           IPv6 address, this function will block in order to resolve the
+           hostname if the name is not specified in /etc/hosts.  (In other words,
+           ``localhost`` is probably safe.)
+
         Once listening, new connections are automatically accepted, and the
         :attr:`~kaa.Socket.signals.new-client` signal is emitted for each new
         connection.  Callbacks connecting to the signal will receive a new
         Socket object representing the client connection.
         """
-        if isinstance(bind_info, int):
+        if isinstance(addr, int):
             # Only port number specified; translate to tuple that can be
             # used with socket.bind()
-            bind_info = ('', bind_info, 0, 0)
+            addr = ('', addr, 0, 0)
 
-        sock, addr = self._make_socket(bind_info, overwrite=True)
-        if sock.family == socket.AF_INET6:
-            # Ensure given IP is in IPv6 form as our socket
-            addr = (self._to_ipv6(addr[0]),) + addr[1:]
-
+        sock, addr = self._make_socket(addr, overwrite=True)
         # If link-local address is specified, make sure the scopeid is given.
         if addr[0].lower().startswith('fe80::'):
             if not addr[3]:
                 raise ValueError('Binding to a link-local address requires scopeid')
 
-        sock.bind(addr)
-        sock.listen(qlen)
+        if not addr[0] or sock.family == socket.AF_UNIX:
+            # Bind to all interfaces or unix socket.
+            sock.bind(addr)
+        else:
+            self._resolve_hostname_with_action(addr, sock.bind, ipv6)
+        sock.listen(backlog)
         self._listening = True
         self.wrap(sock, IO_READ | IO_WRITE)
 
@@ -480,23 +523,7 @@ class Socket(IOChannel):
                 self._reqhost = addr
             else:
                 self._reqhost = addr[0]
-                # Resolve host (or ip) into IPs.  At least on Linux, returned
-                # list is ordered to prefer IPv6 addresses provided that a
-                # route is available to them.  We try all addresses until we
-                # get a connection, and if all addresses fail, then we raise
-                # the _first_ exception.
-                err = None
-                addrs = socket.getaddrinfo(addr[0], addr[1], socket.AF_INET6 if ipv6 else socket.AF_INET,
-                                           socket.SOCK_STREAM, 0, socket.AI_V4MAPPED | socket.AI_ALL)
-                for addrinfo in (a[4] for a in addrs):
-                    addrinfo = (self._to_ipv6(addrinfo[0]),) + addrinfo[1:]
-                    try:
-                        sock.connect(addrinfo)
-                        break
-                    except socket.error, e:
-                        err = sys.exc_info() if not err else err
-                else:
-                    raise err[0], err[1], err[2]
+                self._resolve_hostname_with_action(addr, sock.connect, ipv6)
         finally:
             self._connecting = False
 

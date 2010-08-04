@@ -234,6 +234,7 @@ class IOChannel(Object):
         # the same-named public signals as they get emitted even when data is
         # None.  When these signals get updated, we call _update_read_monitor
         # to register the read IOMonitor.
+        # FIXME: should do the same for closed as well, for write-only sockets.
         cb = WeakCallable(self._update_read_monitor)
         self._read_signal = Signal(cb)
         self._readline_signal = Signal(cb)

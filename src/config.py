@@ -172,9 +172,9 @@ class Base(object):
 
 class VarProxy(Base):
     """
-    Wraps a config variable value, inheriting the actual type of that
-    value (int, str, unicode, etc.) and offers add_monitor and remove_monitor
-    methods to manage the monitor list of the original Var object.
+    Wraps a config scalar, inheriting the actual type of that value (int, str,
+    unicode, etc.) and proxies most attributes (e.g. add_monitor and
+    remove_monitor) to the underlying scalar.
     """
     def __new__(cls, item):
         clstype = realclass = type(item._value)
@@ -197,6 +197,7 @@ class VarProxy(Base):
         # Merge Base dictionary (for better introspection)
         self.__dict__.update(Base.__dict__)
         self._class = realclass
+        self._item = item
         return self
 
 
@@ -205,17 +206,16 @@ class VarProxy(Base):
             # Called inside __new__ when we pass the intrinsic value for this
             # config variable
             super(VarProxy, self).__init__(default = value)
-        else:
-            # Called implicitly after returning from __new__, here value will
-            # be a kaa.config.Var
-            self._monitors = value._monitors
-            self._parent = value._parent
-            self._item = value
 
 
     def __getattribute__(self, attr):
-        if attr == "__class__":
+        if attr == '__class__':
+            # Pretend to be the scalar type.
             return super(VarProxy, self).__getattribute__("_class")
+        elif attr in ('add_monitor', 'remove_monitor', 'parent'):
+            # Attributes we proxy.
+            return getattr(super(VarProxy, self).__getattribute__('_item'), attr)
+        # Don't proxy anything else.
         return super(VarProxy, self).__getattribute__(attr)
 
     def __str__(self):
@@ -934,8 +934,9 @@ class Config(Group):
                 '# (including removing or rearranging lines, or adding custom\n'
                 '# comments) will be lost.\n'
                 '#\n'
-                '# The available settings are commented out with their default\n'
-                '# values.\n'
+                '# The available settings are shown with their default values.\n'
+                '# To override a default, replace <default: foo> with your own\n'
+                '# value.\n'
                 '# *************************************************************\n')
         if self._bad_lines:
             f.write('\n# =========================================================\n'

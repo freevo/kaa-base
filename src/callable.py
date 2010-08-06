@@ -232,12 +232,6 @@ class Callable(object):
         return '<%s for %s>' % (self.__class__.__name__, self._func)
 
 
-    def __deepcopy__(self, memo):
-        """
-        Disable deepcopying because deepcopy can't deal with callables.
-        """
-        return None
-
     def __eq__(self, func):
         """
         Compares the given function with the function we're wrapping.

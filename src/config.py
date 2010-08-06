@@ -118,9 +118,18 @@ class Base(object):
         return hashlib.md5(repr(self._desc) + repr(self._default) + value).hexdigest()
 
 
+    def __getstate__(self):
+        """
+        Called during deepcopy.  Ensure we don't copy monitors.
+        """
+        state = self.__dict__.copy()
+        state['_monitors'] = []
+        return state
+
+
     def copy(self):
         """
-        Return a deep copy of the object.
+        Return a deep copy of the object.  Monitor callbacks are not copied.
         """
         return copy.deepcopy(self)
 
@@ -139,11 +148,6 @@ class Base(object):
         name = self._get_fqname() or None
         while o:
             for monitor in o._monitors:
-                if not callable(monitor):
-                    # Happens when deepcopying, callables don't get copied,
-                    # they become None.  So remove them now.
-                    o._monitors.remove(monitor)
-                    continue
                 monitor(name, oldval, newval)
             o = o._parent
 
@@ -847,6 +851,20 @@ class Config(Group):
         self._watch_timer = WeakTimer(self._check_file_changed)
         self._inotify = None
 
+    def __repr__(self):
+        # This is a bit of a hack: if we're being deepcopied (via copy()),
+        # we recreate the _autosave_timer and _watch_timer timers.  Callable
+        # calls str() on the passed callable, which implicitly calls str() on
+        # the instance if you pass a method.  Group objects implement __repr__
+        # which calls repr() recursively on all its config values.  With
+        # deepcopy, it happens that some of our children have not yet had their
+        # state restored, so repr() fails (because e.g.  _list or _dict
+        # attributes don't exist yet).  So, if _autosave_timer isn't set, it
+        # means we are in the midst of restoring state from a deepcopy, and in
+        # that case, use the standard object __repr__.
+        if not hasattr(self, '_autosave_timer'):
+            return super(Base, self).__repr__()
+        return super(Config, self).__repr__()
 
     def _hash(self, values=True):
         """
@@ -855,17 +873,19 @@ class Config(Group):
         return hashlib.md5(super(Config, self)._hash(values) + repr(self._bad_lines)).hexdigest()
 
 
-    def copy(self):
-        """
-        Make a deepcopy of the config.  Reset the filename so we don't clobber
-        the original config object's config file, and recreate the timers for
-        the new object.
-        """
-        copy = Group.copy(self)
-        copy._filename = None
-        copy._watch_timer = WeakTimer(copy._check_file_changed)
-        copy._autosave_timer = WeakOneShotTimer(copy.save)
-        return copy
+    def __getstate__(self):
+        state = super(Config, self).__getstate__()
+        # Reset filename so we don't clobber the original config object's file.
+        state['_filename'] = state['_inotify'] = None
+        del state['_watch_timer'], state['_autosave_timer']
+        return state
+
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        # Recreate timers for new object.  See __repr__ hack above.
+        self._watch_timer = WeakTimer(self._check_file_changed)
+        self._autosave_timer = WeakOneShotTimer(self.save)
 
 
     def save(self, filename=None, force=False):

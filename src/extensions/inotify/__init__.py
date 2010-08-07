@@ -268,14 +268,18 @@ class INotify(kaa.Object):
             if self._move_state:
                 # Last event was a MOVED_FROM. So if this is a MOVED_TO and the
                 # cookie matches, emit once specifying both paths. If not,
-                # emit two signals.
+                # we will end up emitting two separate MOVED_FROM and MOVED_TO
+                # events.
                 if mask & INotify.MOVED_TO and cookie == self._move_state[2]:
                     # Great, they match. Fire a MOVE signal with both paths.
-                    # Use the all three signals (global, from, to).
                     mask |= INotify.MOVED_FROM
                     prev_wd, dummy, dummy, prev_path = self._move_state
-                    self._watches[prev_wd][0].emit(mask, prev_path, path)
                     self._watches[wd][0].emit(mask, prev_path, path)
+                    if prev_wd != wd:
+                        # The src and target watch descriptors are different.
+                        # Not entirely sure if this can happen, but if it can,
+                        # we should emit on both signal.s
+                        self._watches[prev_wd][0].emit(mask, prev_path, path)
                     self.signals["event"].emit(mask, prev_path, path)
                     self._move_state = None
                     self._moved_timer.stop()

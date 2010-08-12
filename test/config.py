@@ -118,7 +118,7 @@ print 'y', config.subgroup.y
 # This crashes because 8 is not in range
 try:
     config.subgroup.y = 8
-except AttributeError, e:
+except TypeError, e:
     print e
 print 'y', config.subgroup.y
 config.subgroup.y = 2

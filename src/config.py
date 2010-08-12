@@ -32,7 +32,6 @@ __all__ = [ 'Var', 'Group', 'Dict', 'List', 'Config', 'set_default',
 # Python imports
 import os
 import re
-import copy
 import logging
 import stat
 import hashlib
@@ -103,8 +102,25 @@ class Base(object):
         self._name = name
         self._desc = _format(str_to_unicode(desc))
         self._default = default
-        self._value = default
         self._monitors = []
+        # Copy-on-write source
+        self._cow_source = None
+
+
+    @property
+    def _value(self):
+        """
+        Return the config object's actual value.
+
+        This must be implemented by subclasses, because subclasses will have different
+        ideas of what the proper value should be.  Subclasses must also handle the
+        copy-on-write case.
+        """
+        raise NotImplemented
+
+    @_value.setter
+    def _value(self, value):
+        raise NotImplemented
 
 
     def _hash(self, values=True):
@@ -118,20 +134,34 @@ class Base(object):
         return hashlib.md5(repr(self._desc) + repr(self._default) + value).hexdigest()
 
 
-    def __getstate__(self):
+    def copy(self, copy_on_write=False):
         """
-        Called during deepcopy.  Ensure we don't copy monitors.
-        """
-        state = self.__dict__.copy()
-        state['_monitors'] = []
-        return state
+        Returns a deep-copy of the object.  Monitor callbacks are not copied.
 
+        :param copy_on_write: if False, values are copied as well, so that if the
+                              original is modified, the copy will retain the old
+                              value.  If True, fetching values in the copy will
+                              fetch the original's current value, until and unless
+                              the copy's value has been modified.
+        :type copy_on_write: bool
+        :returns: a new cloned instance of the same type.
 
-    def copy(self):
+        Note that only values may be copy-on-write.  Any changes to the original's
+        schema (including type information and defaults) will not be reflected in
+        the copy.
         """
-        Return a deep copy of the object.  Monitor callbacks are not copied.
-        """
-        return copy.deepcopy(self)
+        copy = self.__class__.__new__(self.__class__)
+        for attr in ('_name', '_desc', '_default'):
+            setattr(copy, attr, getattr(self, attr))
+        if copy_on_write:
+            copy._cow_source = self._cow_source if self._cow_source is not None else self
+        else:
+            copy._cow_source = None
+        copy._monitors = []
+        # Copies must be explicitly reparented.
+        copy._parent = None
+        return copy
+
 
     def add_monitor(self, callback):
         # Wrap the function or method in a class that will ignore deep copies
@@ -177,7 +207,8 @@ class VarProxy(Base):
     remove_monitor) to the underlying scalar.
     """
     def __new__(cls, item):
-        clstype = realclass = type(item._value)
+        value = item._value
+        clstype = realclass = type(value)
         if clstype == bool:
             # You can't subclass a boolean, so use int instead.  In practice,
             # this isn't a problem, since __class__ will end up being bool,
@@ -189,8 +220,8 @@ class VarProxy(Base):
             "__str__": cls.__str__,
         })
 
-        if item._value:
-            self = newclass(item._value)
+        if value:
+            self = newclass(value)
         else:
             self = newclass()
 
@@ -227,7 +258,8 @@ class VarProxy(Base):
 
 class Var(Base):
     """
-    A config variable.
+    A config variable that represents some scalar value such as int, str,
+    unicode, or bool.
     """
     def __init__(self, name='', type='', desc=u'', default=None):
         super(Var, self).__init__(name, desc, default)
@@ -238,6 +270,27 @@ class Var(Base):
             type = default.__class__
 
         self._type = type
+        # The actual value as managed by the _value property.
+        self._real_value = default
+
+
+    @property
+    def _value(self):
+        return self._real_value if self._cow_source is None else self._cow_source._value
+
+    @_value.setter
+    def _value(self, value):
+        if self._cow_source is not None:
+            # We're being set to a value, so we are no longer copy-on-write.
+            self._cow_source = None
+        self._real_value = value
+
+
+    def copy(self, copy_on_write=False):
+        copy = super(Var, self).copy(copy_on_write)
+        copy._type = self._type
+        copy._real_value = self._real_value if copy._cow_source is None else None
+        return copy
 
 
     def _hash(self, values=True):
@@ -331,28 +384,43 @@ class Group(Base):
         super(Group, self).__init__(name, desc)
         self._dict = {}
         self._vars = []
-        self._schema = schema
         # 'default' will print all data
         # 'group' will only print the group description
         self._desc_type = desc_type
 
-        for data in schema:
-            if not data._name:
+        for child in schema:
+            if not child._name:
                 raise AttributeError('Variable within group "%s" is missing name.' % name)
-            if data._name in self.__class__.__dict__:
-                raise ValueError('Config name "%s" conflicts with internal method or property' % data._name)
-            self._dict[data._name] = data
-            self._vars.append(data._name)
+            if child._name in self.__class__.__dict__:
+                raise ValueError('Config name "%s" conflicts with internal method or property' % child._name)
+            self._dict[child._name] = child
+            self._vars.append(child._name)
+            # Reparent child (FIXME: cycle)
+            child._parent = self
 
-        # the value of a group is the group itself
-        # FIXME: cycle.
-        self._value = self
+    @property
+    def _value(self):
+        # For groups, the value is self (unless we're copy-on-write, then the
+        # value is the CoW source).
+        return self if self._cow_source is None else self._cow_source
 
-        # Parent all the items in the schema
-        # FIXME: cycle.
-        for item in schema:
-            item._parent = self
+    @_value.setter
+    def _value(self, value):
+        # _value should never be set for groups, but if it is, ensure it's sane.
+        assert(value == self)
 
+
+    def copy(self, copy_on_write=False):
+        copy = super(Group, self).copy(copy_on_write)
+        # Don't need to deep-copy vars since it's just a list of strings
+        copy._vars = self._vars[:]
+        # copy children and reparent
+        copy._dict = dict((name, child.copy(copy_on_write)) for (name, child) in self._dict.items())
+        for child in copy._dict.values():
+            child._parent = copy
+        copy._desc_type = self._desc_type
+        return copy
+        
 
     def _get_fqname(self, child=None):
         childname = [k for k,v in self._dict.items() if v is child][0] if child else ''
@@ -479,6 +547,7 @@ class Group(Base):
         return item
 
     def __repr__(self):
+        # FIXME: preserve order of _vars
         return repr(self._dict)
 
 
@@ -499,6 +568,13 @@ class Container(Base):
 
         _vars():
             iterator producing all Vars in container as (key/index, var)
+
+        _copy_children():
+            copies all child elements
+
+    Generally, subclasses will access the underlying container (e.g. list or dict)
+    via self._value, so that if we're copy-on-write, we access the CoW-source's
+    container (which is taken care of by the _value property).
     """
     def __init__(self, name, desc, schema, type, defaults):
         super(Container, self).__init__(name, desc)
@@ -507,14 +583,41 @@ class Container(Base):
             schema = Group(schema=schema, desc=desc, name=name)
         self._schema = schema
         self._type = type
-        self._value = self
-        schema._parent = self
 
         for key, value in defaults:
             # FIXME: how to handle complex dict defaults with a dict in
             # dict or group in dict?
             var = self._cfg_get(key)
             var._default = var._value = value
+
+        return self if self._cow_source is None else self._cow_source
+
+
+    @property
+    def _value(self):
+        # As with groups, value is self for containers.
+        return self if self._cow_source is None else self._cow_source
+
+    @_value.setter
+    def _value(self, value):
+        # _value should never be set for containers, but if it is, ensure it's sane.
+        assert(value == self)
+
+    def _copy_children(self, source=None):
+        """
+        Subclasses must implement this.  Does a deep copy of all children from
+        source (or _cow_source if source is None) and reparents them.
+        """
+        raise NotImplemented
+
+
+    def copy(self, copy_on_write=False):
+        copy = super(Container, self).copy(copy_on_write)
+        copy._schema = self._schema.copy()
+        copy._type = self._type
+        if not copy_on_write:
+            copy._copy_children(self)
+        return copy
 
 
     def _get_fqname(self, child=None):
@@ -643,14 +746,14 @@ class Container(Base):
         except (KeyError, IndexError):
             if not create:
                 raise
+            if self._cow_source is not None:
+                # We're about about to create a new item and we're copy-on-write,
+                # so copy all children now.
+                self._copy_children()
             newitem = self._schema.copy()
+            # Reparent the item itself; copy() will ensure any children of the item
+            # will already have the item as their parent.
             newitem._parent = self
-            if isinstance(newitem, Group):
-                for item in newitem._schema:
-                    item._parent = newitem
-            elif isinstance(newitem, Dict):
-                newitem._schema._parent = newitem
-
             self._cfg_set_item(key, newitem)
             return newitem
 
@@ -667,14 +770,20 @@ class Dict(Container):
     # These methods are required by Container superclass
 
     def _vars(self):
-        return self._dict.items()
+        return self._value._dict.items()
 
     def _real_cfg_get(self, key):
-        return self._dict[key]
+        return self._value._dict[key]
 
     def _cfg_set_item(self, key, var):
-        self._dict[key] = var
+        self._value._dict[key] = var
 
+    def _copy_children(self, source=None):
+        source = source if source is not None else self._cow_source
+        self._dict = dict((key, value.copy()) for (key, value) in source._dict.items())
+        for child in self._dict.values():
+            child._parent = self
+        self._value = self
 
     # Methods needed to simulate dict behaviour
 
@@ -685,14 +794,21 @@ class Dict(Container):
         return self.keys().__iter__()
 
     def __repr__(self):
-        return repr(self._dict)
+        return repr(self._value._dict)
 
     def __delitem__(self, key):
+        if self._cow_source is not None:
+            # About to change and we're copy-on-write
+            self._copy_children()
+
         # Set to DELETED before actually deleting to notify any monitors.
         self._dict[key]._cfg_set(DELETED)
         del self._dict[key]
 
     def _cfg_set(self, dict):
+        if self._cow_source is not None:
+            self._copy_children()
+
         if isinstance(dict, Dist):
             dict = dict._dict
 
@@ -706,21 +822,21 @@ class Dict(Container):
         """
         Return the keys (sorted by name)
         """
-        return sorted(self._dict.keys())
+        return sorted(self._value._dict.keys())
 
 
     def items(self):
         """
         Return key,value list (sorted by key name)
         """
-        return [ (key, self._dict[key]._value) for key in self.keys() ]
+        return [ (key, self._value._dict[key]._value) for key in self.keys() ]
 
 
     def values(self):
         """
         Return value list (sorted by key name)
         """
-        return [ self._dict[key]._value for key in self.keys() ]
+        return [ self._value._dict[key]._value for key in self.keys() ]
 
 
     def get(self, index, default=None):
@@ -750,28 +866,40 @@ class List(Container):
     # These methods are required by Container superclass
 
     def _vars(self):
-        return enumerate(self._list)
+        return enumerate(self._value._list)
 
     def _real_cfg_get(self, key):
-        if self._list[key] is None:
+        list = self._value._list
+        if list[key] is None:
             # Item exists but is None, so force creation of new Var object at this index
             raise IndexError
-        return self._list[key]
+        return list[key]
 
     def _cfg_set_item(self, key, var):
-        if key == len(self._list):
-            self._list.append(var)
+        list = self._value._list
+        old = list[:] if self._monitors else None
+        if key == len(list):
+            list.append(var)
         else:
-            self._list[key] = var
+            list[key] = var
+        self._notify_monitors(old, list)
 
 
-    # Methods needed to simulate lits behaviour
+    def _copy_children(self, source=None):
+        source = source if source is not None else self._cow_source
+        self._list = [item.copy() for item in source._list]
+        for child in self._list:
+            child._parent = self
+        self._value = self
+
+
+    # Methods needed to simulate list behaviour
 
     def __iter__(self):
         """
         Iterate through values.
         """
-        for var in self._list:
+        for var in self._value._list:
             yield var._value
 
     def __iadd__(self, l):
@@ -784,19 +912,23 @@ class List(Container):
         return new
 
     def __eq__(self, l):
-        l = l._list if isinstance(l, List) else l
-        return self._list == l
+        l = l._value._list if isinstance(l, List) else l
+        return self._value._list == l
 
 
     def __repr__(self):
-        return repr(self._list)
+        return repr(self._value._list)
 
     def __delitem__(self, idx):
+        if self._cow_source is not None:
+            self._copy_children()
         # Set to DELETED before actually deleting to notify any monitors.
         self._list[idx]._cfg_set(DELETED)
         del self._list[idx]
 
     def _cfg_set(self, l):
+        if self._cow_source is not None:
+            self._copy_children()
         l = l._list if isinstance(l, List) else l
         if self._list is not l:
             del self._list[:]
@@ -804,18 +936,26 @@ class List(Container):
                 self[n] = val
 
     def append(self, val):
+        if self._cow_source is not None:
+            self._copy_children()
         self[len(self)] = val
 
     def extend(self, vals):
+        if self._cow_source is not None:
+            self._copy_children()
         vals = vals._list if isinstance(vals, List) else vals
         for val in vals:
             self.append(val)
 
     def insert(self, idx, val):
+        if self._cow_source is not None:
+            self._copy_children()
         self._list.insert(idx, None)
         self[idx] = val
 
     def remove(self, val):
+        if self._cow_source is not None:
+            self._copy_children()
         for n, var in enumerate(self._list[:]):
             if var._value == val:
                 del self[n]
@@ -824,6 +964,8 @@ class List(Container):
             raise ValueError('list.remove(x): x not in list')
 
     def pop(self, idx):
+        if self._cow_source is not None:
+            self._copy_children()
         var = self._list.pop(idx)
         return var._value
 
@@ -834,7 +976,7 @@ class Config(Group):
     """
     def __init__(self, schema, desc=u'', name='', module = None):
         super(Config, self).__init__(schema, desc, name)
-        self._filename = None
+        self.filename = None
         self._bad_lines = []
         self._loaded_hash_values = None   # hash for schema + values
         self._loaded_hash_schema = None   # hash for schema only
@@ -851,20 +993,6 @@ class Config(Group):
         self._watch_timer = WeakTimer(self._check_file_changed)
         self._inotify = None
 
-    def __repr__(self):
-        # This is a bit of a hack: if we're being deepcopied (via copy()),
-        # we recreate the _autosave_timer and _watch_timer timers.  Callable
-        # calls str() on the passed callable, which implicitly calls str() on
-        # the instance if you pass a method.  Group objects implement __repr__
-        # which calls repr() recursively on all its config values.  With
-        # deepcopy, it happens that some of our children have not yet had their
-        # state restored, so repr() fails (because e.g.  _list or _dict
-        # attributes don't exist yet).  So, if _autosave_timer isn't set, it
-        # means we are in the midst of restoring state from a deepcopy, and in
-        # that case, use the standard object __repr__.
-        if not hasattr(self, '_autosave_timer'):
-            return super(Base, self).__repr__()
-        return super(Config, self).__repr__()
 
     def _hash(self, values=True):
         """
@@ -873,19 +1001,20 @@ class Config(Group):
         return hashlib.md5(super(Config, self)._hash(values) + repr(self._bad_lines)).hexdigest()
 
 
-    def __getstate__(self):
-        state = super(Config, self).__getstate__()
+    def copy(self, copy_on_write=False):
+        copy = super(Config, self).copy(copy_on_write)
+        for attr in ('_bad_lines', '_loaded_hash_values', '_loaded_hash_schema', '_module', '_autosave'):
+            setattr(copy, attr, getattr(self, attr))
+        copy._autosave = None
         # Reset filename so we don't clobber the original config object's file.
-        state['_filename'] = state['_inotify'] = None
-        del state['_watch_timer'], state['_autosave_timer']
-        return state
-
-
-    def __setstate__(self, state):
-        self.__dict__.update(state)
-        # Recreate timers for new object.  See __repr__ hack above.
-        self._watch_timer = WeakTimer(self._check_file_changed)
-        self._autosave_timer = WeakOneShotTimer(self.save)
+        copy.filename = None
+        # Initialize copy with no watching, because there is no filename.
+        copy._watching = False
+        copy._watching_mtime = 0
+        copy._inotify = None
+        copy._watch_timer = WeakTimer(copy._check_file_changed)
+        copy._autosave_timer = WeakOneShotTimer(copy.save)
+        return copy
 
 
     def save(self, filename=None, force=False):
@@ -900,15 +1029,15 @@ class Config(Group):
         :type force: bool
         """
         if not filename:
-            if not self._filename:
+            if not self.filename:
                 raise ValueError, "Filename not specified and no default filename set."
-            filename = self._filename
+            filename = self.filename
 
         # If this callback was added due to autosave, remove it now.
         main.signals['exit'].disconnect(self.save)
 
         hash_values = self._hash(values=True)
-        if self._loaded_hash_values == hash_values and not force and filename == self._filename:
+        if self._loaded_hash_values == hash_values and not force and filename == self.filename:
             # Nothing has changed, and forced save not required.
             return True
 
@@ -978,11 +1107,11 @@ class Config(Group):
         if filename:
             filename = os.path.expanduser(filename)
         if not filename:
-            if not self._filename:
+            if not self.filename:
                 raise ValueError("Filename not specified and no default filename set.")
-            filename = self._filename
-        if not self._filename:
-            self._filename = filename
+            filename = self.filename
+        if not self.filename:
+            self.filename = filename
 
         # if list, path -> (lastidx, maxidx); if dict, path -> keys
         container_indexes = {}
@@ -1118,18 +1247,6 @@ class Config(Group):
 
 
     @property
-    def filename(self):
-        """
-        The current config filename.
-        """
-        return self._filename
-
-    @filename.setter
-    def filename(self, filename):
-        self._filename = filename
-
-
-    @property
     def autosave(self):
         """
         Whether or not changes are automatically save.
@@ -1153,7 +1270,7 @@ class Config(Group):
 
 
     def _config_changed_cb(self, name, oldval, newval):
-        if self._filename:
+        if self.filename:
             if not self._autosave_timer.active:
                 main.signals['exit'].connect(self.save)
             # Start/restart the timer to save in 5 seconds.
@@ -1173,20 +1290,20 @@ class Config(Group):
             except SystemError:
                 pass
 
-        assert(self._filename)
+        assert(self.filename)
         if self._watch_mtime == 0:
             self.load()
 
         if not watch and self._watching:
             if self._inotify:
-                self._inotify.ignore(self._filename)
+                self._inotify.ignore(self.filename)
             self._watch_timer.stop()
             self._watching = False
 
         elif watch and not self._watching:
             if self._inotify:
                 try:
-                    signal = self._inotify.watch(self._filename)
+                    signal = self._inotify.watch(self.filename)
                     signal.connect_weak(self._file_changed)
                 except IOError:
                     # Adding watch failed, use timer to wait for file to appear.
@@ -1199,7 +1316,7 @@ class Config(Group):
 
     def _check_file_changed(self):
         try:
-            mtime = os.stat(self._filename)[stat.ST_MTIME]
+            mtime = os.stat(self.filename)[stat.ST_MTIME]
         except (OSError, IOError):
             # Config file not available.
             return
@@ -1211,10 +1328,10 @@ class Config(Group):
             self.watch()
 
         if mtime != self._watch_mtime:
-            return self._file_changed(INotify.MODIFY, self._filename)
+            return self._file_changed(INotify.MODIFY, self.filename, None)
 
 
-    def _file_changed(self, mask, path):
+    def _file_changed(self, mask, path, target):
         if mask & INotify.MODIFY:
             # Config file changed.  Attach a monitor so we can keep track of
             # any values that actually changed.
@@ -1222,7 +1339,7 @@ class Config(Group):
             cb = Callable(lambda *args: changed_names.append(args[0]))
             self.add_monitor(cb)
             self.load()
-            log.info('Config file %s modified; %d settings changed.' % (self._filename, len(changed_names)))
+            log.info('Config file %s modified; %d settings changed.' % (self.filename, len(changed_names)))
             log.debug('What changed: %s', ', '.join(changed_names) or 'nothing')
             self.remove_monitor(cb)
         elif mask & (INotify.IGNORED | INotify.MOVE_SELF):
@@ -1292,8 +1409,8 @@ def get_type(var):
 
 def get_schema(var):
     """
-    Returns the schema for a non-scalar config variable (List, Dict, or Group), or
-    None for scalar variables.
+    Returns the schema for a container variable (List or Dict), or None for
+    scalar variables.
 
     The schema is another config object (:class:`~kaa.config.Var`,
     :class:`~kaa.config.List`, :class:`~kaa.config.Dict`, or
@@ -1346,7 +1463,7 @@ def get_config(filename, module = None):
         raise ImportError, 'Could not import config module %s' % module
 
     config = getattr(module, attr)
-    if config._filename and os.path.realpath(config._filename) != os.path.realpath(filename):
+    if config.filename and os.path.realpath(config.filename) != os.path.realpath(filename):
         # Existing config object represents a different config file,
         # so must copy.
         config = config.copy()

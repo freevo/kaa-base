@@ -289,7 +289,9 @@ class Var(Base):
     def copy(self, copy_on_write=False):
         copy = super(Var, self).copy(copy_on_write)
         copy._type = self._type
-        copy._real_value = self._real_value if copy._cow_source is None else None
+        # Access self value through the property so we get the true value
+        # in case we are copy-on-write by our copy isn't.
+        copy._real_value = self._value if copy._cow_source is None else None
         return copy
 
 
@@ -783,7 +785,8 @@ class Dict(Container):
         self._dict = dict((key, value.copy()) for (key, value) in source._dict.items())
         for child in self._dict.values():
             child._parent = self
-        self._value = self
+        # We're not copy-on-write anymore
+        self._cow_source = None
 
     # Methods needed to simulate dict behaviour
 
@@ -890,7 +893,8 @@ class List(Container):
         self._list = [item.copy() for item in source._list]
         for child in self._list:
             child._parent = self
-        self._value = self
+        # We're not copy-on-write anymore
+        self._cow_source = None
 
 
     # Methods needed to simulate list behaviour

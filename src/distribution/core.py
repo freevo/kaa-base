@@ -42,7 +42,7 @@ from build_py import build_py
 from svn2log import svn2log
 
 __all__ = ['compile', 'check_library', 'get_library', 'setup', 'ConfigFile',
-           'Extension', 'Library']
+           'Extension', 'Library', 'get_build_directory' ]
 
 _libraries = {}
 

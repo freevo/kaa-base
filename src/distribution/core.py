@@ -443,6 +443,9 @@ class Doc(distutils.cmd.Command):
                       'sys.path.remove("%s")\n'
                       # Now handoff to sphinx-build, which we require to be in $PATH
                       'import kaa.utils\n'
+                      'if not kaa.utils.which("sphinx-build"):\n'
+                      '    print "Error: sphinx not installed"\n'
+                      '    sys.exit(1)\n'
                       'execfile(kaa.utils.which("sphinx-build"))\n' %\
                       (path, name, os.path.dirname(srcname)))
             src.close()

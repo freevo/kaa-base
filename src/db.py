@@ -125,7 +125,7 @@ STOP_WORDS = (
 )
 
 
-PATH_SPLIT = re.compile("[\W_\d]+", re.U | re.X)
+PATH_SPLIT = re.compile("(\d+)|[_\W]", re.U | re.X)
 def split_path(s):
     """
     Convenience split function for inverted index attributes.  Useful for
@@ -136,8 +136,10 @@ def split_path(s):
     """
     dirname, filename = os.path.split(s)
     fname_noext, ext = os.path.splitext(filename)
-    levels = dirname.strip('/').split(os.path.sep)[2:][-2:]
-    return PATH_SPLIT.split(' '.join(levels + [fname_noext]))
+    for part in dirname.strip('/').split(os.path.sep)[2:][-2:] + [fname_noext]:
+        for match in PATH_SPLIT.split(part):
+            if match:
+                yield match
 
 
 def _list_to_printable(value):
@@ -653,7 +655,7 @@ class Database:
         if split is None:
             # Default split regexp is to split words on
             # alphanumeric/digits/underscore boundaries.
-            split = re.compile("[\W_\d]+", re.U)
+            split = re.compile("(\d+)|[_\W]", re.U)
         elif isinstance(split, basestring):
             split = re.compile(split, re.U)
 
@@ -1436,7 +1438,7 @@ class Database:
                 parsed = terms
             else:
                 if callable(split):
-                    parsed = split(terms)
+                    parsed = list(split(terms))
                 else:
                     parsed = split.split(terms)
 
@@ -1577,7 +1579,7 @@ class Database:
         if not isinstance(terms, (list, tuple)):
             split = self._inverted_indexes[ivtidx]['split']
             if callable(split):
-                terms = split(str_to_unicode(terms).lower())
+                terms = list(split(str_to_unicode(terms).lower()))
             else:
                 terms = split.split(str_to_unicode(terms).lower())
         else:

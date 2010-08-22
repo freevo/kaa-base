@@ -1579,9 +1579,9 @@ class Database:
         if not isinstance(terms, (list, tuple)):
             split = self._inverted_indexes[ivtidx]['split']
             if callable(split):
-                terms = list(split(str_to_unicode(terms).lower()))
+                terms = [term for term in split(str_to_unicode(terms).lower()) if term]
             else:
-                terms = split.split(str_to_unicode(terms).lower())
+                terms = [term for term in split.split(str_to_unicode(terms).lower()) if term]
         else:
             terms = [ str_to_unicode(x).lower() for x in terms ]
 

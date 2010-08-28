@@ -27,9 +27,8 @@
 
 __all__ = [
     'tempfile', 'which', 'Lock', 'daemonize', 'is_running', 'set_running',
-    'set_process_name', 'get_num_cpus', 'get_plugins', 'Singleton', 
-    'property', 'wraps', 'DecoratorDataStore',
-]
+    'set_process_name', 'get_num_cpus', 'get_machine_uuid', 'get_plugins',
+    'Singleton', 'property', 'wraps', 'DecoratorDataStore', ]
 
 import sys
 import os
@@ -41,6 +40,8 @@ import logging
 import inspect
 import re
 import functools
+import ctypes, ctypes.util
+import socket
 from tempfile import mktemp
 
 import _utils
@@ -272,6 +273,35 @@ def get_num_cpus():
 
     raise RuntimeError('Could not determine number of processors')
 
+
+def get_machine_uuid():
+    """
+    Returns a unique (and hopefully persistent) identifier for the current
+    machine.
+
+    This function will return the D-Bus UUID if it exists (which should be
+    available on modern Linuxes), otherwise it will return the machine's
+    hostname.
+    """
+    # First try libdbus.
+    try:
+        lib = ctypes.CDLL(ctypes.util.find_library('dbus-1'))
+        ptr = lib.dbus_get_local_machine_id()
+        uuid = ctypes.c_char_p(ptr).value
+        lib.dbus_free(ptr)
+        return uuid
+    except AttributeError:
+        pass
+
+    # Next try to read from filesystem at well known locations.
+    for dir in '/var/lib/dbus', '/etc/dbus-1':
+        try:
+            return file(os.path.join(dir, 'machine-id')).readline().strip()
+        except IOError:
+            pass
+
+    # No dbus, fallback to hostname.
+    return socket.getfqdn()
 
 
 def get_plugins(group=None, location=None, attr=None, filter=None):

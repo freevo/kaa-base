@@ -45,6 +45,16 @@ if path and os.path.exists(os.path.join(path, 'rpc.py')):
            'sub-modules you use.') % path
     sys.exit(1)
 
+# If kaa.base is already installed as an egg and we're now attempting to
+# install without --egg, we error out now, because this won't work (the
+# egg package will always get imported).
+if '.egg/' in path and 'install' in sys.argv and not '--egg' in sys.argv:
+    print ('ERROR: attempting to install a non-egg version of kaa.base, but\n'
+           'kaa.base is currently installed as an egg at:\n'
+           '   %s\n'
+           'Either remove the current egg version or install now with --egg' % path)
+    sys.exit(1)
+
 # We have some extensions but kaa.distribution might not be installed yet.  And
 # even if it is, we want to use the one in src/.
 sys.path.insert(0, 'src')

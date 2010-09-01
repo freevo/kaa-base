@@ -30,6 +30,7 @@ import os
 import sys
 import tempfile
 import time
+import platform
 import distutils.core
 import distutils.cmd
 import distutils.sysconfig
@@ -427,7 +428,7 @@ class Doc(distutils.cmd.Command):
             # real sphinx-build.
 
             # Create list of paths inside build/ for this python version.
-            ver = '%s.%s' % sys.version_info[:2]
+            ver = '%s-%s.%s' % ((platform.machine(),) + sys.version_info[:2])
             path = [os.path.abspath('build/' + lib) for lib in os.listdir('build') if ver in lib]
             # Module name, e.g. 'kaa_base'
             name = self.distribution.metadata.name.replace('-', '_')

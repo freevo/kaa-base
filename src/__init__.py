@@ -327,6 +327,11 @@ _lazy_import('main', ['signals'])
 # kaa.base import *" to pull everything from kaa.base into the kaa namespace.
 # These import hooks are the second piece of the puzzle, to handle for example
 # "import kaa.net.tls"
+#
+# XXX: it is not supported to have kaa.base installed as an egg but sub-modules
+# installed as non-eggs.  Also, if kaa.base is installed as both an egg and a
+# non-egg, the egg will always be loaded.  (Moral of the story, use only one or
+# the other, do not mix eggs and non-eggs.)
 
 class KaaLoader:
     """
@@ -366,10 +371,15 @@ class KaaFinder(__builtins__['object']):
     kaa both as a namespace for sub-modules and as a module (kaa.base).
     """
     def __init__(self):
-        # Discover kaa eggs
-        self.kaa_eggs = {}
         # zipimporter object to kaa.base when it is a zipped egg.
         self.zip = None
+        self.last_sys_path = None
+
+
+    def discover_kaa_eggs(self):
+        if sys.path == self.last_sys_path:
+            return
+        self.kaa_eggs = {}
         for mod in sys.path:
             name = os.path.basename(mod)
             if name.startswith('kaa_') and mod.endswith('.egg'):
@@ -377,10 +387,12 @@ class KaaFinder(__builtins__['object']):
                 # kaa.foo module name
                 submod_name = 'kaa.' + name[4:].split('-')[0]
                 self.kaa_eggs[submod_name] = mod
+        self.last_sys_path = sys.path
 
 
     def find_module(self, name, path):
         # Ignore anything not in the form kaa.foo, or if kaa.foo is an egg in sys.path.
+        self.discover_kaa_eggs()
         if not name.startswith('kaa.') or name.count('.') > 1 or name in self.kaa_eggs:
             return
 
@@ -410,6 +422,7 @@ class KaaFinder(__builtins__['object']):
         finally:
             imp.release_lock()
 
+        raise ImportError
 
 # Now install our custom hooks.  Remove any existing KaaFinder import hooks, which
 # could be caused by reload()ing.

@@ -242,6 +242,9 @@ class _LazyProxy(type):
     def __repr__(cls):
         return repr(cls.__get())
 
+    def __str__(cls):
+        return str(cls.__get())
+
     def __dir__(cls):
         # Python 2.6 only
         return dir(cls.__get())
@@ -314,6 +317,8 @@ _lazy_import('utils', ['tempfile'])
 _lazy_import('main')
 _lazy_import('main', ['signals'])
 
+# kaa.base version
+_lazy_import('version', ['VERSION'])
 
 # We treat 'kaa' as both a namespace, where it houses all kaa sub-modules
 # (e.g. import kaa.beacon), AND as a module, where it is essentially an alias

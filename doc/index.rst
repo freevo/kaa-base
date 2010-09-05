@@ -27,7 +27,7 @@ Where do I get kaa.base?
 ------------------------
 
 Source packages are `available on SourceForge
-<https://sourceforge.net/project/showfiles.php?group_id=46652&package_id=213183>`_.
+<http://sourceforge.net/projects/freevo/files/kaa-base/>`_.
 
 Your distribution might already have *kaa.base* included in its standard
 repositories::
@@ -52,8 +52,8 @@ The most recent in-development version can be obtained via subversion::
     svn co svn://svn.freevo.org/kaa/trunk/base kaa-base
 
 
-Framework Documentation
------------------------
+Library Documentation
+---------------------
 
 .. toctree::
    :maxdepth: 2

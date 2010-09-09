@@ -61,6 +61,7 @@ Library Documentation
    core/index
    async/index
    rpc
+   internal/index
 
 
 TODO: kaa.config, kaa.db, kaa.distribution, kaa.input,

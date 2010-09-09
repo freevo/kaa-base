@@ -25,6 +25,7 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 __all__ = [ 'IO_READ', 'IO_WRITE', 'IOMonitor', 'WeakIOMonitor', 'IOChannel' ]
 
@@ -37,14 +38,13 @@ import fcntl
 import cStringIO
 import re
 
-import nf_wrapper as notifier
-from callable import WeakCallable
-from signals import Signal
-from thread import MainThreadCallable, is_mainthread
-from async import InProgress, inprogress
-from utils import property
-from object import Object
-# Note: recursive imports are handled at the end of this module.
+from .utils import property
+from . import nf_wrapper as notifier
+from .callable import WeakCallable
+from .core import Object, Signal, CoreThreading
+from .thread import MainThreadCallable
+from .async import InProgress, inprogress
+from . import main
 
 # get logging object
 log = logging.getLogger('base.io')
@@ -81,7 +81,7 @@ class IOMonitor(notifier.NotifierCallback):
             if fd != self._id or condition != self._condition:
                 raise ValueError('Existing file descriptor already registered with this IOMonitor.')
             return
-        if not is_mainthread():
+        if not CoreThreading.is_mainthread():
             return MainThreadCallable(self.register)(fd, condition)
         notifier.socket_add(fd, self, condition-1)
         self._condition = condition
@@ -95,7 +95,7 @@ class IOMonitor(notifier.NotifierCallback):
         """
         if not self.active:
             return
-        if not is_mainthread():
+        if not CoreThreading.is_mainthread():
             return MainThreadCallable(self.unregister)()
         notifier.socket_remove(self._id, self._condition-1)
         super(IOMonitor, self).unregister()
@@ -948,12 +948,3 @@ class IOChannel(Object):
         clone(channel.signals['readline'], self.signals['readline'])
 
         return self
-        
-
-# XXX: Circular imports
-# io -> signals -> async -> main -> process -> io
-#   - signals: no deps
-#   - async: no deps
-#   - main: no deps
-#   - process: IOChannel, IO_WRITE, IO_READ
-import main

@@ -1,6 +1,6 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# nf_wrapper.py - Wrapper to notifier calls to delay the real import
+# nf_wrapper.py - wrap pynotifier in kaa-aware objects
 # -----------------------------------------------------------------------------
 # $Id$
 #
@@ -25,6 +25,7 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 # Python imports
 import logging
@@ -32,8 +33,8 @@ import sys
 import atexit
 
 # notifier import
-from callable import Callable, WeakCallable, CallableError
-from utils import property
+from .callable import Callable, WeakCallable, CallableError
+from .utils import property
 
 # get logging object
 log = logging.getLogger('base')
@@ -156,7 +157,7 @@ def init( module = None, force_internal=False, **options ):
             raise RuntimeError('pynotifier already initialized')
     except ImportError:
         # use our own copy of pynotifier
-        import pynotifier as notifier
+        from . import pynotifier as notifier
 
     # find a good main notifier implementation
     if not module:

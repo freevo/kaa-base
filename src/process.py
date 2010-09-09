@@ -23,6 +23,7 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 __all__ = [ 'Process', 'supervisor' ]
 
@@ -36,16 +37,15 @@ import weakref
 import signal
 import cStringIO
 
-from io import IOChannel, IO_WRITE, IO_READ
-from signals import Signals
-from timer import timed, Timer, OneShotTimer, POLICY_ONCE
-from thread import MainThreadCallable, is_mainthread, threaded, MAINTHREAD
-from async import InProgress, InProgressAny, InProgressAll, delay, inprogress
-from callable import Callable, WeakCallable, CallableError
-from coroutine import coroutine, POLICY_SINGLETON
-from utils import property
-from object import Object
-import main
+from .utils import property
+from .callable import Callable, WeakCallable, CallableError
+from .core import Object, Signals
+from .timer import delay, timed, Timer, OneShotTimer, POLICY_ONCE
+from .thread import MainThreadCallable, threaded, MAINTHREAD
+from .async import InProgress, InProgressAny, InProgressAll, inprogress
+from .coroutine import coroutine, POLICY_SINGLETON
+from .io import IOChannel, IO_WRITE, IO_READ
+from . import main
 
 # get logging object
 log = logging.getLogger('base.process')
@@ -930,7 +930,3 @@ class Process(Object):
         else:
             # Child exit and stdout/stderr closed.  We're finished.
             self._emit_finished()
-
-
-# Kludge: import here at the end to avoid cyclical imports.
-import main

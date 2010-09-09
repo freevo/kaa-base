@@ -28,12 +28,13 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 # Python imports
 import logging
 
 # baa.base imports
-from strutils import unicode_to_str
+from .strutils import unicode_to_str
 
 
 def create_logger(level = logging.WARNING):

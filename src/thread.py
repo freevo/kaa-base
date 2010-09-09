@@ -3,7 +3,6 @@
 # thread.py - Thread support for the Kaa Framework
 # -----------------------------------------------------------------------------
 # $Id$
-#
 # -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
 # Copyright 2005-2009 Dirk Meyer, Jason Tackaberry, et al.
@@ -28,168 +27,38 @@
 
 from __future__ import absolute_import
 
-__all__ = [ 'MainThreadCallable', 'ThreadCallable', 'is_mainthread',
-            'wakeup', 'set_as_mainthread', 'create_thread_notifier_pipe',
-            'threaded', 'MAINTHREAD', 'synchronized', 'ThreadInProgress',
-            'ThreadPool', 'register_thread_pool', 'get_thread_pool' ]
+__all__ = [
+    'MainThreadCallable', 'ThreadCallable', 'threaded', 'MAINTHREAD',
+    'synchronized', 'ThreadInProgress', 'ThreadPool', 'register_thread_pool',
+    'get_thread_pool'
+]
 
 # python imports
 import sys
-import os
 import threading
 import logging
-import fcntl
 import socket
 import errno
 import types
 import time
+import ctypes
 from thread import LockType
 
 # kaa imports
-from . import nf_wrapper as notifier
-from .async import InProgress, InProgressAborted, InProgressStatus
 from .callable import Callable
-from .object import Object
+from . import nf_wrapper as notifier
 from .utils import wraps, DecoratorDataStore, property
+from .core import CoreThreading, Object
+from .async import InProgress, InProgressAborted, InProgressStatus
 
 # get logging object
 log = logging.getLogger('base')
-
-# TODO: organize thread stuff into its own namespace
-
-_thread_notifier_mainthread = threading.currentThread()
-_thread_notifier_lock = threading.RLock()
-_thread_notifier_queue = []
-
-# For MainThread* callbacks. The pipe will be created when it is used the first
-# time. This solves a nasty bug when you fork() into a second kaa based
-# process without exec. If you have this pipe, communication will go wrong.
-# (kaa.utils.daemonize does not have this problem.)
-_thread_notifier_pipe = None
 
 # Thread pool name -> ThreadPool object
 _thread_pools = {}
 
 # For threaded decorator
 MAINTHREAD = object()
-
-
-def _thread_notifier_queue_callback(callback, args, kwargs, in_progress):
-    _thread_notifier_lock.acquire()
-    _thread_notifier_queue.append((callback, args, kwargs, in_progress))
-    if len(_thread_notifier_queue) == 1:
-        if _thread_notifier_pipe:
-            os.write(_thread_notifier_pipe[1], "1")
-    _thread_notifier_lock.release()
-
-
-def _thread_notifier_run_queue(fd):
-    try:
-        os.read(_thread_notifier_pipe[0], 1000)
-    except socket.error, (err, msg):
-        if err == errno.EAGAIN:
-            # Resource temporarily unavailable -- we are trying to read
-            # data on a socket when none is avilable.  This should not
-            # happen under normal circumstances, so log an error.
-            log.error("Thread notifier pipe woke but no data available.")
-    except OSError:
-        pass
-    _thread_notifier_lock.acquire()
-    try:
-        while _thread_notifier_queue:
-            callback, args, kwargs, in_progress = _thread_notifier_queue.pop(0)
-            try:
-                in_progress.finish(callback(*args, **kwargs))
-            except BaseException, e:
-                # All exceptions, including SystemExit and KeyboardInterrupt,
-                # are caught and thrown to the InProgress, because it may be
-                # waiting in another thread.  However SE and KI are reraised
-                # in here the main thread so they can be propagated back up
-                # the mainloop.
-                in_progress.throw(*sys.exc_info())
-                if isinstance(e, (KeyboardInterrupt, SystemExit)):
-                    raise
-    finally:
-        _thread_notifier_lock.release()
-    return True
-
-
-def is_mainthread():
-    """
-    Return True if the current thread is the main thread.
-
-    Note that the "main thread" is considered to be the thread in which the
-    kaa main loop is running.  This is usually, but not necessarily, what
-    Python considers to be the main thread.  (If you call :func:`kaa.main.run`
-    in the main Python thread, then they are equivalent.)
-    """
-    # If threading module is None, assume main thread.  (Silences pointless
-    # exceptions on shutdown.)
-    return (not threading) or threading.currentThread() == _thread_notifier_mainthread
-
-
-def wakeup():
-    """
-    Wakes up the mainloop.
-
-    The mainloop sleeps when there are no timers to process and no activity on
-    any registered :class:`~kaa.IOMonitor` objects.  This function can be used
-    by another thread to wake up the mainloop.  For example, when a
-    :class:`~kaa.MainThreadCallable` is invoked, it calls ``wakeup()``.
-    """
-    if _thread_notifier_pipe and len(_thread_notifier_queue) == 0:
-        os.write(_thread_notifier_pipe[1], "1")
-
-
-def create_thread_notifier_pipe(new=True, purge=False):
-    """
-    Creates a new pipe for the thread notifier.  If new is True, a new pipe
-    will always be created; if it is False, it will only be created if one
-    already exists.  If purge is True, any previously queued work will be
-    discarded.
-
-    This is an internal function, but we export it for kaa.utils.daemonize.
-    """
-    global _thread_notifier_pipe
-    log.info('create thread notifier pipe')
-
-    if not _thread_notifier_pipe and not new:
-        return
-    elif _thread_notifier_pipe:
-        # There is an existing pipe already, so stop monitoring it.
-        notifier.socket_remove(_thread_notifier_pipe[0])
-
-    if purge:
-        _thread_notifier_lock.acquire()
-        del _thread_notifier_queue[:]
-        _thread_notifier_lock.release()
-
-    _thread_notifier_pipe = os.pipe()
-    fcntl.fcntl(_thread_notifier_pipe[0], fcntl.F_SETFL, os.O_NONBLOCK)
-    fcntl.fcntl(_thread_notifier_pipe[1], fcntl.F_SETFL, os.O_NONBLOCK)
-    notifier.socket_add(_thread_notifier_pipe[0], _thread_notifier_run_queue)
-
-    if _thread_notifier_queue:
-        # A thread is already running and wanted to run something in the
-        # mainloop before the mainloop is started. In that case we need
-        # to wakeup the loop ASAP to handle the requests.
-        os.write(_thread_notifier_pipe[1], "1")
-
-
-def set_as_mainthread():
-    """
-    Set the current thread as mainthread. This function SHOULD NOT be called
-    from the outside, the loop function is setting the mainthread if needed.
-    """
-    global _thread_notifier_mainthread
-    _thread_notifier_mainthread = threading.currentThread()
-    if not _thread_notifier_pipe:
-        # Make sure we have a pipe between the mainloop and threads. Since
-        # loop() calls set_as_mainthread it is safe to assume the loop is
-        # connected correctly. If someone calls step() without loop() and
-        # without set_as_mainthread inter-thread communication does not work.
-        create_thread_notifier_pipe()
-
 
 def killall():
     """
@@ -244,7 +113,7 @@ class MainThreadCallable(Callable):
     def __call__(self, *args, **kwargs):
         in_progress = InProgress()
 
-        if is_mainthread():
+        if CoreThreading.is_mainthread():
             try:
                 result = super(MainThreadCallable, self).__call__(*args, **kwargs)
             except BaseException, e:
@@ -261,7 +130,7 @@ class MainThreadCallable(Callable):
 
             return in_progress
 
-        _thread_notifier_queue_callback(self, args, kwargs, in_progress)
+        CoreThreading.queue_callback(self, args, kwargs, in_progress)
 
         # Return an InProgress object which the caller can connect to
         # or wait on.
@@ -436,7 +305,6 @@ class ThreadCallableBase(Callable, Object):
                 return
 
             # This magic uses Python/C to raise an exception inside the thread.
-            import ctypes
             tids = [tid for tid, tobj in threading._active.items() if tobj == inprogress._thread]
             if not tids:
                 # Thread not found.  It must already have finished.
@@ -852,7 +720,7 @@ def threaded(pool=None, priority=0, async=True, progress=False, wait=False):
 
         @wraps(func, lshift=int(not not progress))
         def newfunc(*args, **kwargs):
-            if pool is MAINTHREAD and not async and is_mainthread():
+            if pool is MAINTHREAD and not async and CoreThreading.is_mainthread():
                 # Fast-path case: mainthread synchronous call from the mainthread
                 return func(*args, **kwargs)
 
@@ -871,22 +739,6 @@ def threaded(pool=None, priority=0, async=True, progress=False, wait=False):
         return newfunc
 
     return decorator
-
-
-# XXX: we import generator here because generator.py requires
-# threaded and MAINTHREAD from this module, so this is necessary
-# to avoid import loop.
-
-from .generator import generator
-
-@generator.register(threaded)
-def _generator_threaded(generator, func, args, kwargs):
-    """
-    kaa.generator support for kaa.threaded
-    """
-    for g in func(*args, **kwargs):
-        generator.send(g)
-
 
 
 class synchronized(object):

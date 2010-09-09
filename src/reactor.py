@@ -32,6 +32,7 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 __all__ = [ 'install' ]
 
@@ -44,8 +45,9 @@ if twisted.version.major < 8:
 from twisted.internet import _threadedselect as threadedselectreactor
 
 # kaa imports
-from thread import MainThreadCallable
-import main
+from .thread import MainThreadCallable
+from .core import CoreThreading
+from . import main
 
 class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
     """
@@ -65,7 +67,7 @@ class KaaReactor(threadedselectreactor.ThreadedSelectReactor):
         """
         Callback when Twisted wants to stop.
         """
-        if not main.is_mainthread():
+        if not CoreThreading.is_mainthread():
             return MainThreadCallable(self._twisted_stopped_callback)()
         self._twisted_stopped = True
         # shut down kaa mainloop in case the reactor was shut down and

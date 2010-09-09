@@ -62,6 +62,7 @@
 #
 
 """Simple mainloop that watches sockets and timers."""
+from __future__ import absolute_import
 
 # python core packages
 from select import select
@@ -72,8 +73,8 @@ import errno, os, sys
 import socket
 
 # internal packages
-import log
-import dispatch
+from . import log
+from . import dispatch
 
 IO_READ = 1
 IO_WRITE = 2

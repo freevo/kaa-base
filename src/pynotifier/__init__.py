@@ -23,12 +23,13 @@
 # 02110-1301 USA
 
 """Simple mainloop that watches sockets and timers."""
-
-from version import *
+from __future__ import absolute_import
 
 from select import select
 
-import log
+from . import log
+from .version import major_number, minor_number, revision_number, extension, VERSION
+
 
 socket_add = None
 socket_remove = None
@@ -61,16 +62,16 @@ def init( model = GENERIC, **kwargs ):
 	global IO_READ, IO_WRITE, IO_EXCEPT
 
 	if model == GENERIC:
-		import nf_generic as nf_impl
+		from . import nf_generic as nf_impl
 	elif model == QT:
-		import nf_qt as nf_impl
+		from . import nf_qt as nf_impl
 	elif model == GTK:
-		import nf_gtk as nf_impl
+		from . import nf_gtk as nf_impl
 	elif model == WX:
-		import nf_wx as nf_impl
+		from . import nf_wx as nf_impl
 		log.warn( 'the WX notifier is deprecated and is no longer maintained' )
 	elif model == TWISTED:
-		import nf_twisted as nf_impl
+		from . import nf_twisted as nf_impl
 		log.info("using nf_twisted")
 	else:
 		raise Exception( 'unknown notifier model' )

@@ -25,6 +25,7 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 __all__ = [ 'Event', 'EventHandler', 'WeakEventHandler' ]
 
@@ -33,10 +34,11 @@ import copy
 import logging
 
 # kaa.base imports
-from nf_wrapper import NotifierCallback, WeakNotifierCallback
-from thread import MainThreadCallable, is_mainthread
-from timer import OneShotTimer
-from utils import property
+from .nf_wrapper import NotifierCallback, WeakNotifierCallback
+from .core import CoreThreading
+from .thread import MainThreadCallable
+from .timer import OneShotTimer
+from .utils import property
 
 # get logging object
 log = logging.getLogger('base')
@@ -82,7 +84,7 @@ class Event(object):
         if args:
             event = copy.copy(self)
             event._set_args(args)
-        if not is_mainthread():
+        if not CoreThreading.is_mainthread():
             return MainThreadCallable(manager.post, event)()
         else:
             return manager.post(event)

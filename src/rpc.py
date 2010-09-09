@@ -92,6 +92,7 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 __all__ = [ 'Server', 'Client', 'expose' ]
 
@@ -109,10 +110,10 @@ import traceback
 
 # kaa imports
 import kaa
-from main import is_shutting_down
-from async import make_exception_class, AsyncExceptionBase
-from utils import property
-from object import Object
+from .utils import property
+from .core import Object, CoreThreading
+from .async import make_exception_class, AsyncExceptionBase
+from .main import is_shutting_down
 
 # get logging object
 log = logging.getLogger('rpc')
@@ -292,7 +293,7 @@ class Channel(Object):
         """
         Call the remote command and return InProgress.
         """
-        if not kaa.is_mainthread():
+        if not CoreThreading.is_mainthread():
             # create InProgress object and return
             callback = kaa.InProgress()
             kwargs['_kaa_rpc_callback'] = callback

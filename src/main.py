@@ -31,6 +31,7 @@ Control the mainloop
 
 This module provides basic functions to control the kaa mainloop.
 """
+from __future__ import absolute_import
 
 __all__ = [ 'run', 'stop', 'step', 'select_notifier', 'is_running', 'wakeup',
             'set_as_mainthread', 'is_shutting_down', 'loop', 'signals' ]
@@ -44,11 +45,10 @@ import signal
 import threading
 import atexit
 
-import nf_wrapper as notifier
-# rename as kaasignals; a bit cumbersome, but we're using signals for something else.
-import signals as kaasignals
-import timer
-import thread
+from . import nf_wrapper as notifier
+from .core import Signals, CoreThreading
+from . import timer
+from . import thread
 
 # get logging object
 log = logging.getLogger('base')
@@ -69,7 +69,7 @@ _loop_lock = threading.Lock()
 #:  - shutdown: emitted on kaa mainloop termination
 #:  - shutdown-after: emitted after shutdown signals.
 #:  - exit: emitted when process exits
-signals = kaasignals.Signals('exception', 'shutdown', 'shutdown-after', 'step', 'exit')
+signals = Signals('exception', 'shutdown', 'shutdown-after', 'step', 'exit')
 
 def select_notifier(module, **options):
     """
@@ -110,7 +110,7 @@ def loop(condition, timeout=None):
        Refer to the warning detailed in :func:`kaa.main.run`.
     """
     _loop_lock.acquire()
-    if is_running() and not thread.is_mainthread():
+    if is_running() and not CoreThreading.is_mainthread():
         # race condition. Two threads started a mainloop and the other
         # one is executed right now. Raise a RuntimeError
         _loop_lock.release()
@@ -121,7 +121,7 @@ def loop(condition, timeout=None):
         # no mainloop is running, set this thread as mainloop and
         # set the internal running state.
         initial_mainloop = True
-        thread.set_as_mainthread()
+        CoreThreading.set_as_mainthread()
         _set_running(True)
     # ok, that was the critical part
     _loop_lock.release()
@@ -236,7 +236,7 @@ def run(threaded=False):
             stop()
 
 
-# Don't use @threaded decorator because this module participates in import cycles.
+@thread.threaded(thread.MAINTHREAD)
 def stop():
     """
     Stop the main loop and terminate all child processes and thread
@@ -245,10 +245,6 @@ def stop():
     Any notifier callback can also cause the main loop to terminate
     by raising SystemExit.
     """
-    if not thread.is_mainthread():
-        # Ensure stop() is called from main thread.
-        return thread.MainThreadCallable(stop)()
-
     global _shutting_down
 
     if _shutting_down:
@@ -285,10 +281,10 @@ def step(*args, **kwargs):
     This function should almost certainly never be called directly.  Use it
     at your own peril.
     """
-    if not thread.is_mainthread():
+    if not CoreThreading.is_mainthread():
         # If step is being called from a thread, wake up the mainthread
         # instead of allowing the thread into notifier.step.
-        thread.wakeup()
+        CoreThreading.wakeup()
         # Sleep for epsilon to prevent busy loops.
         time.sleep(0.001)
         return
@@ -321,14 +317,11 @@ def is_stopped():
     return _running == False
 
 
-# wakeup and set_as_mainthread are thread module functions, but expose them
-# in the main namespace.  However, we don't pull them from the thread module
-# now because this module participates in import cycles.
-def wakeup():
-    return thread.wakeup()
-
-def set_as_mainthread():
-    return thread.set_as_mainthread()
+# Expose some of the CoreThreading functions in the main namespace for public
+# consumption.
+wakeup = CoreThreading.wakeup
+is_mainthread = CoreThreading.is_mainthread
+set_as_mainthread = CoreThreading.set_as_mainthread
 
 
 def _set_running(status):
@@ -351,7 +344,7 @@ def _shutdown_check(*args):
         # is not the program's main thread, then is_mainthread() will be False
         # and we don't need to set running=False since shutdown() will raise a
         # SystemExit and things will exit normally.
-        if thread.is_mainthread():
+        if CoreThreading.is_mainthread():
             _set_running(False)
         r = stop()
         if r:

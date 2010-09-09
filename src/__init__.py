@@ -24,7 +24,7 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
-
+from __future__ import absolute_import
 import sys
 import os
 import imp
@@ -33,7 +33,7 @@ import zipimport
 # Import custom logger to update the Python logging module. Unfortunately. we
 # can't import this lazy because we add logging.DEBUG2, and that should be
 # available immediately after importing kaa.
-import logger
+from . import logger
 
 
 # Enable on-demand importing of all modules.  Improves speed of importing kaa
@@ -186,6 +186,11 @@ class _LazyProxy(type):
         imp.acquire_lock()
         try:
             omod = __import__(mod, globals(), fromlist=names)
+            if mod not in ('callable', 'utils', 'strutils', 'version'):
+                # Any _other_ module needs the core modules.  main imports
+                # core, nf_wrapper, timer, thread; thread imports async
+                __import__('main', globals())
+
             if not names:
                 # If we're here, we're proxying a whole module.
                 # Replace LazyProxy in global scope with the actual newly loaded module.
@@ -252,9 +257,21 @@ class _LazyProxy(type):
     def __eq__(cls, other):
         return cls.__get() == other
 
+    def __cmp__(cls, other):
+        # Python 2
+        return cmp(cls.__get(), other)
+
+    def __lt__(cls, other):
+        # Python 3
+        return cls.__get() < other
+
+    def __gt__(cls, other):
+        # Python 3
+        return cls.__get() > other
+
 
 # Base object class for all kaa classes
-_lazy_import('object', ['Object'])
+_lazy_import('core', ['Object', 'Signal', 'Signals'])
 
 # Callable classes
 _lazy_import('callable', ['Callable', 'WeakCallable', 'CallableError'])
@@ -262,27 +279,24 @@ _lazy_import('callable', ['Callable', 'WeakCallable', 'CallableError'])
 # Notifier-aware callbacks do not need to be exported outside kaa.base
 # _lazy_import('nf_wrapper', ['NotifierCallback', 'WeakNotifierCallback'])
 
-# Signal and dict of Signals
-_lazy_import('signals', ['Signal', 'Signals'])
-
 # Async programming classes, namely InProgress
 _lazy_import('async', [
     'TimeoutException', 'InProgress', 'InProgressCallable', 'InProgressAny',
-    'InProgressAll', 'InProgressAborted', 'InProgressStatus', 'inprogress',
-    'delay'
+    'InProgressAll', 'InProgressAborted', 'InProgressStatus', 'inprogress'
 ])
 
 # Thread callables, helper functions and decorators
 _lazy_import('thread', [
-    'MainThreadCallable', 'ThreadPoolCallable', 'ThreadCallable',
-    'is_mainthread', 'threaded', 'synchronized', 'MAINTHREAD',
-    'ThreadInProgress', 'ThreadPool', 'register_thread_pool', 'get_thread_pool'
+    'MainThreadCallable', 'ThreadPoolCallable', 'ThreadCallable', 'threaded',
+    'synchronized', 'MAINTHREAD', 'ThreadInProgress', 'ThreadPool',
+    'register_thread_pool', 'get_thread_pool'
 ])
 
 # Timer classes and decorators
 _lazy_import('timer', [
     'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer', 'AtTimer',
-    'OneShotAtTimer', 'timed', 'POLICY_ONCE', 'POLICY_MANY', 'POLICY_RESTART'
+    'OneShotAtTimer', 'timed', 'POLICY_ONCE', 'POLICY_MANY', 'POLICY_RESTART',
+    'delay'
 ])
 
 # IO/Socket handling
@@ -315,7 +329,7 @@ _lazy_import('utils', ['tempfile'])
 
 # Expose main loop functions under kaa.main
 _lazy_import('main')
-_lazy_import('main', ['signals'])
+_lazy_import('main', ['signals', 'wakeup', 'set_as_mainthread', 'is_mainthread'])
 
 # kaa.base version
 _lazy_import('version', ['VERSION'])

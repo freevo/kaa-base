@@ -24,6 +24,7 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 __all__ = [
     'tempfile', 'which', 'Lock', 'daemonize', 'is_running', 'set_running',
@@ -44,7 +45,7 @@ import ctypes, ctypes.util
 import socket
 from tempfile import mktemp
 
-import _utils
+from . import _utils
 
 # get logging object
 log = logging.getLogger('base')
@@ -177,11 +178,11 @@ def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None,
     # Create new standard file descriptors.
     if not stderr:
         stderr = stdout
-    stdin = file(stdin, 'r')
-    stdout = file(stdout, 'a+')
-    stderr = file(stderr, 'a+', 0)
+    stdin = open(stdin, 'r')
+    stdout = open(stdout, 'a+')
+    stderr = open(stderr, 'a+', 0)
     if pidfile:
-        file(pidfile, 'w+').write("%d\n" % os.getpid())
+        open(pidfile, 'w+').write("%d\n" % os.getpid())
 
     # Remap standard fds.
     os.dup2(stdin.fileno(), sys.stdin.fileno())
@@ -190,9 +191,8 @@ def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None,
 
     # Replace any existing thread notifier pipe, otherwise we'll be listening
     # to our parent's thread pipe.
-    from thread import create_thread_notifier_pipe
-    create_thread_notifier_pipe(new=False, purge=True)
-
+    from .core import CoreThreading
+    CoreThreading.create_pipe(new=False, purge=True)
     return lock
 
 
@@ -205,8 +205,8 @@ def fork():
     if not pid:
         # Child must replace thread notifier pipe, otherwise we'll be listening
         # to our parent's thread pipe.
-        from thread import create_thread_notifier_pipe
-        create_thread_notifier_pipe(new=False, purge=True)
+        from .core import CoreThreading
+        CoreThreading.create_pipe(new=False, purge=True)
     return pid
 
 
@@ -296,7 +296,7 @@ def get_machine_uuid():
     # Next try to read from filesystem at well known locations.
     for dir in '/var/lib/dbus', '/etc/dbus-1':
         try:
-            return file(os.path.join(dir, 'machine-id')).readline().strip()
+            return open(os.path.join(dir, 'machine-id')).readline().strip()
         except IOError:
             pass
 

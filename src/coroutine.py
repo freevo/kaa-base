@@ -48,6 +48,7 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 __all__ = [ 'NotFinished', 'coroutine' ]
 
@@ -56,10 +57,10 @@ import sys
 import logging
 
 # kaa.base imports
-from utils import property, wraps, DecoratorDataStore
-from timer import Timer
-from async import InProgress, InProgressAborted, InProgressStatus
-from generator import generator
+from .utils import property, wraps, DecoratorDataStore
+from .timer import Timer
+from .async import InProgress, InProgressAborted, InProgressStatus
+from .generator import generator
 
 # get logging object
 log = logging.getLogger('base')
@@ -138,10 +139,10 @@ def coroutine(interval=0, policy=None, progress=False, group=None):
     an InProgress object).
     
     If it is not finished, the coroutine's life can be controlled via the
-    :class:`~kaa.InProgress` it returns.  It can be :meth:`~kaa.InProgress.abort`ed,
-    in which case a GeneratorExit will be raised inside the coroutine, or its
-    interval may be adjusted via the :attr:`~kaa.CoroutineInProgress.interval` 
-    property.
+    :class:`~kaa.InProgress` it returns.  It can be aborted with
+    :meth:`~kaa.InProgress.abort`, in which case a GeneratorExit will be raised
+    inside the coroutine, or its interval may be adjusted via the
+    :attr:`~kaa.CoroutineInProgress.interval` property.
     """
     if progress is True:
         progress = InProgressStatus

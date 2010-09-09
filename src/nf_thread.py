@@ -25,6 +25,7 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 __all__ = [ 'init' ]
 
@@ -33,9 +34,10 @@ import threading
 import logging
 
 # kaa imports
-import main
-import nf_wrapper as notifier
-from main import _set_running as set_mainloop_running
+from . import main
+from . import nf_wrapper as notifier
+from .core import CoreThreading
+from .main import _set_running as set_mainloop_running
 
 # get logging object
 log = logging.getLogger('notifier')
@@ -102,7 +104,7 @@ class ThreadLoop(threading.Thread):
         """
         log.info('stop mainloop')
         set_mainloop_running(False)
-        main.wakeup()
+        CoreThreading.wakeup()
         main.stop()
 
 
@@ -128,7 +130,7 @@ class Wakeup(object):
     def __call__(self, *args, **kwargs):
         ret = self.func(*args, **kwargs)
         if self.loop.sleeping:
-            main.wakeup()
+            CoreThreading.wakeup()
         return ret
 
 
@@ -149,7 +151,7 @@ def init( module, handler = None, shutdown = None, **options ):
         # set specific shutdown function
         notifier.shutdown = shutdown
     # set main thread and init thread pipe
-    main.set_as_mainthread()
+    CoreThreading.set_as_mainthread()
     # adding a timer or socket is not thread safe in general but
     # an additional wakeup we don't need does not hurt. And in
     # simulation mode the step function does not modify the

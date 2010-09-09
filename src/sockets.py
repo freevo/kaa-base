@@ -25,6 +25,7 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 __all__ = [ 'Socket', 'SocketError' ]
 
@@ -37,9 +38,9 @@ import logging
 import ctypes.util
 import collections
 
-from thread import threaded
-from io import IO_READ, IO_WRITE, IOChannel
-from utils import property, tempfile
+from .utils import property, tempfile
+from .thread import threaded
+from .io import IO_READ, IO_WRITE, IOChannel
 
 # get logging object
 log = logging.getLogger('base')

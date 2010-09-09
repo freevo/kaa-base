@@ -25,6 +25,7 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 __all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallable',
             'AsyncException', 'InProgressAny', 'InProgressAll', 'InProgressAborted',
@@ -40,16 +41,9 @@ import _weakref
 import threading
 
 # kaa.base imports
-from callable import Callable
-from utils import property
-from object import Object
-# XXX: see bottom of file for additional imports (circular)
-
-# Recursive imports. The Signal requires InProgress which does not
-# exist at this point. But async itself does exist. To avoid any
-# problems, signal.py can only import async, not InProgress itself.
-from signals import Signal
-
+from .utils import property
+from .callable import Callable
+from .core import Object, Signal, Signals, CoreThreading
 
 # get logging object
 log = logging.getLogger('base.async')
@@ -94,22 +88,6 @@ def inprogress(obj):
     except AttributeError:
         raise TypeError("object of type '%s' has no __inprogress__()" % obj.__class__.__name__)
 
-
-def delay(seconds):
-    """
-    Returns an InProgress that finishes after the given time in seconds.
-
-    :param obj: object to represent as an InProgress.
-    :return: :class:`~kaa.InProgress`
-    """
-    ip = InProgressCallable()
-    t = timer.OneShotTimer(ip)
-    # If the IP gets aborted, stop the timer.  Otherwise the timer
-    # will fire and the IP would attempt to get finished a second
-    # time (and would therefore raise an exception).
-    ip.signals['abort'].connect_weak(lambda exc: t.stop())
-    t.start(seconds)
-    return ip
 
 
 class AsyncExceptionBase(Exception):
@@ -564,7 +542,8 @@ class InProgress(Signal, Object):
             # appropriately.
             def reraise():
                 raise exc
-            return main.signals['step'].connect_once(reraise)
+            from .main import signals
+            return signals['step'].connect_once(reraise)
 
         log.error('Unhandled %s exception:\n%s', cls.__name__, trace)
         if log.level <= logging.INFO:
@@ -656,7 +635,8 @@ class InProgress(Signal, Object):
                 if abort:
                     self.abort()
         async.waitfor(self)
-        timer.OneShotTimer(trigger).start(timeout)
+        from .timer import OneShotTimer
+        OneShotTimer(trigger).start(timeout)
         return async
 
 
@@ -710,7 +690,8 @@ class InProgress(Signal, Object):
         dummy = lambda *args, **kwargs: None
         self.connect(dummy)
 
-        if thread.is_mainthread():
+        from . import main
+        if CoreThreading.is_mainthread():
             # We're waiting in the main thread, so we must keep the mainloop
             # alive by calling main.loop() until we're finished.
             main.loop(lambda: not self.finished, timeout)
@@ -1011,13 +992,3 @@ class InProgressAll(InProgressAny):
 
     def __getitem__(self, idx):
         return self._objects[idx]
-
-
-# XXX: Circular imports
-# async -> main -> timer -> thread -> async
-#   - main: no deps on async
-#   - timer: no deps on async
-#   - thread: InProgress, InProgressAborted, InProgressStatus
-import main
-import timer
-import thread

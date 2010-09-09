@@ -24,6 +24,7 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 __all__ = [ 'Var', 'Group', 'Dict', 'List', 'Config', 'set_default',
             'get_description', 'get_config', 'get_schema',  'get_type',
@@ -39,12 +40,12 @@ import textwrap
 from new import classobj
 
 # kaa.base modules
-from strutils import str_to_unicode, unicode_to_str, get_encoding
-from callable import Callable, WeakCallable
-from timer import WeakTimer, WeakOneShotTimer
+from .strutils import str_to_unicode, unicode_to_str, get_encoding
+from .callable import Callable, WeakCallable
+from .timer import WeakTimer, WeakOneShotTimer
 from kaa.base.inotify import INotify
-from utils import property
-import main
+from .utils import property
+from . import main
 
 # get logging object
 log = logging.getLogger('config')

@@ -25,6 +25,7 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 __all__ = [ 'timed', 'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer',
             'AtTimer', 'OneShotAtTimer', 'POLICY_ONCE', 'POLICY_MANY',
@@ -33,10 +34,14 @@ __all__ = [ 'timed', 'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer',
 import logging
 import datetime
 
-from weakref import weakref
-from utils import wraps, DecoratorDataStore, property
-import nf_wrapper as notifier
-import thread
+from .weakref import weakref
+from .utils import wraps, DecoratorDataStore, property
+from . import nf_wrapper as notifier
+from .core import CoreThreading
+from . import thread
+# Needed for delay(); thread module needs async anyway, so we won't avoid a
+# circular dependency by moving delay() (back) into async.py
+from .async import InProgressCallable
 
 POLICY_ONCE = 'once'
 POLICY_MANY = 'many'
@@ -99,6 +104,22 @@ def timed(interval, timer=None, policy=POLICY_MANY):
     return decorator
 
 
+def delay(seconds):
+    """
+    Returns an InProgress that finishes after the given time in seconds.
+
+    :param obj: object to represent as an InProgress.
+    :return: :class:`~kaa.InProgress`
+    """
+    ip = InProgressCallable()
+    t = OneShotTimer(ip)
+    # If the IP gets aborted, stop the timer.  Otherwise the timer
+    # will fire and the IP would attempt to get finished a second
+    # time (and would therefore raise an exception).
+    ip.signals['abort'].connect_weak(lambda exc: t.stop())
+    t.start(seconds)
+    return ip
+
 
 class Timer(notifier.NotifierCallback):
     """
@@ -125,7 +146,7 @@ class Timer(notifier.NotifierCallback):
         self.restart_when_active = True
 
 
-    # Don't use @threaded decorator because this module participates in import cycles.
+    @thread.threaded(thread.MAINTHREAD)
     def start(self, interval):
         """
         Start the timer, invoking the callback every *interval* seconds.
@@ -141,9 +162,6 @@ class Timer(notifier.NotifierCallback):
         This method may safely be called from a thread, however the timer
         callback will be invoked from the main thread.
         """
-        if not thread.is_mainthread():
-            return thread.MainThreadCallable(self.start)(interval)
-
         if self.active:
             if not self.restart_when_active:
                 return
@@ -162,7 +180,7 @@ class Timer(notifier.NotifierCallback):
         return self.__interval
 
 
-    # Don't use @threaded decorator because this module participates in import cycles.
+    @thread.threaded(thread.MAINTHREAD)
     def stop(self):
         """
         Stop a running timer.
@@ -172,8 +190,6 @@ class Timer(notifier.NotifierCallback):
         executing in the main thread, it will of course have to finish, but it
         will not be called again unless the timer is restarted.
         """
-        if not thread.is_mainthread():
-            return thread.MainThreadCallable(self.unregister)()
         self.unregister()
 
 

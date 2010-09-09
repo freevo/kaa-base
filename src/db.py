@@ -23,6 +23,7 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 __all__ = ['Database', 'QExpr', 'split_path', 'ATTR_SIMPLE', 'ATTR_SEARCHABLE',
            'ATTR_IGNORE_CASE', 'ATTR_INDEXED', 'ATTR_INDEXED_IGNORE_CASE',
@@ -46,9 +47,9 @@ except ImportError:
     from sqlite3 import dbapi2 as sqlite
 
 # kaa base imports
-from strutils import str_to_unicode
-from _objectrow import ObjectRow
-import main
+from .strutils import str_to_unicode
+from ._objectrow import ObjectRow
+from . import main
 
 if sqlite.version < '2.1.0':
     raise ImportError('pysqlite 2.1.0 or higher required')

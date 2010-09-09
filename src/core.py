@@ -1,14 +1,11 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# signals.py - Signal object
+# core.py - provides core functionality needed by most kaa.base modules
 # -----------------------------------------------------------------------------
 # $Id$
-#
 # -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
-# Copyright 2005-2009 Dirk Meyer, Jason Tackaberry, et al.
-#
-# Please see the file AUTHORS for a complete list of authors.
+# Copyright 2010 Dirk Meyer, Jason Tackaberry, et al.
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version
@@ -25,29 +22,247 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+from __future__ import absolute_import, with_statement
 
-__all__ = [ 'Signal', 'Signals' ]
+__all__ = ['Object', 'Signal', 'Signals', 'CoreThreading']
 
-# Python imports
+# python imports
+import inspect
 import logging
 import atexit
+import threading
+import os
+import fcntl
 
 # kaa imports
-from callable import Callable, WeakCallable, CallableError
-from utils import property
-# XXX: see bottom of file for additional imports (circular)
-
+from .callable import Callable, WeakCallable, CallableError
+from .utils import property
+from .strutils import py3_b
+from . import nf_wrapper as notifier
 
 # get logging object
 log = logging.getLogger('base')
 
-# Variable that is set to True (via atexit callback) when python interpreter
-# is in the process of shutting down.  If we're interested if the interpreter
-# is shutting down, we don't want to test that this variable is True, but
-# rather that it is not False, because as it is prefixed with an underscore,
-# the interpreter might already have deleted this variable in which case it
-# is None.
-_python_shutting_down = False
+
+class CoreThreading:
+    # Variable that is set to True (via atexit callback) when python
+    # interpreter is in the process of shutting down.  If we're interested if
+    # the interpreter is shutting down, we don't want to test that this
+    # variable is True, but rather that it is not False, because as it is
+    # prefixed with an underscore, the interpreter might already have deleted
+    # this variable in which case it is None.
+    python_shutting_down = False
+
+    # Internal only attributes.
+    # The thread pipe, which is created by CoreThreading.create_pipe, is used
+    # to awaken the main loop.  This happens in CoreThreading.queue_callback()
+    # and CoreThreading.wakeup().  XXX: this pipe must not be carried through
+    # to forked children, or ugly behaviour will ensue.  kaa.utils.fork() and
+    # .daemonize() will ensure a new pipe is created in the child process.
+    _pipe = None
+    # Holds a queue of callbacks and their arguments that need to be executed
+    # from the main loop (by CoreThreading.run_queue, which is called by the
+    # notifier when there is activity on the pipe.)
+    _queue = []
+    _queue_lock = threading.RLock()
+    _mainthread = threading.currentThread()
+    # Create a one byte dummy token for writing to the pipe.  Normally we'd
+    # just use b'1' but Python 2.5 can't parse it.
+    _PIPE_NOTIFY_TOKEN = py3_b('1')
+
+
+    @staticmethod
+    def create_pipe(new=True, purge=False):
+        """
+        Creates a new pipe for the thread notifier.  If new is True, a new pipe
+        will always be created; if it is False, it will only be created if one
+        already exists.  If purge is True, any previously queued work will be
+        discarded.
+
+        This is an internal function, but we export it for kaa.utils.daemonize.
+        """
+        log.info('create thread notifier pipe')
+
+        if not CoreThreading._pipe and not new:
+            return
+        elif CoreThreading._pipe:
+            # There is an existing pipe already, so stop monitoring it.
+            notifier.socket_remove(CoreThreading._pipe[0])
+
+        if purge:
+            with CoreThreading._queue_lock:
+                CoreThreading._lock.acquire()
+
+        CoreThreading._pipe = os.pipe()
+        fcntl.fcntl(CoreThreading._pipe[0], fcntl.F_SETFL, os.O_NONBLOCK)
+        fcntl.fcntl(CoreThreading._pipe[1], fcntl.F_SETFL, os.O_NONBLOCK)
+        notifier.socket_add(CoreThreading._pipe[0], CoreThreading.run_queue)
+
+        if CoreThreading._queue:
+            # A thread is already running and wanted to run something in the
+            # mainloop before the mainloop is started. In that case we need
+            # to wakeup the loop ASAP to handle the requests.
+            os.write(CoreThreading._pipe[1], CoreThreading._PIPE_NOTIFY_TOKEN)
+
+
+    @staticmethod
+    def queue_callback(callback, args, kwargs, in_progress):
+        with CoreThreading._queue_lock:
+            CoreThreading._queue.append((callback, args, kwargs, in_progress))
+            if len(CoreThreading._queue) == 1:
+                # We just added the first callback to the queue, so notify the
+                # mainthread.
+                if CoreThreading._pipe:
+                    os.write(CoreThreading._pipe[1], CoreThreading._PIPE_NOTIFY_TOKEN)
+
+
+    @staticmethod
+    def run_queue(fd):
+        try:
+            os.read(CoreThreading._pipe[0], 1000)
+        except socket.error, (err, msg):
+            if err == errno.EAGAIN:
+                # Resource temporarily unavailable -- we are trying to read
+                # data on a socket when none is avilable.  This should not
+                # happen under normal circumstances, so log an error.
+                log.error("Thread notifier pipe woke but no data available.")
+        except OSError:
+            pass
+        with CoreThreading._queue_lock:
+            while CoreThreading._queue:
+                callback, args, kwargs, in_progress = CoreThreading._queue.pop(0)
+                try:
+                    in_progress.finish(callback(*args, **kwargs))
+                except BaseException, e:
+                    # All exceptions, including SystemExit and KeyboardInterrupt,
+                    # are caught and thrown to the InProgress, because it may be
+                    # waiting in another thread.  However SE and KI are reraised
+                    # in here the main thread so they can be propagated back up
+                    # the mainloop.
+                    in_progress.throw(*sys.exc_info())
+                    if isinstance(e, (KeyboardInterrupt, SystemExit)):
+                        raise
+        return True
+
+
+    @staticmethod
+    def wakeup():
+        """
+        Wakes up the mainloop.
+
+        The mainloop sleeps when there are no timers to process and no activity on
+        any registered :class:`~kaa.IOMonitor` objects.  This function can be used
+        by another thread to wake up the mainloop.  For example, when a
+        :class:`~kaa.MainThreadCallable` is invoked, it calls ``wakeup()``.
+        """
+        if CoreThreading._pipe and len(CoreThreading._queue) == 0:
+            os.write(CoreThreading._pipe[1], CoreThreading._PIPE_NOTIFY_TOKEN)
+
+
+    @staticmethod
+    def is_mainthread():
+        """
+        Return True if the current thread is the main thread.
+
+        Note that the "main thread" is considered to be the thread in which the
+        kaa main loop is running.  This is usually, but not necessarily, what
+        Python considers to be the main thread.  (If you call :func:`kaa.main.run`
+        in the main Python thread, then they are equivalent.)
+        """
+        # If threading module is None, assume main thread.  (Silences pointless
+        # exceptions on shutdown.)
+        return (not threading) or threading.currentThread() == CoreThreading._mainthread
+
+
+    @staticmethod
+    def set_as_mainthread():
+        """
+        Set the current thread as mainthread. This function SHOULD NOT be called
+        from the outside, the loop function is setting the mainthread if needed.
+        """
+        CoreThreading._mainthread = threading.currentThread()
+        if not CoreThreading._pipe:
+            # Make sure we have a pipe between the mainloop and threads. Since
+            # loop() calls set_as_mainthread it is safe to assume the loop is
+            # connected correctly. If someone calls step() without loop() and
+            # without set_as_mainthread inter-thread communication does not work.
+            CoreThreading.create_pipe()
+
+
+    def _handle_shutdown():
+        CoreThreading.python_shutting_down = True
+    atexit.register(_handle_shutdown)
+
+
+
+class Object(object):
+    """
+    Base class for kaa objects.
+
+    This class contains logic to convert the __kaasignals__ class attribute
+    (a dict) into a signals instance attribute (a kaa.Signals object).
+
+    __kaasignals__ is a dict whose key is the name of the signal, and value
+    a docstring.  The dict and docstring should be formatted like so::
+
+        ___kaasignals__ = {
+            'example':
+                '''
+                Single short line describing the signal.
+
+                .. describe:: def callback(arg1, arg2, ...)
+
+                   :param arg1: Description of arg1
+                   :type arg1: str
+                   :param arg2: Description of arg2
+                   :type arg2: bool
+
+                A more detailed description of the signal, if necessary, follows.
+                ''',
+
+            'another':
+                '''
+                Docstring similar to the above example.  Note the blank line
+                separating signal stanzas.
+                '''
+        }
+
+    It is possible for a subclass to remove a signal provided by its superclass
+    by setting the dict value to None.  e.g.::
+
+        __kaasignals__ = {
+            'newsignal':
+                '''
+                New signal provided by this subclass.
+                ''',
+
+            # This ensures the signal 'supersignal' does not appear in the
+            # current class's kaa.Signals object.  (It does not affect the
+            # superclass.)
+            'supersignal': None
+        }
+    """
+    def __init__(self, *args, **kwargs):
+        # Accept all args, and pass to superclass.  Necessary for kaa.Object
+        # descendants to be involved in inheritance diamonds.
+        super(Object, self).__init__(*args, **kwargs)
+
+        # Merge __kaasignals__ dict for the entire inheritance tree for the
+        # given class.  Newer (most descended) __kaasignals__ will replace
+        # older ones if there are conflicts.
+        signals = {}
+        for c in reversed(inspect.getmro(self.__class__)):
+            if hasattr(c, '__kaasignals__'):
+                signals.update(c.__kaasignals__)
+
+        # Remove all signals whose value is None.
+        [ signals.pop(k) for k, v in signals.items() if v is None ]
+        if signals:
+            # Construct the kaa.Signals object and attach the docstrings to
+            # each signal in the Signal object's __doc__ attribute.
+            self.signals = Signals(*signals.keys())
+            for name in signals:
+                self.signals[name].__doc__ = signals[name]
 
 
 class Signal(object):
@@ -182,6 +397,7 @@ class Signal(object):
         """
         return self._connect(callback, args, kwargs)
 
+
     def connect_weak(self, callback, *args, **kwargs):
         """
         Weak variant of :meth:`~kaa.Signal.connect` where only weak references are
@@ -192,6 +408,7 @@ class Signal(object):
         """
         return self._connect(callback, args, kwargs, weak = True)
 
+
     def connect_once(self, callback, *args, **kwargs):
         """
         Variant of :meth:`~kaa.Signal.connect` where the callback is automatically
@@ -199,11 +416,13 @@ class Signal(object):
         """
         return self._connect(callback, args, kwargs, once = True)
 
+
     def connect_weak_once(self, callback, *args, **kwargs):
         """
         Weak variant of :meth:`~kaa.Signal.connect_once`.
         """
         return self._connect(callback, args, kwargs, once = True, weak = True)
+
 
     def connect_first(self, callback, *args, **kwargs):
         """
@@ -212,11 +431,13 @@ class Signal(object):
         """
         return self._connect(callback, args, kwargs, pos = 0)
 
+
     def connect_weak_first(self, callback, *args, **kwargs):
         """
         Weak variant of :meth:`~kaa.Signal.connect_first`.
         """
         return self._connect(callback, args, kwargs, weak = True, pos = 0)
+
 
     def connect_first_once(self, callback, *args, **kwargs):
         """
@@ -225,11 +446,13 @@ class Signal(object):
         """
         return self._connect(callback, args, kwargs, once = True, pos = 0)
 
+
     def connect_weak_first_once(self, callback, *args, **kwargs):
         """
         Weak variant of :meth:`~kaa.Signal.connect_weak_first_once`.
         """
         return self._connect(callback, args, kwargs, weak = True, once = True, pos = 0)
+
 
     def _disconnect(self, callback, args, kwargs):
         assert(callable(callback))
@@ -342,8 +565,7 @@ class Signal(object):
 
 
     def _weakref_destroyed(self, weakref, callback):
-        if _python_shutting_down == False:
-            #print "Weakref destroyed, disconnect", self, weakref, callback
+        if CoreThreading.python_shutting_down == False:
             self._disconnect(callback, (), {})
 
 
@@ -366,7 +588,8 @@ class Signal(object):
 
         :return: a new :class:`~kaa.InProgress` object
         """
-        return async.InProgressCallable(self.connect_weak_once)
+        from .async import InProgressCallable
+        return InProgressCallable(self.connect_weak_once)
 
 
 
@@ -457,14 +680,16 @@ class Signals(dict):
         """
         Returns an InProgressAny object with all signals in self.
         """
-        return async.InProgressAny(*self.values())
+        from .async import InProgressAny
+        return InProgressAny(*self.values())
 
 
     def all(self):
         """
         Returns an InProgressAll object with all signals in self.
         """
-        return async.InProgressAll(*self.values())
+        from .async import InProgressAll
+        return InProgressAll(*self.values())
 
 
     # XXX: what does this code do?
@@ -485,18 +710,3 @@ class Signals(dict):
         Call attribute function from Signal().
         """
         return getattr(self[signal], attr)(*args, **kwargs)
-
-
-
-def _shutdown_weakref_destroyed():
-    global _python_shutting_down
-    _python_shutting_down = True
-
-atexit.register(_shutdown_weakref_destroyed)
-
-# XXX: Circular imports
-# signals -> async -> signals
-#                  -> object -> signals
-#   - async: Signal
-#   - object: Signals
-import async

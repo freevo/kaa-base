@@ -25,6 +25,7 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 __all__ = [ 'Callable', 'WeakCallable', 'CallableError' ]
 
@@ -35,7 +36,7 @@ import logging
 import atexit
 
 # Kaa imports
-from utils import property
+from .utils import property
 
 # get logging object
 log = logging.getLogger('base')

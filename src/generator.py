@@ -25,11 +25,14 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 __all__ = [ 'Generator', 'generator' ]
 
 # kaa imports
-from utils import wraps
+from .utils import wraps
+from . import async
+from . import thread
 
 class Generator(object):
     """
@@ -48,14 +51,11 @@ class Generator(object):
         """
         return self._populate
 
-    # Don't use @threaded decorator because this module participates in import cycles.
+    @thread.threaded(thread.MAINTHREAD)
     def send(self, result, exception=False):
         """
         Send a new value (producer)
         """
-        if not thread.is_mainthread():
-            return thread.MainThreadCallable(self.send)(result, exception)
-
         delayed = [ async.InProgress(), result, False, exception ]
         if result is GeneratorExit:
             self._generator_exit = True
@@ -156,13 +156,13 @@ def register(wrapper):
         return func
     return decorator
 
-generator.register = register
 
-# XXX: Circular imports
-# generator -> async -> main -> timer -> thread -> generator
-#   - async: no deps
-#   - main: no deps
-#   - timer: no deps
-#   - thread: generator
-import async
-import thread
+@register(thread.threaded)
+def _generator_threaded(generator, func, args, kwargs):
+    """
+    kaa.generator support for kaa.threaded
+    """
+    for g in func(*args, **kwargs):
+        generator.send(g)
+
+generator.register = register

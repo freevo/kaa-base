@@ -25,11 +25,13 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'ENCODING', 'get_encoding', 'set_encoding', 'utf8',
-            'str_to_unicode', 'unicode_to_str', 'format', 'to_unicode',
-            'to_str' ]
+__all__ = [
+    'ENCODING', 'get_encoding', 'set_encoding', 'utf8', 'str_to_unicode',
+    'unicode_to_str', 'format', 'to_unicode', 'to_str', 'bytes', 'py23_b'
+]
 
 # python imports
+import sys
 import locale
 
 # find the correct encoding
@@ -159,3 +161,29 @@ def to_str(s, encoding=None):
         return unicode_to_str(unicode(s)), encoding
     except (UnicodeDecodeError, UnicodeEncodeError):
         return str(s)
+
+
+if sys.hexversion >= 0x03000000:
+    bytes = bytes
+else:
+    bytes = lambda s, dummy: s
+
+def py3_b(value, encoding=None):
+    """
+    Returns a string (Python 2) or bytes object (Python 3).
+
+    b'foo' works as of Python 2.6, but not 2.5.
+
+    This is a Python 2/3 transition helper function.
+    """
+    unicode_cls = str if sys.hexversion >= 0x03000000 else unicode
+    return bytes(value, encoding or ENCODING) if isinstance(value, unicode_cls) else value
+
+def py3_str(value, encoding=None):
+    """
+    Returns a unicode (Python 3) or string object (Python 3).
+
+    This is a Python 2/3 transition helper function.
+    """
+    bytes_cls = bytes if sys.hexversion >= 0x03000000 else str
+    return value.decode(encoding or ENCODING) if isinstance(value, bytes_cls) else value

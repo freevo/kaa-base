@@ -47,8 +47,18 @@ typedef int Py_ssize_t;
 typedef Py_ssize_t (*lenfunc)(PyObject *);
 #endif
 
-GHashTable *queries = 0;
-PyObject *cPickle_loads, *zip;
+struct module_state {
+    GHashTable *queries;
+    PyObject *pickle_loads, *zip;
+};
+
+#if PY_MAJOR_VERSION >= 3
+#   define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#else
+#   define GETSTATE(m) (&_state)
+    static struct module_state _state;
+#endif
+
 
 PyTypeObject ObjectRow_PyObject_Type;
 
@@ -89,9 +99,11 @@ PyObject *ObjectRow_PyObject__items(ObjectRow_PyObject *, PyObject *, PyObject *
 int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject *kwargs)
 {
     PyObject *cursor, *row, *o_type, *pickle_dict = 0;
+    struct module_state *mstate;
     if (!PyArg_ParseTuple(args, "OO|O!", &cursor, &row, &PyDict_Type, &pickle_dict))
         return -1;
 
+    mstate = GETSTATE(self);
     if (pickle_dict) {
         /* If row or cursor weren't specified, then we require the third arg
          * (pickle_dict) be a dictionary, and we basically behave as this dict.
@@ -142,7 +154,7 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
         return -1;
     }
 
-    self->query_info = g_hash_table_lookup(queries, self->desc);
+    self->query_info = g_hash_table_lookup(mstate->queries, self->desc);
     if (!self->query_info) {
         /* This is a row for a query we haven't seen before, so we need to do
          * some initial setup.  Most of what we do here is convert data stored
@@ -211,7 +223,7 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
             char *skey = PyString_AsString(key);
             g_hash_table_insert(self->query_info->type_names, (void *)PyInt_AsLong(type_id), g_strdup(skey));
         }
-        g_hash_table_insert(queries, self->desc, self->query_info);
+        g_hash_table_insert(mstate->queries, self->desc, self->query_info);
     }
 
     self->query_info->refcount++;
@@ -240,9 +252,10 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
 void ObjectRow_PyObject__dealloc(ObjectRow_PyObject *self)
 {
     if (self->query_info) {
+        struct module_state *mstate = GETSTATE(self);
         self->query_info->refcount--;
         if (self->query_info->refcount <= 0) {
-            g_hash_table_remove(queries, self->desc);
+            g_hash_table_remove(mstate->queries, self->desc);
             g_hash_table_destroy(self->query_info->idxmap);
             g_hash_table_destroy(self->query_info->type_names);
             free(self->query_info);
@@ -267,9 +280,10 @@ int do_unpickle(ObjectRow_PyObject *self)
         PyErr_Format(PyExc_KeyError, "Attribute exists but row pickle is not available");
         return 0;
     }
+    struct module_state *mstate = GETSTATE(self);
     PyObject *pickle_str = PyObject_Str(PySequence_Fast_GET_ITEM(self->row, self->query_info->pickle_idx));
     PyObject *args = Py_BuildValue("(O)", pickle_str);
-    result = PyEval_CallObject(cPickle_loads, args);
+    result = PyEval_CallObject(mstate->pickle_loads, args);
     Py_DECREF(args);
     Py_DECREF(pickle_str);
 
@@ -545,10 +559,11 @@ PyObject *ObjectRow_PyObject__values(ObjectRow_PyObject *self, PyObject *args, P
 PyObject *ObjectRow_PyObject__items(ObjectRow_PyObject *self, PyObject *args, PyObject *kwargs)
 {
     PyObject *keys, *values, *zargs, *items;
+    struct module_state *mstate = GETSTATE(self);
     keys = ObjectRow_PyObject__keys(self, NULL, NULL);
     values = ObjectRow_PyObject__values(self, NULL, NULL);
     zargs = Py_BuildValue("(OO)", keys, values);
-    items = PyEval_CallObject(zip, zargs);
+    items = PyEval_CallObject(mstate->zip, zargs);
 
     Py_DECREF(zargs);
     Py_DECREF(values);
@@ -691,22 +706,63 @@ PyMethodDef objectrow_methods[] = {
     {NULL}
 };
 
-void init_objectrow(void)
-{
-    PyObject *m;
-    m = Py_InitModule("_objectrow", objectrow_methods);
 
+#if PY_MAJOR_VERSION >= 3
+static int objectrow_traverse(PyObject *m, visitproc visit, void *arg) {
+    struct module_state *mstate = GETSTATE(m);
+    Py_VISIT(mstate->pickle_loads);
+    Py_VISIT(mstate->zip);
+    return 0;
+}
+
+static int myextension_clear(PyObject *m) {
+    struct module_state *mstate = GETSTATE(m);
+    Py_VISIT(mstate->pickle_loads);
+    Py_VISIT(mstate->zip);
+    return 0;
+}
+
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "objectrow",
+        NULL,
+        sizeof(struct module_state),
+        objectrow_methods,
+        NULL,
+        objectrow_traverse,
+        objectrow_clear,
+        NULL
+};
+
+PyObject *PyInit__objectrow(void)
+
+#else
+void init_objectrow(void)
+#endif
+{
+    PyObject *m, *pickle, *builtins;
+    struct module_state *mstate;
+#if PY_MAJOR_VERSION >= 3
+    m = PyModule_Create(&moduledef);
+    if (!m)
+        return NULL;
+    pickle = PyImport_ImportModule("pickle");
+    builtins = PyImport_ImportModule("builtins");
+#else
+    m = Py_InitModule("_objectrow", objectrow_methods);
+    if (!m)
+        return;
+    pickle = PyImport_ImportModule("cPickle");
+    builtins = PyImport_ImportModule("__builtin__");
+#endif
     if (PyType_Ready(&ObjectRow_PyObject_Type) >= 0) {
         Py_INCREF(&ObjectRow_PyObject_Type);
         PyModule_AddObject(m, "ObjectRow", (PyObject *)&ObjectRow_PyObject_Type);
     }
-    queries = g_hash_table_new(g_direct_hash, g_direct_equal);
-
-    m = PyImport_ImportModule("cPickle");
-    cPickle_loads = PyObject_GetAttrString(m, "loads");
-    Py_DECREF(m);
-
-    m = PyImport_ImportModule("__builtin__");
-    zip = PyObject_GetAttrString(m, "zip");
-    Py_DECREF(m);
+    mstate = GETSTATE(m);
+    mstate->queries = g_hash_table_new(g_direct_hash, g_direct_equal);
+    mstate->pickle_loads = PyObject_GetAttrString(pickle, "loads");
+    mstate->zip = PyObject_GetAttrString(builtins, "zip");
+    Py_DECREF(pickle);
+    Py_DECREF(builtins);
 }

@@ -90,7 +90,7 @@ dependencies for each.  A ``.`` denotes that there are no further dependencies
                -> [imports async at runtime]
          async -> utils -> .
                -> callable -> .
-               -> nf_wrapper -> .
+               -> core -> .
                -> [imports timer at runtime]
                -> [imports main at runtime]
         thread -> utils -> .

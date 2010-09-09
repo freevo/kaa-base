@@ -24,6 +24,7 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 # python imports
 import os
@@ -37,10 +38,10 @@ import string
 
 # kaa imports
 import kaa
-
+from ..strutils import py3_b, py3_str
 try:
     # imports C module
-    import _inotify
+    from . import _inotify
 except ImportError:
     _inotify = None
 
@@ -84,7 +85,7 @@ class INotify(kaa.Object):
         """
         events = []
         for attr in ['CHANGE'] + INotify.__dict__.keys():
-            if attr == 'WATCH_MASK' or attr[0] not in string.uppercase:
+            if attr == 'WATCH_MASK' or attr[0] not in string.ascii_uppercase:
                 continue
             event = getattr(INotify, attr)
             if mask & event == event:
@@ -106,7 +107,7 @@ class INotify(kaa.Object):
         # processing a batch of events and we receive an event for a watch
         # we just removed.
         self._watches_recently_removed = []
-        self._read_buffer = ""
+        self._read_buffer = py3_b('')
         self._move_state = None  # For MOVED_FROM events
         self._moved_timer = kaa.WeakOneShotTimer(self._emit_last_move)
 
@@ -248,7 +249,7 @@ class INotify(kaa.Object):
 
             wd, mask, cookie, size = struct.unpack("IIII", self._read_buffer[0:event_len])
             if size:
-                name = self._read_buffer[event_len:event_len+size].rstrip('\0')
+                name = py3_str(self._read_buffer[event_len:event_len+size].rstrip(b'\0'))
             else:
                 name = None
 

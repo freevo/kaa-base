@@ -77,10 +77,29 @@ PyMethodDef inotify_methods[] = {
     { NULL }
 };
 
+#if PY_MAJOR_VERSION >= 3
+static struct PyModuleDef moduledef = {
+    PyModuleDef_HEAD_INIT,
+    "_inotify",
+     NULL,
+     -1,
+     inotify_methods,
+     NULL,
+     NULL,
+     NULL,
+     NULL
+};
 
+PyObject *PyInit__inotify(void)
+#else
 void init_inotify(void)
+#endif
 {
+#if PY_MAJOR_VERSION >= 3
+    PyObject *m = PyModule_Create(&moduledef);
+#else
     PyObject *m = Py_InitModule("_inotify", inotify_methods);
+#endif
     #define add_const(x) PyModule_AddObject(m, #x, PyLong_FromLong(IN_ ## x));
     add_const(ACCESS);
     add_const(MODIFY);
@@ -102,4 +121,7 @@ void init_inotify(void)
     add_const(ISDIR);
     add_const(ONESHOT);
     add_const(ALL_EVENTS);
+#if PY_MAJOR_VERSION >= 3
+    return m;
+#endif
 }

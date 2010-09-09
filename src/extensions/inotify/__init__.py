@@ -249,7 +249,7 @@ class INotify(kaa.Object):
 
             wd, mask, cookie, size = struct.unpack("IIII", self._read_buffer[0:event_len])
             if size:
-                name = py3_str(self._read_buffer[event_len:event_len+size].rstrip(b'\0'))
+                name = py3_str(self._read_buffer[event_len:event_len+size]).rstrip('\0')
             else:
                 name = None
 

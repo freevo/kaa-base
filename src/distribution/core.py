@@ -125,7 +125,7 @@ class Library(object):
         b = [ x.zfill(maxlen) for x in b.split('.') ]
         # TODO: special handling of rc and beta (others?) suffixes, so
         # that 1.0.0 > 1.0.0rc1
-        return cmp(a, b)
+        return (a > b) - (a < b)
 
 
     def get_numeric_version(self, version = None):

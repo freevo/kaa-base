@@ -51,6 +51,11 @@ class Version(object):
             version += int(val) * (float(1) / math.pow(100, pos))
         return version
 
+    def __eq__(self, obj):
+        return str(obj) == str(obj)
+
+
+    # Python 2.
     def __cmp__(self, obj):
         """
         Compare two version.
@@ -58,3 +63,12 @@ class Version(object):
         if not isinstance(obj, Version):
             obj = Version(obj)
         return cmp(float(self), float(obj))
+
+    # Python 3
+    def __lt__(self, obj):
+        if not isinstance(obj, Version):
+            obj = Version(obj)
+        return float(self) < float(obj)
+
+    def __gt__(self, obj):
+        return not (self < obj)

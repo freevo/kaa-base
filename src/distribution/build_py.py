@@ -123,7 +123,6 @@ class build_py(distutils_build_py):
 
         from lib2to3.refactor import get_fixers_from_package
         all_fixers = set(get_fixers_from_package('lib2to3.fixes'))
-        print(all_fixers)
         for fixers, files in groups.items():
             if not files:
                 continue

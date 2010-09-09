@@ -178,7 +178,7 @@ static struct PyModuleDef moduledef = {
     PyModuleDef_HEAD_INIT,
     "_utils",
      NULL,
-     0,
+     -1,
      utils_methods,
      NULL,
      NULL,

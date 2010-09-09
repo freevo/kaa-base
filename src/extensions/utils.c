@@ -45,6 +45,10 @@ extern void Py_GetArgcArgv(int *argc, char ***argv);
 
 PyObject *set_process_name(PyObject *self, PyObject *args)
 {
+/* Python 3's Py_GetArgcArgv() does not return the original argv, but rather a
+ * wchar_t copy of it, which means we can't use it.
+ */
+#if PY_MAJOR_VERSION < 3
 #ifdef HAVE_PRCTL
     int argc, limit;
     char **argv, *name;
@@ -58,6 +62,7 @@ PyObject *set_process_name(PyObject *self, PyObject *args)
 
     // Needed for killall
     prctl(PR_SET_NAME, argv[0], 0, 0, 0);
+#endif
 #endif
     Py_INCREF(Py_None);
     return Py_None;
@@ -167,7 +172,29 @@ PyMethodDef utils_methods[] = {
     { NULL }
 };
 
+
+#if PY_MAJOR_VERSION >= 3
+static struct PyModuleDef moduledef = {
+    PyModuleDef_HEAD_INIT,
+    "_utils",
+     NULL,
+     0,
+     utils_methods,
+     NULL,
+     NULL,
+     NULL,
+     NULL
+};
+
+PyObject *PyInit__utils(void)
+#else
 void init_utils(void)
+#endif
 {
+
+#if PY_MAJOR_VERSION >= 3
+    return PyModule_Create(&moduledef);
+#else
     Py_InitModule("_utils", utils_methods);
+#endif
 }

@@ -31,8 +31,13 @@ __all__ = [ 'convert' ]
 
 # python imports
 import pprint
-import cStringIO
 import os
+try:
+    # Python 2.6+
+    from io import StringIO
+except ImportError:
+    # Python 2.5
+    from StringIO import StringIO
 
 # use minidom because it is part of the python distribution.
 # pyxml replaces the parser but everything used here should
@@ -204,7 +209,7 @@ def convert(infile, outfile, package):
     """
     out = open(outfile, 'w')
     try:
-        _convert(file(infile).read(), package, out)
+        _convert(open(infile).read(), package, out)
     except RuntimeError:
         os.unlink(outfile)
 
@@ -213,7 +218,7 @@ def to_code(xml, package=None):
     """
     Returns python code from the xml in the given string.
     """
-    out = cStringIO.StringIO()
+    out = StringIO()
     _convert(xml, package, out)
     return out.getvalue()
 

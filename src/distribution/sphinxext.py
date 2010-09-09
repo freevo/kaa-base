@@ -170,6 +170,7 @@ Example usage:
 
 # Python imports
 import re
+import collections
 
 # Sphinx imports
 from sphinx.util.compat import make_admonition
@@ -284,7 +285,7 @@ def get_members(cls, inherit, add, remove, pre_filter, post_filter):
 def get_methods(cls, inherit=False, add=[], remove=[]):
     return get_members(cls, inherit, add, remove,
                        lambda name, attr: not name.startswith('_'),
-                       lambda name, attr: callable(attr))
+                       lambda name, attr: isinstance(attr, collections.Callable))
 
 
 def get_properties(cls, inherit=False, add=[], remove=[]):
@@ -354,17 +355,17 @@ def auto_directive(name, arguments, options, content, lineno,
 
     if name == 'automethods':
         for attrname, method in get_methods(cls, inherit, add, remove):
-            list.append(u'.. automethod:: %s.%s' % (clsname, attrname), '')
+            list.append('.. automethod:: %s.%s' % (clsname, attrname), '')
     elif name == 'autoproperties':
         for attrname, prop in get_properties(cls, inherit, add, remove):
-            list.append(u'.. autoattribute:: %s.%s' % (clsname, attrname), '')
+            list.append('.. autoattribute:: %s.%s' % (clsname, attrname), '')
     elif name == 'autosignals':
         for attrname, docstr in get_signals(cls, inherit, add, remove):
-            list.append(u'.. attribute:: signals.%s' %  attrname, '')
-            list.append(u'', '')
+            list.append('.. attribute:: signals.%s' %  attrname, '')
+            list.append('', '')
             for line in docstr.split('\n'):
                 list.append(line, '')
-            list.append(u'', '')
+            list.append('', '')
 
     if not len(list) and not content:
         return []
@@ -391,7 +392,7 @@ def auto_directive(name, arguments, options, content, lineno,
                 # and the desc_signature has no ids attribute, which we
                 # need to set to make it linkable.
                 desc_sig[0].children[0] = nodes.Text(name_prefix[8:])
-                new_id = u'%s.%s' % (clsname, name_prefix)
+                new_id = '%s.%s' % (clsname, name_prefix)
                 desc_sig['ids'] = [new_id]
                 # Add this signal to Sphinx's descref dict so references
                 # to this signal are properly resolved.

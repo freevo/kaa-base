@@ -24,6 +24,7 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+from __future__ import absolute_import
 
 __all__ = [ 'Element', 'ElementParser', 'pprint' ]
 
@@ -34,10 +35,15 @@ import xml.sax
 import xml.sax.saxutils
 
 # we can't use cStringIO since it doesn't support Unicode strings
-from StringIO import StringIO
+try:
+    # Python 2.6+
+    from io import StringIO
+except ImportError:
+    # Python 2.5
+    from StringIO import StringIO
 
 # unicode helper functions
-from strutils import unicode_to_str, str_to_unicode
+from .strutils import unicode_to_str, str_to_unicode
 
 class Element(object):
     """
@@ -170,9 +176,9 @@ class Element(object):
         """
         Convert the element into an XML unicode string.
         """
-        result = u'<%s' % self.tagname
+        result = '<%s' % self.tagname
         if self.xmlns:
-            result += u' xmlns="%s"' % self.xmlns
+            result += ' xmlns="%s"' % self.xmlns
         for key, value in self._attr.items():
             if value is None:
                 continue
@@ -180,15 +186,15 @@ class Element(object):
                 value = str_to_unicode(value)
             if not isinstance(value, unicode):
                 value = unicode(value)
-            result += u' %s=%s' % (key, xml.sax.saxutils.quoteattr(value))
+            result += ' %s=%s' % (key, xml.sax.saxutils.quoteattr(value))
         if not self._children and not self._content:
-            return result + u'/>'
-        result += u'>'
+            return result + '/>'
+        result += '>'
         for child in self._children:
             if not isinstance(child, Element):
                 child = child.__xml__()
             result += unicode(child)
-        return result + xml.sax.saxutils.escape(self._content.strip()) + u'</%s>' % self.tagname
+        return result + xml.sax.saxutils.escape(self._content.strip()) + '</%s>' % self.tagname
 
     def __str__(self):
         """
@@ -261,7 +267,7 @@ def pprint(element):
     """
     Convert Element object into an UTF-8 string with indention
     """
-    def convert(write, element, indent=u'', addindent=u'', newl=u''):
+    def convert(write, element, indent='', addindent='', newl=''):
         """
         Write the element and all children
         """

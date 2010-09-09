@@ -26,6 +26,7 @@
 # -----------------------------------------------------------------------------
 
 # python imports
+from __future__ import absolute_import
 import os
 import sys
 import tempfile
@@ -38,9 +39,9 @@ import distutils.dist
 
 
 # internal imports
-from version import Version
-from build_py import build_py
-from svn2log import svn2log
+from .version import Version
+from .build_py import build_py
+from .svn2log import svn2log
 
 __all__ = ['compile', 'check_library', 'get_library', 'setup', 'ConfigFile',
            'Extension', 'Library' ]
@@ -73,27 +74,27 @@ def check_library(name, *args, **kwargs):
     lib = Library(name)
     if len(args) < 2 and not kwargs:
         minver = args[0]
-        print 'checking for', name, '>=', minver, '...',
-        sys.__stdout__.flush()
+        sys.stdout.write('checking for %s >= %s ...' % (name, minver))
+        sys.stdout.flush()
         found, version = lib.check(minver)
         if found:
-            print version
+            print(version)
         elif version:
-            print 'no (%s)' % version
+            print('no (%s)' % version)
             return
         else:
-            print 'no'
+            print('no')
             return
     else:
         for var in ('include_dirs', 'library_dirs', 'libraries'):
             if var in kwargs:
                 setattr(lib, var, kwargs.pop(var))
-        print 'checking for', name, '...',
-        sys.__stdout__.flush()
+        sys.stdout.write('checking for %s ...' % name)
+        sys.stdout.flush()
         if lib.compile(*args, **kwargs):
-            print 'ok'
+            print('ok')
         else:
-            print 'no'
+            print('no')
             return
     _libraries[name] = lib
     return lib
@@ -140,10 +141,10 @@ class Library(object):
             version = self.version
 
         if version is None:
-            raise ValueError, "Version is not known; call check() first"
+            raise ValueError('Version is not known; call check() first')
 
         if not version.replace(".", "").isdigit():
-            raise ValueError, "Version cannot have non-numeric characters."
+            raise ValueError('Version cannot have non-numeric characters.')
 
         # Performs: 1.2.3.4 => 4<<0 + 3<<9 + 2<<18 + 1<<27
         return sum([ int(v) << 9*s for s,v in enumerate(reversed(version.split('.'))) ])
@@ -303,12 +304,13 @@ class Extension(object):
             if not found:
                 if not version:
                     version = 'none'
-                raise ValueError, 'requires %s version %s (none found)' % \
-                                  (name, minver, version)
+                raise ValueError('requires %s version %s (none found)' % (name, minver, version))
             self.library_objects.append(lib)
             return True
-        except Exception, e:
-            self.error = e
+        except Exception:
+            # Access exception object from sys.exc_info() so we're compatible with
+            # both Python 2.5+ and 3.
+            self.error = sys.exc_info()[1]
 
         return False
 
@@ -396,6 +398,11 @@ class EmptyExtensionsList(list):
     we want.
     """
     def __nonzero__(self):
+        # Python 2
+        return True
+
+    def __bool__(self):
+        # Python 3
         return True
 
 
@@ -445,7 +452,7 @@ class Doc(distutils.cmd.Command):
                       # Now handoff to sphinx-build, which we require to be in $PATH
                       'import kaa.utils\n'
                       'if not kaa.utils.which("sphinx-build"):\n'
-                      '    print "Error: sphinx not installed"\n'
+                      '    print("Error: sphinx not installed")\n'
                       '    sys.exit(1)\n'
                       'execfile(kaa.utils.which("sphinx-build"))\n' %\
                       (path, name, os.path.dirname(srcname)))
@@ -463,26 +470,27 @@ def setup(**kwargs):
     """
     A setup script wrapper for kaa modules.
     """
-    def _find_packages((kwargs, prefix), dirname, files):
+    def _find_packages(kwargs, prefix):
         """
         Helper function to create 'packages' and 'package_dir'.
         """
-        for key, value in kwargs.get('plugins', {}).items():
-            if dirname.startswith(value):
-                python_dirname = key + dirname[len(value):].replace('/', '.')
-                break
-        else:
-            python_dirname = prefix + dirname[3:].replace('/', '.')
-            # Anything under module/src/extensions/foo gets translated to
-            # kaa.module.foo.
-            python_dirname = python_dirname.replace(".extensions.", ".")
-        if '__init__.py' in files or python_dirname.endswith('plugins'):
-            kwargs['package_dir'][python_dirname] = dirname
-            kwargs['packages'].append(python_dirname)
+        for dirpath, dirnames, files in os.walk('src'):
+            for key, value in kwargs.get('plugins', {}).items():
+                if dirpath.startswith(value):
+                    python_dirpath = key + dirpath[len(value):].replace('/', '.')
+                    break
+            else:
+                python_dirpath = prefix + dirpath[3:].replace('/', '.')
+                # Anything under module/src/extensions/foo gets translated to
+                # kaa.module.foo.
+                python_dirpath = python_dirpath.replace(".extensions.", ".")
+            if '__init__.py' in files or python_dirpath.endswith('plugins'):
+                kwargs['package_dir'][python_dirpath] = dirpath
+                kwargs['packages'].append(python_dirpath)
 
 
     if 'module' not in kwargs and 'name' not in kwargs:
-        raise AttributeError('\'module\' not defined')
+        raise AttributeError("'module' not defined")
 
     # Use setuptools if --egg was passed.  We don't use setuptools by default (yet?)
     # because it changes certain behaviours (like install --prefix=[...]).
@@ -526,10 +534,8 @@ def setup(**kwargs):
     # search for source files and add it package_dir and packages
     kwargs['package_dir'] = {}
     kwargs['packages']    = []
-    if kwargs.get('module') == None:
-        os.path.walk('src', _find_packages, (kwargs, kwargs.get('name')))
-    else:
-        os.path.walk('src', _find_packages, (kwargs, project + '.' + kwargs['module']))
+    prefix = project + '.' + kwargs['module'] if kwargs.get('module') else kwargs['name']
+    _find_packages(kwargs, prefix)
 
     if 'plugins' in kwargs:
         del kwargs['plugins']
@@ -544,7 +550,7 @@ def setup(**kwargs):
         # We need to compile an extension, so first do a naive check to ensure
         # Python headers are available.
         if not os.path.exists(os.path.join(distutils.sysconfig.get_python_inc(), 'Python.h')):
-            print "- Python headers not found; please install python development package."
+            print('- Python headers not found; please install python development package.')
             sys.exit(1)
 
     else:
@@ -571,13 +577,13 @@ def setup(**kwargs):
            os.path.isfile('ChangeLog.in'):
         # FIXME: find a better way to detect if we need to create a
         # ChangeLog file or not.
-        print 'generate ChangeLog'
+        print('generate ChangeLog')
         svn2log(kwargs.get('module', kwargs.get('name')))
         if os.path.isfile('doc/Makefile'):
             # FIXME: this does not work in some cases. Sphinx requires the
             # files in build to generate the doc files. The build directory
             # itself is not required for sdist.
-            print 'generate doc'
+            print('generate doc')
             os.system('(cd doc; make clean; make html)')
 
     # delete 'module' information, not used by distutils.setup
@@ -613,7 +619,7 @@ def setup(**kwargs):
         del kwargs['summary']
 
     # add extra commands
-    if not 'cmdclass' in kwargs:
+    if 'cmdclass' not in kwargs:
         kwargs['cmdclass'] = {}
     kwargs['cmdclass']['build_py'] = build_py
 
@@ -663,6 +669,10 @@ def setup(**kwargs):
         del kwargs['rpminfo']
 
     # run the distutils.setup function
+    if 'opts_2to3' in kwargs:
+        build_py.opts_2to3 = kwargs['opts_2to3']
+        del kwargs['opts_2to3']
+
     distutils.core.setup(**kwargs)
 
     # Run cleanup on extensions (for example to delete config.h)

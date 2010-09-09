@@ -34,7 +34,7 @@ import xml.sax
 try:
     from saxutils import ElementParser
 except ImportError:
-    from kaa.base.saxutils import ElementParser
+    from kaa.saxutils import ElementParser
 
 class Entry(object):
     def __init__(self, author, date):
@@ -95,7 +95,7 @@ class LogParser(ElementParser):
         if author in self._user:
             author = self._user[author]
         else:
-            print 'unknown author', author
+            print('unknown author %s' % author)
         changed_listing = False
         for path in node.paths:
             if self._prefix.search(path.content):
@@ -111,10 +111,9 @@ class LogParser(ElementParser):
                 else:
                     files.append(f[1:])
         if not len(files):
-            print 'error detecting files'
+            print('error detecting files')
             for path in c:
-                print path.content
-            print
+                print(path.content)
         # write entry to the file or remember if stuff belongs together
         if self._entry and (self._entry.author != author or self._entry.date != date):
             self._entry.write(self._writer)

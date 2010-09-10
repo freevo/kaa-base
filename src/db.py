@@ -47,7 +47,7 @@ except ImportError:
     from sqlite3 import dbapi2 as sqlite
 
 # kaa base imports
-from .strutils import str_to_unicode
+from .strutils import py3_str
 from ._objectrow import ObjectRow
 from . import main
 
@@ -163,7 +163,7 @@ def _list_to_printable(value):
         elif type(item) == unicode:
             fixed_items.append("'%s'" % item.replace("'", "''"))
         elif type(item) == str:
-            fixed_items.append("'%s'" % str_to_unicode(item.replace("'", "''")))
+            fixed_items.append("'%s'" % py3_str(item.replace("'", "''")))
         else:
             raise Exception, "Unsupported type '%s' given to _list_to_printable" % type(item)
 
@@ -1410,7 +1410,7 @@ class Database:
 
         Terms are either unicode objects or strings, or sequences of unicode or
         string objects.  In the case of strings, they are passed through
-        str_to_unicode() to try to decode them intelligently.
+        py3_str() to try to decode them intelligently.
 
         Each term T is given the score:
              sqrt( (T coeff * T count) / total term count )
@@ -1436,8 +1436,10 @@ class Database:
                                   "Only sequence, unicode or str allowed." % str(type(terms))
 
             if isinstance(terms, (list, tuple)):
+                terms = [py3_str(term) for term in terms]
                 parsed = terms
             else:
+                terms = py3_str(terms)
                 if callable(split):
                     parsed = list(split(terms))
                 else:
@@ -1448,7 +1450,6 @@ class Database:
                    (ivtidx['min'] and len(term) < ivtidx['min']):
                     continue
 
-                term = str_to_unicode(term)
                 lower_term = term.lower()
 
                 if ivtidx['ignore'] and lower_term in ivtidx['ignore']:
@@ -1580,11 +1581,11 @@ class Database:
         if not isinstance(terms, (list, tuple)):
             split = self._inverted_indexes[ivtidx]['split']
             if callable(split):
-                terms = [term for term in split(str_to_unicode(terms).lower()) if term]
+                terms = [term for term in split(py3_str(terms).lower()) if term]
             else:
-                terms = [term for term in split.split(str_to_unicode(terms).lower()) if term]
+                terms = [term for term in split.split(py3_str(terms).lower()) if term]
         else:
-            terms = [ str_to_unicode(x).lower() for x in terms ]
+            terms = [ py3_str(x).lower() for x in terms ]
 
         # Remove terms that aren't indexed (words less than minimum length
         # or and terms in the ignore list for this ivtidx).

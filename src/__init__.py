@@ -441,7 +441,6 @@ class KaaFinder(__builtins__['object']):
         finally:
             imp.release_lock()
 
-        raise ImportError
 
 # Now install our custom hooks.  Remove any existing KaaFinder import hooks, which
 # could be caused by reload()ing.

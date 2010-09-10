@@ -26,13 +26,14 @@
 # -----------------------------------------------------------------------------
 
 __all__ = [
-    'ENCODING', 'get_encoding', 'set_encoding', 'utf8', 'str_to_unicode',
-    'unicode_to_str', 'format', 'to_unicode', 'to_str', 'bytes', 'py23_b'
+    'ENCODING', 'BYTES_TYPE', 'UNICODE_TYPE', 'get_encoding', 'set_encoding',
+    'utf8', 'str_to_unicode', 'unicode_to_str', 'format', 'py3_b', 'py3_str'
 ]
 
 # python imports
 import sys
 import locale
+import imp
 
 # find the correct encoding
 try:
@@ -40,6 +41,15 @@ try:
     ''.encode(ENCODING)
 except (UnicodeError, TypeError):
     ENCODING = 'latin-1'
+
+if sys.hexversion >= 0x03000000:
+    UNICODE_TYPE = str
+    BYTES_TYPE = bytes
+    long = int
+else:
+    bytes = lambda s, dummy: str(s)
+    UNICODE_TYPE = unicode
+    BYTES_TYPE = str
 
 
 def get_encoding():
@@ -56,10 +66,107 @@ def set_encoding(encoding):
     """
     global ENCODING
     ENCODING = encoding
-    # Set python's global encoding (kludge but works).
-    import sys
-    reload(sys)
-    sys.setdefaultencoding(encoding)
+    try:
+        # Set python's global encoding (kludge and only works for Python 2.x)
+        reload(sys)
+        sys.setdefaultencoding(encoding)
+    except (NameError, ValueError):
+        pass
+
+
+def py3_b(value, encoding=None, desperate=True, coerce=False):
+    """
+    Convert (if necessary) the given value to a "string of bytes", agnostic to
+    any character encoding.
+
+    :param value: the value to be converted to a string of bytes
+    :param encoding: the character set to first try to encode to; if None, will
+                     use the system default (from the locale).
+    :type encoding: str
+    :param desperate: if True and encoding to the given (or default) charset
+                      fails, will also try utf-8 and latin-1 (in that order),
+                      and if those fail, will encode to the preferred charset,
+                      replacing unknown characters with \\uFFFD.
+    :type desperate: bool
+    :param coerce: if True, will coerce numeric types to a bytes object; if
+                   False, such values will be returned untouched.
+    :type coerce: bool
+    :returns: the value as a string of bytes, or the original value if coerce is
+              False and the value was not a bytes or string.
+
+    .. note:: The notion of "bytes" was introduced in Python 3 (and included
+       in Python 2.6 as an alias to str), hence the ``py3_`` prefix.  On Python
+       2, the returned value is a *str* object while on Python 3, the returned
+       value is a *bytes* object.
+    """
+    if isinstance(value, BYTES_TYPE):
+        # Nothing to do.
+        return value
+    elif not isinstance(value, UNICODE_TYPE):
+        if not coerce and isinstance(value, (int, long, float)):
+            return value
+        # Need to coerce to a unicode before converting to bytes.  We can't just
+        # feed it to bytes() in case the default character set can't encode it.
+        value = py3_str(value)
+
+    for c in (encoding or ENCODING, 'utf-8', 'latin-1'):
+        try:
+            return value.encode(c)
+        except UnicodeError:
+            pass
+        if not desperate:
+            raise UnicodeError("Couldn't encode value to bytes (and not desperate enough to keep trying)")
+
+    return value.encode(encoding or ENCODING, 'replace')
+
+
+def py3_str(value, encoding=None, desperate=True, coerce=False):
+    """
+    Convert (if necessary) the given value to a (unicode) string.
+
+    :param value: the value to be converted to a unicode string
+    :param encoding: the character set to first try to decode as; if None, will
+                     use the system default (from the locale).
+    :type encoding: str
+    :param desperate: if True and decoding to the given (or default) charset
+                      fails, will also try utf-8 and latin-1 (in that order),
+                      and if those fail, will decode as the preferred charset,
+                      replacing unknown characters with \\uFFFD.
+    :type desperate: bool
+    :param coerce: if True, will coerce numeric types to a unicode string; if
+                   False, such values will be returned untouched.
+    :type coerce: bool
+    :returns: the value as a (unicode) string, or the original value if coerce is
+              False and the value was not a bytes or string.
+
+    .. note:: The naming of ``str`` is relative Python 3's notion of a *str* object,
+       hence the ``py3_`` prefix.  On Python 2, the returned value is a *unicode*
+       object while on Python 3, the returned value is a *str* object.
+    """
+    if isinstance(value, UNICODE_TYPE):
+        # Nothing to do.
+        return value
+    elif not isinstance(value, BYTES_TYPE):
+        if not coerce and isinstance(value, (int, long, float)):
+            return value
+        # Need to coerce this value.  Try the direct approach.
+        try:
+            return UNICODE_TYPE(value)
+        except UnicodeError:
+            # Could be that value.__repr__ returned a non-unicode and
+            # non-8bit-clean string.  Be a bit more brute force about it.
+            return py3_str(repr(value), desperate=desperate)
+
+    # We now have a bytes object to decode.
+    for c in (encoding or ENCODING, 'utf-8', 'latin-1'):
+        try:
+            return value.decode(c)
+        except UnicodeError:
+            pass
+        if not desperate:
+            raise UnicodeError("Couldn't decode value to unicode (and not desperate enough to keep trying)")
+
+    return value.decode(encoding or ENCODING, 'replace')
 
 
 def utf8(s):
@@ -67,123 +174,35 @@ def utf8(s):
     Returns a UTF-8 string, converting from other character sets if
     necessary.
     """
-    return to_unicode(s).encode("utf-8")
+    return py3_str(s).encode('utf-8')
 
 
 def str_to_unicode(s, encoding=None):
-    """
-    Attempts to convert a string of unknown character set to a unicode
-    string.  First it tries to decode the string based on the locale's
-    preferred encoding, and if that fails, fall back to UTF-8 and then
-    latin-1.  If all fails, it will force encoding to the preferred
-    charset, replacing unknown characters. If the given object is no
-    string, this function will return the given object.
-    """
-    if not type(s) == str:
-        return s
-
-    if not encoding:
-        encoding = ENCODING
-
-    for c in (encoding, "utf-8", "latin-1"):
-        try:
-            return s.decode(c)
-        except (UnicodeDecodeError, UnicodeEncodeError):
-            pass
-
-    return s.decode(encoding, "replace")
-
+    "This function is deprecated; use py3_str() instead."
+    return py3_str(s, encoding)
 
 def unicode_to_str(s, encoding=None):
-    """
-    Attempts to convert a unicode string of unknown character set to a
-    string.  First it tries to encode the string based on the locale's
-    preferred encoding, and if that fails, fall back to UTF-8 and then
-    latin-1.  If all fails, it will force encoding to the preferred
-    charset, replacing unknown characters. If the given object is no
-    unicode string, this function will return the given object.
-    """
-    if not type(s) == unicode:
-        return s
+    "This function is deprecated; use py3_b() instead."
+    return py3_b(s, encoding)
 
-    if not encoding:
-        encoding = ENCODING
+def to_unicode(s, encoding=None):
+    "This function is deprecated; use py3_str() instead."
+    # (Nobody was using it anyway.)
+    return py3_str(s, encoding, coerce=True)
 
-    for c in (encoding, "utf-8", "latin-1"):
-        try:
-            return s.encode(c)
-        except (UnicodeDecodeError, UnicodeEncodeError):
-            pass
-
-    return s.encode(encoding, "replace")
-
+def to_str(s, encoding=None):
+    "This function is deprecated; use py3_b() instead."
+    # Nobody was using it anyway.
+    return py3_b(s, encoding, coerce=True)
 
 def format(s, *args):
     """
     Format a string and make sure all string or unicode arguments are
     converted to the correct type.
     """
-    if type(s) == str:
-        return s % tuple([ unicode_to_str(x) for x in args ])
-    if type(s) == unicode:
-        return s % tuple([ str_to_unicode(x) for x in args ])
-    raise AttributeError("no format string given")
-
-
-def to_unicode(s, encoding=None):
-    """
-    Attempts to convert every object to an unicode string using the objects
-    __unicode__ or __str__ function or str_to_unicode.
-    """
-    if type(s) == unicode:
-        return s
-    if type(s) == str:
-        return str_to_unicode(s, encoding)
-    try:
-        return unicode(s)
-    except (UnicodeDecodeError, UnicodeEncodeError):
-        return str_to_unicode(str(s), encoding)
-
-
-def to_str(s, encoding=None):
-    """
-    Attempts to convert every object to a string using the objects
-    __unicode__ or __str__ function or unicode_to_str.
-    """
-    if type(s) == str:
-        # Convert string to unicode and back again, because we may be
-        # changing character encodings.
-        return unicode_to_str(str_to_unicode(s, encoding), encoding)
-
-    if type(s) == unicode:
-        return unicode_to_str(s, encoding)
-    try:
-        return unicode_to_str(unicode(s)), encoding
-    except (UnicodeDecodeError, UnicodeEncodeError):
-        return str(s)
-
-
-if sys.hexversion >= 0x03000000:
-    bytes = bytes
-else:
-    bytes = lambda s, dummy: s
-
-def py3_b(value, encoding=None):
-    """
-    Returns a string (Python 2) or bytes object (Python 3).
-
-    b'foo' works as of Python 2.6, but not 2.5.
-
-    This is a Python 2/3 transition helper function.
-    """
-    unicode_cls = str if sys.hexversion >= 0x03000000 else unicode
-    return bytes(value, encoding or ENCODING) if isinstance(value, unicode_cls) else value
-
-def py3_str(value, encoding=None):
-    """
-    Returns a unicode (Python 3) or string object (Python 3).
-
-    This is a Python 2/3 transition helper function.
-    """
-    bytes_cls = bytes if sys.hexversion >= 0x03000000 else str
-    return value.decode(encoding or ENCODING) if isinstance(value, bytes_cls) else value
+    if type(s) == BYTES_TYPE:
+        return s % tuple(py3_b(x) for x in args)
+    elif type(s) == UNICODE_TYPE:
+        return s % tuple(py3_str(x) for x in args)
+    else:
+        raise TypeError('Format string must be str or unicode')

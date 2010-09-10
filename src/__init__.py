@@ -322,7 +322,7 @@ _lazy_import('process', ['Process'])
 _lazy_import('gobject', ['GOBJECT', 'gobject_set_threaded'])
 
 # Import the two important strutils functions
-_lazy_import('strutils', ['str_to_unicode', 'unicode_to_str'])
+_lazy_import('strutils', ['str_to_unicode', 'unicode_to_str', 'py3_str', 'py3_b'])
 
 # Add tempfile support.
 _lazy_import('utils', ['tempfile'])

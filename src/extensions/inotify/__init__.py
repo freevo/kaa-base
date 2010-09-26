@@ -150,7 +150,7 @@ class INotify(kaa.Object):
         The total number of watches (across all INotify instances) is controlled
         by /proc/sys/fs/inotify/max_user_watches
         """
-        path = os.path.realpath(path)
+        path = os.path.realpath(py3_b(path))
         if path in self._watches_by_path:
             return self._watches_by_path[path][0]
 
@@ -176,7 +176,7 @@ class INotify(kaa.Object):
         :type path: str
         :returns: True if a matching monitor was removed, or False otherwise.
         """
-        path = os.path.realpath(path)
+        path = os.path.realpath(py3_b(path))
         if path not in self._watches_by_path:
             return False
 
@@ -197,7 +197,7 @@ class INotify(kaa.Object):
         :type path: str
         :returns: True if there is a matching monitor, or False otherwise.
         """
-        path = os.path.realpath(path)
+        path = os.path.realpath(py3_b(path))
         return path in self._watches_by_path
 
 
@@ -249,7 +249,7 @@ class INotify(kaa.Object):
 
             wd, mask, cookie, size = struct.unpack("IIII", self._read_buffer[0:event_len])
             if size:
-                name = py3_str(self._read_buffer[event_len:event_len+size]).rstrip('\0')
+                name = self._read_buffer[event_len:event_len+size].rstrip('\0')
             else:
                 name = None
 

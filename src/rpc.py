@@ -502,7 +502,10 @@ class Channel(Object):
 
         if packet_type == 'EXCP':
             # Exception for remote call
-            exc_value, stack = cPickle.loads(payload)
+            try:
+                exc_value, stack = cPickle.loads(payload)
+            except Exception, e:
+                exc_value, stack = e, ''
             callback, cmd = self._rpc_in_progress.get(seq)
             if callback is None:
                 return True

@@ -34,6 +34,8 @@
 #
 # -----------------------------------------------------------------------------
 
+from __future__ import with_statement
+
 __all__ = [ 'URLOpener', 'fetch', 'add_password' ]
 
 # python imports
@@ -41,16 +43,28 @@ import os
 import stat
 import urllib
 import urllib2
+import threading
 
 # kaa imports
 from kaa import ThreadCallable, InProgressStatus, Signals, InProgress
 
 # add password manager to urllib
 pm = urllib2.HTTPPasswordMgrWithDefaultRealm()
-urllib2.install_opener(urllib2.build_opener(urllib2.HTTPBasicAuthHandler(pm)))
+auth_handler = urllib2.HTTPBasicAuthHandler(pm)
+urllib2.install_opener(urllib2.build_opener(auth_handler))
 
 # expose add_password function from HTTPPasswordMgrWithDefaultRealm
 add_password = pm.add_password
+
+# FIXME: The urllib2.HTTPBasicAuthHandler is not thread-safe! It
+# counts the number of retries and raises an exception if it is
+# greater than 5. If you download 5 or more files in different threads
+# at the same time before the first one is done, it crashes all of
+# them with an authentication error. To prevent this, the HTTP connect
+# is wrapped in an RLock. This is very bad and should be fixed. But
+# for now it is working. But you must use the log when downloading
+# something that requires authentication.
+auth_handler_lock = threading.RLock()
 
 class URLOpener(object):
     """
@@ -82,7 +96,9 @@ class URLOpener(object):
         The real urllib2 calls in a thread.
         """
         try:
-            fd = urllib2.urlopen(*self._args)
+            with auth_handler_lock:
+                auth_handler.retried = 0
+                fd = urllib2.urlopen(*self._args)
         except urllib2.HTTPError, e:
             # FIXME: how to handle this.
             return e.code
@@ -112,8 +128,10 @@ def _fetch_HTTP(url, filename, tmpname):
     Fetch HTTP URL.
     """
     def download(url, filename, tmpname, status):
-        src = urllib2.urlopen(url)
-        length = int(src.info().get('Content-Length', 0))
+        with auth_handler_lock:
+            auth_handler.retried = 0
+            src = urllib2.urlopen(url)
+            length = int(src.info().get('Content-Length', 0))
         if not tmpname:
             tmpname = filename
         dst = open(tmpname, 'w')

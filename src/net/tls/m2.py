@@ -128,6 +128,15 @@ class M2TLSSocket(TLSSocketBase):
         self._tls_ip = kaa.InProgress()
 
 
+    def close(self, immediate=False, expected=True):
+        if not immediate and self._tls_started:
+            # Send (or rather queue for write) an SSL shutdown message to the
+            # client to gracefully terminate the session.
+            m2.ssl_shutdown(self._ssl.obj)
+            super(M2TLSSocket, self).write(self._encrypt())
+        return super(M2TLSSocket, self).close(immediate, expected)
+
+
     def _close(self):
         super(M2TLSSocket, self)._close()
         self._reset()

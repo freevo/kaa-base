@@ -62,8 +62,8 @@ def _activate():
         # since we can't discriminate those, we replace os.listdir regardless.
         #
         # See http://bugs.python.org/issue1608818
-        import kaa._utils
-        os.listdir = kaa._utils.listdir
+        from . import _utils
+        os.listdir = _utils.listdir
 
     # Kill this function so it only gets invoked once.
     globals()['_activate'] = None

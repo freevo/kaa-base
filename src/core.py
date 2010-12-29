@@ -31,6 +31,7 @@ import inspect
 import logging
 import atexit
 import threading
+import sys
 import os
 import fcntl
 

@@ -32,9 +32,20 @@ from __future__ import absolute_import
 
 # Python imports
 import logging
+import sys
 
-# baa.base imports
-from .strutils import unicode_to_str
+# kaa.base imports
+if sys.hexversion >= 0x02060000:
+    # Python 2.6 and 3.1's logger does the right thing with Unicode.  Actually,
+    # Python 2.6.2 is broken if you pass it an encoded string (it tries to call
+    # encode() on it before writing to the stream).  This problem is fixed with
+    # at least 2.6.5, but either version behaves sanely if you give it unicode
+    # strings.
+    from .strutils import py3_str as logger_str_convert
+else:
+    # On the other hand, Python 2.5's logging module is less robust with unicode,
+    # so convert arguments to non-unicode strings.
+    from .strutils import py3_b as logger_str_convert
 
 
 def create_logger(level = logging.WARNING):
@@ -71,10 +82,9 @@ def make_record(self, name, level, fn, lno, msg, args, *_args, **_kwargs):
         # create handler, we don't have one
         create_logger()
 
-    # convert message to string
-    msg = unicode_to_str(msg)
-    # convert args to string
-    args = tuple([ unicode_to_str(x) for x in args ])
+    # ensure msg and args are unicode (python 2.6+) or non-unicode (python 2.5)
+    msg = logger_str_convert(msg)
+    args = tuple(logger_str_convert(x) for x in args)
     # Allow caller to override default location by specifying a 2-tuple
     # (filename, lineno) as 'location' in the extra dict.
     extra = _args[2]

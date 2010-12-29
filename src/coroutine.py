@@ -55,6 +55,7 @@ __all__ = [ 'NotFinished', 'coroutine' ]
 # python imports
 import sys
 import logging
+import types
 
 # kaa.base imports
 from .utils import property, wraps, DecoratorDataStore
@@ -198,13 +199,13 @@ def coroutine(interval=0, policy=None, progress=False, group=None):
                 args = (progress(),) + args
             result = func(*args, **kwargs)
 
-            if not hasattr(result, 'next'):
-                # Decorated function doesn't have a next attribute, which
-                # means it isn't a generator.  We might simply wrap the result
-                # in an InProgress and pass it back, but for example if the
-                # coroutine is wrapping a @threaded decorated function which is
-                # itself a generator, wrapping the result will silently not work
-                # with any indication why.  It's better to raise an exception.
+            if type(result) != types.GeneratorType:
+                # Decorated function isn't a generator.  We might simply wrap
+                # the result in an InProgress and pass it back, but for example
+                # if the coroutine is wrapping a @threaded decorated function
+                # which is itself a generator, wrapping the result will
+                # silently not work with any indication why.  It's better to
+                # raise an exception.
                 raise TypeError('@coroutine decorated function is not a generator')
 
             function = result

@@ -55,10 +55,7 @@ def make_exception_class(name, bases, dict):
     which derives the class of a particular Exception instance.
     """
     def create(exc, stack, *args):
-        from new import classobj
-        e = classobj(name, bases + (exc.__class__,), {})(exc, stack, *args)
-        return e
-
+        return type(name, bases + (exc.__class__,), {})(exc, stack, *args)
     return create
 
 

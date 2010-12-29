@@ -256,13 +256,22 @@ class WeakCallable(Callable):
     def __init__(self, func, *args, **kwargs):
         super(WeakCallable, self).__init__(func, *args, **kwargs)
         if type(func) == types.MethodType:
-            # For methods
-            self._instance = _weakref.ref(func.im_self, self._weakref_destroyed)
-            self._func = func.im_func.func_name
+            # We can't a weakref of the bound method, since it will probably
+            # go dead as soon as this function exists (assuming the caller
+            # did WeakCallable(foo.bar)).  Instead we take a weakref of
+            # the instance itself, and keep track of the method name.  This
+            # assumes the method keeps the same attribute name inside the
+            # instance, which is usually true.
+            #
+            # Fetch the instance of this bound method object.  __self__
+            # works on Python 2.6+ and im_self is for Python 2.5.
+            instance = getattr(func, '__self__', getattr(func, 'im_self', None))
+            self._instance = _weakref.ref(instance, self._weakref_destroyed)
+            self._func = func.__name__
         else:
             self._instance = None
             # Don't weakref lambdas.
-            if not hasattr(func, 'func_name') or func.func_name != '<lambda>':
+            if getattr(func, '__name__', None) != '<lambda>':
                 self._func = _weakref.ref(func, self._weakref_destroyed)
 
         self._args = weakref_data(args, self._weakref_destroyed)

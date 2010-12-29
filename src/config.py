@@ -37,10 +37,9 @@ import logging
 import stat
 import hashlib
 import textwrap
-from new import classobj
 
 # kaa.base modules
-from .strutils import str_to_unicode, unicode_to_str, get_encoding
+from .strutils import py3_str, py3_b, BYTES_TYPE, UNICODE_TYPE, get_encoding
 from .callable import Callable, WeakCallable
 from .timer import WeakTimer, WeakOneShotTimer
 from kaa.base.inotify import INotify
@@ -101,7 +100,7 @@ class Base(object):
         # in our parent's namespace once added.  For variables under a
         # Container, _name is None.
         self._name = name
-        self._desc = _format(str_to_unicode(desc))
+        self._desc = _format(py3_str(desc))
         self._default = default
         self._monitors = []
         # Copy-on-write source
@@ -132,7 +131,7 @@ class Base(object):
         a hash of the schema only.
         """
         value = repr(self._value) if values else ''
-        return hashlib.md5(repr(self._desc) + repr(self._default) + value).hexdigest()
+        return hashlib.md5(py3_b(repr(self._desc) + repr(self._default) + value)).hexdigest()
 
 
     def copy(self, copy_on_write=False):
@@ -216,7 +215,7 @@ class VarProxy(Base):
             # thanks to __getattribute__, so isinstance(o, bool) will be True.
             clstype = int
 
-        newclass = classobj("VarProxy", (clstype, cls), {
+        newclass = type("VarProxy", (clstype, cls), {
             "__getattribute__": cls.__getattribute__,
             "__str__": cls.__str__,
         })
@@ -300,7 +299,7 @@ class Var(Base):
         """
         Returns a hash of the config item.
         """
-        return hashlib.md5(super(Var, self)._hash(values) + repr(self._type)).hexdigest()
+        return hashlib.md5(py3_b(super(Var, self)._hash(values) + repr(self._type))).hexdigest()
 
     def __eq__(self, value):
         return self._value == value
@@ -313,7 +312,7 @@ class Var(Base):
         desc = ''
         if print_desc:
             if self._desc:
-                desc = '# | %s\n' % unicode_to_str(self._desc).replace('\n', '\n# | ')
+                desc = '# | %s\n' % self._desc.replace('\n', '\n# | ')
                 if isinstance(self._type, (tuple, list)):
                     # Show list of allowed values for this tuple variable.
                     if type(self._type[0]) == type(self._type[-1]) == int and \
@@ -332,10 +331,10 @@ class Var(Base):
                     # in comments for reference.
                     desc += '# | Default: ' + str(self._default) + '\n'
 
-        value = unicode_to_str(self._value)
+        value = self._value
         if self._value == self._default:
             value = '<default: %s>' % (value if value != '' else '(empty string)')
-        return '%s%s = %s' % (desc, unicode_to_str(self._get_fqname()), value)
+        return '%s%s = %s' % (desc, self._get_fqname(), value)
 
 
     def _cfg_set(self, value, default=False):
@@ -359,10 +358,10 @@ class Var(Base):
                 allowed = [ str(x) for x in self._type ]
                 raise TypeError('Variable must be one of %s' % ', '.join(allowed))
         elif not isinstance(value, self._type):
-            if self._type == str:
-                value = unicode_to_str(value)
-            elif self._type == unicode:
-                value = str_to_unicode(value)
+            if self._type == BYTES_TYPE:
+                value = py3_b(value)
+            elif self._type == UNICODE_TYPE:
+                value = py3_str(value)
             elif self._type == bool:
                 if not value or value.lower() in ('0', 'false', 'no'):
                     value = False
@@ -456,9 +455,9 @@ class Group(Base):
         """
         Returns a hash of the config item.
         """
-        hash = hashlib.md5(super(Group, self)._hash(values))
+        hash = hashlib.md5(py3_b(super(Group, self)._hash(values)))
         for name in self._vars:
-            hash.update(name + self._dict[name]._hash(values))
+            hash.update(py3_b(name + self._dict[name]._hash(values)))
         return hash.hexdigest()
 
 
@@ -467,7 +466,7 @@ class Group(Base):
         Convert object into a string to write into a config file.
         """
         ret  = []
-        desc = unicode_to_str(self._desc.strip('\n')).replace('\n', '\n# | ')
+        desc = self._desc.strip('\n').replace('\n', '\n# | ')
         fqn = self._get_fqname()
         is_anonymous = fqn.endswith(']')
 
@@ -662,9 +661,9 @@ class Container(Base):
         """
         Returns a hash of the config item.
         """
-        hash = hashlib.md5(super(Container, self)._hash(values))
+        hash = hashlib.md5(py3_b(super(Container, self)._hash(values)))
         for name, var in self._vars():
-            hash.update(repr(name) + var._hash(values))
+            hash.update(py3_b(repr(name) + var._hash(values)))
         return hash.hexdigest()
 
 
@@ -683,7 +682,7 @@ class Container(Base):
             # TODO: more detailed comments, show full spec of var and some examples.
             ret.append('# | %s' % fqn)
             if self._desc:
-                desc = unicode_to_str(self._desc).replace('\n', '\n# | ')
+                desc = self._desc.replace('\n', '\n# | ')
                 ret.append('# |\n# | %s' % desc)
 
         var_strings = []
@@ -730,10 +729,10 @@ class Container(Base):
         if isinstance(key, self._type):
             return key
 
-        if self._type == str:
-             return unicode_to_str(key)
-        elif self._type == unicode:
-            return str_to_unicode(key)
+        if self._type == BYTES_TYPE:
+             return py3_b(key)
+        elif self._type == UNICODE_TYPE:
+            return py3_str(key)
         else:
             # this will raise if key can't be coerced to _type.
             return self._type(key)
@@ -1003,7 +1002,7 @@ class Config(Group):
         """
         Returns a hash of the config item.
         """
-        return hashlib.md5(super(Config, self)._hash(values) + repr(self._bad_lines)).hexdigest()
+        return hashlib.md5(py3_b(super(Config, self)._hash(values) + repr(self._bad_lines))).hexdigest()
 
 
     def copy(self, copy_on_write=False):
@@ -1182,7 +1181,7 @@ class Config(Group):
                 self._loaded_hash_schema = line[12:].rstrip('-* ')
 
             # convert lines based on local encoding
-            line = unicode(line, local_encoding)
+            line = py3_str(line, local_encoding)
             if line.find('#') >= 0:
                 line = line[:line.find('#')]
             line = line.strip()
@@ -1228,9 +1227,9 @@ class Config(Group):
                 else:
                     setattr(obj, key, value)
             except Exception, e:
-                error = (str(e), line.encode(local_encoding))
+                error = unicode(e), line
                 if not error in self._bad_lines:
-                    log.warning('%s: %s' % error)
+                    log.warning(u'%s: %s' % error)
                     self._bad_lines.append(error)
         f.close()
 

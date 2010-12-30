@@ -710,7 +710,7 @@ def threaded(pool=None, priority=0, async=True, progress=False, wait=False):
 
     def decorator(func):
         args = (progress(),) if progress else ()
-        if pool is MAINTHREAD:
+        if pool == MAINTHREAD:
             callback = MainThreadCallable(func, *args)
         elif pool:
             callback = ThreadPoolCallable((pool, priority), func, *args)
@@ -720,7 +720,7 @@ def threaded(pool=None, priority=0, async=True, progress=False, wait=False):
 
         @wraps(func, lshift=int(not not progress))
         def newfunc(*args, **kwargs):
-            if pool is MAINTHREAD and not async and CoreThreading.is_mainthread():
+            if pool == MAINTHREAD and not async and CoreThreading.is_mainthread():
                 # Fast-path case: mainthread synchronous call from the mainthread
                 return func(*args, **kwargs)
 

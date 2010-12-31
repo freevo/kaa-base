@@ -34,7 +34,8 @@ This module provides basic functions to control the kaa mainloop.
 from __future__ import absolute_import
 
 __all__ = [ 'run', 'stop', 'step', 'select_notifier', 'is_running', 'wakeup',
-            'set_as_mainthread', 'is_shutting_down', 'loop', 'signals' ]
+            'set_as_mainthread', 'is_shutting_down', 'loop', 'signals', 'init',
+            'is_initialized' ]
 
 # python imports
 import sys
@@ -62,31 +63,89 @@ _running = None
 _shutting_down = False
 # Lock preventing multiple threads from executing loop().
 _loop_lock = threading.Lock()
+# True if init() has been called
+_initialized = False
 
 #: mainloop signals to connect to
+#:  - init: emitted when kaa.main.init() is invoked; will always be from the 
+#           main Python thread
 #:  - exception: emitted when an unhandled async exceptions occurs
 #:  - step: emitted on each step of the mainloop
 #:  - shutdown: emitted on kaa mainloop termination
 #:  - shutdown-after: emitted after shutdown signals.
+#:  - unix-signal: emitted when some unix signal was received
 #:  - exit: emitted when process exits
-signals = Signals('exception', 'shutdown', 'shutdown-after', 'step', 'exit')
+signals = Signals(
+    'init', 'exception', 'shutdown', 'shutdown-after', 'step', 'unix-signal',
+    'exit'
+)
+
 
 def select_notifier(module, **options):
-    """
-    Initialize the specified mainloop.
+    log.warning('select_notifier() is deprecated; use kaa.main.init() instead')
+    init(module, False, **options)
 
-    :param module: the mainloop implementation to use.
-                   ``"generic"``: Python based mainloop, default;
-                   ``"gtk"``: pygtk mainloop;
-                   ``"thread"``: Python based mainloop in an extra thread;
-                   ``"twisted"``: Twisted mainloop
-    :type module: str
-    :param options: module-specific keyword arguments
+
+def init(module=None, reset=False, **options):
     """
-    if module in ('thread', 'twisted'):
-        import nf_thread
-        return nf_thread.init(module, **options)
-    return notifier.init( module, **options )
+    Initialize the Kaa main loop facilities.
+
+    :param module: the main loop implementation to use.
+                   ``generic``: Native python-based main loop (default),
+                   ``gtk``: use pygtk's main loop (automatically selected if
+                            the gtk module is imported);
+                   ``twisted``: Twisted main loop;
+                   ``thread``: Native python-based main loop in a separate thread
+                               with custom hooks (needs ``handler`` kwarg)
+    :type module: str
+    :param reset: discards any jobs queued by other threads; this is useful
+                  following a fork.
+    :param options: module-specific keyword arguments
+
+    This function must be called from the Python main thread.
+
+    Normally it's not necessary to expliticly invoke this function; calling
+    loop() or run() will do it for you.  However if you want to use a different
+    main loop module than the default, or you begin using the Kaa API in a thread
+    before the main loop is started, you will need to invoke init() first.
+    """
+    global _initialized
+    if threading.enumerate()[0] != threading.currentThread():
+        # Likely, init() was called implicitly from kaa.main.loop() which in
+        # turn was called from a thread.  This can happen if the user calls
+        # wait() on an InProgress from within a thread, for example.
+        raise ValueError('kaa.main.init() must be called explicitly from the Python main thread')
+
+    # catch SIGTERM and SIGINT if possible for a clean shutdown
+    def signal_handler(*args):
+        # use the preferred stop function for the mainloop. Most
+        # backends only call sys.exit(0). Some, like twisted need
+        # specific code.
+        notifier.shutdown()
+    if signal.getsignal(signal.SIGINT) == signal.default_int_handler:
+        # But only install our handler if it hasn't been overridden, otherwise
+        # we break pdb.
+        signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
+    if (module and module != notifier.loaded) or not notifier.loaded:
+        if module in ('thread', 'twisted'):
+            from . import nf_thread
+            nf_thread.init(module, **options)
+        else:
+            notifier.init(module, **options)
+
+        # FIXME: this isn't the right place for this.  It belongs in the
+        # notifier init code, but it's not immediately obvious how to best move
+        # it there.
+        if module and module.startswith('twisted'):
+            from twisted.internet.process import reapAllProcesses
+            cb = signals['unix-signal'].connect(reapAllProcesses)
+            cb.ignore_caller_args = True
+
+    CoreThreading.init(signals, reset)
+    signals['init'].emit()
+    _initialized = True
 
 
 def loop(condition, timeout=None):
@@ -117,12 +176,15 @@ def loop(condition, timeout=None):
         raise RuntimeError('loop running in a different thread')
 
     initial_mainloop = False
+    if not _initialized:
+        init()
     if not is_running():
         # no mainloop is running, set this thread as mainloop and
         # set the internal running state.
         initial_mainloop = True
         CoreThreading.set_as_mainthread()
         _set_running(True)
+
     # ok, that was the critical part
     _loop_lock.release()
 
@@ -195,6 +257,9 @@ def run(threaded=False):
         raise RuntimeError('Main loop is already running')
 
     if threaded:
+        # init() gets called in loop() too (which we call later), but we need
+        # to call it now before we restart within a new thread.
+        init()
         # start mainloop as thread and wait until it is started
         event = threading.Event()
         timer.OneShotTimer(event.set).start(0)
@@ -279,7 +344,7 @@ def step(*args, **kwargs):
     Performs a single iteration of the main loop.
 
     This function should almost certainly never be called directly.  Use it
-    at your own peril.
+    at your own peril.  (If you do use it, you must call init() first.)
     """
     if not CoreThreading.is_mainthread():
         # If step is being called from a thread, wake up the mainthread
@@ -290,6 +355,13 @@ def step(*args, **kwargs):
         return
     notifier.step(*args, **kwargs)
     signals['step'].emit()
+
+
+def is_initialized():
+    """
+    Return True if init() was called.
+    """
+    return _initialized
 
 
 def is_running():
@@ -353,18 +425,6 @@ def _shutdown_check(*args):
             # finish.
             r.wait()
 
-
-# catch SIGTERM and SIGINT if possible for a clean shutdown
-if threading.enumerate()[0] == threading.currentThread():
-    def signal_handler(*args):
-        # use the preferred stop function for the mainloop. Most
-        # backends only call sys.exit(0). Some, like twisted need
-        # specific code.
-        notifier.shutdown()
-    signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
-else:
-    log.info('kaa imported from thread, disable SIGTERM handler')
 
 # check to make sure we really call our shutdown function
 atexit.register(_shutdown_check)

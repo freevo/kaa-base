@@ -147,6 +147,7 @@ def init( module, handler = None, shutdown = None, **options ):
     else:
         raise RuntimeError('unknown notifier module %s', module)
     notifier.init( 'generic', force_internal=True, **options )
+    notifier.loaded = module
     if shutdown is not None:
         # set specific shutdown function
         notifier.shutdown = shutdown

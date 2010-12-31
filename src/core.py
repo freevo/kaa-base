@@ -34,6 +34,7 @@ import threading
 import sys
 import os
 import fcntl
+import signal
 
 # kaa imports
 from .callable import Callable, WeakCallable, CallableError
@@ -46,6 +47,11 @@ log = logging.getLogger('base')
 
 
 class CoreThreading:
+    """
+    CoreThreading is a namespace (not intended to be instantiated) holding
+    various common threading and mainloop functionality that is required by
+    many different modules in Kaa.
+    """
     # Variable that is set to True (via atexit callback) when python
     # interpreter is in the process of shutting down.  If we're interested if
     # the interpreter is shutting down, we don't want to test that this
@@ -55,12 +61,23 @@ class CoreThreading:
     python_shutting_down = False
 
     # Internal only attributes.
-    # The thread pipe, which is created by CoreThreading.create_pipe, is used
+    #
+    # The thread pipe, which is created by CoreThreading.init(), is used
     # to awaken the main loop.  This happens in CoreThreading.queue_callback()
     # and CoreThreading.wakeup().  XXX: this pipe must not be carried through
     # to forked children, or ugly behaviour will ensue.  kaa.utils.fork() and
     # .daemonize() will ensure a new pipe is created in the child process.
     _pipe = None
+    # The signal wake pipe.  We pass the write side of the pipe to Python's
+    # signal.set_wakeup_fd(), and any time there is a unix signal received
+    # for which there has been a Python handler attached, the interpreter
+    # will write a byte to the pipe.  We monitor the read end in the
+    # notifier, which causes the main thread to wake up if we receive a
+    # unix signal.  This is necessary because signals are not guaranteed to be
+    # received by the main thread, but Python always queues the handler to be
+    # executed from the main thread.  Without this, we could wait up to 30
+    # seconds (the maximum sleep time in notifier) to handle a signal.
+    _signal_wake_pipe = None
     # Holds a queue of callbacks and their arguments that need to be executed
     # from the main loop (by CoreThreading.run_queue, which is called by the
     # notifier when there is activity on the pipe.)
@@ -73,37 +90,69 @@ class CoreThreading:
 
 
     @staticmethod
-    def create_pipe(new=True, purge=False):
+    def init(signals, purge=False):
         """
-        Creates a new pipe for the thread notifier.  If new is True, a new pipe
-        will always be created; if it is False, it will only be created if one
-        already exists.  If purge is True, any previously queued work will be
-        discarded.
+        Initialize the core threading/mainloop functionality by creating the
+        thread notifier and signal wakeup pipes, and registering them with
+        the notifier.
 
-        This is an internal function, but we export it for kaa.utils.daemonize.
+        :param signals: the main loop Signals object (passed by main.py)
+        :param purge: if True, any pending callbacks queued for execution in
+                      the mainloop will be removed.  This is useful when we have
+                      forked and want to wipe the slate clean.
+
+        This function also installs a SIGCHLD handler, mainly for lack of a
+        better place.
+
+        If this function is called multiple times, it must recreate the pipes
+        and cleanup after previous invocations.
         """
-        log.info('create thread notifier pipe')
-
-        if not CoreThreading._pipe and not new:
-            return
-        elif CoreThreading._pipe:
+        log.debug('Creating thread notifier and signal wakeup pipes (purge=%s)', purge)
+        if CoreThreading._pipe:
             # There is an existing pipe already, so stop monitoring it.
             notifier.socket_remove(CoreThreading._pipe[0])
+        CoreThreading._pipe = CoreThreading._create_nonblocking_pipe()
+        notifier.socket_add(CoreThreading._pipe[0], CoreThreading.run_queue)
 
         if purge:
             with CoreThreading._queue_lock:
-                CoreThreading._lock.acquire()
-
-        CoreThreading._pipe = os.pipe()
-        fcntl.fcntl(CoreThreading._pipe[0], fcntl.F_SETFL, os.O_NONBLOCK)
-        fcntl.fcntl(CoreThreading._pipe[1], fcntl.F_SETFL, os.O_NONBLOCK)
-        notifier.socket_add(CoreThreading._pipe[0], CoreThreading.run_queue)
-
-        if CoreThreading._queue:
+                del CoreThreading._queue[:]
+        elif CoreThreading._queue:
             # A thread is already running and wanted to run something in the
             # mainloop before the mainloop is started. In that case we need
             # to wakeup the loop ASAP to handle the requests.
-            os.write(CoreThreading._pipe[1], CoreThreading._PIPE_NOTIFY_TOKEN)
+            CoreThreading._wakeup()
+
+
+        # Create wakeup fd pipe (Python 2.6) and install SIGCHLD handler.
+        if hasattr(signal, 'set_wakeup_fd'):
+            # Python 2.6+, so setup the signal wake pipe.
+            if CoreThreading._signal_wake_pipe:
+                # Stop monitoring old signal wake pipe.
+                notifier.socket_remove(CoreThreading._signal_wake_pipe[0])
+            pipe = CoreThreading._create_nonblocking_pipe()
+            notifier.socket_add(pipe[0], lambda fd: os.read(fd, 4096) and signals['unix-signal'].emit())
+            CoreThreading._signal_wake_pipe = pipe
+            signal.signal(signal.SIGCHLD, lambda sig, frame: None)
+            signal.set_wakeup_fd(pipe[1])
+        else:
+            # With Python 2.5-, we can't wakeup the main loop.  Use emit()
+            # directly as the handler.
+            signal.signal(signal.SIGCHLD, signals['unix-signal'].emit)
+        # Emit now to reap processes that may have terminated before we set the
+        # handler.  process.py connects to this signal.
+        signals['unix-signal'].emit()
+
+
+    @staticmethod
+    def _create_nonblocking_pipe():
+        pipe = os.pipe()
+        for fd in pipe:
+            flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+            fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+            flags = fcntl.fcntl(fd, fcntl.F_GETFD)
+            fcntl.fcntl(fd, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
+        return pipe
 
 
     @staticmethod
@@ -113,8 +162,7 @@ class CoreThreading:
             if len(CoreThreading._queue) == 1:
                 # We just added the first callback to the queue, so notify the
                 # mainthread.
-                if CoreThreading._pipe:
-                    os.write(CoreThreading._pipe[1], CoreThreading._PIPE_NOTIFY_TOKEN)
+                CoreThreading._wakeup()
 
 
     @staticmethod
@@ -145,6 +193,15 @@ class CoreThreading:
                         raise
         return True
 
+    @staticmethod
+    def _wakeup():
+        """
+        Wakes up the mainloop.  This is the private interface, which always
+        writes a byte to the notifier pipe.
+        """
+        if CoreThreading._pipe:
+            os.write(CoreThreading._pipe[1], CoreThreading._PIPE_NOTIFY_TOKEN)
+
 
     @staticmethod
     def wakeup():
@@ -156,7 +213,7 @@ class CoreThreading:
         by another thread to wake up the mainloop.  For example, when a
         :class:`~kaa.MainThreadCallable` is invoked, it calls ``wakeup()``.
         """
-        if CoreThreading._pipe and len(CoreThreading._queue) == 0:
+        if len(CoreThreading._queue) == 0:
             os.write(CoreThreading._pipe[1], CoreThreading._PIPE_NOTIFY_TOKEN)
 
 
@@ -182,12 +239,6 @@ class CoreThreading:
         from the outside, the loop function is setting the mainthread if needed.
         """
         CoreThreading._mainthread = threading.currentThread()
-        if not CoreThreading._pipe:
-            # Make sure we have a pipe between the mainloop and threads. Since
-            # loop() calls set_as_mainthread it is safe to assume the loop is
-            # connected correctly. If someone calls step() without loop() and
-            # without set_as_mainthread inter-thread communication does not work.
-            CoreThreading.create_pipe()
 
 
     def _handle_shutdown():

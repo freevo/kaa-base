@@ -191,8 +191,9 @@ def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None,
 
     # Replace any existing thread notifier pipe, otherwise we'll be listening
     # to our parent's thread pipe.
-    from .core import CoreThreading
-    CoreThreading.create_pipe(new=False, purge=True)
+    from . import main
+    if main.is_initialized():
+        main.init(reset=True)
     return lock
 
 
@@ -205,8 +206,9 @@ def fork():
     if not pid:
         # Child must replace thread notifier pipe, otherwise we'll be listening
         # to our parent's thread pipe.
-        from .core import CoreThreading
-        CoreThreading.create_pipe(new=False, purge=True)
+        from . import main
+        if main.is_initialized():
+            main.init(reset=True)
     return pid
 
 

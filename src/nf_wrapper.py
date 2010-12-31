@@ -47,6 +47,9 @@ log = logging.getLogger('base')
 # is None.
 _python_shutting_down = False
 
+# The name of the module init() was called with, or None if init() has not
+# been called yet.
+loaded = None
 
 class NotifierCallback(Callable):
 
@@ -140,6 +143,7 @@ def init( module = None, force_internal=False, **options ):
     global nf_socket_add
     global nf_conditions
     global shutdown
+    global loaded
 
     if not isinstance(timer_add, _Wrapper):
         raise RuntimeError('notifier already initialized')
@@ -162,10 +166,11 @@ def init( module = None, force_internal=False, **options ):
     # find a good main notifier implementation
     if not module:
         module = 'generic'
-        if sys.modules.has_key('gtk'):
+        if 'gtk' in sys.modules:
             # The gtk module is loaded, this means that we will hook
             # ourself into the gtk notifier
             module = 'gtk'
+            log.info('Implicitly using gtk integration for the notifier')
 
     if not module in ('generic', 'gtk', 'twisted_experimental'):
         raise AttributeError('unsupported notifier %s' % module)
@@ -177,9 +182,9 @@ def init( module = None, force_internal=False, **options ):
     notifier.init(getattr(notifier, module.upper()), **options)
 
     # delete basic notifier handler
-    log = logging.getLogger('notifier')
-    for l in log.handlers:
-        log.removeHandler(l)
+    nlog = logging.getLogger('notifier')
+    for l in nlog.handlers:
+        nlog.removeHandler(l)
 
     timer_remove = notifier.timer_remove
     timer_add = notifier.timer_add
@@ -199,6 +204,8 @@ def init( module = None, force_internal=False, **options ):
         # special stop handling for twisted
         from twisted.internet import reactor
         shutdown = reactor.stop
+
+    loaded = module
 
 
 def _shutdown_weakref_destroyed():

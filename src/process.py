@@ -63,31 +63,40 @@ class _Supervisor(object):
     def __init__(self):
         self.processes = {}
 
+        # Stop all processes as last part of mainloop termination.
+        main.signals['shutdown-after'].connect(self.stopall)
+        main.signals['unix-signal'].connect(self._sigchld_handler)
+
         # Set SA_RESTART bit for the signal, which restarts any interrupted
         # system calls -- however, select (at least on Linux) is NOT restarted
         # for reasons described at:
         #    http://lkml.indiana.edu/hypermail/linux/kernel/0003.2/0336.html
         #
-        # Therefore the purpose of signal.set_wakeup_fd() eludes me, since
-        # select calls get interrupted, there is no need to wake it up.
+        # We do this early (which is effectively at import time, because
+        # _Supervisor() gets instantiated at import) so that child processes
+        # can be created before the main loop is started, and their
+        # termination won't interrupt any system calls.
         if sys.hexversion >= 0x02060000:
             # Python 2.6+ has signal.siginterrupt()
             signal.siginterrupt(signal.SIGCHLD, False)
-            signal.signal(signal.SIGCHLD, self._sigchld_handler)
         elif sys.hexversion >= 0x02050000:
             # Python 2.5
             import ctypes, ctypes.util
             libc = ctypes.util.find_library('c')
-            # ctypes.util.find_library() involves a child process, so the
-            # handler should be set after the call.  See Debian bug #575293
-            signal.signal(signal.SIGCHLD, self._sigchld_handler)
             ctypes.CDLL(libc).siginterrupt(signal.SIGCHLD, 0)
         else:
             # Python 2.4- is not supported.
             raise SystemError('kaa.base requires Python 2.5 or later')
-        
+
 
     def register(self, process):
+        """
+        Registers a given Process object with the supervisor for monitoring.
+
+        This must be called _before_ the child process is created to avoid a
+        race condition with short lived children where SIGCHLD is received
+        before the process is registered.
+        """
         log.debug('Supervisor now monitoring %s', process)
         self.processes[process] = True
 
@@ -101,7 +110,7 @@ class _Supervisor(object):
 
 
     @timed(0, timer=OneShotTimer, policy=POLICY_ONCE)
-    def _sigchld_handler(self, sig, frame):
+    def _sigchld_handler(self, sig=None, frame=None):
         """
         Handler for SIGCHLD.  We invoke this as a OneShotTimer so that we get called
         on the next pass of the mainloop.  If SIGCHLD just interrupted the select
@@ -147,10 +156,14 @@ class _Supervisor(object):
         especially as Process._check_dead() might involve some fairly complex
         paths.
         """
-        log.debug('SIGCHLD: entering timed handler')
+        log.debug('SIGCHLD: entering timed handler: %s %s', sig, frame)
+        self.reapall()
+        log.debug('SIGCHLD: handler completed')
+
+
+    def reapall(self):
         for process in self.processes.keys():
             process._check_dead()
-        log.debug('SIGCHLD: handler completed')
 
 
     def stopall(self, timeout=10):
@@ -183,8 +196,7 @@ class _Supervisor(object):
 
 
 supervisor = _Supervisor()
-# Stop all processes as last part of mainloop termination.
-main.signals['shutdown-after'].connect(supervisor.stopall)
+
 
 class IOSubChannel(IOChannel):
     """

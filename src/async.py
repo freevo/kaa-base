@@ -542,7 +542,16 @@ class InProgress(Signal, Object):
             from .main import signals
             return signals['step'].connect_once(reraise)
 
-        log.error('Unhandled %s exception:\n%s', cls.__name__, trace)
+        try:
+            log.error('Unhandled %s exception:\n%s', cls.__name__, trace)
+        except Exception:
+            # The logger raised an exception, which probably means something
+            # fairly serious and unrecoverable has happened (such as too many
+            # open files).  Out of desperation, now just print to stderr.
+            sys.stderr.write('\nFATAL: logger failed during an unhandled %s exception:\n%s\n' % \
+                             (cls.__name__, trace))
+            return
+
         if log.level <= logging.INFO:
             # Asynchronous exceptions create a bit of a problem in that while you
             # know where the exception came from, you don't easily know where it

@@ -379,9 +379,9 @@ class Process(Object):
         self.signals['readline'].changed_cb = cb
 
         self._state = Process.STATE_STOPPED 
-        # InProgress for the whole process.  Is created in start(), and finished
-        # when the process is terminated.
-        self._in_progress = None
+        # InProgress for the whole process.  Is recreated in start() for
+        # multiple invocations, and finished when the process is terminated.
+        self._in_progress = InProgress()
         
 
     def _update_read_monitor(self, signal=None, change=None):
@@ -603,7 +603,12 @@ class Process(Object):
                 raise ValueError('Command and arguments must be strings when shell=True')
             cmd = self._cmd + ' ' + args
 
+        if self._in_progress.finished:
+            self._in_progress = InProgress()
+        self._in_progress.signals['abort'].connect_weak(lambda exc: self.stop())
+        self._exitcode = None
         supervisor.register(self)
+
         log.debug("Spawning: %s", cmd)
         self._child = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE, preexec_fn=self._child_preexec,
@@ -612,12 +617,7 @@ class Process(Object):
         self._stdin.wrap(self._child.stdin, IO_WRITE)
         self._stdout.wrap(self._child.stdout, IO_READ)
         self._stderr.wrap(self._child.stderr, IO_READ)
-
-        self._in_progress = InProgress()
-        self._in_progress.signals['abort'].connect_weak(lambda exc: self.stop())
-        self._exitcode = None
         self._state = Process.STATE_RUNNING
-
         return self._in_progress
 
 

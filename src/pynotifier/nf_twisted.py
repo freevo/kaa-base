@@ -97,7 +97,9 @@ class SocketReadCB:
 
     def connectionLost(self, reason): 
         # Should we do more?
-        log.error("connection lost on socket fd=%s" % self.fileno())
+        # ... no, we should do less.
+        # log.error("connection lost on socket fd=%s" % self.fileno())
+        pass
 
 
 class SocketWriteCB:

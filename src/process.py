@@ -324,8 +324,8 @@ class Process(Object):
 
         Process objects passed to :func:`kaa.inprogress` return a
         :class:`~kaa.InProgress` that corresponds to the
-        :attr:`~kaa.Process.signals.finished` signal (not the
-        :attr:`~kaa.Process.signals.exited` signal).
+        :attr:`~kaa.Process.signals.exited` signal (not the
+        :attr:`~kaa.Process.signals.finished` signal).
         """
         super(Process, self).__init__()
         self._cmd = cmd
@@ -575,7 +575,8 @@ class Process(Object):
                      to any arguments specified to the initializer.
         :type args: string or list of strings
         :return: An :class:`~kaa.InProgress` object, finished with the exitcode
-                 when the child process terminates.
+                 when the child process terminates (when the ``exit`` signals is
+                 emitted).
 
         The Process is registered with a global supervisor which holds a strong
         reference to the Process object while the child process remains
@@ -850,12 +851,6 @@ class Process(Object):
         yield (buf_out.getvalue(), buf_err.getvalue())
 
 
-    def _emit_finished(self):
-        if not self._in_progress.finished:
-            self._in_progress.finish(self._exitcode)
-        self.signals['finished'].emit(self._exitcode)
-
-
     def _check_dead(self, expected=None):
         """
         Checks to see if the child process has died.
@@ -876,7 +871,7 @@ class Process(Object):
                 self._cleanup_weakref = None
                 # With child exited and both stdout/stderr closed, the child is
                 # considered finished.
-                self._emit_finished()
+                self.signals['finished'].emit(self._exitcode)
             return
 
         if self._child.poll() is not None:
@@ -943,8 +938,11 @@ class Process(Object):
 
         self._state = Process.STATE_STOPPED
         # We don't emit 'finished' here, because stdout/stderr is still open
-        # and there may be data yet to be read.  But we do emit 'exited'
+        # and there may be data yet to be read.  But we do emit 'exited' and
+        # finish the InProgress object.
         self.signals['exited'].emit(self._exitcode)
+        if not self._in_progress.finished:
+            self._in_progress.finish(self._exitcode)
 
         if self._stdout.alive or self._stderr.alive:
             # Use weakref finializer callback kludge to invoke Process._cleanup
@@ -954,4 +952,4 @@ class Process(Object):
             self._cleanup_weakref = weakref.ref(self, cb)
         else:
             # Child exit and stdout/stderr closed.  We're finished.
-            self._emit_finished()
+            self.signals['finished'].emit(self._exitcode)

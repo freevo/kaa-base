@@ -554,6 +554,18 @@ class Process(Object):
         elif not cmd:
             return []
 
+    def _child_preexec(self):
+        """
+        Callback function for Popen object that gets invoked in the child after
+        forking but prior to execing.
+        """
+        # Children will inherit any ignored signals, so before we exec, reset
+        # any ignored signals to their defaults.
+        for sig in range(1, signal.NSIG):
+            if signal.getsignal(sig) == signal.SIG_IGN:
+                signal.signal(sig, signal.SIG_DFL)
+
+
     #@threaded() <-- don't
     def start(self, args=''):
         """
@@ -593,7 +605,8 @@ class Process(Object):
         supervisor.register(self)
         log.debug("Spawning: %s", cmd)
         self._child = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE, close_fds=True, shell=self._shell)
+                                       stderr=subprocess.PIPE, preexec_fn=self._child_preexec,
+                                       close_fds=True, shell=self._shell)
 
         self._stdin.wrap(self._child.stdin, IO_WRITE)
         self._stdout.wrap(self._child.stdout, IO_READ)

@@ -55,7 +55,7 @@
 #
 # Connect the object with that function to the server/client. You can connect
 # as many objects as you want
-# | server.connect(MyClass())
+# | server.register(MyClass())
 #
 # The client can now call do_something (not my_function, this is the internal
 # name). To do that, you need to create a RPC object with the callback you

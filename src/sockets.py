@@ -109,7 +109,7 @@ def if_indextoname(idx):
     if not ret:
         err = 'Failed to lookup interface index %d' % idx
         if hasattr(ctypes, 'get_errno'):
-            err += ': ' + ctypes.c_char_p(_libc().strerror(ctypes.get_errno())).value
+            err += ': ' + os.strerror(ctypes.get_errno())
         raise ValueError(err)
 
     return name.value

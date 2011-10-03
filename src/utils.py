@@ -362,7 +362,7 @@ def get_plugins(group=None, location=None, attr=None, filter=None):
     .. note::
        Plugins will be imported relative to the caller's module name.  So if
        the caller is module ``module.plugins``, plugin1 will be imported as
-       ``module.plugins.plugins``.
+       ``module.plugins.plugin1``.
 
     This also works when ``plugins/__init__.py`` is inside a zipped egg.
     However, if you reference ``__file__`` as above, setuptools (assuming it's

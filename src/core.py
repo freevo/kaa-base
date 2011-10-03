@@ -294,21 +294,29 @@ class Object(object):
             'supersignal': None
         }
     """
-    def __init__(self, *args, **kwargs):
-        # Accept all args, and pass to superclass.  Necessary for kaa.Object
-        # descendants to be involved in inheritance diamonds.
-        super(Object, self).__init__(*args, **kwargs)
-
-        # Merge __kaasignals__ dict for the entire inheritance tree for the
-        # given class.  Newer (most descended) __kaasignals__ will replace
-        # older ones if there are conflicts.
+    @staticmethod
+    def _get_all_signals(cls):
+        """
+        Merge __kaasignals__ dict for the entire inheritance tree for the given
+        class.  Newer (most descended) __kaasignals__ will replace older ones if
+        there are conflicts.
+        """
         signals = {}
-        for c in reversed(inspect.getmro(self.__class__)):
+        for c in reversed(inspect.getmro(cls)):
             if hasattr(c, '__kaasignals__'):
                 signals.update(c.__kaasignals__)
 
         # Remove all signals whose value is None.
         [ signals.pop(k) for k, v in signals.items() if v is None ]
+        return signals
+
+        
+    def __init__(self, *args, **kwargs):
+        # Accept all args, and pass to superclass.  Necessary for kaa.Object
+        # descendants to be involved in inheritance diamonds.
+        super(Object, self).__init__(*args, **kwargs)
+
+        signals = self._get_all_signals(self.__class__)
         if signals:
             # Construct the kaa.Signals object and attach the docstrings to
             # each signal in the Signal object's __doc__ attribute.

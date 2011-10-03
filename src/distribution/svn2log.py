@@ -112,7 +112,7 @@ class LogParser(ElementParser):
                     files.append(f[1:])
         if not len(files):
             print('error detecting files')
-            for path in c:
+            for path in node.paths:
                 print(path.content)
         # write entry to the file or remember if stuff belongs together
         if self._entry and (self._entry.author != author or self._entry.date != date):

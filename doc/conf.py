@@ -11,14 +11,16 @@
 # All configuration values have a default value; values that are commented out
 # serve to show the default value.
 
-import sys, os
+import sys, os, glob, platform
 
 # If your extensions are in another directory, add it here. If the directory
 # is relative to the documentation root, use os.path.abspath to make it
 # absolute, like shown here.
-for _lib in os.listdir('../build'):
-    if _lib.startswith('lib.'):
-        sys.path.insert(0, os.path.abspath('../build/' + _lib))
+[sys.path.remove(x) for x in sys.path[:] if '/kaa' in x and x != os.getcwd()]
+for _lib in glob.glob('../build/lib.*%s*/kaa' % platform.machine()):
+    sys.path.insert(0, os.path.abspath(_lib))
+
+sys.modules['kaa'] = sys.modules['kaa.base'] = __import__('base')
 from kaa.version import VERSION
 
 # General configuration
@@ -26,7 +28,7 @@ from kaa.version import VERSION
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = [ 'sphinx.ext.autodoc', 'kaa.distribution.sphinxext' ]
+extensions = [ 'sphinx.ext.autodoc', 'kaa.base.distribution.sphinxext' ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

@@ -25,7 +25,7 @@ help:
 clean:
 	-rm -rf .build/* html/*
 
-html:
+html: clean
 	mkdir -p html .build/doctrees
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) html
 	@echo

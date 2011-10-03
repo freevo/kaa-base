@@ -184,7 +184,7 @@ from docutils.statemachine import ViewList, StringList
 from docutils.parsers.rst import directives
 
 # Kaa imports
-from kaa.object import get_all_signals
+from kaa.core import Object
 
 
 # Custom nodes
@@ -252,11 +252,11 @@ class subsection(nodes.paragraph):
 
 def get_signals(cls, inherit, add, remove):
     if inherit:
-        signals = get_all_signals(cls)
+        signals = Object._get_all_signals(cls)
     else:
         signals = getattr(cls, '__kaasignals__', {}).copy()
         if add:
-            all = get_all_signals(cls)
+            all = Object._get_all_signals(cls)
             for key in add:
                 signals[key] = all[key]
 
@@ -305,10 +305,16 @@ def normalize_class_name(mod, name):
         fullname = '%s.%s' % (mod.rsplit('.', i)[0], name)
         try:
             get_class(fullname)
-            return fullname
+            break
         except (ImportError, AttributeError):
             pass
-    return '%s.%s' % (mod, name)
+    else:
+        fullname = '%s.%s' % (mod, name)
+
+    # Special exception for kaa.base: rename 'base' to 'kaa'
+    if fullname.startswith('base.'):
+        fullname = 'kaa' + fullname[4:]
+    return fullname
     
 
 def append_class_hierarchy(node, state, cls, level=0, clstree=None):

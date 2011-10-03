@@ -71,7 +71,6 @@ if '.egg/' in path and 'install' in sys.argv and not '--egg' in sys.argv:
 # want to insert to the front because then any absolute imports will look in
 # src/ first, rather than standard Python modules, which is a problem for any
 # modules whose name collides (e.g. io)
-#sys.path.append('src')
 import src
 sys.modules['kaa'] = sys.modules['kaa.base'] = src
 
@@ -150,10 +149,14 @@ setup(
     opts_2to3 = {
         # Everything listed in 'exclude' is imported directly here (for distribution),
         # so it must compile with both python 2.6 and 3.x.
-        'exclude': ['distribution/*', 'saxutils.py'],
+        'exclude': ['distribution/*', 'saxutils.py', 'strutils.py'],
         'nofix': {
             '*.py': ['import'],
         }
     },
-    namespace_packages = ['kaa']
+    # Don't declare kaa.base as part of the kaa namespace.  Doing so will
+    # suppress installation of kaa/__init__.py when installing with pip.  This
+    # needs to be installed with kaa.base in order to make our namespace hack
+    # work (where everything in kaa.base is under kaa).
+    # namespace_packages = ['kaa']
 )

@@ -513,7 +513,7 @@ def setup(**kwargs):
     if not sys.modules.get('setuptools'):
         # Setuptools not available, so remove any kwarg that would cause stock
         # distutils to complain.
-        for kw in ('namespace_packages', 'zip_safe'):
+        for kw in ('namespace_packages', 'zip_safe', 'install_requires'):
             if kw in kwargs:
                 del kwargs[kw]
     else:
@@ -573,7 +573,7 @@ def setup(**kwargs):
                     break
             f.close()
 
-    if len(sys.argv) > 1 and sys.argv[1] in ('bdist_rpm', 'sdist') and \
+    if len(sys.argv) > 1 and any(arg.startswith('bdist') or arg.startswith('sdist') for arg in sys.argv) and \
            os.path.isfile('ChangeLog.in'):
         # FIXME: find a better way to detect if we need to create a
         # ChangeLog file or not.

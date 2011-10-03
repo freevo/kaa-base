@@ -134,7 +134,7 @@ else:
 # call setup
 setup(
     module = 'base',
-    version = '0.99.0',
+    version = '0.99.1',
     license = 'LGPL',
     url = 'http://doc.freevo.org/api/kaa/base/',
     summary = 'An application framework specializing in asynchronous programming.',

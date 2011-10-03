@@ -191,7 +191,7 @@ def init( module = None, force_internal=False, **options ):
 
     nf_socket_remove = notifier.socket_remove
     nf_socket_add = notifier.socket_add
-    nf_conditions = [ notifier.IO_READ, notifier.IO_WRITE ]
+    nf_conditions = [ notifier.IO_READ, notifier.IO_WRITE, notifier.IO_EXCEPT ]
     socket_remove = _socket_remove
     socket_add = _socket_add
 

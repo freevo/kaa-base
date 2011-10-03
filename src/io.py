@@ -27,7 +27,7 @@
 # -----------------------------------------------------------------------------
 from __future__ import absolute_import
 
-__all__ = [ 'IO_READ', 'IO_WRITE', 'IOMonitor', 'WeakIOMonitor', 'IOChannel' ]
+__all__ = [ 'IO_READ', 'IO_WRITE', 'IO_EXCEPT', 'IOMonitor', 'WeakIOMonitor', 'IOChannel' ]
 
 import sys
 import os
@@ -51,6 +51,7 @@ log = logging.getLogger('base.io')
 
 IO_READ   = 1
 IO_WRITE  = 2
+IO_EXCEPT = 3
 
 class IOMonitor(notifier.NotifierCallback):
     def __init__(self, callback, *args, **kwargs):
@@ -75,7 +76,7 @@ class IOMonitor(notifier.NotifierCallback):
 
         :param fd: The file descriptor to monitor.
         :type fd: File descriptor or any file-like object
-        :param condition: IO_READ or IO_WRITE
+        :param condition: IO_READ, IO_WRITE, or IO_EXCEPT
         """
         if self.active:
             if fd != self._id or condition != self._condition:

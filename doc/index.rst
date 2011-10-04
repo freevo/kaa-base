@@ -26,11 +26,19 @@ machines responding to asynchronous events in very compact, readable code.
 Where do I get kaa.base?
 ------------------------
 
-Source packages are `available on SourceForge
-<http://sourceforge.net/projects/freevo/files/kaa-base/>`_.
+The easiest and recommended way to install kaa.base is using *pip* (available
+as the ``python-pip`` package in Ubuntu and Fedora)::
 
-Your distribution might already have *kaa.base* included in its standard
-repositories::
+    sudo pip install --upgrade kaa-base
+
+
+Or, if you prefer to install kaa.base as an egg using *setuptools* (package
+``python-setuptools`` on Ubuntu and Fedora)::
+
+    sudo easy_install -U kaa-base
+
+Your distribution might already have kaa.base included in its standard
+repositories, but be aware that these are almost certainly very out of date::
 
     # For Ubuntu and Debian
     sudo apt-get install python-kaa-base
@@ -39,17 +47,16 @@ repositories::
     yum install python-kaa-base
 
 
-If you have *setuptools* installed (package named ``python-setuptools`` on
-Ubuntu and Fedora), you can install (or upgrade to) the latest released
-version, which will very likely be more recent than the version that comes
-with your distribution::
-
-    sudo easy_install -U kaa-base
-
-
 The most recent in-development version can be obtained via subversion::
 
     svn co svn://svn.freevo.org/kaa/trunk/base kaa-base
+    cd kaa-base
+    sudo python setup.py install
+
+
+Finally, source packages are `available on SourceForge
+<http://sourceforge.net/projects/freevo/files/kaa-base/>`_.
+
 
 
 Library Documentation

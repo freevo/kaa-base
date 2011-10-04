@@ -398,15 +398,23 @@ def auto_directive(name, arguments, options, content, lineno,
                 # and the desc_signature has no ids attribute, which we
                 # need to set to make it linkable.
                 desc_sig[0].children[0] = nodes.Text(name_prefix[8:])
-                new_id = '%s.%s' % (clsname, name_prefix)
-                desc_sig['ids'] = [new_id]
-                # Add this signal to Sphinx's descref dict so references
-                # to this signal are properly resolved.
-                env.descrefs[new_id] = (env.docname, 'attribute')
+                sig_id = '%s.%s' % (clsname, name_prefix)
 
             else:
                 # Removes <descaddname>signals.</descaddname>
                 desc_sig.remove(desc_sig[0])
+                sig_id = '%s.signals.%s' % (clsname, desc_sig[0].children[0])
+
+            # Add this signal to Sphinx's descref dict so references
+            # to this signal are properly resolved.
+            desc_sig['ids'] = [sig_id]
+            if hasattr(env, 'domains'):
+                # Sphinx 1.0
+                env.domains['py'].data['objects'][sig_id] = (env.docname, 'attribute')
+            elif hasattr(env, 'descrefs'):
+                # Sphinx 0.6
+                env.descrefs[sig_id] = (env.docname, 'attribute')
+
 
     if 'order' in options:
         def keyfunc(member):

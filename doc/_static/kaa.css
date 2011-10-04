@@ -13,6 +13,7 @@ div.kaa.synopsis th {
     border-bottom: 1px solid #efddc8;
     padding-right: 1em;
     vertical-align: top;
+    background-color: inherit;
 }
 
 div.kaa.synopsis td {

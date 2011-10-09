@@ -571,7 +571,7 @@ def wraps(origfunc, lshift=0):
     """
     Decorator factory: used to create a decorator that assumes the same
     attributes (name, docstring, signature) as its decorated function when
-    epydoc has been imported.  This is necessary because epydoc uses
+    sphinx has been imported.  This is necessary because sphinx uses
     introspection to construct the documentation.
 
     This logic is inspired from Michele Simionato's decorator module.
@@ -590,8 +590,8 @@ def wraps(origfunc, lshift=0):
         arguments removed.
     @return: a decorator which has the attributes of the decorated function.
     """
-    if 'epydoc' not in sys.modules and 'sphinx.builder' not in sys.modules:
-        # epydoc not imported, so return a decorator that passes the func through.
+    if 'sphinx.builders' not in sys.modules:
+        # sphinx not imported, so return a decorator that passes the func through.
         return functools.wraps(origfunc)
     elif lshift == 0:
         # Simple case, we don't need to munge args, so we can pass origfunc.
@@ -623,7 +623,7 @@ def wraps(origfunc, lshift=0):
         sig = inspect.formatargspec(*spec)[1:-1]
         kwarg_values = None
 
-    src = 'lambda %s: __kaa_log_.error("epydoc mode: decorated function \'%s\' was called")' % (sig, origfunc.__name__)
+    src = 'lambda %s: __kaa_log_.error("doc generation mode: decorated function \'%s\' was called")' % (sig, origfunc.__name__)
     def decorator(func):
         dec_func = eval(src, {'__kaa_log_': log, '__kaa_kw_defs': kwarg_values})
         return update_wrapper(dec_func, origfunc)

@@ -155,8 +155,6 @@ def coroutine(interval=0, policy=None, progress=False, group=None):
                 store = DecoratorDataStore(func, newfunc, args, group)
                 if 'last' not in store:
                     store.last = []
-                if 'lock' not in store:
-                    store.lock = None
                 last = store.last
 
                 if policy == POLICY_SINGLETON and last:
@@ -176,12 +174,14 @@ def coroutine(interval=0, policy=None, progress=False, group=None):
                 if progress:
                     obj.progress = args[0]
 
-                if policy in (POLICY_SINGLETON, POLICY_PASS_LAST) and not obj.finished:
+                if policy in (POLICY_SINGLETON, POLICY_PASS_LAST, POLICY_SYNCHRONIZED) and not obj.finished:
                     last.append(obj)
 
                     # Attach a handler that removes the stored InProgress when it
                     # finishes.
                     def cb(*args, **kwargs):
+                        # XXX: this call is O(n); investigate more efficient
+                        # ways (e.g. pop a specific index)
                         last.remove(obj)
                         if args and args[0] in (GeneratorExit, InProgressAborted):
                             # Because we've attached to the exception signal
@@ -209,15 +209,14 @@ def coroutine(interval=0, policy=None, progress=False, group=None):
                 raise TypeError('@coroutine decorated function is not a generator')
 
             function = result
-            if policy == POLICY_SYNCHRONIZED and store.lock is not None and not store.lock.finished:
-                # Function is currently called by someone else
-                return wrap(CoroutineLockedInProgress(store, function, func_info, interval))
 
             ip = CoroutineInProgress(function, func_info, interval)
-            if policy == POLICY_SYNCHRONIZED:
-                store.lock = ip
+            if policy == POLICY_SYNCHRONIZED and last:
+                # Coroutine is currently active and the policy is to serialize
+                # executions, so chain onto the last invocation.
+                last[-1].connect_both(ip._continue)
             # Perform as much as we can of the coroutine now.
-            if ip._step() == True:
+            elif ip._step() == True:
                 # Generator yielded NotFinished, so start the CoroutineInProgress timer.
                 ip._timer.start(interval)
             return wrap(ip)
@@ -463,26 +462,3 @@ class CoroutineInProgress(InProgress):
             self._timer = None
             self._coroutine = None
             self._prerequisite_ip = None
-
-
-
-class CoroutineLockedInProgress(CoroutineInProgress):
-    """
-    CoroutineInProgress for handling locked coroutine functions.
-    """
-    def __init__(self, store, function, function_info, interval):
-        CoroutineInProgress.__init__(self, function, function_info, interval)
-        self._store = store
-        self._store.lock.connect_both(self._try_again, self._try_again)
-
-
-    def _try_again(self, *args, **kwargs):
-        """
-        Try to start now.
-        """
-        if not self._store.lock.finished:
-            # still locked by a new call, wait again
-            self._store.lock.connect_both(self._try_again, self._try_again)
-            return
-        self._store.lock = self
-        self._continue()

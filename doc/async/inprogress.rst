@@ -121,7 +121,7 @@ Functions
 
    A practical demonstration of this protocol is in the Signal object,
    which implements the __inprogress__ method. The returned InProgress in
-   that case is finished with the signal is next emitted. Any object
+   that case is finished when the signal is next emitted. Any object
    implementing the __inprogress__ protocol can be passed directly to the
    constructor of InProgressAny or InProgressAll.
 

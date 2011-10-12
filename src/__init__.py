@@ -146,6 +146,10 @@ class _LazyProxy(type):
         >>> @timed(1.0)
         ... def foo():
         ...     pass
+        
+        # imports core (setattr hook)
+        >>> import kaa
+        >>> kaa.Signal.MAX_CONNECTIONS = 10000
     """
     def __new__(cls, name, bases, dict):
         if bases == (__builtins__['object'],):
@@ -234,6 +238,11 @@ class _LazyProxy(type):
         if attr == '_LazyProxy__get':
             return type.__getattribute__(cls, attr)
         return getattr(cls.__get(), attr)
+
+    def __setattr__(cls, attr, value):
+        if attr == '_obj':
+            return type.__setattr__(cls, attr, value)
+        return setattr(cls.__get(), attr, value)
 
     def __getitem__(cls, item):
         return cls.__get()[item]

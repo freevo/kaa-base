@@ -330,6 +330,9 @@ class Signal(object):
     Create a Signal object to which callbacks can be connected and later
     invoked in sequence when the Signal is emitted.
     """
+    # Defines the maximum number of connections to a signal.  Attempting to
+    # connect more than this many callbacks will trigger an exception.
+    MAX_CONNECTIONS = 1000
     # Constants used for the action parameter for changed_cb.
     CONNECTED = 1
     DISCONNECTED = 2
@@ -412,12 +415,8 @@ class Signal(object):
         if not callable(callback):
             raise TypeError('callback must be callable, got %s instead.' % callback)
 
-        if len(self._callbacks) > 40:
-            # It's a common problem (for me :)) that callbacks get added
-            # inside another callback.  This is a simple sanity check.
-            log.error("Signal callbacks exceeds 40.  Something's wrong!")
-            log.error("%s: %s", callback, args)
-            raise Exception("Signal callbacks exceeds 40")
+        if len(self._callbacks) >= Signal.MAX_CONNECTIONS:
+            raise ValueError('Number of callbacks exceeds Signal.MAX_CONNECTIONS limit (%d)' % Signal.MAX_CONNECTIONS)
 
         if weak:
             callback = WeakCallable(callback, *args, **kwargs)

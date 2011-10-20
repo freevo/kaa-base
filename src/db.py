@@ -1398,6 +1398,23 @@ class Database:
         return results
 
 
+    def query_one(self, **attrs):
+        """
+        Like query() but returns a single object only.
+
+        This is a convenience method, and query_one(...) is equivalent
+        to::
+            results = db.query(...)
+            if results:
+                obj = results[0]
+            else:
+                obj = None
+
+        limit=1 is implied by this query.
+        """
+        results = self.query(limit=1, **attrs)
+        return results[0] if results else None
+
 
     def _score_terms(self, terms_list):
         """

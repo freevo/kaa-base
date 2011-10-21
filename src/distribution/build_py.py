@@ -92,10 +92,13 @@ class build_py(distutils_build_py):
 
     def build_packages (self):
         distutils_build_py.build_packages(self)
-        if sys.modules.get('setuptools') or 'kaa.base' in self.package_dir:
-            open('%s/kaa/__init__.py' % self.build_lib, 'w').write(kaa_module_bootstrap)
-        elif os.path.isfile('%s/kaa/__init__.py' % self.build_lib):
-            os.unlink('%s/kaa/__init__.py' % self.build_lib)
+        if self.distribution.get_name().startswith('kaa-'):
+            # If this module is part of the kaa namespace, then make sure the
+            # kaa module __init__.py stub is set up properly.
+            if sys.modules.get('setuptools') or 'kaa.base' in self.package_dir:
+                open('%s/kaa/__init__.py' % self.build_lib, 'w').write(kaa_module_bootstrap)
+            elif os.path.isfile('%s/kaa/__init__.py' % self.build_lib):
+                os.unlink('%s/kaa/__init__.py' % self.build_lib)
         for package in self.packages:
             package_dir = self.get_package_dir(package)
             for ext in self.kaa_compiler.keys():

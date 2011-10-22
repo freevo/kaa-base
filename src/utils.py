@@ -306,7 +306,7 @@ def get_machine_uuid():
     return socket.getfqdn()
 
 
-def get_plugins(group=None, location=None, attr=None, filter=None):
+def get_plugins(group=None, location=None, attr=None, filter=None, scope=None):
     """
     Flexible plugin loader, supporting Python eggs as well as on-disk trees.
     All modules at the specified location or entry point group (for eggs) are
@@ -331,6 +331,12 @@ def get_plugins(group=None, location=None, attr=None, filter=None):
                    imported; if the filter returns a string, it specifies the
                    name of a module to be imported instead.
     :type filter: callable or None
+    :param scope: the global scope to use when importing plugin modules.  If
+                  this is not specified, the caller's scope will be used (using
+                  stack inspection trickery).  If get_plugins() is being called
+                  indirectly, you will need to pass through the value of
+                  globals().
+    :type scope: dict
     :returns: a dict mapping plugin names to plugin objects.
 
     If a plugin raises an exception while it is being imported, the value in
@@ -379,6 +385,7 @@ def get_plugins(group=None, location=None, attr=None, filter=None):
         setup(
             module='myplugin',
             # ...
+            plugins = {'someapplication.plugins': 'src/submodule'},
             entry_points = {'someapplication.plugins': 'plugname = myplugin.submodule:SomeClass'},
         )
 
@@ -461,7 +468,7 @@ def get_plugins(group=None, location=None, attr=None, filter=None):
                         # Import using the global scope of the caller, so
                         # that if the caller is module kaa.foo.bar, plugin
                         # baz is imported as kaa.foo.baz.
-                        globs = inspect.currentframe().f_back.f_globals
+                        globs = scope or inspect.currentframe().f_back.f_globals
                     except (TypeError, KeyError):
                         globs = None
                     mod = __import__(name, globs)

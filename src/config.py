@@ -425,7 +425,7 @@ class Group(Base):
         
 
     def _get_fqname(self, child=None):
-        childname = [k for k,v in self._dict.items() if v is child][0] if child else ''
+        childname = [k for k,v in self._dict.items() if v is child][0] if child is not None else ''
         if not self._parent:
             return childname
         return (self._parent._get_fqname(self) + '.' + childname).strip('.')
@@ -623,7 +623,7 @@ class Container(Base):
 
 
     def _get_fqname(self, child=None):
-        childname = '[%s]' % [k for k,v in self._vars() if v is child][0] if child else ''
+        childname = '[%s]' % [k for k,v in self._vars() if v is child][0] if child is not None else ''
         if not self._parent:
             return childname
         return (self._parent._get_fqname(self) + childname).strip('.')

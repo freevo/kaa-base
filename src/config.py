@@ -759,6 +759,12 @@ class Container(Base):
             self._cfg_set_item(key, newitem)
             return newitem
 
+    def __call__(self):
+        """
+        Returns a new schema for the container.
+        """
+        return get_schema(self)
+
 
 class Dict(Container):
     """

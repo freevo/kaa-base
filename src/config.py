@@ -334,7 +334,7 @@ class Var(Base):
         value = self._value
         if self._value == self._default:
             value = '<default: %s>' % (value if value != '' else '(empty string)')
-        return '%s%s = %s' % (desc, self._get_fqname(), value)
+        return '%s%s = %s' % (desc, self._get_fqname(), py3_str(value))
 
 
     def _cfg_set(self, value, default=False):
@@ -640,7 +640,24 @@ class Container(Base):
         """
         Access group or variable with the given index.
         """
-        self._cfg_get(index)._cfg_set(value)
+        default = value if isinstance(value, Base) else None
+        current = self._cfg_get(index, create=True, default=default)
+        if current is value:
+            # A new item was created and it was the default, so we're done.
+            return
+        # The current item at this index is different than the value provided.
+        # For items that have have a _cfg_set (anything except groups), then
+        # we can call it to replace the value.
+        if hasattr(current, '_cfg_set'):
+            current._cfg_set(value)
+        else:
+            # Groups are more problematic. There may be monitors attached or
+            # external references that would no longer apply if we replaced
+            # the item with the new schema.  But this is probably what one
+            # would expect rather than merging the values, since it's how
+            # native list/dicts behave.  So we do that, and I'll add an
+            # XXX because this behaviour may be worth revisiting.
+            self._cfg_set_item(index, value)
 
 
     def __nonzero__(self):
@@ -738,7 +755,7 @@ class Container(Base):
             return self._type(key)
 
 
-    def _cfg_get(self, key, create=True):
+    def _cfg_get(self, key, create=True, default=None):
         """
         Get group or variable with the given key (as object, not value).
         """
@@ -752,18 +769,23 @@ class Container(Base):
                 # We're about about to create a new item and we're copy-on-write,
                 # so copy all children now.
                 self._copy_children()
-            newitem = self._schema.copy()
+            if isinstance(default, Base):
+                newitem = default
+            else:
+                newitem = self._schema.copy()
             # Reparent the item itself; copy() will ensure any children of the item
             # will already have the item as their parent.
             newitem._parent = self
             self._cfg_set_item(key, newitem)
             return newitem
 
+
     def __call__(self):
         """
-        Returns a new schema for the container.
+        Returns a schema for the container.  This is a copy of the container's
+        schema so it is suitable for modifying and adding to the container.
         """
-        return get_schema(self)
+        return get_schema(self).copy()
 
 
 class Dict(Container):
@@ -1083,7 +1105,7 @@ class Config(Group):
                     '# config settings, which were ignored.  Refer to the end of\n'
                     '# this file for the relevant lines.\n'
                     '# =========================================================\n')
-        f.write(self._stringify() + '\n')
+        f.write(py3_b(self._stringify()) + '\n')
         if self._bad_lines:
             f.write('\n\n\n'
                     '# *************************************************************\n'

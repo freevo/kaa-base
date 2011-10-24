@@ -135,7 +135,7 @@ def init(module=None, reset=False, **options):
         else:
             notifier.init(module, **options)
 
-        # FIXME: this isn't the right place for this.  It belongs in the
+        # TODO: this isn't the right place for this.  It belongs in the
         # notifier init code, but it's not immediately obvious how to best move
         # it there.
         if module and module.startswith('twisted'):

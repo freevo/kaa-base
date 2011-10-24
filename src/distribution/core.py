@@ -575,7 +575,7 @@ def setup(**kwargs):
 
     if len(sys.argv) > 1 and any(arg.startswith('bdist') or arg.startswith('sdist') for arg in sys.argv) and \
            os.path.isfile('ChangeLog.in'):
-        # FIXME: find a better way to detect if we need to create a
+        # TODO: find a better way to detect if we need to create a
         # ChangeLog file or not.
         print('generate ChangeLog')
         svn2log(kwargs.get('module', kwargs.get('name')))

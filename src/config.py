@@ -397,7 +397,7 @@ class Group(Base):
                 raise ValueError('Config name "%s" conflicts with internal method or property' % child._name)
             self._dict[child._name] = child
             self._vars.append(child._name)
-            # Reparent child (FIXME: cycle)
+            # Reparent child (TODO: cycle)
             child._parent = self
 
     @property
@@ -549,7 +549,7 @@ class Group(Base):
         return item
 
     def __repr__(self):
-        # FIXME: preserve order of _vars
+        # TODO: preserve order of _vars
         return repr(self._dict)
 
 
@@ -587,7 +587,7 @@ class Container(Base):
         self._type = type
 
         for key, value in defaults:
-            # FIXME: how to handle complex dict defaults with a dict in
+            # TODO: how to handle complex dict defaults with a dict in
             # dict or group in dict?
             var = self._cfg_get(key)
             var._default = var._value = value
@@ -710,7 +710,7 @@ class Container(Base):
             if isinstance(self, List):
                 # Replace explicit indexes with implicit indexing tokens.
                 # [+] means append, while [ ] references last element.
-                # FIXME: this logic belongs in the List class instead, but will
+                # TODO: this logic belongs in the List class instead, but will
                 # require some refactoring first.
                 def replace(m):
                     ret = fqn + ('[+]' if replace.first else '[ ]')
@@ -1090,7 +1090,7 @@ class Config(Group):
         f.write('# *************************************************************\n'
                 '# WARNING: This file is auto-generated.  You are free to edit\n'
                 '# this file to change config values, but any other changes\n'
-                # FIXME: custom comments lost, would be nice if they were kept.  Might
+                # TODO: custom comments lost, would be nice if they were kept.  Might
                 # be tricky to fix.
                 '# (including removing or rearranging lines, or adding custom\n'
                 '# comments) will be lost.\n'

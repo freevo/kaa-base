@@ -196,7 +196,7 @@ class ThreadInProgress(InProgress):
             # need to do anything further.
             pass
         except:
-            # FIXME: should we really be catching KeyboardInterrupt and SystemExit?
+            # XXX: should we really be catching KeyboardInterrupt and SystemExit?
             MainThreadCallable(self.throw)(*sys.exc_info())
         else:
             if type(result) == types.GeneratorType or isinstance(result, InProgress):
@@ -544,7 +544,7 @@ class ThreadPool(object):
 
         while len(self._members) > self._size:
             # Too many pool members.
-            # FIXME: rather than indiscriminantly removing the last member,
+            # TODO: rather than indiscriminantly removing the last member,
             # first try to remove any that aren't processing jobs.
             self._members.pop().stop()
 

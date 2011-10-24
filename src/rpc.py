@@ -803,7 +803,7 @@ class Client(Channel):
                 self.status = CONNECTING
                 yield kaa.inprogress(self)
                 # Python 2.4 code
-                # FIXME: remove all python 2.4 supporting code
+                # TODO: remove all python 2.4 supporting code
                 self._connect_inprogress.result
                 self.status = CONNECTED
                 # wait until the socket is closed

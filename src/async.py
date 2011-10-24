@@ -927,6 +927,8 @@ class InProgressAny(InProgress):
         Invoked when any one of the InProgress objects passed to the
         constructor have finished.
         """
+        # FIXME: rethink how we handle prerequisites that finish
+        # by exception.  Should we throw too?
         result = result[0] if not is_exception else result
         self._counter -= 1
         if self._filter and self._filter(result) and self._counter > 0:
@@ -981,6 +983,8 @@ class InProgressAll(InProgressAny):
 
 
     def finish(self, is_exception, *result):
+        # FIXME: rethink how we handle prerequisites that finish
+        # by exception.  Should we throw too?
         self._counter -= 1
         if self._counter == 0:
             super(InProgressAny, self).finish(self)

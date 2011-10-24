@@ -814,7 +814,7 @@ class Database:
         """
         Deletes the specified object.
         """
-        # FIXME: support recursive delete (delete all decendents)
+        # TODO: support recursive delete (delete all decendents)
         object_type, object_id = self._to_obj_tuple(obj)
         return self._delete_multiple_objects({object_type: (object_id,)})
 
@@ -1101,7 +1101,7 @@ class Database:
             # Remove existing indexed words for this object.
             self._delete_object_inverted_index_terms((object_type, object_id), ivtidx)
 
-            # FIXME: code duplication from add()
+            # TODO: code duplication from add()
             # Need to reindex all columns in this object using this ivtidx.
             terms_list = []
             for name, (attr_type, flags, attr_ivtidx, attr_split) in type_attrs.items():

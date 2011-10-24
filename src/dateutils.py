@@ -28,39 +28,7 @@
 from datetime import datetime, tzinfo, timedelta
 import time
 
-__all__ = ['utc', 'local', 'utc2localtime', 'localtime2utc']
-
-# XXX: I'm not fond of these two functions.  Unix timestamps are by convention
-# in UTC.  Dealing with timestamps as seconds since epoch in localtime is
-# unconventional and confusing IMHO.  Consider removing these.
-def utc2localtime(t):
-    """
-    Transform given seconds from UTC into localtime
-    """
-    if not t:
-        # no time value given
-        return 0
-    # FIXME: maybe cache this value
-    # time.daylight does not do what we want
-    if time.localtime(time.time())[8]:
-        return t - time.altzone
-    else:
-        return t - time.timezone
-
-
-def localtime2utc(t):
-    """
-    Transform given seconds from localtime into UTC
-    """
-    if not t:
-        # no time value given
-        return 0
-    # FIXME: maybe cache this value
-    # time.daylight does not do what we want
-    if time.localtime(time.time())[8]:
-        return t + time.altzone
-    else:
-        return t + time.timezone
+__all__ = ['utc', 'local']
 
 
 # UTC and Local tzinfo classes, more or less from the python docs.

@@ -47,6 +47,7 @@ except ImportError:
     from sqlite3 import dbapi2 as sqlite
 
 # kaa base imports
+from .utils import property
 from .strutils import py3_str
 from ._objectrow import ObjectRow
 from . import main
@@ -1936,3 +1937,8 @@ class Database:
         for ivtidx in self._inverted_indexes:
             self._db_query('DELETE FROM ivtidx_%s_terms WHERE count=0' % ivtidx)
         self._db_query("VACUUM")
+
+
+    @property
+    def filename(self):
+        return self._dbfile

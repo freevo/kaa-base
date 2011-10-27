@@ -111,9 +111,15 @@ def stop():
     kaa.main.signals["shutdown"].disconnect(stop)
 
 
-def init(appname = None, cfg = None):
+def init(appname=None, cfg=None):
     """
-    Init pylirc and connect to the mainloop.
+    Initialize lirc and begin monitoring for events.
+
+    :param appname: the name of the program that corresponds to the *prog*
+                    value in the lircrc file (default: kaa)
+    :param cfg: the path to the lircrc config file (default: ~/.lircrc).  See
+                http://www.lirc.org/html/configure.html for more details.
+    :raises: ImportError if pylirc is not installed.
     """
     global _dispatcher
 
@@ -121,9 +127,10 @@ def init(appname = None, cfg = None):
         # already running
         return False
 
-    if not pylirc:
-        # not installed
-        return False
+    # This will raise if pylirc isn't available, however if it is, this will
+    # already be imported, so there is no risk of this being imported from a
+    # thread.
+    import pylirc
 
     if cfg == None:
         cfg = os.path.expanduser("~/.lircrc")

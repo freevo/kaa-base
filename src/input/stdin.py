@@ -118,7 +118,7 @@ def getch_disable():
 
 def _handle_stdin_keypress():
     ch = getch()
-    kaa.signals["stdin_key_press_event"].emit(ch)
+    kaa.signals["stdin_key_press"].emit(ch)
     return True
 
 
@@ -135,4 +135,6 @@ def _keypress_signal_changed(s, flag):
 
 # init
 signal = kaa.Signal(changed_cb = _keypress_signal_changed)
+kaa.signals["stdin_key_press"] = signal
+# Backward compatibility (TODO: remove in future)
 kaa.signals["stdin_key_press_event"] = signal

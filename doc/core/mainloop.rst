@@ -56,6 +56,8 @@ Main Loop API
 Main Loop Signals
 -----------------
 
+.. _mainsignals:
+
 Global Kaa signals are accessed via the ``kaa.signals`` :class:`~kaa.Signals` object.
 For example::
 

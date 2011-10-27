@@ -3,7 +3,7 @@
 The Core Framework
 ==================
 
-TODO: insert introduction here.
+TODO: insert introduction here.  Discuss logging hooks.
 
 Contents:
 
@@ -13,6 +13,7 @@ Contents:
    signals
    mainloop
    timer
+   event
    io
    socket
    process

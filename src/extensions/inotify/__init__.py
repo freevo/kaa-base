@@ -38,7 +38,7 @@ import string
 
 # kaa imports
 import kaa
-from ..strutils import py3_b, py3_str
+from kaa import py3_b, py3_str
 try:
     # imports C module
     from . import _inotify

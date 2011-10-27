@@ -1446,7 +1446,7 @@ def get_schema(var):
 
     The schema is another config object (:class:`~kaa.config.Var`,
     :class:`~kaa.config.List`, :class:`~kaa.config.Dict`, or
-    :class:`~kaa.config.Group).
+    :class:`~kaa.config.Group`).
 
         >>> kaa.config.get_description(cfg.movies)
         u'Your favorite movies.'

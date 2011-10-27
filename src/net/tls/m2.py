@@ -86,6 +86,7 @@ class M2TLSSocket(TLSSocketBase):
     TLSSocket implementation that uses M2Crypto.  This class uses OpenSSL's BIO
     pairs for guaranteed async IO; all socket communication is handled by us
     (via the IOChannel).  See:
+
         http://www.openssl.org/docs/crypto/BIO_new_bio_pair.html
 
     Inspired heavily by TwistedProtocolWrapper.py from M2Crypto.

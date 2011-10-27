@@ -86,7 +86,7 @@ def py3_b(value, encoding=None, desperate=True, coerce=False):
     :param desperate: if True and encoding to the given (or default) charset
                       fails, will also try utf-8 and latin-1 (in that order),
                       and if those fail, will encode to the preferred charset,
-                      replacing unknown characters with \\uFFFD.
+                      replacing unknown characters with \\\\uFFFD.
     :type desperate: bool
     :param coerce: if True, will coerce numeric types to a bytes object; if
                    False, such values will be returned untouched.
@@ -131,7 +131,7 @@ def py3_str(value, encoding=None, desperate=True, coerce=False):
     :param desperate: if True and decoding to the given (or default) charset
                       fails, will also try utf-8 and latin-1 (in that order),
                       and if those fail, will decode as the preferred charset,
-                      replacing unknown characters with \\uFFFD.
+                      replacing unknown characters with \\\\uFFFD.
     :type desperate: bool
     :param coerce: if True, will coerce numeric types to a unicode string; if
                    False, such values will be returned untouched.

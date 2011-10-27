@@ -46,6 +46,7 @@ import socket
 from tempfile import mktemp
 
 from . import _utils
+from .weakref import weakref
 
 # get logging object
 log = logging.getLogger('base')
@@ -590,12 +591,12 @@ def wraps(origfunc, lshift=0):
         ...             return func(*args, **kwargs)
         ...     return newfunc
 
-    @param origfunc: the original function being decorated which is to be
-        wrapped.
-    @param lshift: number of arguments to shift from the left of the original
-        function's call spec.  Wrapped function will have this nubmer of
-        arguments removed.
-    @return: a decorator which has the attributes of the decorated function.
+    :param origfunc: the original function being decorated which is to be
+                     wrapped.
+    :param lshift: number of arguments to shift from the left of the original
+                   function's call spec.  Wrapped function will have this
+                   nubmer of arguments removed.
+    :returns: a decorator which has the attributes of the decorated function.
     """
     if 'sphinx.builders' not in sys.modules:
         # sphinx not imported, so return a decorator that passes the func through.

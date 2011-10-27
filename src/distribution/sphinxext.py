@@ -312,8 +312,9 @@ def normalize_class_name(mod, name):
         fullname = '%s.%s' % (mod, name)
 
     # Special exception for kaa.base: rename 'base' to 'kaa'
-    if fullname.startswith('base.'):
-        fullname = 'kaa' + fullname[4:]
+    for prefix in ('base.', 'kaa.base.'):
+        if fullname.startswith(prefix):
+            fullname = 'kaa.' + fullname[len(prefix):]
     return fullname
     
 

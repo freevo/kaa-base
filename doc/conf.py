@@ -23,6 +23,17 @@ for _lib in glob.glob('../build/lib.*%s*/kaa' % platform.machine()):
 sys.modules['kaa'] = sys.modules['kaa.base'] = __import__('base')
 from kaa.version import VERSION
 
+# We are doing some fugly import trickery by bypassing the kaa module (which
+# could end up importing a system kaa egg [stupid setuptools!]), and instead
+# import base directly and try to convince things that this is actually
+# the kaa module.  For reasons unknown to me, __import__('base.utils') ends
+# up returning the base module, while import base.utils actually works.  Because
+# sphinx does __import__ when grabbing docstrings, it ends up not being able to
+# find the object with the docstring.  To deal with this, we explicitly import the
+# modules we know we need for documentation here.
+import kaa.strutils, kaa.utils, kaa.inotify
+
+
 # General configuration
 # ---------------------
 

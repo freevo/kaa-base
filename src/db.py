@@ -1309,7 +1309,7 @@ class Database:
         Query the database for objects matching all of the given keyword
         attributes.
 
-        Keyword arguments can be any previously registered ATTR_SEARCHABLE
+        Keyword arguments can be any previously registered :attr:`~kaa.db.ATTR_SEARCHABLE`
         object attribute for any object type, or the name of a registered
         inverted index.  There are some special keyword arguments:
 
@@ -1381,7 +1381,7 @@ class Database:
             >>> db.query(sender=QExpr('like', u'Stewie%'))
             [<kaa.db.ObjectRow object at 0x7f652c3d1f90>]
             >>> # How about a regexp search.
-            >>> db.query(sender=QExpr('regexp', ur'.*\bGriffin'))
+            >>> db.query(sender=QExpr('regexp', ur'.*\\bGriffin'))
             [<kaa.db.ObjectRow object at 0x7f652b255030>]
 
         """

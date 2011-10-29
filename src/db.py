@@ -958,7 +958,7 @@ class Database:
         """
         Convert the object to a new type.
 
-        :param obj: the object to reparent
+        :param obj: the object to be converted to the new type
         :type obj: :class:`ObjectRow`, or (type, id)
         :param new_type: the type to convert the object to
         :type newtype: str

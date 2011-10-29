@@ -7,9 +7,9 @@ Stdin Key Presses
 Importing *kaa.input.stdin* plugin will add a new signal to the :ref:`global
 Kaa signals dictionary <mainsignals>` called ``stdin_key_press``.  When
 the first callback is connected to this signal, the terminal is put into
-*canonical mode* which allows per-keystroke input to be available immediately.
-When the last callback is disconnected (or when the program exits), the
-terminal is returned to canonical mode.
+*non-canonical mode* which allows per-keystroke input to be available
+immediately.  When the last callback is disconnected (or when the program
+exits), the terminal is returned to canonical mode.
 
 The callback receives a single string argument describing the character being
 inputted.  If the character is printable (e.g. alphanumberic) then it is that

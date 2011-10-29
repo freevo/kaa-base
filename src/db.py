@@ -755,7 +755,7 @@ class Database:
         For example::
 
             from kaa.db import *
-            db = kaa.db.Database('test.db')
+            db = Database('test.db')
             db.register_inverted_index('tags')
             db.register_inverted_index('keywords', min=3, max=30, ignore=STOP_WORDS)
         """
@@ -1071,7 +1071,7 @@ class Database:
 
             import os
             from kaa.db import *
-            db = kaa.db.Database('test.db')
+            db = Database('test.db')
             db.register_object_type_attrs('directory',
                 name = (str, ATTR_SEARCHABLE),
                 mtime = (float, ATTR_SIMPLE)

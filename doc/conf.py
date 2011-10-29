@@ -31,7 +31,7 @@ from kaa.version import VERSION
 # sphinx does __import__ when grabbing docstrings, it ends up not being able to
 # find the object with the docstring.  To deal with this, we explicitly import the
 # modules we know we need for documentation here.
-import kaa.strutils, kaa.utils, kaa.inotify
+import kaa.strutils, kaa.utils, kaa.inotify, kaa.db
 
 
 # General configuration

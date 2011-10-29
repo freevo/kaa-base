@@ -174,9 +174,28 @@ def _list_to_printable(value):
 
 class QExpr(object):
     """
-    Flexible query expressions for use with Database.query()
+    Flexible query expressions for use with :meth:`kaa.db.Database.query()`
     """
     def __init__(self, operator, operand):
+        """
+        :param operator: ``=``, ``!=``, ``<``, ``<=``, ``>``, ``>=``, ``in``,
+                         ``not in``, ``range``, ``like``, or ``regexp``
+        :type operator: str
+        :param operand: the rvalue of the expression; any scalar values as part of
+                        the operand must be the same type as the attribute being
+                        evaluated
+
+        Except for ``in``, ``not in``, and ``range``, the operand must be the
+        type of the registered attribute being evaluated (e.g. unicode, int,
+        etc.).
+
+        The operand for ``in`` and ``not in`` are lists or tuples of the attribute
+        type, to test inclusion in the given set.  
+        
+        The ``range`` operator accepts a 2-tuple specifying min and max values
+        for the attribute.  The Python expression age=QExpr('range', (20, 30))
+        translates to ``age >= 20 AND age <= 30``.
+        """
         operator = operator.lower()
         assert(operator in ('=', '!=', '<', '<=', '>', '>=', 'in', 'not in', 'range', 'like', 'regexp'))
         if operator in ('in', 'not in', 'range'):
@@ -241,6 +260,14 @@ class RegexpCache(object):
 
 class Database:
     def __init__(self, dbfile):
+        """
+        Open a database, creating one if it doesn't already exist.
+
+        :param dbfile: path to the database file
+        :type dbfile: str
+
+        SQLite is used to provide the underlying database.
+        """
         # _object_types dict is keyed on type name, where value is a 3-
         # tuple (id, attrs, idx), where:
         #   - id is a unique numeric database id for the type,
@@ -291,7 +318,7 @@ class Database:
             cursor.execute("PRAGMA cache_size=50000")
             cursor.execute("PRAGMA page_size=8192")
 
-        if not self.check_table_exists("meta"):
+        if not self._check_table_exists("meta"):
             self._db.executescript(CREATE_SCHEMA % SCHEMA_VERSION)
 
         row = self._db_query_row("SELECT value FROM meta WHERE attr='version'")
@@ -311,7 +338,7 @@ class Database:
 
 
     def _db_query(self, statement, args = (), cursor = None, many = False):
-        #t0=time.time()
+        t0=time.time()
         self._lock.acquire()
         if not cursor:
             cursor = self._cursor
@@ -321,7 +348,7 @@ class Database:
             cursor.execute(statement, args)
         rows = cursor.fetchall()
         self._lock.release()
-        #t1=time.time()
+        t1=time.time()
         #print "QUERY [%.06f%s]: %s" % (t1-t0, ('', ' (many)')[many], statement), args
         return rows
 
@@ -358,7 +385,7 @@ class Database:
         return object_type, object_id
 
 
-    def check_table_exists(self, table):
+    def _check_table_exists(self, table):
         res = self._db_query_row("SELECT name FROM sqlite_master where " \
                                  "name=? and type='table'", (table,))
         return res != None
@@ -384,38 +411,108 @@ class Database:
 
     def register_object_type_attrs(self, type_name, indexes = [], **attrs):
         """
-        Registers one or more object attributes and/or multi-column indexes for
-        the given type name.  This function modifies the database as needed to
-        accommodate new indexes and attributes, either by creating the object's
-        tables (in the case of a new object type) or by altering the object's
-        tables to add new columns or indexes.
+        Register one or more object attributes and/or multi-column indexes for
+        the given type name.
+        
+        This function modifies the database as needed to accommodate new
+        indexes and attributes, either by creating the object's tables (in the
+        case of a new object type) or by altering the object's tables to add
+        new columns or indexes.
+
+        This method is idempotent: if the attributes and indexes specified have
+        not changed from previous invocations, no changes will be made to the
+        database.  Moreover, newly registered attributes will not affect
+        previously registered attributes.  This allows, for example, a plugin
+        to extend an existing object type created by the core application
+        without interfering with it.
+
+        :param type_name: the name of object type the registered attributes or
+                          indexes apply to.
+        :type type_name: str
+        :param indexes: a list of tuples where each tuple contains 2 or more
+                        registered :attr:`~kaa.db.ATTR_SEARCHABLE` attributes
+                        for which a composite index will be created in the
+                        underlying database.  This is useful for speeding
+                        up queries involving these attributes combined.
+        :type indexes: list of tuples of strings
+        :param attrs: keyword arguments defining the attributes to be
+                      registered.  The keyword defining the attribute name
+                      cannot conflict with any of the names in
+                      :attr:`~kaa.db.RESERVED_ATTRIBUTES`.  See below for a
+                      more complete specification of the value.
+        :type attrs: 2, 3, or 4-tuple
 
         Previously registered attributes may be updated in limited ways (e.g.
-        by adding an index to the attribute).  If the attributes and indexes
-        specified have not changed from previous invocations, no changes will
-        be made to the database.
+        by adding an index to the attribute).  If the change requested is
+        not supported, a ValueError will be raised.
 
-        Note: currently indexes and attributes can only be added, not removed.
-        That is, once an attribute or indexes is added, it lives forever.
+        .. note:: Currently, indexes and attributes can only be added, not
+           removed.  That is, once an attribute or indexes is added, it lives
+           forever.
 
-        type_name is the name of the type the attributes and indexes apply to
-        (e.g. 'dir' or 'image').
+        Object attributes, which are supplied as keyword arguments, are either
+        *searchable* or *simple*.  *Searchable* attributes occupy a column in
+        the underlying database table and so queries can be performed on these
+        attributes, but their types are more restricted.  *Simple* attributes
+        can be any type that can be pickled, but can't be searched.
 
-        indexes is a list of tuples, where each tuple contains 2 or more strings,
-        where each string references a registered attribute.  This is used for
-        creating a multi-column index on these attributes, which is useful for
-        speeding up queries involving these attributes.
+        The attribute kwarg value is a tuple of 2 to 4 items in length and in
+        the form (attr_type, flags, ivtidx, split). 
+        
+            * attr_type: the type of the object attribute. For simple attributes
+              (:attr:`~kaa.db.ATTR_SIMPLE` in *flags*), this can be any picklable
+              type; for searchable attributes (:attr:`~kaa.db.ATTR_SEARCHABLE`
+              in *flags*), this must be either *int*, *float*, *str*, *unicode*,
+              *buffer*, or *bool*.
+            * flags: a bitmap of :ref:`attribute flags <attrflags>`
+            * ivtidx: name of a previously registered inverted index used for
+              this attribute. Only needed if flags contains
+              :attr:`~kaa.db.ATTR_INVERTED_INDEX`
+            * split: function or regular expression used to split string-based
+              values for this attribute into separate terms for indexing.  If
+              this isn't defined, then the default split strategy for the
+              inverted index wil be used.
 
-        Attributes are supplied as keyword arguments, where each keyword value
-        is a tuple of 2 to 4 items in length and in the form (name, flags, ivtidx,
-        split):
-                name: The name of the attribute; cannot conflict with any of the
-                      values in RESERVED_ATTRIBUTES.
-               flags: A bitmask of ATTR_* flags.
-              ivtidx: Name of the previously registered inverted index used for
-                      this attribute, only if flags contains ATTR_INVERTED_INDEX.
-               split: Function or regular expression used to split string-based
-                      values for this attributes into separate terms for indexing.
+        Apart from not being allowed to conflict with one of the reserved
+        names, there is a special case for attribute names: when they have
+        the same name as a previously registered inverted index.  These
+        attributes must be :attr:`~kaa.db.ATTR_SIMPLE`, and of type *list*.
+        Terms explicitly associated with the attribute are persisted with the
+        object, but when accessed, all terms for all attributes for that
+        inverted index will be contained in the list, not just those explicitly
+        associated with the same-named attribute.
+
+        The following example shows what an application that indexes email might
+        do::
+
+            from kaa.db import *
+            from datetime import datetime
+            db = Database('email.db')
+            db.register_inverted_index('keywords', min=3, max=30)
+            db.register_object_type_attrs('msg',
+                # Create a composite index on sender and recipient, because
+                # (let's suppose) it's we do a lot of searches for specific
+                # senders emailing specific recipients.
+                [('sender', 'recipient')],
+
+                # Simple attribute can be anything that's picklable, which datetime is.
+                date = (datetime, ATTR_SIMPLE),
+
+                # Sender and recipient names need to be ATTR_SEARCHABLE since
+                # they're part of a composite index.
+                sender = (unicode, ATTR_SEARCHABLE),
+                recipient = (unicode, ATTR_SEARCHABLE),
+
+                # Subject is searchable (standard SQL-based substring matches),
+                # but also being indexed as part of the keywords inverted
+                # index for fast term-based searching.
+                subject = (unicode, ATTR_SEARCHABLE | ATTR_INVERTED_INDEX, 'keywords'),
+
+                # Special case where an attribute name is the same as a registered 
+                # inverted index.  This lets us index on, for example, the message body
+                # without actually storing the message inside the database.
+                keywords = (list, ATTR_SIMPLE | ATTR_INVERTED_INDEX, 'keywords')
+            )
         """
         if len(indexes) == len(attrs) == 0:
             raise ValueError, "Must specify indexes or attributes for object type"
@@ -624,29 +721,43 @@ class Database:
 
     def register_inverted_index(self, name, min = None, max = None, split = None, ignore = None):
         """
-        Registers a new inverted index with the database.  An inverted index
-        maps arbitrary terms to objects and allows you to query based on one
-        or more terms.  If the inverted index already exists with the given
-        parameters, no action is performed.
+        Registers a new inverted index with the database.
+        
+        An inverted index maps arbitrary terms to objects and allows you to
+        query based on one or more terms.  If the inverted index already exists
+        with the given parameters, no action is performed.
 
-        name is the name of the inverted index and must be alphanumeric.  min
-        and max specify the minimum and maximum length of terms to index.  Any
-        terms of length smaller than min or larger than max will not be
-        indexed.  If neither is specified, terms of all sizes will be indexed.
+        :param name: the name of the inverted index; must be alphanumeric.
+        :type name: str
+        :param min: the minimum length of terms to index; terms smaller
+                    than this will be ignored.  If None (default), there
+                    is no minimum size.
+        :type min: int
+        :param max: the maximum length of terms to index; terms larger than
+                    this will be ignored.  If None (default), there is no
+                    maximum size.
+        :type max: int
+        :param split: used to parse string-based attributes using this inverted
+                      index into individual terms.  In the case of regexps, the
+                      split method will be called.  (If a string is specified,
+                      it will be compiled into a regexp first.)  If *split* is
+                      a callable, it will receive a string of text and must return
+                      a sequence, and each item in the sequence will be indexed
+                      as an individual term.  If split is not specified, the
+                      default is to split words at non-alphanumeric/underscore/digit
+                      boundaries.
+        :type split: callable, regexp (SRE_Pattern) object, or str
+        :param ignore: a list of terms that will not be indexed (so-called
+                       *stop words*).  If specified, each indexed term for this
+                       inverted index will first be checked against this list.
+                       If it exists, the term is discarded.
 
-        split is either a callable or a regular expression (or a string in
-        which case it is compiled as a regexp) and is used to parse
-        string-based attributes using this inverted index into individual
-        terms.  If split is not specified, the default is to split words at
-        non-alphanumeric/underscore/digit boundaries.  If split is a callable,
-        it will receive a string of text and must return a sequence, each
-        each item in the sequence will be indexed as an individual term.
+        For example::
 
-        ignore is a list of terms that will not be indexed.  If it is
-        specified, each indexed term for this inverted index will first be
-        checked against this list.  If it exists, the term is discarded.  This
-        is useful to ignore typical 'stop' words, such as 'the', 'at', 'to',
-        etc.
+            from kaa.db import *
+            db = kaa.db.Database('test.db')
+            db.register_inverted_index('tags')
+            db.register_inverted_index('keywords', min=3, max=30, ignore=STOP_WORDS)
         """
         # Verify specified name doesn't already exist as some object attribute.
         for object_name, object_type in self._object_types.items():
@@ -735,6 +846,8 @@ class Database:
 
         for key in attrs.keys():
             if key not in type_attrs:
+                if key in self._inverted_indexes:
+                    continue
                 raise ValueError("Reference to undefined attribute '%s' for type '%s'" % (key, type_name))
             if attrs[key] == None:
                 # Remove all None attributes (even ATTR_SEARCHABLE), otherwise we will
@@ -784,6 +897,7 @@ class Database:
 
             # What's left gets put into the pickle.
             columns.append("pickle")
+            print 'PICKLE', attrs_copy
             values.append(buffer(cPickle.dumps(attrs_copy, 2)))
             placeholders.append("?")
 
@@ -813,7 +927,10 @@ class Database:
 
     def delete(self, obj):
         """
-        Deletes the specified object.
+        Delete the specified object.
+
+        :param obj: the object to delete
+        :type obj: :class:`ObjectRow` or (object_type, object_id)
         """
         # TODO: support recursive delete (delete all decendents)
         object_type, object_id = self._to_obj_tuple(obj)
@@ -822,12 +939,12 @@ class Database:
 
     def reparent(self, obj, parent):
         """
-        Changes the parent of an object.
+        Change the parent of an object.
 
         :param obj: the object to reparent
-        :type obj: ObjectRow, or (type, id)
+        :type obj: :class:`ObjectRow`, or (type, id)
         :param parent: the new parent of the object
-        :type parent: ObjectRow, or (type, id)
+        :type parent: :class:`ObjectRow`, or (type, id)
 
         This is a convenience method to improve code readability, and is
         equivalent to::
@@ -839,13 +956,13 @@ class Database:
 
     def retype(self, obj, new_type):
         """
-        Converts the object to a new type.
+        Convert the object to a new type.
 
         :param obj: the object to reparent
-        :type obj: ObjectRow, or (type, id)
+        :type obj: :class:`ObjectRow`, or (type, id)
         :param new_type: the type to convert the object to
         :type newtype: str
-        :returns: an ObjectRow, converted to the new type with the new id
+        :returns: an :class:`ObjectRow`, converted to the new type with the new id
 
         Any attribute that has not also been registered with ``new_type``
         (and with the same name) will be removed.  Because the object is
@@ -883,8 +1000,11 @@ class Database:
 
     def delete_by_query(self, **attrs):
         """
-        Deletes all objects returned by the given query.  See query()
-        for argument details.  Returns number of objects deleted.
+        Delete all objects returned by the given query.
+
+        :param attrs: see :meth:`~kaa.db.Database.query` for details.
+        :returns: the number of objects deleted
+        :rtype: int
         """
         attrs["attrs"] = ["id"]
         results = self.query(**attrs)
@@ -934,15 +1054,31 @@ class Database:
 
     def add(self, object_type, parent=None, **attrs):
         """
-        Adds an object of type 'object_type' to the database.  Parent is a
-        (type, id) tuple which refers to the object's parent.  'object_type'
-        and 'type' is a type name as given to register_object_type_attrs().
-        attrs kwargs will vary based on object type.  ATTR_SIMPLE attributes
-        which a None are not added.
+        Add an object to the database.
 
-        This method returns the dict that would be returned if this object
-        were queried by query().  The "id" key of this dict refers
-        to the id number assigned to this object.
+        :param object_type: the name of the object type previously created by
+                            :meth:`~kaa.db.Database.register_object_type_attrs`.
+        :type object_type: str
+        :param parent: specifies the parent of this object, if any; does not have
+                       to be an object of the same type.
+        :type parent: :class:`ObjectRow` or 2-tuple (object_type, object_id)
+        :param attrs: keyword arguments specifying the attribute (which must
+                      have been registered) values.  Registered attributes that
+                      are not explicitly specified here will default to None.
+        :returns: :class:`ObjectRow` representing the added object
+
+        For example::
+
+            import os
+            from kaa.db import *
+            db = kaa.db.Database('test.db')
+            db.register_object_type_attrs('directory',
+                name = (str, ATTR_SEARCHABLE),
+                mtime = (float, ATTR_SIMPLE)
+            )
+            root = db.add('directory', name='/', mtime=os.stat('/').st_mtime)
+            db.add('directory', parent=root, name='etc', mtime=os.stat('/etc').st_mtime)
+            db.add('directory', parent=root, name='var', mtime=os.stat('/var').st_mtime)
         """
         type_attrs = self._get_type_attrs(object_type)
         if parent:
@@ -1002,14 +1138,15 @@ class Database:
 
     def get(self, obj):
         """
-        Fetches the given object from the database.
+        Fetch the given object from the database.
 
         :param obj: a 2-tuple (type, id) representing the object.
-        :returns: ObjectRow
+        :returns: :class:`ObjectRow` 
         
-        obj may also be an ObjectRow, however that usage is less likely to be
-        useful, because an ObjectRow already contains all information about the
-        object.  (It may be used to reload a possibly changed object from disk.)
+        obj may also be an :class:`ObjectRow`, however that usage is less
+        likely to be useful, because an :class:`ObjectRow` already contains all
+        information about the object.  One common use-case is to reload a
+        possibly changed object from disk.
 
         This method is essentially shorthand for::
 
@@ -1023,13 +1160,27 @@ class Database:
 
     def update(self, obj, parent=None, **attrs):
         """
-        Update an object in the database.  For updating, object is identified
-        by a (type, id) tuple or an ObjectRow instance.  Parent is a (type, id)
-        tuple or ObjectRow instance, which refers to the object's parent.  If
-        specified, the object is reparented, otherwise the parent remains the
-        same as when it was added with add().  attrs kwargs will vary
-        based on object type.  If a ATTR_SIMPLE attribute is set to None, it
-        will be removed from the pickled dictionary.
+        Update attributes for an existing object in the database.
+        
+        :param obj: the object whose attributes are being modified
+        :type obj: :class:`ObjectRow` or 2-tuple (object_type, object_id)
+        :param parent: if specified, the object is reparented to the given
+                       parent object, otherwise the parent remains the
+                       same as when the object was added with
+                       :meth:`~kaa.db.Database.add`.
+        :type parent: :class:`ObjectRow` or 2-tuple (object_type, object_id)
+        :param attrs: keyword arguments specifying the attribute (which must
+                      have been registered) values.  Registered attributes that
+                      are not explicitly specified here will preserve their
+                      original values.
+
+        Continuing from the example in :meth:`~kaa.db.Database.add`, consider::
+
+            >>> d = db.add('directory', parent=root, name='foo')
+            >>> db.update(d, name='bar')
+            >>> d = db.get(d)   # Reload changes
+            >>> d['name']
+            'bar'
         """
         object_type, object_id = self._to_obj_tuple(obj)
 
@@ -1141,10 +1292,10 @@ class Database:
 
     def commit(self):
         """
-        Explicitly commits any changes made to the database.
+        Explicitly commit any changes made to the database.
 
-        Note that any uncommitted changes will automatically be committed at
-        program exit.
+        .. note:: Any uncommitted changes will automatically be committed at
+                  program exit.
         """
         main.signals['exit'].disconnect(self.commit)
         self._dirty = False
@@ -1155,29 +1306,84 @@ class Database:
 
     def query(self, **attrs):
         """
-        Query the database for objects matching all of the given attributes
-        (specified in kwargs).  There are a few special kwarg attributes:
+        Query the database for objects matching all of the given keyword
+        attributes.
 
-             parent: (type, id) tuple referring to the object's parent, where
-                     type is the name of the type and id is the database id
-                     of the parent, or a QExpr.   parent may also be a tuple
-                     of (type, id) tuples.
-             object: (type, id) tuple referring to the object itself.
-               type: only search items of this type (e.g. "images"); if None
-                     (or not specified) all types are searched.
-              limit: return only this number of results; if None (or not
-                     specified) all matches are returned.  For better
-                     performance it is highly recommended a limit is specified
-                     for searches on inverted indexes.
-              attrs: A list of attributes to be returned.  If not specified,
-                     all possible attributes.
-           distinct: If True, selects only distinct rows.  When distinct is
-                     specified, attrs kwarg must also be given, and no
-                     specified attrs can be ATTR_SIMPLE.
+        Keyword arguments can be any previously registered ATTR_SEARCHABLE
+        object attribute for any object type, or the name of a registered
+        inverted index.  There are some special keyword arguments:
 
-        Return value is a list of ObjectRow objects, which behave like
-        dictionaries in most respects.  Attributes defined in the object
-        type are accessible, as well as 'type' and 'parent' keys.
+        :param parent: require all matched objects to have the given object
+                       (or objects) as their immediate parent ancestor.  If
+                       parent is a list or tuple, then they specify a list
+                       of possible parents, any of which would do.
+        :type parent: :class:`ObjectRow`, 2-tuple (object_type, object_id), 2-tuple
+                      (object_type, :class:`~kaa.db.QExpr`), or a list of those
+        :param object: match only a specific object. Not usually very useful,
+                       but could be used to test if the given object matches
+                       terms from an inverted index.
+        :type object: :class:`ObjectRow` or 2-tuple (object_type, object_id)
+        :param type: only search items of this object type; if None (or not
+                     specified) then all types are searched
+        :type type: str
+        :param limit: return only this number of results; if None (or not
+                      specified), all matches are returned.
+        :type limit: int
+        :param attrs: a list of attribute names to be returned; if not specified,
+                      all attributes registered with the object type are available
+                      in the result.  Only specifying the attributes required
+                      can help performance moderately, but generally it isn't
+                      required except wit *distinct* below.
+        :type attrs: list of str
+        :param distinct: if True, ensures that each object in the result set is
+                         unique with respect to the attributes specified in the
+                         *attrs* parameter.  When distinct is True, *attrs* is
+                         required and none of the attributes specified may be
+                         simple.
+        :raises: ValueError if the query is invalid (e.g. attempting to query
+                 on a simple attribute)
+        :returns: a list of :class:`ObjectRow` objects
+
+        When any of the attributes are inverted indexes, the result list is
+        sorted according to a score.  The score is based upon the frequency
+        of the matched terms relative to the entire database.
+
+        .. note:: If you know which type of object you're interested in, you
+           should specify the *type* as it will help improve performance by
+           reducing the scope of the search, especially for inverted indexes.
+
+           Another significant factor in performance is whether or not a *limit*
+           is specified.  Query time generally scales linearly with respect to
+           the number of rows found, but in the case of searches on inverted
+           indexes, specifying a limit can drastically reduce search time, but
+           does not affect scoring.
+
+        Values supplied to attributes (other than inverted indexes) require
+        exact matches.  To search based on an expression, such as inequality,
+        ranges, substrings, set inclusion, etc. require the use of a 
+        :class:`~kaa.db.QExpr` object.
+
+        Expanding on the example provided in
+        :meth:`~kaa.db.Database.register_object_type_attrs`::
+
+            >>> db.add('msg', sender=u'Stewie Griffin', subject=u'Blast!',
+                       keywords='When the world is mine, your death shall be quick and painless.')
+            >>> # Exact match based on sender
+            >>> db.query(sender=u'Stewie Griffin')
+            [<kaa.db.ObjectRow object at 0x7f652b251030>]
+            >>> # Keyword search requires all keywords
+            >>> db.query(keywords=['death', 'blast'])
+            [<kaa.db.ObjectRow object at 0x7f652c3d1f90>]
+            >>> # This doesn't work, since it does an exact match ...
+            >>> db.query(sender=u'Stewie')
+            []
+            >>> # ... but we can use QExpr to do a substring/pattern match.
+            >>> db.query(sender=QExpr('like', u'Stewie%'))
+            [<kaa.db.ObjectRow object at 0x7f652c3d1f90>]
+            >>> # How about a regexp search.
+            >>> db.query(sender=QExpr('regexp', ur'.*\bGriffin'))
+            [<kaa.db.ObjectRow object at 0x7f652b255030>]
+
         """
         query_info = {}
         parents = []
@@ -1401,7 +1607,7 @@ class Database:
 
     def query_one(self, **attrs):
         """
-        Like query() but returns a single object only.
+        Like :meth:`~kaa.db.Database.query` but returns a single object only.
 
         This is a convenience method, and query_one(...) is equivalent
         to::
@@ -1794,28 +2000,30 @@ class Database:
 
     def get_inverted_index_terms(self, ivtidx, associated = None, prefix = None):
         """
-        Obtains terms for the given inverted index name.  If associated is
-        None, all terms for the inverted index are returned.  The return
-        value is a list of 2-tuples, where each tuple is (term, count).
-        Count is the total number of objects that term is mapped to.
-
-        Otherwise, associated is a specified list of terms, and only those
-        terms which are mapped to objects in addition to the given associated
-        terms will be returned.  The return value is as above, except that
-        count reflects the number of objects which have that term plus all
-        of the given associated terms.
+        Obtain terms used by objects for an inverted index.
+        
+        :param ivtidx: the name of an inverted index previously registered with
+                       :meth:`~kaa.db.Database.register_inverted_index`.
+        :type ivtidx: str
+        :param associated: specifies a list of terms, and only those terms which are
+                           mapped to objects *in addition to* the supplied associated
+                           terms will be returned.  If None, all terms for the inverted
+                           index are returned.
+        :type associated: list of str or unicode
+        :param prefix: only terms that begin with the specified prefix are returned.
+                       This is useful for auto-completion while a user is typing a
+                       query.
+        :type prefix: str or unicode
+        :returns: a list of 2-tuples, where each tuple is (*term*, *count*).  If
+                  *associated* is not given, *count* is the total number of objects
+                  that term is mapped to.  Otherwise, *count* reflects the number
+                  of objects which have that term plus all the given associated
+                  terms.  The list is sorted with the highest counts appearing first.
 
         For example, given an otherwise empty database, if you have an object
         with terms ['vacation', 'hawaii'] and two other object with terms
         ['vacation', 'spain'] and the associated list passed is ['vacation'],
         the return value will be [('spain', 2), ('hawaii', 1)].
-
-        If prefix is not None, only those terms that begin with the specified
-        prefix will be returned.  This is useful, for example, for
-        auto-completion while a user is typing a query.
-
-        The returned lists are sorted with the highest counts appearing
-        first.
         """
         if ivtidx not in self._inverted_indexes:
             raise ValueError, "'%s' is not a registered inverted index." % ivtidx
@@ -1860,14 +2068,19 @@ class Database:
 
     def get_db_info(self):
         """
-        Returns a dict of information on the database:
-                count: dict of object types holding their counts
-                total: total number of objects in db
-                types: dict keyed on object type holding a dict:
-                attrs: dict of attributes
-                  idx: list of multi-column indices
-           termcounts: Dictionary of number of index terms for each inverted index.
-                 file: full path to DB file
+        Return information about the database.
+
+        :returns: a dict
+
+        The returned dictionary has the following keys:
+            * count: dict of object types holding their counts
+            * total: total number of objects in the database
+            * types: a dict keyed on object type which contains:
+                * attrs: a dictionary of registered attributes for this type
+                * idx: a list of composite indexes for this type
+            * termcounts: a dict of the number of indexed terms for each
+                          inverted index
+            * file: full path to the database file
         """
         total = 0
         info = {
@@ -1897,7 +2110,7 @@ class Database:
 
     def set_metadata(self, key, value):
         """
-        Associates simple key/value pairs with the database.
+        Associate simple key/value pairs with the database.
 
         :param key: the key name for the metadata; it is required that key
                     is prefixed with ``appname::`` in order to avoid namespace
@@ -1916,7 +2129,7 @@ class Database:
 
     def get_metadata(self, key, default=None):
         """
-        Fetches metadata previously set by :meth:`~kaa.db.Database.set_metadata`.
+        Fetch metadata previously set by :meth:`~kaa.db.Database.set_metadata`.
 
         :param key: the key name for the metadata, prefixed with ``appname::``.
         :type key: str
@@ -1931,6 +2144,17 @@ class Database:
 
 
     def vacuum(self):
+        """
+        Cleans up the database, removing unused inverted index terms.
+
+        This also calls VACUUM on the underlying sqlite database, which
+        rebuilds the database to reclaim unused space and reduces
+        fragmentation.
+
+        Applications should call this periodically, however this operation
+        can be expensive for large databases so it should be done during
+        an extended idle period.
+        """
         # We need to do this eventually, but there's no index on count, so
         # this could potentially be slow.  It doesn't hurt to leave rows
         # with count=0, so this could be done intermittently.
@@ -1941,4 +2165,7 @@ class Database:
 
     @property
     def filename(self):
+        """
+        Full path to the database file.
+        """
         return self._dbfile

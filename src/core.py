@@ -35,6 +35,8 @@ import sys
 import os
 import fcntl
 import signal
+import time
+import Queue
 
 # kaa imports
 from .callable import Callable, WeakCallable, CallableError
@@ -60,6 +62,10 @@ class CoreThreading:
     # this variable in which case it is None.
     python_shutting_down = False
 
+    # The amount of time the main thread can be blocked while executing
+    # callbacks that were queued to be invoked from the main loop.
+    mainthread_callback_max_time = 2.0
+
     # Internal only attributes.
     #
     # The thread pipe, which is created by CoreThreading.init(), is used
@@ -80,9 +86,12 @@ class CoreThreading:
     _signal_wake_pipe = None
     # Holds a queue of callbacks and their arguments that need to be executed
     # from the main loop (by CoreThreading.run_queue, which is called by the
-    # notifier when there is activity on the pipe.)
-    _queue = []
-    _queue_lock = threading.RLock()
+    # notifier when there is activity on the pipe.)  The queue has some fairly
+    # large upper limit to prevent suicide-by-queuing.  See run_queue() for
+    # more details.
+    _queue = Queue.Queue(10000)
+    # Mutex to ensure put/qsize is atomic in queue_callback()
+    _queue_put_lock = threading.Lock()
     _mainthread = threading.currentThread()
     # Create a one byte dummy token for writing to the pipe.  Normally we'd
     # just use b'1' but Python 2.5 can't parse it.
@@ -115,9 +124,9 @@ class CoreThreading:
         notifier.socket_add(CoreThreading._pipe[0], CoreThreading.run_queue)
 
         if purge:
-            with CoreThreading._queue_lock:
-                del CoreThreading._queue[:]
-        elif CoreThreading._queue:
+            while not CoreThreading._queue.empty():
+                CoreThreading._queue.get()
+        elif not CoreThreading._queue.empty():
             # A thread is already running and wanted to run something in the
             # mainloop before the mainloop is started. In that case we need
             # to wakeup the loop ASAP to handle the requests.
@@ -157,9 +166,14 @@ class CoreThreading:
 
     @staticmethod
     def queue_callback(callback, args, kwargs, in_progress):
-        with CoreThreading._queue_lock:
-            CoreThreading._queue.append((callback, args, kwargs, in_progress))
-            if len(CoreThreading._queue) == 1:
+        # We need to synchronize the put and qsize calls or we might not
+        # realize we need to wakeup. (e.g. two threads can do put() one after
+        # the other, and then the call to qsize() would be 2.)  We don't care
+        # if the get() in run_queue() means we miss wakeup() because if
+        # run_queue() is running then clearly we're already woken up. :)
+        with CoreThreading._queue_put_lock:
+            CoreThreading._queue.put((callback, args, kwargs, in_progress))
+            if CoreThreading._queue.qsize() == 1:
                 # We just added the first callback to the queue, so notify the
                 # mainthread.
                 CoreThreading._wakeup()
@@ -177,20 +191,49 @@ class CoreThreading:
                 log.error("Thread notifier pipe woke but no data available.")
         except OSError:
             pass
-        with CoreThreading._queue_lock:
-            while CoreThreading._queue:
-                callback, args, kwargs, in_progress = CoreThreading._queue.pop(0)
-                try:
-                    in_progress.finish(callback(*args, **kwargs))
-                except BaseException, e:
-                    # All exceptions, including SystemExit and KeyboardInterrupt,
-                    # are caught and thrown to the InProgress, because it may be
-                    # waiting in another thread.  However SE and KI are reraised
-                    # in here the main thread so they can be propagated back up
-                    # the mainloop.
-                    in_progress.throw(*sys.exc_info())
-                    if isinstance(e, (KeyboardInterrupt, SystemExit)):
-                        raise
+
+        # It's possible that a thread is actively enqueuing callbacks faster
+        # than we can dequeue and invoke them.  r3583 tried to fix this by
+        # locking the queue for the entire loop, but this introduced a
+        # deadlock caused when a thread enqueues a callback while a previously
+        # queued callback is being invoked and is blocked on a resource used
+        # by that thread (like a different mutex).
+        #
+        # So we don't lock the whole loop to avoid the deadlock, and we stop
+        # invoking callbacks after mainthread_callback_max_time seconds
+        # has elapsed in order to solve the problem r3583 tried to fix.
+        #
+        # Now, there is a large upper bound on the queue to prevent memory
+        # exhaustion, which means a producer will block if it's adding
+        # callbacks too quickly, which means we could still deadlock if both
+        # the above scenarios is true (i.e. a thread is enqueuing callbacks
+        # faster than the main loop can process them, _and_ a mainthread
+        # callback is blocking on a resource held by that thread).  But
+        # hopefully we have pushed that to an extreme corner case -- although
+        # probably at the expense of making that corner case harder to
+        # find/debug. :(
+        t0 = time.time()
+        while not CoreThreading._queue.empty():
+            if time.time() - t0 > CoreThreading.mainthread_callback_max_time:
+                # We've spent too much time blocking the main loop invoking the
+                # queued callbacks, but we still have more.  Poke the thread
+                # pipe so the next iteration of the main loop calls us back
+                # and abort the loop.
+                self._wakeup()
+                break
+
+            callback, args, kwargs, in_progress = CoreThreading._queue.get()
+            try:
+                in_progress.finish(callback(*args, **kwargs))
+            except BaseException, e:
+                # All exceptions, including SystemExit and KeyboardInterrupt,
+                # are caught and thrown to the InProgress, because it may be
+                # waiting in another thread.  However SE and KI are reraised
+                # in here the main thread so they can be propagated back up
+                # the mainloop.
+                in_progress.throw(*sys.exc_info())
+                if isinstance(e, (KeyboardInterrupt, SystemExit)):
+                    raise
         return True
 
     @staticmethod
@@ -213,7 +256,9 @@ class CoreThreading:
         by another thread to wake up the mainloop.  For example, when a
         :class:`~kaa.MainThreadCallable` is invoked, it calls ``wakeup()``.
         """
-        if len(CoreThreading._queue) == 0:
+        # Only need to write to the pipe if the queue is empty; if it's not
+        # empty, then queue_callback() would have called _wakeup().
+        if CoreThreading._queue.empty():
             os.write(CoreThreading._pipe[1], CoreThreading._PIPE_NOTIFY_TOKEN)
 
 

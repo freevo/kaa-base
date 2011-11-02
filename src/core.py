@@ -37,6 +37,7 @@ import fcntl
 import signal
 import time
 import Queue
+import socket
 
 # kaa imports
 from .callable import Callable, WeakCallable, CallableError

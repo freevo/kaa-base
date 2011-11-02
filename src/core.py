@@ -37,7 +37,6 @@ import fcntl
 import signal
 import time
 import Queue
-import socket
 
 # kaa imports
 from .callable import Callable, WeakCallable, CallableError
@@ -184,14 +183,17 @@ class CoreThreading:
     def run_queue(fd):
         try:
             os.read(CoreThreading._pipe[0], 1000)
-        except socket.error, (err, msg):
+        except (IOError, OSError), (err, msg):
             if err == errno.EAGAIN:
                 # Resource temporarily unavailable -- we are trying to read
                 # data on a socket when none is avilable.  This should not
                 # happen under normal circumstances, so log an error.
                 log.error("Thread notifier pipe woke but no data available.")
-        except OSError:
-            pass
+            else:
+                # Other errors may need to be caught and handled.  Log a
+                # warning for now.
+                log.warning('Problem reading from thread notifier pipe: [%d] %s', err, msg)
+
 
         # It's possible that a thread is actively enqueuing callbacks faster
         # than we can dequeue and invoke them.  r3583 tried to fix this by

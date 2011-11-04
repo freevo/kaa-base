@@ -897,7 +897,7 @@ class Database:
 
             # What's left gets put into the pickle.
             columns.append("pickle")
-            print 'PICKLE', attrs_copy
+            # print 'PICKLE', attrs_copy
             values.append(buffer(cPickle.dumps(attrs_copy, 2)))
             placeholders.append("?")
 

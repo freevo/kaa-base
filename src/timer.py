@@ -147,11 +147,15 @@ class Timer(notifier.NotifierCallback):
 
 
     @thread.threaded(thread.MAINTHREAD)
-    def start(self, interval):
+    def start(self, interval, now=False):
         """
         Start the timer, invoking the callback every *interval* seconds.
 
         :param interval: interval between invocations of the callback, in seconds
+        :type interval: float
+        :param now: if True, invoke the callback once immediately before starting
+                    the timer.
+        :type now: bool
 
         If the timer is already running, it is stopped and restarted with
         the given interval.  The timer's precision is at the mercy of other
@@ -166,6 +170,8 @@ class Timer(notifier.NotifierCallback):
             if not self.restart_when_active:
                 return
             self.unregister()
+        if now:
+            self()
         self._id = notifier.timer_add(int(interval * 1000), self)
         self.__interval = interval
 

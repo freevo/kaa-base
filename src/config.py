@@ -780,12 +780,16 @@ class Container(Base):
             return newitem
 
 
-    def __call__(self):
+    def __call__(self, **kwargs):
         """
-        Returns a schema for the container.  This is a copy of the container's
+        Returns a schema for the container.This is a copy of the container's
         schema so it is suitable for modifying and adding to the container.
         """
-        return get_schema(self).copy()
+        schema = get_schema(self).copy()
+        # Iniitialize config vars based on kwargs
+        for attr, value in kwargs.items():
+            setattr(schema, attr, value)
+        return schema
 
 
 class Dict(Container):
@@ -954,8 +958,9 @@ class List(Container):
     def __delitem__(self, idx):
         if self._cow_source is not None:
             self._copy_children()
-        # Set to DELETED before actually deleting to notify any monitors.
-        self._list[idx]._cfg_set(DELETED)
+        if hasattr(self._list[idx], '_cfg_set'):
+            # Set to DELETED before actually deleting to notify any monitors.
+            self._list[idx]._cfg_set(DELETED)
         del self._list[idx]
 
     def _cfg_set(self, l):
@@ -995,7 +1000,7 @@ class List(Container):
         else:
             raise ValueError('list.remove(x): x not in list')
 
-    def pop(self, idx):
+    def pop(self, idx=-1):
         if self._cow_source is not None:
             self._copy_children()
         var = self._list.pop(idx)

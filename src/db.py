@@ -50,6 +50,7 @@ except ImportError:
 from .utils import property
 from .strutils import py3_str
 from ._objectrow import ObjectRow
+from .timer import WeakOneShotTimer
 from . import main
 
 if sqlite.version < '2.1.0':
@@ -295,6 +296,8 @@ class Database(object):
         self._dirty = False
         self._dbfile = os.path.realpath(dbfile)
         self._lock = threading.RLock()
+        self._lazy_commit_timer = WeakOneShotTimer(self.commit)
+        self._lazy_commit_interval = None
         self._open_db()
 
 
@@ -332,6 +335,8 @@ class Database(object):
 
 
     def _set_dirty(self):
+        if self._lazy_commit_interval is not None:
+            self._lazy_commit_timer.start(self._lazy_commit_interval)
         if self._dirty:
             return
         self._dirty = True
@@ -2169,3 +2174,24 @@ class Database(object):
         Full path to the database file.
         """
         return self._dbfile
+    
+
+    @property
+    def lazy_commit(self):
+        """
+        The interval after which any changes made to the database will be
+        automatically committed, or None to require explicit commiting.
+        (Default is None.)
+
+        The timer is restarted upon each change to the database, so prolonged
+        updates may still benefit from explicit periodic commits.
+        """
+        return self._lazy_commit_interval
+
+    @lazy_commit.setter
+    def lazy_commit(self, value):
+        self._lazy_commit_interval = float(value)
+        if value is None:
+            self._lazy_commit_timer.stop()
+        elif self._dirty:
+            self._lazy_commit_timer.start(self._lazy_commit_interval)

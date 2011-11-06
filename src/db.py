@@ -157,13 +157,13 @@ def _list_to_printable(value):
     """
     fixed_items = []
     for item in value:
-        if type(item) in (int, long, float):
+        if isinstance(item, (int, long, float)):
            fixed_items.append(str(item))
         elif item == None:
             fixed_items.append("NULL")
-        elif type(item) == unicode:
+        elif isinstance(item, unicode):
             fixed_items.append("'%s'" % item.replace("'", "''"))
-        elif type(item) == str:
+        elif isinstance(item, str):
             fixed_items.append("'%s'" % py3_str(item.replace("'", "''")))
         else:
             raise Exception, "Unsupported type '%s' given to _list_to_printable" % type(item)
@@ -258,7 +258,7 @@ class RegexpCache(object):
         return self.last_result
 
 
-class Database:
+class Database(object):
     def __init__(self, dbfile):
         """
         Open a database, creating one if it doesn't already exist.
@@ -268,6 +268,7 @@ class Database:
 
         SQLite is used to provide the underlying database.
         """
+        super(Database, self).__init__()
         # _object_types dict is keyed on type name, where value is a 3-
         # tuple (id, attrs, idx), where:
         #   - id is a unique numeric database id for the type,
@@ -393,7 +394,7 @@ class Database:
 
     def _register_check_indexes(self, indexes, attrs):
         for cols in indexes:
-            if type(cols) not in (list, tuple):
+            if not isinstance(cols, (list, tuple)):
                 raise ValueError, "Single column index specified ('%s') where multi-column index expected." % cols
             for col in cols:
                 errstr = "Multi-column index (%s) contains" % ",".join(cols)
@@ -877,7 +878,7 @@ class Database:
                     attrs_copy["__" + name] = value
                     value = value.lower()
 
-                if attr_type != type(value):
+                if not isinstance(value, attr_type):
                     raise TypeError("Type mismatch in query for %s: '%s' (%s) is not a %s" % \
                                     (name, str(value), str(type(value)), str(attr_type)))
                 if attr_type == str:
@@ -897,7 +898,6 @@ class Database:
 
             # What's left gets put into the pickle.
             columns.append("pickle")
-            # print 'PICKLE', attrs_copy
             values.append(buffer(cPickle.dumps(attrs_copy, 2)))
             placeholders.append("?")
 
@@ -1258,7 +1258,7 @@ class Database:
             terms_list = []
             for name, (attr_type, flags, attr_ivtidx, attr_split) in type_attrs.items():
                 if attr_ivtidx == ivtidx and name in attrs:
-                    if attr_type == str and type(attrs[name]) == buffer:
+                    if attr_type == str and isinstance(attrs[name], buffer):
                         # We store string objects in the db as buffers, in
                         # order to prevent any unicode issues.  So we need
                         # to convert the buffer we got from the db back to
@@ -1435,46 +1435,46 @@ class Database:
                     ivtidx_results_by_type[tp] = []
                 ivtidx_results_by_type[tp].append(id)
 
-        if "type" in attrs:
+        if attrs.get('type') is not None:
             if attrs["type"] not in self._object_types:
                 raise ValueError, "Unknown object type '%s'" % attrs["type"]
             type_list = [(attrs["type"], self._object_types[attrs["type"]])]
-            del attrs["type"]
         else:
             type_list = self._object_types.items()
 
-        if "parent" in attrs:
+        if attrs.get('parent') is not None:
             # ("type", id_or_QExpr) or (("type1", id_or_QExpr), ("type2", id_or_QExpr), ...)
-            if not isinstance(attrs['parent'][0], (list, tuple)):
-                # Convert first form to second form.
+            if isinstance(attrs['parent'], ObjectRow) or \
+               (isinstance(attrs['parent'], (list, tuple)) and \
+                not isinstance(attrs['parent'][0], (list, tuple))):
+                # (type, parent) -> ((type, parent),)
                 attrs['parent'] = (attrs['parent'],)
 
             for parent_obj in attrs['parent']:
                 parent_type_id, parent_id = self._to_obj_tuple(parent_obj, numeric=True)
-                if type(parent_id) != QExpr:
+                if not isinstance(parent_id, QExpr):
                     parent_id = QExpr("=", parent_id)
                 parents.append((parent_type_id, parent_id))
-            del attrs['parent']
 
-        if "limit" in attrs:
+        if attrs.get('limit') is not None:
             result_limit = attrs["limit"]
-            del attrs["limit"]
         else:
             result_limit = None
 
-        if "attrs" in attrs:
+        if attrs.get('attrs') is not None:
             requested_columns = attrs["attrs"]
-            del attrs["attrs"]
         else:
             requested_columns = None
 
-        if "distinct" in attrs:
+        if attrs.get('distinct') is not None:
             if attrs["distinct"]:
                 if not requested_columns:
                     raise ValueError, "Distinct query specified, but no attrs kwarg given."
                 query_type = "DISTINCT"
-            del attrs["distinct"]
 
+        # Remove all special keywords
+        for attr in ('parent', 'object', 'type', 'limit', 'attrs', 'distinct'):
+            attrs.pop(attr, None)
 
         for type_name, (type_id, type_attrs, type_idx) in type_list:
             if ivtidx_results and type_id not in ivtidx_results_by_type:
@@ -1540,18 +1540,18 @@ class Database:
 
             for attr, value in attrs.items():
                 attr_type, attr_flags = type_attrs[attr][:2]
-                if type(value) != QExpr:
+                if not isinstance(value, QExpr):
                     value = QExpr("=", value)
 
                 # Coerce between numeric types; also coerce a string of digits into a numeric
                 # type.
-                if attr_type in (int, long, float) and (type(value._operand) in (int, long, float) or \
+                if attr_type in (int, long, float) and (isinstance(value._operand, (int, long, float)) or \
                     isinstance(value._operand, basestring) and value._operand.isdigit()):
                     value._operand = attr_type(value._operand)
 
                 # Verify expression operand type is correct for this attribute.
                 if value._operator not in ("range", "in", "not in") and \
-                   type(value._operand) != attr_type:
+                   not isinstance(value._operand, attr_type):
                     raise TypeError, "Type mismatch in query: '%s' (%s) is not a %s" % \
                                           (str(value._operand), str(type(value._operand)), str(attr_type))
 
@@ -1566,7 +1566,7 @@ class Database:
                         # to use any indices on the column.
                         attr = 'lower(%s)' % attr
 
-                if type(value._operand) == str:
+                if isinstance(value._operand, str):
                     # Treat strings (non-unicode) as buffers.
                     value._operand = buffer(value._operand)
 

@@ -1022,7 +1022,7 @@ class Config(Group):
         # Whether or not to autosave config file when options have changed
         self._autosave = None
         self._autosave_timer = WeakOneShotTimer(self.save)
-        self.autosave = True
+        self.autosave = False
 
         # If we are watching the config file for changes.
         self._watching = False
@@ -1292,6 +1292,8 @@ class Config(Group):
         :meth:`~kaa.config.Config.load` or defined by the
         :attr:`~kaa.config.Config.filename` property) 5 seconds after the last
         config value update (or program exit, whichever comes first).
+
+        Default is False.
         """
         return self._autosave
 

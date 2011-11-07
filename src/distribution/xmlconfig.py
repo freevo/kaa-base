@@ -48,6 +48,8 @@ def get_value(value, type):
     if not value:
         return eval('%s()' % type)
     if type:
+        if type == 'bool':
+            return {'1': True, 'true': True}.get(value, False)
         return eval(type)(value)
     if value.lower() == 'true':
         return True

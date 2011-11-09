@@ -1074,7 +1074,9 @@ class Config(Group):
         main.signals['exit'].disconnect(self.save)
 
         hash_values = self._hash(values=True)
-        if self._loaded_hash_values == hash_values and not force and filename == self.filename:
+        hash_schema = self._hash(values=False)
+        if self._loaded_hash_values == hash_values and self._loaded_hash_schema == hash_schema and \
+           not force and filename == self.filename:
             # Nothing has changed, and forced save not required.
             return True
 
@@ -1186,7 +1188,7 @@ class Config(Group):
         key_regexp = re.compile('(([a-zA-Z0-9_-]+)|(\[.*?\]))')
 
         self._loaded_hash_schema = None
-        self._loaded_hash_value = None
+        self._loaded_hash_values = None
 
         if not os.path.isfile(filename):
             # filename not found

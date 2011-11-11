@@ -410,6 +410,15 @@ class Socket(IOChannel):
         else:
             sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                # If /proc/sys/net/ipv6/bindv6only is 1, then we will not be
+                # able to accept IPv4 connections with mapped addresses on the
+                # socket.  Explicitly set this option in case.
+                # 
+                # See http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=560238
+                sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+            except socket.error:
+                log.error("Disabling IPV6_V6ONLY failed; the socket probably won't work right")
 
         return sock, addr
 

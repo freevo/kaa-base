@@ -277,7 +277,7 @@ class OneShotAtTimer(OneShotTimer):
         if not isinstance(sec, (list, tuple)):
             sec = [ sec ]
 
-        self._timings = hour, min, sec
+        self._timings = sorted(hour), sorted(min), sorted(sec)
         self._last_time = datetime.datetime.now()
         self._schedule_next()
 
@@ -300,9 +300,9 @@ class OneShotAtTimer(OneShotTimer):
         next_min = [ x for x in min if t.minute < x ]
         next_hour = [ x for x in hour if t.hour < x ]
 
-        if next_sec:
+        if next_sec and t.minute in min and t.hour in hour:
             next = t.replace(second = next_sec[0])
-        elif next_min:
+        elif next_min and t.hour in hour:
             next = t.replace(minute = next_min[0], second = sec[0])
         elif next_hour:
             next = t.replace(hour = next_hour[0], minute = min[0], second = sec[0])

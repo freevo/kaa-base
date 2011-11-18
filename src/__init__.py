@@ -418,7 +418,7 @@ class KaaFinder(__builtins__['object']):
         self.last_sys_path = sys.path
 
 
-    def find_module(self, name, path):
+    def find_module(self, name, path=None):
         # Ignore anything not in the form kaa.foo, or if kaa.foo is an egg in sys.path.
         self.discover_kaa_eggs()
         if not name.startswith('kaa.') or name.count('.') > 1 or name in self.kaa_eggs:

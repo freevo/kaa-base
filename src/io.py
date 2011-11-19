@@ -83,6 +83,10 @@ class IOMonitor(notifier.NotifierCallback):
                 raise ValueError('Existing file descriptor already registered with this IOMonitor.')
             return
         if not CoreThreading.is_mainthread():
+            # Ultimately we need to make sure the main loop gets woken up when
+            # we register the new fd so that it gets monitored right away.  The
+            # most straightforward way is to reinvoke this function from the
+            # main loop.
             return MainThreadCallable(self.register)(fd, condition)
         notifier.socket_add(fd, self, condition-1)
         self._condition = condition

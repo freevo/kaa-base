@@ -715,7 +715,7 @@ class InProgress(Signal, Object):
 
         if not self.finished:
             self.disconnect(dummy)
-            raise TimeoutException
+            raise TimeoutException('Timed out', self)
 
         return self.result
 

@@ -403,7 +403,7 @@ class Socket(IOChannel):
                 else:
                     # We were able to connect to the existing socket, so it's
                     # in use.  We won't overwrite it.
-                    raise IOError('Address already in use')
+                    raise IOError(errno.EADDRINUSE, 'Address already in use')
                 os.unlink(addr)
 
             sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)

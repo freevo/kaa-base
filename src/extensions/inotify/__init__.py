@@ -226,16 +226,16 @@ class INotify(kaa.Object):
 
     def _handle_data(self):
         try:
-            data = os.read(self._fd, 32768)
-        except socket.error, (err, msg):
+            self._read_buffer += os.read(self._fd, 32768)
+        except (OSError, IOError, socket.error), (err, msg):
             if err == errno.EAGAIN:
-                # Resource temporarily unavailable -- we are trying to read
-                # data on a socket when none is avilable.  This should not
-                # happen under normal circumstances, so log an error.
-                log.error("INotify data handler called but no data available.")
-            return
-
-        self._read_buffer += data
+                # select(2) man page tells us that on Linux, there may be
+                # "circumstances in which a file descriptor is spuriously
+                # reported as ready."  EAGAIN is safe to ignore.
+                return
+            else:
+                # Other errors aren't silently ignorable.
+                return log.exception('error reading from INotify')
 
         event_len = struct.calcsize('IIII')
         while True:

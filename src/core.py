@@ -140,7 +140,7 @@ class CoreThreading:
                 # Stop monitoring old signal wake pipe.
                 notifier.socket_remove(CoreThreading._signal_wake_pipe[0])
             pipe = CoreThreading._create_nonblocking_pipe()
-            notifier.socket_add(pipe[0], lambda fd: os.read(fd, 4096) and signals['unix-signal'].emit())
+            notifier.socket_add(pipe[0], lambda fd: CoreThreading._purge_pipe(fd) and signals['unix-signal'].emit())
             CoreThreading._signal_wake_pipe = pipe
             signal.signal(signal.SIGCHLD, lambda sig, frame: None)
             signal.set_wakeup_fd(pipe[1])
@@ -163,6 +163,26 @@ class CoreThreading:
             fcntl.fcntl(fd, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
         return pipe
 
+    
+    @staticmethod
+    def _purge_pipe(fd):
+        """
+        Purges all data from the given file descriptor.  Silently ignores
+        EAGAIN under the assumption that the pipe is used for some sort of
+        wakeup and the wakeup has happened, so it's not worth complaining
+        about.  In any case, the select(2) man page says that on Linux, there
+        may be "circumstances in which a file descriptor is spuriously reported
+        as ready."
+
+        Other errors are raised to the caller.
+        """
+        try:
+            while os.read(fd, 4096) == 4096:
+                pass
+        except (IOError, OSError), (err, msg):
+            if err != errno.EAGAIN:
+                raise
+
 
     @staticmethod
     def queue_callback(callback, args, kwargs, in_progress):
@@ -182,17 +202,14 @@ class CoreThreading:
     @staticmethod
     def run_queue(fd):
         try:
-            os.read(CoreThreading._pipe[0], 1000)
+            CoreThreading._purge_pipe(CoreThreading._pipe[0])
         except (IOError, OSError), (err, msg):
-            if err == errno.EAGAIN:
-                # Resource temporarily unavailable -- we are trying to read
-                # data on a socket when none is avilable.  This should not
-                # happen under normal circumstances, so log an error.
-                log.error("Thread notifier pipe woke but no data available.")
-            else:
-                # Other errors may need to be caught and handled.  Log a
-                # warning for now.
-                log.warning('Problem reading from thread notifier pipe: [%d] %s', err, msg)
+            # Some error occurred while reading from the wakeup pipe.  We don't
+            # let the exception bubble up to the main loop however, because
+            # whatever the problem may be, we are at least now awake as
+            # intended, and need to execute any queued callbacks.  Log a
+            # warning instead.
+            log.warning('Problem reading from thread notifier pipe: [%d] %s', err, msg)
 
 
         # It's possible that a thread is actively enqueuing callbacks faster

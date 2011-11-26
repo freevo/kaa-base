@@ -48,66 +48,67 @@ else:
     from .strutils import py3_b as logger_str_convert
 
 
-def create_logger(level = logging.WARNING):
-    """
-    Create a simple logging object for applicatins that don't want
-    to create a logging handler on their own. You should always have
-    a logging object.
-    """
-    log = logging.getLogger()
-    # delete current handler
-    for l in log.handlers:
-        log.removeHandler(l)
-
-    # Create a simple logger object
-    if len(logging.getLogger().handlers) > 0:
-        # there is already a logger, skipping
-        return
-
-    formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(module)s(%(lineno)s): %(message)s')
-    handler = logging.StreamHandler()
-    handler.setFormatter(formatter)
-    log.addHandler(handler)
-
-
-_makeRecord = logging.Logger.makeRecord
-
-def make_record(self, name, level, fn, lno, msg, args, *_args, **_kwargs):
-    """
-    A special makeRecord class for the logger to convert msg and args into
-    strings using the correct encoding if they are unicode strings. This
-    function also makes sure we have at least a basic handler.
-    """
-    if len(self.root.handlers) == 0:
-        # create handler, we don't have one
-        create_logger()
-
-    # ensure msg and args are unicode (python 2.6+) or non-unicode (python 2.5)
-    msg = logger_str_convert(msg)
-    args = tuple(logger_str_convert(x) for x in args)
-    # Allow caller to override default location by specifying a 2-tuple
-    # (filename, lineno) as 'location' in the extra dict.
-    extra = _args[2]
-    if extra and 'location' in extra:
-        fn, lno = extra['location']
-
-    # call original function
-    return _makeRecord(self, name, level, fn, lno, msg, args, *_args, **_kwargs)
-
-
-# override makeRecord of a logger by our new function that can handle
-# unicode correctly and that will take care of a basic logger.
-logging.Logger.makeRecord = make_record
-
-
-# Replace logger class with a custom logger that implements a debug2() method,
-# using a new DEBUG2 log level.
 class Logger(logging.Logger):
+    """
+    A custom logger from Kaa that implements a debug2() method using a new
+    DEBUG2 log level, addresses unicode bugs in the logging module of various
+    Python versions, and adds a new method ensureRootHandler()
+    """
+    def ensureRootHandler(self, fmt=None, datefmt=None, replace=False):
+        """
+        Ensures the root logger has a handler attached.  This is a convenience
+        method similar to logging.basicConfig().
+
+        :param fmt: the log format string; if None a sensible default is used
+        :param datefmt: the date format string; if None a sensible default is used
+        :param replace: if True, removes all existing root handlers before
+                        adding a new handler
+        :returns: self
+
+        This method returns self to allow this idiom::
+
+            log = logging.getLogger('app').ensureRootHandler()
+        """
+        if replace:
+            # delete current handlers
+            for l in self.root.handlers:
+                self.root.removeHandler(l)
+        elif len(self.root.handlers) > 0:
+            # there is already a logger and replace=False, skipping
+            return self
+
+        fmt = fmt or '%(asctime)s [%(levelname)s] %(module)s(%(lineno)s): %(message)s'
+        formatter = logging.Formatter(fmt, datefmt)
+        handler = logging.StreamHandler()
+        handler.setFormatter(formatter)
+        self.addHandler(handler)
+        return self
+
+
+    def makeRecord(self, name, level, fn, lno, msg, args, *_args, **_kwargs):
+        """
+        This custom makeRecord ensures unicode (whether unicode objects or
+        encoded strings) is handled correctly, providing consistent
+        behaviour across several Python versions.
+        """
+        # ensure msg and args are unicode (python 2.6+) or non-unicode (python 2.5)
+        msg = logger_str_convert(msg)
+        args = tuple(logger_str_convert(x) for x in args)
+
+        # Allow caller to override default location by specifying a 2-tuple
+        # (filename, lineno) as 'location' in the extra dict.
+        extra = _args[2]
+        if extra and 'location' in extra:
+            fn, lno = extra['location']
+
+        # call original function
+        return logging.Logger.makeRecord(self, name, level, fn, lno, msg, args, *_args, **_kwargs)
+
+
     def debug2(self, msg, *args, **kwargs):
-        if self.manager.disable >= logging.DEBUG2:
-            return
-        if logging.DEBUG2 >= self.getEffectiveLevel():
-            apply(self._log, (logging.DEBUG2, msg, args), kwargs)
+        if self.isEnabledFor(logging.DEBUG2):
+            self._log(logging.DEBUG2, msg, args, **kwargs)
+
 
 logging.DEBUG2 = 5
 logging.addLevelName(logging.DEBUG2, 'DEBUG2')

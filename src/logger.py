@@ -81,7 +81,7 @@ class Logger(logging.Logger):
         formatter = logging.Formatter(fmt, datefmt)
         handler = logging.StreamHandler()
         handler.setFormatter(formatter)
-        self.addHandler(handler)
+        self.root.addHandler(handler)
         return self
 
 

@@ -36,6 +36,7 @@ import os
 import fcntl
 import signal
 import time
+import errno
 import Queue
 
 # kaa imports

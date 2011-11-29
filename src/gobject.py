@@ -39,12 +39,17 @@ from __future__ import absolute_import
 __all__ = [ 'GOBJECT', 'gobject_set_threaded' ]
 
 # python imports
+import sys
 import threading
 
 from .weakref import weakref
 try:
-    # try to import gobject
-    import gobject
+    if 'gi.repository' in sys.modules:
+        # try to import gobject from gi.repository
+        from gi.repository import GObject as gobject
+    else:
+        # try to import gobject
+        import gobject
 except ImportError:
     gobject = None
 

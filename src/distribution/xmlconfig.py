@@ -63,7 +63,9 @@ def get_value(value, type):
 
 
 def format_content(node):
-    s = node.childNodes[0].data.replace('\t', '        ')
+    # Get the raw xml of all children for the node.  This allows markup
+    # (like HTML) to be used inside, for example, description elements.
+    s = ''.join(c.toxml() for c in node.childNodes).replace('\t', '        ')
     spaces = ''
     while s:
         if s[0] == ' ':

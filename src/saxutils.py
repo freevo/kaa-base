@@ -81,6 +81,12 @@ class Element(object):
             else:
                 self._content = content
 
+
+    @property
+    def attributes(self):
+        return self._attr.keys()
+
+
     def append(self, element):
         """
         Append an element to the list of children.

@@ -39,6 +39,7 @@ import traceback
 import time
 import _weakref
 import threading
+import types
 
 # kaa.base imports
 from .utils import property
@@ -812,6 +813,11 @@ class InProgressAny(InProgress):
     objects (in constructor) finish.  This functionality is useful when
     building state machines using coroutines.
 
+    Sequences or generators passed as arguments will be flattened, allowing
+    for this idiom::
+
+        yield InProgressAll(func() for func in coroutines)
+
     The initializer can take two optional kwargs: pass_index and filter.
 
     If pass_index is True, the InProgressAny object then finishes with a
@@ -832,12 +838,22 @@ class InProgressAny(InProgress):
         self._pass_index = kwargs.get('pass_index', True)
         self._filter = kwargs.get('filter')
 
-        # Generate InProgress objects for anything that was passed.
-        self._objects = [ inprogress(o) for o in objects ]
+        # Generate InProgress objects for anything that was passed, including
+        # InProgress objects nested within sequences and generators.
+        self._objects = [inprogress(o) for o in self._flatten(objects)]
         self._counter = len(objects) or 1
 
         self._prefinished_visited = set()
         self._check_prefinished()
+
+
+    def _flatten(self, v):
+        if isinstance(v, (list, tuple, types.GeneratorType)):
+            for item in iter(v):
+                for sub in self._flatten(item):
+                    yield sub
+        else:
+            yield v
 
 
     def _get_connect_args(self, ip, n):

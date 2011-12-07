@@ -119,7 +119,7 @@ ATTR_INDEXED_IGNORE_CASE = ATTR_INDEXED | ATTR_IGNORE_CASE
 
 # These are special attributes for querying.  Attributes with
 # these names cannot be registered.
-RESERVED_ATTRIBUTES = ('id', 'parent', 'object', 'type', 'limit', 'attrs', 'distinct')
+RESERVED_ATTRIBUTES = ('id', 'parent', 'object', 'type', 'limit', 'attrs', 'distinct', 'orattrs')
 
 STOP_WORDS = (
     "about", "and", "are", "but", "com", "for", "from", "how", "not",
@@ -1345,6 +1345,9 @@ class Database(object):
                          *attrs* parameter.  When distinct is True, *attrs* is
                          required and none of the attributes specified may be
                          simple.
+        :param orattrs: attribute names that will be ORed in the query; by default,
+                        all attributes are ANDed.
+        :type orattrs: list
         :raises: ValueError if the query is invalid (e.g. attempting to query
                  on a simple attribute)
         :returns: a list of :class:`ObjectRow` objects
@@ -1477,8 +1480,13 @@ class Database(object):
                     raise ValueError, "Distinct query specified, but no attrs kwarg given."
                 query_type = "DISTINCT"
 
+        if attrs.get('orattrs') is not None:
+            orattrs = set(attrs['orattrs'])
+        else:
+            orattrs = ()
+
         # Remove all special keywords
-        for attr in ('parent', 'object', 'type', 'limit', 'attrs', 'distinct'):
+        for attr in ('parent', 'object', 'type', 'limit', 'attrs', 'distinct', 'orattrs'):
             attrs.pop(attr, None)
 
         for type_name, (type_id, type_attrs, type_idx) in type_list:
@@ -1525,8 +1533,8 @@ class Database(object):
                     raise ValueError, "Querying on non-searchable attribute '%s'" % simple[0]
                 continue
 
-            q = []
-            query_values = []
+            q, qor = [], []
+            query_values, qor_values = [], []
             q.append("SELECT %s '%s',%d,id,%s FROM objects_%s" % \
                 (query_type, type_name, type_id, ",".join(columns), type_name))
 
@@ -1544,6 +1552,7 @@ class Database(object):
                 q.append("(%s)" % " OR ".join(expr))
 
             for attr, value in attrs.items():
+                is_or_attr = attr in orattrs
                 attr_type, attr_flags = type_attrs[attr][:2]
                 if not isinstance(value, QExpr):
                     value = QExpr("=", value)
@@ -1575,11 +1584,18 @@ class Database(object):
                     # Treat strings (non-unicode) as buffers.
                     value._operand = buffer(value._operand)
 
-                q.append(("WHERE", "AND")["WHERE" in q])
-
                 sql, values = value.as_sql(attr)
-                q.append(sql)
-                query_values.extend(values)
+                if is_or_attr:
+                    qor.append(sql)
+                    qor_values.extend(values)
+                else:
+                    q.append('AND' if 'WHERE' in q else 'WHERE')
+                    q.append(sql)
+                    query_values.extend(values)
+
+            if qor:
+                q.append('AND' if 'WHERE' in q else 'WHERE')
+                q.append('(%s)' % ' OR '.join(qor))
 
             if query_type == 'DISTINCT':
                 q.append(' GROUP BY %s' % ','.join(requested_columns))
@@ -1588,7 +1604,7 @@ class Database(object):
                 q.append(" LIMIT %d" % result_limit)
 
             q = " ".join(q)
-            rows = self._db_query(q, query_values, cursor = self._qcursor)
+            rows = self._db_query(q, query_values + qor_values, cursor=self._qcursor)
 
             if result_limit != None:
                 results.extend(rows[:result_limit - len(results) + 1])

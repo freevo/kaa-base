@@ -242,7 +242,7 @@ def _generator_coroutine(generator, func, args, kwargs):
             try:
                 result = async.send((yield result))
             except Exception, e:
-                async.throw(*sys.exc_info())
+                async.throw()
         if result == NotFinished:
             yield result
         else:
@@ -360,7 +360,7 @@ class CoroutineInProgress(InProgress):
             # Generator raised an exception, so finish InProgress with that
             # exception.  We throw all exceptions, including SE and KI, in
             # case a thread is waiting on the InProgress.
-            self.throw(*sys.exc_info())
+            self.throw()
             if isinstance(e, (KeyboardInterrupt, SystemExit)):
                 # Reraise these signals back up the mainloop.
                 raise

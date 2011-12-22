@@ -252,7 +252,7 @@ class CoreThreading:
                 # waiting in another thread.  However SE and KI are reraised
                 # in here the main thread so they can be propagated back up
                 # the mainloop.
-                in_progress.throw(*sys.exc_info())
+                in_progress.throw()
                 if isinstance(e, (KeyboardInterrupt, SystemExit)):
                     raise
         return True

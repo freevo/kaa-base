@@ -432,7 +432,7 @@ class InProgress(Signal, Object):
         return self
 
 
-    def throw(self, type, value, tb, aborted=False):
+    def throw(self, type=None, value=None, tb=None, aborted=False):
         """
         This method should be called when the owner (creator) of the InProgress is
         finished because it raised an exception.
@@ -440,7 +440,9 @@ class InProgress(Signal, Object):
         Any callbacks connected to the :attr:`~kaa.InProgress.exception` signal will
         then be emitted with the arguments passed to this method.
 
-        The parameters correspond to sys.exc_info().
+        The parameters correspond to sys.exc_info().  If they are not specified
+        then the current exception in sys.exc_info() will be used; this is
+        analogous to a naked ``raise`` within an ``except`` block.
 
         :param type: the class of the exception
         :param value: the instance of the exception
@@ -464,6 +466,10 @@ class InProgress(Signal, Object):
         # stack frames needed for printing tracebacks, but discarding objects
         # that would create circular references.  This might be a TODO.
         self._finished = True
+        if type is None:
+            type, value, tb = sys.exc_info()
+            if value is None:
+                raise ValueError('throw() with no parameters but there is no current exception')
         self._exception = type, value, tb
         self._unhandled_exception = True
         stack = traceback.extract_tb(tb)
@@ -664,7 +670,7 @@ class InProgress(Signal, Object):
         try:
             result = func(*args, **kwargs)
         except BaseException, e:
-            self.throw(*sys.exc_info())
+            self.throw()
             if isinstance(e, (KeyboardInterrupt, SystemExit)):
                 # Reraise these exceptions to be handled by the mainloop
                 raise

@@ -16,7 +16,7 @@
 # module doing the hard part.
 #
 # -----------------------------------------------------------------------------
-# Copyright 2010 Dirk Meyer
+# Copyright 2010-2012 Dirk Meyer
 #
 # Please see the file AUTHORS for a complete list of authors.
 #

@@ -9,7 +9,7 @@
 # for more information about optional paramater.
 #
 # -----------------------------------------------------------------------------
-# Copyright 2008-2009 Dirk Meyer
+# Copyright 2008-2012 Dirk Meyer
 #
 # Please see the file AUTHORS for a complete list of authors.
 #

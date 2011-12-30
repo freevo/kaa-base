@@ -5,7 +5,7 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# Copyright 2008-2009 Dirk Meyer, Jason Tackaberry
+# Copyright 2008-2012 Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.
 #

@@ -6,7 +6,7 @@
 #
 # -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
-# Copyright 2008-2009 Dirk Meyer, Jason Tackaberry, et al.
+# Copyright 2008-2012 Dirk Meyer, Jason Tackaberry, et al.
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version

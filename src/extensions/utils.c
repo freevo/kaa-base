@@ -4,7 +4,7 @@
  * ----------------------------------------------------------------------------
  * $Id$
  * ----------------------------------------------------------------------------
- * Copyright (C) 2007-2009 Jason Tackaberry
+ * Copyright (C) 2007-2012 Jason Tackaberry
  *
  * Please see the file AUTHORS for a complete list of authors.
  *

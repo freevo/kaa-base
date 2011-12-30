@@ -84,8 +84,8 @@ def tempfile(name, unique=False):
 
 def which(file, path = None):
     """
-    Does what which(1) does: searches the PATH for a given file
-    name and returns a list of matches.
+    Does what which(1) does: searches the PATH in order for a given file name
+    and returns the full path to first match.
     """
     if not path:
         path = os.getenv("PATH")
@@ -130,8 +130,9 @@ class Lock(object):
         os.close(self._write)
 
 
-def daemonize(stdin = '/dev/null', stdout = '/dev/null', stderr = None,
-              pidfile=None, exit = True, wait = False):
+# TODO: review http://code.activestate.com/recipes/278731/
+def daemonize(stdin=os.devnull, stdout=os.devnull, stderr=None,
+              pidfile=None, exit=True, wait=False):
     """
     Does a double-fork to daemonize the current process using the technique
     described at http://www.erlenstar.demon.co.uk/unix/faq_2.html#SEC16 .

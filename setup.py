@@ -27,32 +27,46 @@
 import sys
 import os
 import time
+import platform
 
 # We require python 2.5 or later, so complain if that isn't satisfied.
 if sys.hexversion < 0x02050000:
     print('Python 2.5 or later required.')
     sys.exit(1)
 
-# Check for an old install of kaa.base.  TODO: remove at some suitable
-# time in the future.
-path = os.popen("%s -c 'import kaa; print kaa.__path__[0]' 2>/dev/null" % sys.executable).readline().strip()
-if path and os.path.exists(os.path.join(path, 'rpc.py')):
-    print ('ERROR: detected conflicting files from a previous kaa.base version.\n\n'
-           "To fix, you'll need to rm -rf the following directories:\n"
-           '   1. build/\n'
-           '   2. %s/\n\n'
-           "Once you delete #2, you'll need to reinstall all the kaa\n"
-           'sub-modules you use.') % path
+# TODO: remove below at some suitable time in the future.
+#
+# Older version of kaa.base (0.6.0 or earlier) installed all package files
+# directly under kaa/ whereas newer versions install under kaa/base/
+#
+# First chdir out of the src directory, which seems to confuse setuptools,
+# and get a list of top-level kaa namespace paths.
+cwd = os.getcwd()
+os.chdir('/tmp')
+paths = os.popen("%s -c 'import kaa; print \"\\x00\".join(kaa.__path__)' 2>/dev/null" % sys.executable).readline()
+paths = paths.strip().split('\x00')
+# We should not find a kaa.base module (e.g. rpc.py) in any of these paths.
+# If we do, it means an old version is present.
+conflicts = [p for p in paths if os.path.exists(os.path.join(p, 'rpc.py'))]
+if conflicts:
+    print('ERROR: detected conflicting files from an old kaa.base version.\n\n'
+          "To fix, you'll need to run:\n"
+          '   $ sudo rm -rf build %s\n\n'
+          "Once you delete #2, you'll need to reinstall all the kaa\n"
+          'sub-modules you use.' % ' '.join(conflicts))
     sys.exit(1)
+os.chdir(cwd)
 
 # If kaa.base is already installed as an egg and we're now attempting to
 # install without --egg, we error out now, because this won't work (the
 # egg package will always get imported).
-if '.egg/' in path and 'install' in sys.argv and not '--egg' in sys.argv:
-    print ('ERROR: attempting to install a non-egg version of kaa.base, but\n'
-           'kaa.base is currently installed as an egg at:\n'
-           '   %s\n'
-           'Either remove the current egg version or install now with --egg' % path)
+eggs = [p for p in paths if '.egg/' in p]
+if eggs and 'install' in sys.argv and not '--egg' in sys.argv:
+    print('ERROR: attempting to install a non-egg version of kaa.base, but the following\n'
+          'kaa eggs were found:\n')
+    for egg in eggs:
+        print('  * ' + egg)
+    print('\nEither remove the current kaa egg(s) or install now with --egg')
     sys.exit(1)
 
 # Remove anything to do with kaa from the path.  We want to use kaa.distribution
@@ -67,68 +81,59 @@ if '.egg/' in path and 'install' in sys.argv and not '--egg' in sys.argv:
 # need it.
 [sys.path.remove(x) for x in sys.path[:] if '/kaa' in x and x != os.getcwd()]
 
-# Now append 'src/' to the path so we can import distribution.core.  We don't
-# want to insert to the front because then any absolute imports will look in
-# src/ first, rather than standard Python modules, which is a problem for any
-# modules whose name collides (e.g. io)
+# Now import the src directory and masquerade it as kaa and kaa.base modules so
+# we can import distribution.core.
 import src
 sys.modules['kaa'] = sys.modules['kaa.base'] = src
 
 # And now import it from the source tree.
 from kaa.distribution.core import Extension, setup
 
-extensions = []
-
 shm_ext = Extension('kaa.base.shmmodule', ['src/extensions/shmmodule.c'])
 if not shm_ext.has_python_h():
-    print('---------------------------------------------------------------------\n'
-          'Python headers not found; please install python development package.\n'
-          'kaa.db, shm and inotify support will be unavailable\n'
-          '---------------------------------------------------------------------')
-    time.sleep(2)
+    print('ERROR: Python headers not found; please install python development package.')
+    sys.exit(1)
+
+extensions = []
+if platform.system() == 'Darwin':
+    print('- kaa.shm not supported on Darwin, not building')
+elif sys.hexversion < 0x03000000:
+    # shm not compatible with Python 3 (yet? maybe we should remove
+    # this module)
+    extensions.append(shm_ext)
+
+objectrow_ext = Extension('kaa.base._objectrow', ['src/extensions/objectrow.c'])
+if sys.hexversion > 0x03000000:
+    print('- kaa.db not supported on Python 3 yet')
+else:
+    extensions.append(objectrow_ext)
+
+utils_ext = Extension('kaa.base._utils', ['src/extensions/utils.c'], config='src/extensions/config.h')
+extensions.append(utils_ext)
+if utils_ext.check_cc(['<sys/prctl.h>'], 'prctl(PR_SET_NAME, "x");'):
+    utils_ext.config('#define HAVE_PRCTL')
+
+if platform.system() == 'Linux':
+    inotify_ext = Extension("kaa.base.inotify._inotify",
+                            ["src/extensions/inotify/inotify.c"],
+                            config='src/extensions/inotify/config.h')
+    
+
+    if not inotify_ext.check_cc(["<sys/inotify.h>"], "inotify_init();"):
+        if not inotify_ext.check_cc(["<sys/syscall.h>"], "syscall(0);"):
+            print('- inotify not enabled; are system headers not installed?')
+        else:
+            print('+ inotify not supported in glibc; no problem, using built-in support instead.')
+            inotify_ext.config("#define USE_FALLBACK")
+            extensions.append(inotify_ext)
+    else:
+        print('+ inotify supported by glibc; good.')
+        extensions.append(inotify_ext)
 
 else:
-    osname = os.popen('uname -s').read().strip().lower()
-    if osname == 'darwin':
-        print('- kaa.shm not supported on Darwin, not building')
-    elif sys.hexversion < 0x03000000:
-        # shm not compatible with Python 3 (yet? maybe we should remove
-        # this module)
-        extensions.append(shm_ext)
-
-    objectrow_ext = Extension('kaa.base._objectrow', ['src/extensions/objectrow.c'])
-    if sys.hexversion > 0x03000000:
-        print('- kaa.db not supported on Python 3 yet')
-    else:
-        extensions.append(objectrow_ext)
-
-    utils_ext = Extension('kaa.base._utils', ['src/extensions/utils.c'], config='src/extensions/config.h')
-    extensions.append(utils_ext)
-    if utils_ext.check_cc(['<sys/prctl.h>'], 'prctl(PR_SET_NAME, "x");'):
-        utils_ext.config('#define HAVE_PRCTL')
-
-    if osname == 'linux':
-        inotify_ext = Extension("kaa.base.inotify._inotify",
-                                ["src/extensions/inotify/inotify.c"],
-                                config='src/extensions/inotify/config.h')
-        
-
-        if not inotify_ext.check_cc(["<sys/inotify.h>"], "inotify_init();"):
-            if not inotify_ext.check_cc(["<sys/syscall.h>"], "syscall(0);"):
-                print('- inotify not enabled; are system headers not installed?')
-            else:
-                print('+ inotify not supported in glibc; no problem, using built-in support instead.')
-                inotify_ext.config("#define USE_FALLBACK")
-                extensions.append(inotify_ext)
-        else:
-            print('+ inotify supported by glibc; good.')
-            extensions.append(inotify_ext)
-
-    else:
-        print('- Linux-specific features not being built (inotify, set_process_name)')
+    print('- Linux-specific features not being built (inotify, set_process_name)')
 
 
-# call setup
 setup(
     module = 'base',
     version = '0.99.1',

@@ -57,6 +57,7 @@ except ImportError:
     # setuptools not installed
     pass
 from kaa.base import *
+from kaa.base import __version__
 '''
 
 class build_py(distutils_build_py):

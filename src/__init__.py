@@ -278,6 +278,8 @@ class _LazyProxy(type):
         # Python 3
         return cls.__get() > other
 
+# Version
+_lazy_import('version', ['__version__'])
 
 # Base object class for all kaa classes
 _lazy_import('core', ['Object', 'Signal', 'Signals'])

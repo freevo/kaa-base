@@ -42,6 +42,11 @@ class Version(object):
         """
         return self.version
 
+
+    def __repr__(self):
+        return str(self)
+
+
     def __float__(self):
         """
         Convert to float for comparison.

@@ -270,13 +270,18 @@ class _LazyProxy(type):
         # Python 2
         return cmp(cls.__get(), other)
 
+    # Python 3+
     def __lt__(cls, other):
-        # Python 3
         return cls.__get() < other
 
+    def __le__(cls, other):
+        return cls.__get() <= other
+
     def __gt__(cls, other):
-        # Python 3
         return cls.__get() > other
+
+    def __ge__(cls, other):
+        return cls.__get() >= other
 
 # Version
 _lazy_import('version', ['__version__'])

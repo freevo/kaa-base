@@ -75,5 +75,11 @@ class Version(object):
             obj = Version(obj)
         return float(self) < float(obj)
 
+    def __le__(self, obj):
+        return self < obj or self == obj
+
     def __gt__(self, obj):
+        return not (self < obj) and self != obj
+
+    def __ge__(self, obj):
         return not (self < obj)

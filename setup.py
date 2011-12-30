@@ -99,11 +99,8 @@ else:
     objectrow_ext = Extension('kaa.base._objectrow', ['src/extensions/objectrow.c'])
     if sys.hexversion > 0x03000000:
         print('- kaa.db not supported on Python 3 yet')
-    elif objectrow_ext.check_library("glib-2.0", "2.4.0"):
-        print('+ glib >= 2.4.0 found; building kaa.db')
-        extensions.append(objectrow_ext)
     else:
-        print('- glib >= 2.4.0 not found; kaa.db will be unavailable')
+        extensions.append(objectrow_ext)
 
     utils_ext = Extension('kaa.base._utils', ['src/extensions/utils.c'], config='src/extensions/config.h')
     extensions.append(utils_ext)

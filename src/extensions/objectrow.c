@@ -5,7 +5,7 @@
  * $Id$
  *
  * ----------------------------------------------------------------------------
- * Copyright (C) 2006-2009 Jason Tackaberry
+ * Copyright (C) 2006-2011 Jason Tackaberry
  *
  * Please see the file AUTHORS for a complete list of authors.
  *
@@ -27,7 +27,6 @@
  */
 
 #include "Python.h"
-#include <glib.h>
 #include "structmember.h"
 
 #define ATTR_SIMPLE              0x01
@@ -48,7 +47,7 @@ typedef Py_ssize_t (*lenfunc)(PyObject *);
 #endif
 
 struct module_state {
-    GHashTable *queries;
+    PyObject *queries; // maps pysqlite row descriptions to QueryInfo
     PyObject *pickle_loads, *zip;
 };
 
@@ -65,8 +64,8 @@ PyTypeObject ObjectRow_PyObject_Type;
 typedef struct {
     int refcount,
         pickle_idx;
-    GHashTable *idxmap,
-                *type_names;  // maps type id to type name
+    PyObject *idxmap,     // maps column index to ObjectAttribute  
+             *type_names; // maps type id to type name
 } QueryInfo;
 
 typedef struct {
@@ -98,7 +97,7 @@ PyObject *ObjectRow_PyObject__items(ObjectRow_PyObject *, PyObject *, PyObject *
 
 int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    PyObject *cursor, *row, *o_type, *pickle_dict = 0;
+    PyObject *pytmp, *pydesc, *cursor, *row, *o_type, *pickle_dict = 0;
     struct module_state *mstate;
     if (!PyArg_ParseTuple(args, "OO|O!", &cursor, &row, &PyDict_Type, &pickle_dict))
         return -1;
@@ -154,11 +153,19 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
         return -1;
     }
 
-    self->query_info = g_hash_table_lookup(mstate->queries, self->desc);
+    /* For the queries dict key we use the address of the desc object rather
+     * than the desc itself.  desc is a tuple, and if we use it as a key it
+     * will result in a hash() on the desc for each row which is much more
+     * expensive.  pysqlite passes us the same description tuple object for
+     * each row in a query so it is safe to use the address.
+     */
+    pydesc = PyLong_FromVoidPtr(self->desc);
+    pytmp = PyDict_GetItem(mstate->queries, pydesc);
+    self->query_info = pytmp ? (QueryInfo *)PyCObject_AsVoidPtr(pytmp) : NULL;
     if (!self->query_info) {
         /* This is a row for a query we haven't seen before, so we need to do
-         * some initial setup.  Most of what we do here is convert data stored
-         * in Python objects to more native C types for faster access.
+         * some initial setup.  Most of what we do here is convert row and
+         * attribute metadata into convenient data structures for later access.
          */
 
         PyObject **desc_tuple = PySequence_Fast_ITEMS(self->desc);
@@ -169,7 +176,7 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
         self->query_info = (QueryInfo *)malloc(sizeof(QueryInfo));
         self->query_info->refcount = 0;
         self->query_info->pickle_idx = -1;
-        self->query_info->idxmap = g_hash_table_new_full(g_str_hash, g_str_equal, free, free);
+        self->query_info->idxmap = PyDict_New();
 
         /* Iterate over the columns from the SQL query and keep track of
          * attribute names and their indexes within the row tuple.  Start at
@@ -186,7 +193,9 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
             if (!strcmp(skey, "pickle"))
                 self->query_info->pickle_idx = i;
 
-            g_hash_table_insert(self->query_info->idxmap, g_strdup(skey), (void *)attr);
+            pytmp = PyCObject_FromVoidPtr(attr, free);
+            PyDict_SetItemString(self->query_info->idxmap, skey, pytmp);
+            Py_DECREF(pytmp);
         }
 
         /* Now iterate over the kaa.db object attribute dict, storing the
@@ -194,13 +203,15 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
          * we need to look in the pickle for that attribute.
          */
         while (PyDict_Next(self->attrs, &pos, &key, &value)) {
-            char *skey = PyString_AsString(key);
-            ObjectAttribute *attr = g_hash_table_lookup(self->query_info->idxmap, skey);
+            pytmp = PyDict_GetItem(self->query_info->idxmap, key);
+            ObjectAttribute *attr = pytmp ? (ObjectAttribute *)PyCObject_AsVoidPtr(pytmp) : NULL;
 
             if (!attr) {
                 attr = (ObjectAttribute *)malloc(sizeof(ObjectAttribute));
                 attr->index = -1;
-                g_hash_table_insert(self->query_info->idxmap, g_strdup(skey), (void *)attr);
+                pytmp = PyCObject_FromVoidPtr(attr, free);
+                PyDict_SetItem(self->query_info->idxmap, key, pytmp);
+                Py_DECREF(pytmp);
             }
             attr->type = PySequence_Fast_GET_ITEM(value, 0);
             attr->flags = PyInt_AsLong(PySequence_Fast_GET_ITEM(value, 1));
@@ -211,20 +222,21 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
                 attr->pickled = 1;
             else
                 attr->pickled = 0;
-
         }
 
         /* Create a hash table that maps object type ids to type names.
          */
         pos = 0;
-        self->query_info->type_names = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, free);
+        self->query_info->type_names = PyDict_New();
         while (PyDict_Next(self->object_types, &pos, &key, &value)) {
             PyObject *type_id = PySequence_Fast_GET_ITEM(value, 0);
-            char *skey = PyString_AsString(key);
-            g_hash_table_insert(self->query_info->type_names, (void *)PyInt_AsLong(type_id), g_strdup(skey));
+            PyDict_SetItem(self->query_info->type_names, type_id, key);
         }
-        g_hash_table_insert(mstate->queries, self->desc, self->query_info);
+        pytmp = PyCObject_FromVoidPtr(self->query_info, NULL);
+        PyDict_SetItem(mstate->queries, pydesc, pytmp);
+        Py_DECREF(pytmp);
     }
+    Py_DECREF(pydesc);
 
     self->query_info->refcount++;
     if (self->query_info->pickle_idx >= 0) {
@@ -255,9 +267,20 @@ void ObjectRow_PyObject__dealloc(ObjectRow_PyObject *self)
         struct module_state *mstate = GETSTATE(self);
         self->query_info->refcount--;
         if (self->query_info->refcount <= 0) {
-            g_hash_table_remove(mstate->queries, self->desc);
-            g_hash_table_destroy(self->query_info->idxmap);
-            g_hash_table_destroy(self->query_info->type_names);
+            PyObject *tp, *val, *tb;
+            /* We may be deallocing during an exception.  Since we are calling
+             * PyDict functions below, we need to clear the exception state
+             * beforehand, and restore it after we're done.
+             */
+            PyErr_Fetch(&tp, &val, &tb);
+            PyObject *pydesc = PyLong_FromVoidPtr(self->desc);
+            PyDict_DelItem(mstate->queries, pydesc);
+            Py_DECREF(pydesc);
+            if (tp)
+                PyErr_Restore(tp, val, tb);
+
+            Py_XDECREF(self->query_info->idxmap);
+            Py_XDECREF(self->query_info->type_names);
             free(self->query_info);
         }
     }
@@ -329,7 +352,7 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
     char *skey = 0,
           skey2[80]; // we'll have a problem if attributes are >= 78 chars :)
     ObjectAttribute *attr = 0;
-    PyObject *value;
+    PyObject *value, *pytmp;
 
     if (!self->query_info) {
         // If no query_info available, then we work strictly from the pickle
@@ -367,8 +390,11 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
 
                 // Lookup the parent_type and parent_id indexes within the
                 // sql row.
-                type_attr = g_hash_table_lookup(self->query_info->idxmap, "parent_type");
-                id_attr = g_hash_table_lookup(self->query_info->idxmap, "parent_id");
+                pytmp = PyDict_GetItemString(self->query_info->idxmap, "parent_type");
+                type_attr = pytmp ? (ObjectAttribute *)PyCObject_AsVoidPtr(pytmp) : NULL;
+
+                pytmp = PyDict_GetItemString(self->query_info->idxmap, "parent_id");
+                id_attr = pytmp ? (ObjectAttribute *)PyCObject_AsVoidPtr(pytmp) : NULL;
                 // If neither of these values are available in the row, raise an
                 // exception.
                 if (!type_attr || !id_attr || type_attr->index == -1 || id_attr->index == -1) {
@@ -379,8 +405,10 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
                 o_type = PySequence_Fast_GET_ITEM(self->row, type_attr->index);
                 o_id = PySequence_Fast_GET_ITEM(self->row, id_attr->index);
                 // Resolve type id to type name.
-                if (PyNumber_Check(o_type))
-                    type_name = g_hash_table_lookup(self->query_info->type_names, (void *)PyLong_AsLong(o_type));
+                if (PyNumber_Check(o_type)) {
+                    pytmp = PyDict_GetItem(self->query_info->type_names, o_type);
+                    type_name = pytmp ? PyString_AsString(pytmp) : NULL;
+                }
                 // Construct the (name, id) tuple.
                 if (type_name)
                     self->parent = Py_BuildValue("(sO)", type_name, o_id);
@@ -396,7 +424,9 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
             return(self->row);
         }
 
-        attr = g_hash_table_lookup(self->query_info->idxmap, skey);
+        pytmp = PyDict_GetItem(self->query_info->idxmap, key);
+        attr = pytmp ? (ObjectAttribute *)PyCObject_AsVoidPtr(pytmp) : NULL;
+
     }
     // But also support referencing the sql row by index.  (Pickled attributes
     // cannot be accessed this way, though.)
@@ -483,24 +513,10 @@ Py_ssize_t ObjectRow_PyObject__length(ObjectRow_PyObject *self)
     return PySequence_Length(self->keys);
 }
 
-void attrs_iter(gpointer key, ObjectAttribute *attr, ObjectRow_PyObject *self)
-{
-    if (attr->index >= 0 || (attr->pickled && self->query_info->pickle_idx >= 0)) {
-        PyObject *o;
-
-        if (!strcmp(key, "pickle"))
-            return;
-
-        o = PyString_FromString(key);
-        PyList_Append(self->keys, o);
-        Py_DECREF(o);
-    }
-}
-
-
 PyObject *ObjectRow_PyObject__keys(ObjectRow_PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    PyObject *key, *parent_type, *parent_id;
+    PyObject *key, *value, *parent_type, *parent_id;
+    Py_ssize_t pos = 0;
 
     if (!self->query_info && !self->keys)
         // No query_info means we work just from pickle dict.
@@ -516,7 +532,14 @@ PyObject *ObjectRow_PyObject__keys(ObjectRow_PyObject *self, PyObject *args, PyO
     PyList_Append(self->keys, key);
     Py_DECREF(key);
 
-    g_hash_table_foreach(self->query_info->idxmap, (GHFunc)attrs_iter, self);
+    while (PyDict_Next(self->query_info->idxmap, &pos, &key, &value)) {
+        ObjectAttribute *attr = (ObjectAttribute *)PyCObject_AsVoidPtr(value);
+        char *skey = PyString_AsString(key);
+        if (attr->index >= 0 || (attr->pickled && self->query_info->pickle_idx >= 0)) {
+            if (strcmp(skey, "pickle"))
+                PyList_Append(self->keys, key);
+        }
+    }
 
     parent_type = PyString_FromString("parent_type");
     parent_id = PyString_FromString("parent_id");
@@ -612,10 +635,10 @@ static int ObjectRow_PyObject_Contains(ObjectRow_PyObject *self, PyObject *el)
     char *sel = PyString_AsString(el);
     if (!strcmp(sel, "type"))
         return 1;
-    else if (!strcmp(sel, "parent") && g_hash_table_lookup(self->query_info->idxmap, "parent_id"))
+    else if (!strcmp(sel, "parent") && PyDict_GetItemString(self->query_info->idxmap, "parent_id"))
         return 1;
     else
-        return g_hash_table_lookup(self->query_info->idxmap, PyString_AsString(el)) != NULL;
+        return PyDict_GetItem(self->query_info->idxmap, el) != NULL;
 }
 
 
@@ -715,7 +738,7 @@ static int objectrow_traverse(PyObject *m, visitproc visit, void *arg) {
     return 0;
 }
 
-static int myextension_clear(PyObject *m) {
+static int objectrow_clear(PyObject *m) {
     struct module_state *mstate = GETSTATE(m);
     Py_VISIT(mstate->pickle_loads);
     Py_VISIT(mstate->zip);
@@ -760,7 +783,7 @@ void init_objectrow(void)
         PyModule_AddObject(m, "ObjectRow", (PyObject *)&ObjectRow_PyObject_Type);
     }
     mstate = GETSTATE(m);
-    mstate->queries = g_hash_table_new(g_direct_hash, g_direct_equal);
+    mstate->queries = PyDict_New();
     mstate->pickle_loads = PyObject_GetAttrString(pickle, "loads");
     mstate->zip = PyObject_GetAttrString(builtins, "zip");
     Py_DECREF(pickle);

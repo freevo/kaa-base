@@ -39,6 +39,7 @@ import hashlib
 import textwrap
 
 # kaa.base modules
+from .core import Object
 from .strutils import py3_str, py3_b, BYTES_TYPE, UNICODE_TYPE, get_encoding
 from .callable import Callable, WeakCallable
 from .timer import WeakTimer, WeakOneShotTimer
@@ -383,9 +384,11 @@ class Group(Base):
     A config group.
     """
     def __init__(self, schema, desc=u'', name='', desc_type='default'):
-        super(Group, self).__init__(name, desc)
         self._dict = {}
         self._vars = []
+        # Invoke super initializer after setting _dict and _vars because
+        # super might set attributes and our __setattr__ needs these.
+        super(Group, self).__init__(name, desc)
         # 'default' will print all data
         # 'group' will only print the group description
         self._desc_type = desc_type
@@ -1007,10 +1010,23 @@ class List(Container):
         return var._value
 
 
-class Config(Group):
+class Config(Group, Object):
     """
     A config object. This is a group with functions to load and save a file.
     """
+    __kaasignals__ = {
+        'reloaded':
+            '''
+            Emitted when the configuration file is automatically reloaded
+            from disk due to watch().
+
+            .. describe:: def callback(changed_names, ...)
+
+               :param changed_names: the names of the variables that changed
+               :type changed_names: list
+            '''
+    }
+
     def __init__(self, schema, desc=u'', name='', module = None):
         super(Config, self).__init__(schema, desc, name)
         self.filename = None
@@ -1381,6 +1397,7 @@ class Config(Group):
             self.add_monitor(cb)
             self.load()
             log.info('Config file %s modified; %d settings changed.' % (self.filename, len(changed_names)))
+            self.signals['reloaded'].emit(changed_names)
             log.debug('What changed: %s', ', '.join(changed_names) or 'nothing')
             self.remove_monitor(cb)
         elif mask & (INotify.IGNORED | INotify.MOVE_SELF):

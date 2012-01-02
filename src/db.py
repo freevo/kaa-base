@@ -1207,8 +1207,11 @@ class Database(object):
                 if name in attrs:
                     ivtidx_columns[attr_ivtidx][0] = True
 
-            if flags & ATTR_SIMPLE and name in attrs:
-                # Simple attribute needs pickle
+            # If the updated attribute is stored in the pickle (either a simple attr
+            # or an case-insensitive indexed attr in which __foo is in the pickle)
+            # then we must first retrieve the pickle for this object from the db.
+            if (flags & ATTR_SIMPLE or flags & ATTR_INDEXED_IGNORE_CASE == ATTR_INDEXED_IGNORE_CASE) and \
+               name in attrs:
                 get_pickle = True
 
         # TODO: if ObjectRow is supplied, don't need to fetch columns

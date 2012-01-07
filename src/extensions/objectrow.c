@@ -37,7 +37,10 @@
 #define ATTR_INDEXED_IGNORE_CASE (ATTR_INDEXED | ATTR_IGNORE_CASE)
 #define IS_ATTR_INDEXED_IGNORE_CASE(attr) ((attr & ATTR_INDEXED_IGNORE_CASE) == ATTR_INDEXED_IGNORE_CASE)
 
-#define PyObjectRow_Check(op)   ((op)->ob_type == &ObjectRow_PyObject_Type)
+#ifndef Py_TYPE
+#   define Py_TYPE(ob) (((PyObject*)(ob))->ob_type)
+#endif
+#define PyObjectRow_Check(ob)   (Py_TYPE(ob) == &ObjectRow_PyObject_Type)
 
 #if PY_VERSION_HEX < 0x02050000
 typedef int Py_ssize_t;
@@ -47,17 +50,27 @@ typedef Py_ssize_t (*lenfunc)(PyObject *);
 #endif
 
 struct module_state {
+    PyObject *module;
     PyObject *queries; // maps pysqlite row descriptions to QueryInfo
-    PyObject *pickle_loads, *zip;
+    PyObject *zip;
 };
 
 #if PY_MAJOR_VERSION >= 3
 #   define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#   define GETSTATE_FROMTYPE(o) (GETSTATE(PyDict_GetItemString(Py_TYPE(o)->tp_dict, "__mod__")))
+#   define PyString_Check PyUnicode_Check
+#   define PyString_FromString PyUnicode_FromString
+#   define PyString_Concat PyUnicode_Append
+#   define PyStr_Compare(s1, s2) PyUnicode_CompareWithASCIIString(s1, s2)
+#   define PyInt_AsLong PyLong_AsLong
+#   define PyInt_Check PyLong_Check
 #else
 #   define GETSTATE(m) (&_state)
+#   define GETSTATE_FROMTYPE(o) (&_state)
+#   define PyObject_Bytes PyObject_Str
+#   define PyStr_Compare(s1, s2) strcmp(PyString_AsString(s1), s2)
     static struct module_state _state;
 #endif
-
 
 PyTypeObject ObjectRow_PyObject_Type;
 
@@ -92,8 +105,10 @@ typedef struct {
 } ObjectRow_PyObject;
 
 
+
 PyObject *ObjectRow_PyObject__keys(ObjectRow_PyObject *, PyObject *, PyObject *);
 PyObject *ObjectRow_PyObject__items(ObjectRow_PyObject *, PyObject *, PyObject *);
+
 
 int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject *kwargs)
 {
@@ -102,7 +117,7 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
     if (!PyArg_ParseTuple(args, "OO|O!", &cursor, &row, &PyDict_Type, &pickle_dict))
         return -1;
 
-    mstate = GETSTATE(self);
+    mstate = GETSTATE_FROMTYPE(self);
     if (pickle_dict) {
         /* If row or cursor weren't specified, then we require the third arg
          * (pickle_dict) be a dictionary, and we basically behave as this dict.
@@ -147,9 +162,18 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
     o_type = PyDict_GetItem(self->object_types, self->type_name); // borrowed ref
     self->attrs = PySequence_GetItem(o_type, 1); // new ref
     if (!self->attrs) {
+        char *type_name;
+#if PY_MAJOR_VERSION >= 3
+        PyObject *bytes = PyUnicode_AsUTF8String(self->type_name);
+        type_name = strdup(PyBytes_AS_STRING(bytes));
+        Py_DECREF(bytes);
+#else
+        type_name = strdup(PyString_AsString(self->type_name));
+#endif
+        PyErr_Format(PyExc_ValueError, "Object type '%s' not defined.", type_name);
+        free(type_name);
         Py_XDECREF(self->desc);
         Py_XDECREF(self->object_types);
-        PyErr_Format(PyExc_ValueError, "Object type '%s' not defined.", PyString_AsString(self->type_name));
         return -1;
     }
 
@@ -185,16 +209,15 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
          */
         for (i = 2; i < PySequence_Length(self->desc); i++) {
             PyObject **desc_col = PySequence_Fast_ITEMS(desc_tuple[i]);
-            char *skey = PyString_AsString(desc_col[0]);
             ObjectAttribute *attr = (ObjectAttribute *)malloc(sizeof(ObjectAttribute));
 
             attr->pickled = 0;
             attr->index = i;
-            if (!strcmp(skey, "pickle"))
+            if (PyStr_Compare(desc_col[0], "pickle") == 0)
                 self->query_info->pickle_idx = i;
 
             pytmp = PyCObject_FromVoidPtr(attr, free);
-            PyDict_SetItemString(self->query_info->idxmap, skey, pytmp);
+            PyDict_SetItem(self->query_info->idxmap, desc_col[0], pytmp);
             Py_DECREF(pytmp);
         }
 
@@ -215,7 +238,7 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
             }
             attr->type = PySequence_Fast_GET_ITEM(value, 0);
             attr->flags = PyInt_AsLong(PySequence_Fast_GET_ITEM(value, 1));
-            attr->named_ivtidx = PyObject_Compare(PySequence_Fast_GET_ITEM(value, 2), key) == 0;
+            attr->named_ivtidx = PyObject_RichCompareBool(PySequence_Fast_GET_ITEM(value, 2), key, Py_EQ) == 1;
             if (IS_ATTR_INDEXED_IGNORE_CASE(attr->flags) || attr->flags & ATTR_SIMPLE)
                 // attribute is set to ignore case, or it's ATTR_SIMPLE, so we
                 // need to look in the pickle for this attribute.
@@ -264,7 +287,7 @@ int ObjectRow_PyObject__init(ObjectRow_PyObject *self, PyObject *args, PyObject 
 void ObjectRow_PyObject__dealloc(ObjectRow_PyObject *self)
 {
     if (self->query_info) {
-        struct module_state *mstate = GETSTATE(self);
+        struct module_state *mstate = GETSTATE_FROMTYPE(self);
         self->query_info->refcount--;
         if (self->query_info->refcount <= 0) {
             PyObject *tp, *val, *tb;
@@ -293,7 +316,7 @@ void ObjectRow_PyObject__dealloc(ObjectRow_PyObject *self)
     Py_XDECREF(self->keys);
     Py_XDECREF(self->parent);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 int do_unpickle(ObjectRow_PyObject *self)
@@ -303,12 +326,15 @@ int do_unpickle(ObjectRow_PyObject *self)
         PyErr_Format(PyExc_KeyError, "Attribute exists but row pickle is not available");
         return 0;
     }
-    struct module_state *mstate = GETSTATE(self);
-    PyObject *pickle_str = PyObject_Str(PySequence_Fast_GET_ITEM(self->row, self->query_info->pickle_idx));
+    struct module_state *mstate = GETSTATE_FROMTYPE(self);
+    PyObject *pickle_str = PyObject_Bytes(PySequence_Fast_GET_ITEM(self->row, self->query_info->pickle_idx));
     PyObject *args = Py_BuildValue("(O)", pickle_str);
-    result = PyEval_CallObject(mstate->pickle_loads, args);
+    // Custom unpickler, assigned to the module by db.py when imported
+    PyObject *dbunpickle = PyObject_GetAttrString(mstate->module, "dbunpickle");
+    result = PyEval_CallObject(dbunpickle, args);
     Py_DECREF(args);
     Py_DECREF(pickle_str);
+    Py_DECREF(dbunpickle);
 
     if (!result) {
         self->has_pickle = 0;
@@ -323,13 +349,17 @@ int do_unpickle(ObjectRow_PyObject *self)
 static inline PyObject *
 convert(ObjectRow_PyObject *self, ObjectAttribute *attr, PyObject *value)
 {
-    if (attr->type == (PyObject *)&PyString_Type && value != Py_None)  {
-        /* Attributes of type 'str' are stored as buffers in sqlite, so we
-         * convert back to str here.
-         */
-        return PyObject_Str(value);
+    if (value != Py_None) {
+#if PY_MAJOR_VERSION <3
+        /* In Python 3, pysqlite returns BLOBs as bytes objects, which is
+         * what we want.  In Python 2, pysqlite returns BLOBs as buffers.
+         * If the attribute type is a string or buffer (i.e. kaa.db.RAW_TYPE on
+         * Python 2), convert to a string.
+        */
+        if (attr->type == (PyObject *)&PyString_Type || attr->type == (PyObject *)&PyBuffer_Type)
+            return PyObject_Str(value);
+#endif
     }
-
     Py_INCREF(value);
     return value;
 }
@@ -349,8 +379,6 @@ get_default_for_attr(ObjectAttribute *attr)
 
 PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
 {
-    char *skey = 0,
-          skey2[80]; // we'll have a problem if attributes are >= 78 chars :)
     ObjectAttribute *attr = 0;
     PyObject *value, *pytmp;
 
@@ -368,15 +396,13 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
 
     // String is the more common case.
     if (PyString_Check(key)) {
-        skey = PyString_AsString(key);
-
         // Handle some special case attribute names.
-        if (!strcmp(skey, "type")) {
+        if (PyStr_Compare(key, "type") == 0) {
             // Returns the type name of this object.
             Py_INCREF(self->type_name);
             return self->type_name;
 
-        } else if (!strcmp(skey, "parent")) {
+        } else if (PyStr_Compare(key, "parent") == 0) {
             /* Returns a tuple (type_name, id) for this object's parent.  If
              * type_name can't be resolved from the parent_id, then the integer
              * value for the type is used instead.
@@ -385,8 +411,7 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
             if (!self->parent) {
                 // Generate the value if it's not available.
                 ObjectAttribute *type_attr, *id_attr;
-                PyObject *o_type, *o_id;
-                char *type_name = 0;
+                PyObject *o_type, *o_id, *type_name = 0;
 
                 // Lookup the parent_type and parent_id indexes within the
                 // sql row.
@@ -405,13 +430,11 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
                 o_type = PySequence_Fast_GET_ITEM(self->row, type_attr->index);
                 o_id = PySequence_Fast_GET_ITEM(self->row, id_attr->index);
                 // Resolve type id to type name.
-                if (PyNumber_Check(o_type)) {
-                    pytmp = PyDict_GetItem(self->query_info->type_names, o_type);
-                    type_name = pytmp ? PyString_AsString(pytmp) : NULL;
-                }
+                if (PyNumber_Check(o_type))
+                    type_name = PyDict_GetItem(self->query_info->type_names, o_type);
                 // Construct the (name, id) tuple.
                 if (type_name)
-                    self->parent = Py_BuildValue("(sO)", type_name, o_id);
+                    self->parent = Py_BuildValue("(OO)", type_name, o_id);
                 else
                     self->parent = Py_BuildValue("(OO)", o_type, o_id);
             }
@@ -419,14 +442,13 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
             Py_INCREF(self->parent);
             return self->parent;
         }
-        else if (!strcmp(skey, "_row")) {
+        else if (PyStr_Compare(key, "_row") == 0) {
             Py_INCREF(self->row);
             return(self->row);
         }
 
         pytmp = PyDict_GetItem(self->query_info->idxmap, key);
         attr = pytmp ? (ObjectAttribute *)PyCObject_AsVoidPtr(pytmp) : NULL;
-
     }
     // But also support referencing the sql row by index.  (Pickled attributes
     // cannot be accessed this way, though.)
@@ -479,11 +501,15 @@ PyObject *ObjectRow_PyObject__subscript(ObjectRow_PyObject *self, PyObject *key)
     if (IS_ATTR_INDEXED_IGNORE_CASE(attr->flags)) {
         // ATTR_INDEXED_IGNORE_CASE, these attributes are prefixed with __ in
         // the pickled dict.
-        snprintf(skey2, sizeof(skey2)-1, "__%s", skey);
-        skey = skey2;
+        PyObject *newkey = PyString_FromString("__");
+        PyString_Concat(&newkey, key);
+        key = newkey;
     }
+    else
+        Py_INCREF(key);
 
-    value = PyDict_GetItemString(self->pickle, skey);
+    value = PyDict_GetItem(self->pickle, key);
+    Py_DECREF(key);
     if (!value)
         // Attribute isn't stored in pickle, so return suitable default.
         return get_default_for_attr(attr);
@@ -534,9 +560,8 @@ PyObject *ObjectRow_PyObject__keys(ObjectRow_PyObject *self, PyObject *args, PyO
 
     while (PyDict_Next(self->query_info->idxmap, &pos, &key, &value)) {
         ObjectAttribute *attr = (ObjectAttribute *)PyCObject_AsVoidPtr(value);
-        char *skey = PyString_AsString(key);
         if (attr->index >= 0 || (attr->pickled && self->query_info->pickle_idx >= 0)) {
-            if (strcmp(skey, "pickle"))
+            if (PyStr_Compare(key, "pickle") != 0)
                 PyList_Append(self->keys, key);
         }
     }
@@ -572,8 +597,10 @@ PyObject *ObjectRow_PyObject__values(ObjectRow_PyObject *self, PyObject *args, P
     for (i = 0; i < PySequence_Length(keys); i++) {
         PyObject *key = PySequence_Fast_GET_ITEM(keys, i);
         PyObject *value = ObjectRow_PyObject__subscript(self, key);
-        PyList_Append(values, value);
-        Py_DECREF(value);
+        if (value) {
+            PyList_Append(values, value);
+            Py_DECREF(value);
+        }
     }
     Py_DECREF(keys);
     return values;
@@ -582,7 +609,7 @@ PyObject *ObjectRow_PyObject__values(ObjectRow_PyObject *self, PyObject *args, P
 PyObject *ObjectRow_PyObject__items(ObjectRow_PyObject *self, PyObject *args, PyObject *kwargs)
 {
     PyObject *keys, *values, *zargs, *items;
-    struct module_state *mstate = GETSTATE(self);
+    struct module_state *mstate = GETSTATE_FROMTYPE(self);
     keys = ObjectRow_PyObject__keys(self, NULL, NULL);
     values = ObjectRow_PyObject__values(self, NULL, NULL);
     zargs = Py_BuildValue("(OO)", keys, values);
@@ -632,15 +659,13 @@ PyObject *ObjectRow_PyObject__iter(ObjectRow_PyObject *self)
 
 static int ObjectRow_PyObject_Contains(ObjectRow_PyObject *self, PyObject *el)
 {
-    char *sel = PyString_AsString(el);
-    if (!strcmp(sel, "type"))
+    if (PyStr_Compare(el, "type") == 0)
         return 1;
-    else if (!strcmp(sel, "parent") && PyDict_GetItemString(self->query_info->idxmap, "parent_id"))
+    else if (PyStr_Compare(el, "parent") == 0 && PyDict_GetItemString(self->query_info->idxmap, "parent_id"))
         return 1;
     else
         return PyDict_GetItem(self->query_info->idxmap, el) != NULL;
 }
-
 
 
 
@@ -684,8 +709,12 @@ static PySequenceMethods row_as_sequence = {
 
 
 PyTypeObject ObjectRow_PyObject_Type = {
+#if PY_MAJOR_VERSION >= 3
+    PyVarObject_HEAD_INIT(NULL, 0)
+#else
     PyObject_HEAD_INIT(NULL)
     0,                          /* ob_size */
+#endif
     "kaa.db.ObjectRow",                /* tp_name */
     sizeof(ObjectRow_PyObject),  /* tp_basicsize */
     0,                          /* tp_itemsize */
@@ -731,30 +760,16 @@ PyMethodDef objectrow_methods[] = {
 
 
 #if PY_MAJOR_VERSION >= 3
-static int objectrow_traverse(PyObject *m, visitproc visit, void *arg) {
-    struct module_state *mstate = GETSTATE(m);
-    Py_VISIT(mstate->pickle_loads);
-    Py_VISIT(mstate->zip);
-    return 0;
-}
-
-static int objectrow_clear(PyObject *m) {
-    struct module_state *mstate = GETSTATE(m);
-    Py_VISIT(mstate->pickle_loads);
-    Py_VISIT(mstate->zip);
-    return 0;
-}
-
 static struct PyModuleDef moduledef = {
         PyModuleDef_HEAD_INIT,
-        "objectrow",
-        NULL,
-        sizeof(struct module_state),
-        objectrow_methods,
-        NULL,
-        objectrow_traverse,
-        objectrow_clear,
-        NULL
+        "objectrow",                 /* m_name */
+        NULL,                        /* m_doc */
+        sizeof(struct module_state), /* m_size */
+        objectrow_methods,           /* m_methods */
+        NULL,                        /* m_reload */
+        NULL,                        /* m_traverse */
+        NULL,                        /* m_clear */
+        NULL                         /* m_free */
 };
 
 PyObject *PyInit__objectrow(void)
@@ -781,11 +796,15 @@ void init_objectrow(void)
     if (PyType_Ready(&ObjectRow_PyObject_Type) >= 0) {
         Py_INCREF(&ObjectRow_PyObject_Type);
         PyModule_AddObject(m, "ObjectRow", (PyObject *)&ObjectRow_PyObject_Type);
+        PyDict_SetItemString(ObjectRow_PyObject_Type.tp_dict, "__mod__", m);
     }
     mstate = GETSTATE(m);
+    mstate->module = m;
     mstate->queries = PyDict_New();
-    mstate->pickle_loads = PyObject_GetAttrString(pickle, "loads");
     mstate->zip = PyObject_GetAttrString(builtins, "zip");
     Py_DECREF(pickle);
     Py_DECREF(builtins);
+#if PY_MAJOR_VERSION >= 3
+    return m;
+#endif
 }

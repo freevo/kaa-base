@@ -25,11 +25,15 @@
 # -----------------------------------------------------------------------------
 from __future__ import absolute_import
 
-__all__ = ['Database', 'QExpr', 'split_path', 'ATTR_SIMPLE', 'ATTR_SEARCHABLE',
-           'ATTR_IGNORE_CASE', 'ATTR_INDEXED', 'ATTR_INDEXED_IGNORE_CASE',
-           'ATTR_INVERTED_INDEX' ]
+__all__ = [
+    'Database', 'QExpr', 'DatabaseError', 'DatabaseReadOnlyError',
+    'split_path', 'ATTR_SIMPLE', 'ATTR_SEARCHABLE', 'ATTR_IGNORE_CASE',
+    'ATTR_INDEXED', 'ATTR_INDEXED_IGNORE_CASE', 'ATTR_INVERTED_INDEX',
+    'RAW_TYPE'
+]
 
 # python imports
+import sys
 import os
 import time
 import re
@@ -48,10 +52,10 @@ except ImportError:
 
 # kaa base imports
 from .utils import property
-from .strutils import py3_str
+from .strutils import py3_str, BYTES_TYPE, UNICODE_TYPE
 from ._objectrow import ObjectRow
 from .timer import WeakOneShotTimer
-from . import main
+from . import main, _objectrow
 
 if sqlite.version < '2.1.0':
     raise ImportError('pysqlite 2.1.0 or higher required')
@@ -105,7 +109,7 @@ CREATE_IVTIDX_TEMPLATE = """
     CREATE INDEX ivtidx_%IDXNAME%_terms_map_object_idx ON ivtidx_%IDXNAME%_terms_map (object_id, object_type, term_id);
     CREATE TRIGGER ivtidx_%IDXNAME%_delete_terms_map DELETE ON ivtidx_%IDXNAME%_terms_map
     BEGIN
-        UPDATE ivtidx_%IDXNAME%_terms SET count=count-1 WHERE id=old.term_id;
+        UPDATE ivtidx_%IDXNAME%_terms SET count=MAX(0, count-1) WHERE id=old.term_id;
     END;
 """
 
@@ -128,7 +132,108 @@ STOP_WORDS = (
 )
 
 
-PATH_SPLIT = re.compile("(\d+)|[_\W]", re.U | re.X)
+if sys.hexversion >= 0x03000000:
+    RAW_TYPE = bytes
+    PICKLE_PROTOCOL = 3
+    class Proto2Unpickler(pickle._Unpickler):
+        """
+        In spite of the promise that pickles will be compatible between Python
+        releases, Python 3 does the wrong thing with non-unicode strings in
+        pickles (BINSTRING pickle opcode).  It will try to convert them to
+        unicode strings, which is wrong when the intention was to store binary
+        data in a Python 2 str.
+
+        This class implements a custom unpickler that will load BINSTRING as
+        bytes objects.  An exception is made for dictionaries, where BINSTRING
+        keys are converted to unicode strings.
+
+        Additionally, it maps the unicode and buffer types to corresponding
+        Python 3 types.
+        """
+        def load_binstring(self):
+            len = pickle.mloads(bytes('i', 'ascii') + self.read(4))
+            self.append(bytes(self.read(len)))
+        pickle._Unpickler.dispatch[pickle.BINSTRING[0]] = load_binstring
+
+        def load_short_binstring(self):
+            len = ord(self.read(1))
+            self.append(bytes(self.read(len)))
+        pickle._Unpickler.dispatch[pickle.SHORT_BINSTRING[0]] = load_short_binstring
+
+        def load_setitems(self):
+            super(Proto2Unpickler, self).load_setitems()
+            d = self.stack[0]
+            for k, v in d.items():
+                if type(k) == bytes:
+                    sk = str(k, self.encoding, self.errors)
+                    if sk not in d:
+                        d[sk] = v
+                        del d[k]
+        pickle._Unpickler.dispatch[pickle.SETITEMS[0]] = load_setitems
+
+        def find_class(self, module, name):
+            if module == '__builtin__':
+                if name == 'unicode':
+                    return str
+                elif name == 'buffer':
+                    return bytes
+            return super(Proto2Unpickler, self).find_class(module, name)
+
+    def dbunpickle(s):
+        if s[1] == 0x02:
+            import io
+            #import pickletools
+            #pickletools.dis(io.BytesIO(bytes(s)))
+            return Proto2Unpickler(io.BytesIO(bytes(s))).load()
+        else:
+            return pickle.loads(bytes(s))
+
+    def dbpickle(value):
+        return bytes(pickle.dumps(value, 3))
+
+    # Need to be able to unpickle pickled buffers from Python 2.
+    def _unpickle_buffer(s):
+        return bytes(s)
+
+else:
+    RAW_TYPE = buffer
+    PICKLE_PROTOCOL = 2
+    def dbunpickle(s):
+        return cPickle.loads(str(s))
+
+    def dbpickle(value):
+        return buffer(cPickle.dumps(value, 2))
+
+
+    # Python2 can't pickle buffer types, so register a handler for that.
+    def _pickle_buffer(b):
+        return _unpickle_buffer, (str(b),)
+
+    def _unpickle_buffer(s):
+        return str(s)
+    copy_reg.pickle(buffer, _pickle_buffer, _unpickle_buffer)
+
+
+# Expose the custom unpickler to the _objectrow module so it can deal with
+# pickles stored inside DB rows.
+_objectrow.dbunpickle = dbunpickle
+
+
+# Register a handler for pickling ObjectRow objects.
+def _pickle_ObjectRow(o):
+    if o._description:
+        return _unpickle_ObjectRow, ((o._description, o._object_types), o._row)
+    else:
+        return _unpickle_ObjectRow, (None, None, dict(o.items()))
+
+def _unpickle_ObjectRow(*args):
+    return ObjectRow(*args)
+
+copy_reg.pickle(ObjectRow, _pickle_ObjectRow, _unpickle_ObjectRow)
+
+
+
+PATH_SPLIT = re.compile(ur'(\d+)|[_\W]', re.U | re.X)
 def split_path(s):
     """
     Convenience split function for inverted index attributes.  Useful for
@@ -162,9 +267,9 @@ def _list_to_printable(value):
            fixed_items.append(str(item))
         elif item == None:
             fixed_items.append("NULL")
-        elif isinstance(item, unicode):
+        elif isinstance(item, UNICODE_TYPE):
             fixed_items.append("'%s'" % item.replace("'", "''"))
-        elif isinstance(item, str):
+        elif isinstance(item, BYTES_TYPE):
             fixed_items.append("'%s'" % py3_str(item.replace("'", "''")))
         else:
             raise Exception, "Unsupported type '%s' given to _list_to_printable" % type(item)
@@ -172,6 +277,11 @@ def _list_to_printable(value):
     return '(' + ','.join(fixed_items) + ')'
 
 
+class DatabaseError(Exception):
+    pass
+
+class DatabaseReadOnlyError(Exception):
+    pass
 
 class QExpr(object):
     """
@@ -218,26 +328,6 @@ class QExpr(object):
             return "%s %s ?" % (var, self._operator.upper()), \
                    (self._operand,)
 
-
-# Register handlers for pickling ObjectRow objects.
-
-def _pickle_ObjectRow(o):
-    if o._description:
-        return _unpickle_ObjectRow, ((o._description, o._object_types), o._row)
-    else:
-        return _unpickle_ObjectRow, (None, None, dict(o.items()))
-
-def _unpickle_ObjectRow(*args):
-    return ObjectRow(*args)
-
-def _pickle_buffer(b):
-    return _unpickle_buffer, (str(b),)
-
-def _unpickle_buffer(s):
-    return buffer(s)
-
-copy_reg.pickle(ObjectRow, _pickle_ObjectRow, _unpickle_ObjectRow)
-copy_reg.pickle(buffer, _pickle_buffer, _unpickle_buffer)
 
 class RegexpCache(object):
     def __init__(self):
@@ -294,6 +384,10 @@ class Database(object):
 
         # True when there are uncommitted changes
         self._dirty = False
+        # True when modifications are not allowed to the database, which
+        # is the case when Python 3 is opening a database created by Python 2
+        # and upgrade_to_py3() has not been called.
+        self._readonly = False
         self._dbfile = os.path.realpath(dbfile)
         self._lock = threading.RLock()
         self._lazy_commit_timer = WeakOneShotTimer(self.commit)
@@ -327,8 +421,8 @@ class Database(object):
 
         row = self._db_query_row("SELECT value FROM meta WHERE attr='version'")
         if float(row[0]) < SCHEMA_VERSION_COMPATIBLE:
-            raise SystemError, "Database '%s' has schema version %s; required %s" % \
-                               (self._dbfile, row[0], SCHEMA_VERSION_COMPATIBLE)
+            raise DatabaseError("Database '%s' has schema version %s; required %s" % \
+                                (self._dbfile, row[0], SCHEMA_VERSION_COMPATIBLE))
 
         self._load_inverted_indexes()
         self._load_object_types()
@@ -469,7 +563,8 @@ class Database(object):
               (:attr:`~kaa.db.ATTR_SIMPLE` in *flags*), this can be any picklable
               type; for searchable attributes (:attr:`~kaa.db.ATTR_SEARCHABLE`
               in *flags*), this must be either *int*, *float*, *str*, *unicode*,
-              *buffer*, or *bool*.
+              *bytes*, or *bool*.  (On Python 2.5, you can use ``kaa.db.RAW_TYPE``
+              instead of *bytes*.)
             * flags: a bitmap of :ref:`attribute flags <attrflags>`
             * ivtidx: name of a previously registered inverted index used for
               this attribute. Only needed if flags contains
@@ -591,6 +686,7 @@ class Database(object):
                     # There is a new attribute specified for this type, or an
                     # existing one has changed.
                     new_attrs[attr_name] = attr_defn
+                    print 'CHANGE', type_name, attr_name, cur_type_attrs[attr_name], attr_defn
                     changed = True
                     if attr_flags & ATTR_SEARCHABLE:
                         # New attribute isn't simple, needs to alter table.
@@ -613,6 +709,8 @@ class Database(object):
 
             if not changed:
                 return
+            if self._readonly:
+                raise DatabaseReadOnlyError('upgrade_to_py3() must be called before database can be modified')
 
             # Update the attr list to merge both existing and new attributes.
             attrs = cur_type_attrs.copy()
@@ -626,13 +724,11 @@ class Database(object):
                 # or only new indexes are added, so we don't need to rebuild the
                 # table.
                 if len(new_attrs):
-                    self._db_query("UPDATE types SET attrs_pickle=? WHERE id=?",
-                                   (buffer(cPickle.dumps(attrs, 2)), cur_type_id))
+                    self._db_query("UPDATE types SET attrs_pickle=? WHERE id=?", (dbpickle(attrs), cur_type_id))
 
                 if len(new_indexes):
                     self._register_create_multi_indexes(new_indexes, table_name)
-                    self._db_query("UPDATE types SET idx_pickle=? WHERE id=?",
-                                   (buffer(cPickle.dumps(indexes, 2)), cur_type_id))
+                    self._db_query("UPDATE types SET idx_pickle=? WHERE id=?", (dbpickle(indexes), cur_type_id))
 
                 self.commit()
                 self._load_object_types()
@@ -650,15 +746,15 @@ class Database(object):
                 'id': (int, ATTR_SEARCHABLE, None, None),
                 'parent_type': (int, ATTR_SEARCHABLE, None, None),
                 'parent_id': (int, ATTR_SEARCHABLE, None, None),
-                'pickle': (buffer, ATTR_SEARCHABLE, None, None)
+                'pickle': (RAW_TYPE, ATTR_SEARCHABLE, None, None)
             })
             self._register_check_indexes(indexes, attrs)
 
         create_stmt = 'CREATE TABLE %s_tmp (' % table_name
 
         # Iterate through type attributes and append to SQL create statement.
-        sql_types = {int: 'INTEGER', float: 'FLOAT', buffer: 'BLOB',
-                     unicode: 'TEXT', str: 'BLOB', bool: 'INTEGER'}
+        sql_types = {int: 'INTEGER', long: 'INTEGER', float: 'FLOAT', RAW_TYPE: 'BLOB',
+                     UNICODE_TYPE: 'TEXT', BYTES_TYPE: 'BLOB', bool: 'INTEGER', basestring: 'TEXT'}
         for attr_name, (attr_type, attr_flags, attr_ivtidx, attr_split) in attrs.items():
             if attr_flags & ATTR_SEARCHABLE:
                 # Attribute needs to be a column in the table, not a pickled value.
@@ -677,8 +773,7 @@ class Database(object):
         # Add this type to the types table, including the attributes
         # dictionary.
         self._db_query('INSERT OR REPLACE INTO types VALUES(?, ?, ?, ?)',
-                       (cur_type_id, type_name, buffer(cPickle.dumps(attrs, 2)),
-                        buffer(cPickle.dumps(indexes, 2))))
+                       (cur_type_id, type_name, dbpickle(attrs), dbpickle(indexes)))
 
         # Sync self._object_types with the object type definition we just
         # stored to the db.
@@ -699,13 +794,19 @@ class Database(object):
         # Rename temporary table.
         self._db_query('ALTER TABLE %s_tmp RENAME TO %s' % (table_name, table_name))
 
-        # Create a trigger that reduces the objectcount for each applicable
-        # inverted index when a row is deleted.
+        # Increase the objectcount for new inverted indexes, and create a
+        # trigger that reduces the objectcount for each applicable inverted
+        # index when a row is deleted.
         inverted_indexes = self._get_type_inverted_indexes(type_name)
         if inverted_indexes:
+            n_rows = self._db_query_row('SELECT COUNT(*) FROM %s' % table_name)[0]
             sql = 'CREATE TRIGGER delete_object_%s DELETE ON %s BEGIN ' % (type_name, table_name)
             for idx_name in inverted_indexes:
-                sql += "UPDATE inverted_indexes SET value=value-1 WHERE name='%s' AND attr='objectcount';" % idx_name
+                sql += "UPDATE inverted_indexes SET value=MAX(0, value-1) WHERE name='%s' AND attr='objectcount';" % idx_name
+                # Add to objectcount (both in db and cached value)
+                self._db_query("UPDATE inverted_indexes SET value=value+? WHERE name=? and attr='objectcount'",
+                               (n_rows, idx_name))
+                self._inverted_indexes[idx_name]['objectcount'] += n_rows
             sql += 'END'
             self._db_query(sql)
 
@@ -774,22 +875,25 @@ class Database(object):
         if split is None:
             # Default split regexp is to split words on
             # alphanumeric/digits/underscore boundaries.
-            split = re.compile("(\d+)|[_\W]", re.U)
+            split = re.compile(u"(\d+)|[_\W]", re.U)
         elif isinstance(split, basestring):
-            split = re.compile(split, re.U)
+            split = re.compile(py3_str(split), re.U)
 
-        if name not in self._inverted_indexes:
+        if name not in self._inverted_indexes and not self._readonly:
             self._db_query('INSERT INTO inverted_indexes VALUES(?, "objectcount", 0)', (name,))
             # Create the tables needed by the inverted index.
             self._lock.acquire()
             self._db.executescript(CREATE_IVTIDX_TEMPLATE.replace('%IDXNAME%', name))
             self._lock.release()
-        else:
+        elif name in self._inverted_indexes:
             defn = self._inverted_indexes[name]
             if min == defn['min'] and max == defn['max'] and split == defn['split'] and \
                ignore == defn['ignore']:
                # Definition unchanged, nothing to do.
                return
+
+        if self._readonly:
+            raise DatabaseReadOnlyError('upgrade_to_py3() must be called before database can be modified')
 
         defn = {
             'min': min,
@@ -799,7 +903,7 @@ class Database(object):
         }
 
         self._db_query("INSERT OR REPLACE INTO inverted_indexes VALUES(?, 'definition', ?)",
-                       (name, buffer(cPickle.dumps(defn, 2))))
+                       (name, dbpickle(defn)))
 
         defn['objectcount'] = 0
         self._inverted_indexes[name] = defn
@@ -813,12 +917,19 @@ class Database(object):
             if attr == 'objectcount':
                 self._inverted_indexes[name][attr] = int(value)
             elif attr == 'definition':
-                self._inverted_indexes[name].update(cPickle.loads(str(value)))
+                self._inverted_indexes[name].update(dbunpickle(value))
 
 
     def _load_object_types(self):
+        is_pickle_proto_2 = False
         for id, name, attrs, idx in self._db_query("SELECT * from types"):
-            self._object_types[name] = id, cPickle.loads(str(attrs)), cPickle.loads(str(idx))
+            if attrs[1] == 0x02 or idx[1] == 0x02:
+                is_pickle_proto_2 = True
+            self._object_types[name] = id, dbunpickle(attrs), dbunpickle(idx)
+
+        if sys.hexversion >= 0x03000000 and is_pickle_proto_2:
+            self._readonly = True
+            log.warning('kaa.db databases created by Python 2 are read-only until upgrade_to_py3() is called')
 
 
     def _get_type_inverted_indexes(self, type_name):
@@ -886,9 +997,10 @@ class Database(object):
                 if not isinstance(value, attr_type):
                     raise TypeError("Type mismatch in query for %s: '%s' (%s) is not a %s" % \
                                     (name, str(value), str(type(value)), str(attr_type)))
-                if attr_type == str:
-                    # Treat strings (non-unicode) as buffers.
-                    value = buffer(value)
+                if attr_type == BYTES_TYPE:
+                    # For Python 2, convert non-unicode strings to buffers.  (For Python 3,
+                    # BYTES_TYPE == RAW_TYPE so this is a no-op.)
+                    value = RAW_TYPE(value)
                 values.append(value)
                 del attrs_copy[name]
 
@@ -903,7 +1015,7 @@ class Database(object):
 
             # What's left gets put into the pickle.
             columns.append("pickle")
-            values.append(buffer(cPickle.dumps(attrs_copy, 2)))
+            values.append(dbpickle(attrs_copy))
             placeholders.append("?")
 
         table_name = "objects_" + type_name
@@ -1026,6 +1138,9 @@ class Database(object):
 
 
     def _delete_multiple_objects(self, objects):
+        if self._readonly:
+            raise DatabaseReadOnlyError('upgrade_to_py3() must be called before database can be modified')
+
         child_objects = {}
         count = 0
         for object_type, object_ids in objects.items():
@@ -1085,6 +1200,9 @@ class Database(object):
             db.add('directory', parent=root, name='etc', mtime=os.stat('/etc').st_mtime)
             db.add('directory', parent=root, name='var', mtime=os.stat('/var').st_mtime)
         """
+        if self._readonly:
+            raise DatabaseReadOnlyError('upgrade_to_py3() must be called before database can be modified')
+
         type_attrs = self._get_type_attrs(object_type)
         if parent:
             attrs['parent_type'], attrs['parent_id'] = self._to_obj_tuple(parent, numeric=True)
@@ -1187,6 +1305,8 @@ class Database(object):
             >>> d['name']
             'bar'
         """
+        if self._readonly:
+            raise DatabaseReadOnlyError('upgrade_to_py3() must be called before database can be modified')
         object_type, object_id = self._to_obj_tuple(obj)
 
         type_attrs = self._get_type_attrs(object_type)
@@ -1231,7 +1351,7 @@ class Database(object):
             if reqd_columns[0] == 'pickle' and row[0]:
                 # One of the attrs we're updating is in the pickle, so we
                 # have fetched it; now convert it to a dict.
-                row_attrs = cPickle.loads(str(row[0]))
+                row_attrs = dbunpickle(row[0])
                 for key, value in row_attrs.items():
                     # Rename all __foo to foo for ATTR_IGNORE_CASE columns
                     if key.startswith('__') and type_attrs[key[2:]][1] & ATTR_IGNORE_CASE:
@@ -1266,12 +1386,12 @@ class Database(object):
             terms_list = []
             for name, (attr_type, flags, attr_ivtidx, attr_split) in type_attrs.items():
                 if attr_ivtidx == ivtidx and name in attrs:
-                    if attr_type == str and isinstance(attrs[name], buffer):
+                    if attr_type == BYTES_TYPE and isinstance(attrs[name], RAW_TYPE):
                         # We store string objects in the db as buffers, in
                         # order to prevent any unicode issues.  So we need
                         # to convert the buffer we got from the db back to
                         # a string before parsing the attribute into terms.
-                        attrs[name] = str(attrs[name])
+                        attrs[name] = BYTES_TYPE(attrs[name])
                     terms_list.append((attrs[name], 1.0, attr_split or split, ivtidx))
 
             if ivtidx in attrs and ivtidx not in type_attrs:
@@ -1583,9 +1703,10 @@ class Database(object):
                         # to use any indices on the column.
                         attr = 'lower(%s)' % attr
 
-                if isinstance(value._operand, str):
-                    # Treat strings (non-unicode) as buffers.
-                    value._operand = buffer(value._operand)
+                if isinstance(value._operand, BYTES_TYPE):
+                    # For Python 2, convert non-unicode strings to buffers.  (For Python 3,
+                    # BYTES_TYPE == RAW_TYPE so this is a no-op.)
+                    value._operand = RAW_TYPE(value._operand)
 
                 sql, values = value.as_sql(attr)
                 if is_or_attr:
@@ -1624,7 +1745,7 @@ class Database(object):
         # If ivtidx search was done, sort results based on score (highest
         # score first).
         if ivtidx_results:
-            results.sort(lambda a, b: cmp(ivtidx_results[(b[1], b[2])], ivtidx_results[(a[1], a[2])]))
+            results.sort(key=lambda r: ivtidx_results[(r[1], r[2])])
 
         return results
 
@@ -2214,3 +2335,11 @@ class Database(object):
             self._lazy_commit_timer.stop()
         elif self._dirty:
             self._lazy_commit_timer.start(self._lazy_commit_interval)
+
+    @property
+    def readonly(self):
+        return self._readonly
+
+
+    def upgrade_to_py3(self):
+        raise NotImplementedError

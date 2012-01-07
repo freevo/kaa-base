@@ -111,10 +111,15 @@ class build_py(distutils_build_py):
     def run_2to3(self, files):
         excludes = build_py.opts_2to3.get('exclude')
         nofix = build_py.opts_2to3.get('nofix')
-        groups = {'all': files}
+        fixermap = {} # fname -> [fixers_to_disable, ...]
         for file in files[:]:
-            # Strip 'build/lib.*/kaa/module/' from name.
-            relfile = re.sub(r'build\/[^/]*\/kaa\/[^/]+\/', '', file)
+            if self.distribution.get_name().startswith('kaa-'):
+                # This is a kaa module, so strip 'build/lib.*/kaa/module/' from
+                # name.
+                relfile = re.sub(r'build\/[^/]*\/kaa\/[^/]+\/', '', file)
+            else:
+                # A non-kaa module, strip build/lib.*/module/
+                relfile = re.sub(r'build\/[^/]*\/[^/]+\/', '', file)
             if excludes:
                 for pattern in excludes:
                     if fnmatch.fnmatch(relfile, pattern):
@@ -122,17 +127,20 @@ class build_py(distutils_build_py):
             if nofix:
                 for pattern, fixers in nofix.items():
                     if fnmatch.fnmatch(relfile, pattern) and file in files:
-                        groups.setdefault(tuple(fixers), []).append(file)
-                        files.remove(file)
+                        fixermap.setdefault(file, []).extend(list(fixers))
+
+        # Now that we've got a list of all files and which fixers to disable
+        # for them, flip fixermap upside down and group by disabled fixer list.
+        groups = {} # (disabled_fixers, ...) -> [filenames]
+        for file, disabled_fixers in fixermap.items():
+            groups.setdefault(tuple(disabled_fixers) or 'none', []).append(file)
 
         from lib2to3.refactor import get_fixers_from_package
         all_fixers = set(get_fixers_from_package('lib2to3.fixes'))
-        for fixers, files in groups.items():
-            if not files:
-                continue
-            if fixers == 'all':
+        for disabled_fixers, files in groups.items():
+            if disabled_fixers == 'none':
                 self.fixer_names = all_fixers
             else:
-                self.fixer_names = all_fixers.difference('lib2to3.fixes.fix_%s' % fixer for fixer in fixers)
+                self.fixer_names = all_fixers.difference('lib2to3.fixes.fix_%s' % fixer for fixer in disabled_fixers)
             print('Running 2to3 on %d files, this may take a while ...' % len(files))
             distutils_build_py.run_2to3(self, files)

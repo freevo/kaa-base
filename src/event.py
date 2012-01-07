@@ -96,7 +96,8 @@ class Event(object):
         """
         return self.name
 
-
+    
+    # Python 2.
     def __cmp__(self, other):
         """
         Compare function, return 0 if the objects are identical, 1 otherwise
@@ -106,6 +107,14 @@ class Event(object):
         if isinstance(other, Event):
             return self.name != other.name
         return self.name != other
+
+
+    # Python 3
+    def __eq__(self, other):
+        if isinstance(other, Event):
+            return self.name == other.name
+        return self.name == other
+        
 
 
 class EventHandler(NotifierCallback):

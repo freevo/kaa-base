@@ -656,8 +656,11 @@ class DecoratorDataStore(object):
     def __init__(self, func, newfunc=None, newfunc_args=None, identifier=None):
         # Object the data will be stored in.
         target = func
-        if hasattr(func, 'im_self'):
-            # Data store requested for a specific method.
+        if hasattr(func, '__self__'):
+            # Data store requested for a specific method.  Python 2.6+
+            target = func.__self__
+        elif hasattr(func, 'im_self'):
+            # Data store requested for a specific method.  Python 2.5
             target = func.im_self
 
         # This kludge compares the code object of newfunc (this wrapper) with the

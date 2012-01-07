@@ -37,6 +37,7 @@ import logging
 import stat
 import hashlib
 import textwrap
+import codecs
 
 # kaa.base modules
 from .core import Object
@@ -1104,8 +1105,8 @@ class Config(Group, Object):
         self._loaded_hash_values = hash_values
 
         self._autosave_timer.stop()
-        f = open(filename + '~', 'w')
         encoding = get_encoding().lower().replace('iso8859', 'iso-8859')
+        f = codecs.open(filename + '~', 'w', encoding=encoding)
         f.write('# -*- coding: %s -*-\n' % encoding + \
                 '# -*- hash: %s -*-\n' % self._loaded_hash_schema)
         if self._module:
@@ -1128,7 +1129,7 @@ class Config(Group, Object):
                     '# config settings, which were ignored.  Refer to the end of\n'
                     '# this file for the relevant lines.\n'
                     '# =========================================================\n')
-        f.write(py3_b(self._stringify()) + '\n')
+        f.write(py3_str(self._stringify(), encoding) + '\n')
         if self._bad_lines:
             f.write('\n\n\n'
                     '# *************************************************************\n'
@@ -1216,9 +1217,12 @@ class Config(Group, Object):
         autosave_orig = self.autosave
         self.autosave = False
 
-        f = open(filename)
+        f = open(filename, 'rb')
         for line in f.readlines():
             line = line.strip()
+            # convert lines based on local encoding
+            line = py3_str(line, local_encoding)
+
             if line.startswith('# -*- coding:'):
                 # a encoding is set in the config file, use it
                 try:
@@ -1231,8 +1235,6 @@ class Config(Group, Object):
             elif line.startswith('# -*- hash:'):
                 self._loaded_hash_schema = line[12:].rstrip('-* ')
 
-            # convert lines based on local encoding
-            line = py3_str(line, local_encoding)
             if line.find('#') >= 0:
                 line = line[:line.find('#')]
             line = line.strip()

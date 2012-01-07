@@ -107,10 +107,12 @@ import sys
 import hashlib
 import time
 import traceback
+import os
 
 # kaa imports
 import kaa
 from .utils import property
+from .strutils import py3_b, bl
 from .core import Object, CoreThreading
 from .async import make_exception_class, AsyncExceptionBase
 from .main import is_shutting_down
@@ -120,6 +122,13 @@ log = logging.getLogger('rpc')
 
 # Global constants
 RPC_PACKET_HEADER_SIZE = struct.calcsize("I4sI")
+# Protocol compatible between Python 2 and 3.  (Well, quasi-compatible, there
+# are some issues due to the str/unicode changes in 3.)
+PICKLE_PROTOCOL = 2
+try:
+    memoryview
+except NameError:
+    memoryview = None
 
 
 class RemoteException(AsyncExceptionBase):
@@ -164,7 +173,7 @@ class Server(Object):
     }
     def __init__(self, address, auth_secret = '', buffer_size=None):
         super(Server, self).__init__()
-        self._auth_secret = auth_secret
+        self._auth_secret = py3_b(auth_secret)
         self._socket = kaa.Socket(buffer_size=buffer_size)
         self._socket.listen(address)
         self._socket.signals['new-client'].connect_weak(self._new_connection)
@@ -252,7 +261,7 @@ class Channel(Object):
         self._callbacks = {}
         self._next_seq = 1
         self._rpc_in_progress = {}
-        self._auth_secret = auth_secret
+        self._auth_secret = py3_b(auth_secret)
         self._pending_challenge = None
 
         # Creates a circular reference so that RPC channels survive even when
@@ -303,9 +312,8 @@ class Channel(Object):
         self._next_seq += 1
         # create InProgress object
         callback = kwargs.pop('_kaa_rpc_callback', kaa.InProgress())
-        packet_type = 'CALL'
-        payload = cPickle.dumps((cmd, args, kwargs), pickle.HIGHEST_PROTOCOL)
-        self._send_packet(seq, packet_type, payload)
+        payload = cPickle.dumps((cmd, args, kwargs), PICKLE_PROTOCOL)
+        self._send_packet(seq, 'CALL', payload)
         # callback with error handler
         self._rpc_in_progress[seq] = (callback, cmd)
         return callback
@@ -402,12 +410,14 @@ class Channel(Object):
 
         # At this point we know we have enough data in the buffer for the
         # packet, so we merge the array into a single buffer.
-        strbuf = ''.join(self._read_buffer)
+        strbuf = bl('').join(self._read_buffer)
+        if memoryview:
+            strbuf = memoryview(strbuf)
         self._read_buffer = []
         while True:
             if len(strbuf) <= RPC_PACKET_HEADER_SIZE:
                 if len(strbuf) > 0:
-                    self._read_buffer.append(str(strbuf))
+                    self._read_buffer.append(py3_b(strbuf))
                 break
             header = strbuf[:RPC_PACKET_HEADER_SIZE]
             seq, packet_type, payload_len = struct.unpack("I4sI", header)
@@ -415,13 +425,16 @@ class Channel(Object):
                 # We've also received portion of another packet that we
                 # haven't fully received yet.  Put back to the buffer what
                 # we have so far, and we can exit the loop.
-                self._read_buffer.append(str(strbuf))
+                self._read_buffer.append(py3_b(strbuf))
                 break
 
             # Grab the payload for this packet, and shuffle strbuf to the
             # next packet.
             payload = strbuf[RPC_PACKET_HEADER_SIZE:RPC_PACKET_HEADER_SIZE + payload_len]
-            strbuf = buffer(strbuf, RPC_PACKET_HEADER_SIZE + payload_len)
+            if memoryview:
+                strbuf = strbuf[RPC_PACKET_HEADER_SIZE + payload_len:]
+            else:
+                strbuf = buffer(strbuf, RPC_PACKET_HEADER_SIZE + payload_len)
             #log.debug("Got packet %s", packet_type)
             if not self._authenticated:
                 self._handle_packet_before_auth(seq, packet_type, payload)
@@ -436,7 +449,7 @@ class Channel(Object):
         if not self._socket:
             return
         header = struct.pack("I4sI", seq, packet_type, len(payload))
-        if not self._authenticated and packet_type not in ('RESP', 'AUTH'):
+        if not self._authenticated and bl(packet_type) not in (bl('RESP'), bl('AUTH')):
             log.debug('delay packet %s', packet_type)
             self._write_buffer_deferred.append(header + payload)
         else:
@@ -447,7 +460,7 @@ class Channel(Object):
         """
         Send delayed answer when callback returns InProgress.
         """
-        payload = cPickle.dumps(answer, pickle.HIGHEST_PROTOCOL)
+        payload = cPickle.dumps(answer, PICKLE_PROTOCOL)
         self._send_packet(seq, 'RETN', payload)
 
 
@@ -457,9 +470,9 @@ class Channel(Object):
         """
         stack = traceback.extract_tb(tb)
         try:
-            payload = cPickle.dumps((value, stack), pickle.HIGHEST_PROTOCOL)
+            payload = cPickle.dumps((value, stack), PICKLE_PROTOCOL)
         except cPickle.UnpickleableError:
-            payload = cPickle.dumps((Exception(str(value)), stack), pickle.HIGHEST_PROTOCOL)
+            payload = cPickle.dumps((Exception(py3_b(value)), stack), PICKLE_PROTOCOL)
         self._send_packet(seq, 'EXCP', payload)
 
 
@@ -468,7 +481,7 @@ class Channel(Object):
         Handle incoming packet (called from _handle_write) after
         authentication has been completed.
         """
-        if packet_type == 'CALL':
+        if packet_type == bl('CALL'):
             # Remote function call, send answer
             function, args, kwargs = cPickle.loads(payload)
             try:
@@ -490,7 +503,7 @@ class Channel(Object):
 
             return True
 
-        if packet_type == 'RETN':
+        if packet_type == bl('RETN'):
             # RPC return
             payload = cPickle.loads(payload)
             callback, cmd = self._rpc_in_progress.get(seq)
@@ -500,7 +513,7 @@ class Channel(Object):
             callback.finish(payload)
             return True
 
-        if packet_type == 'EXCP':
+        if packet_type == bl('EXCP'):
             # Exception for remote call
             try:
                 exc_value, stack = cPickle.loads(payload)
@@ -596,7 +609,7 @@ class Channel(Object):
             self.close()
 
 
-        if packet_type not in ('AUTH', 'RESP'):
+        if packet_type not in (bl('AUTH'), bl('RESP')):
             # Received a non-auth command while expecting auth.
             return panic(IOError('got %s before authentication is complete; closing socket.' % packet_type))
 
@@ -619,7 +632,7 @@ class Channel(Object):
         # At this point, challenge, response, and salt are 20 byte strings of
         # arbitrary binary data.  They're considered benign.
 
-        if packet_type == 'AUTH':
+        if packet_type == bl('AUTH'):
             # Step 2: We've received a challenge.  If we've already sent a
             # challenge (which is the case if _pending_challenge is not None),
             # then something isn't right.  This could be a DoS so we'll
@@ -637,7 +650,7 @@ class Channel(Object):
             log.debug('Got initial challenge from server, sending response.')
             return
 
-        elif packet_type == 'RESP':
+        elif packet_type == bl('RESP'):
             # We've received a reply to an auth request.
 
             if self._pending_challenge == None:
@@ -674,14 +687,14 @@ class Channel(Object):
             # authentication is only one-sided (we trust the remote, but the
             # remote won't trust us).  In this case, things won't work
             # properly, but there are no negative security implications.
-            if len(challenge.strip("\x00")) != 0:
+            if len(challenge.strip(bl('\x00'))) != 0:
                 response, salt = self._get_challenge_response(challenge)
                 payload = struct.pack("20s20s20s", '', response, salt)
                 self._send_packet(seq, 'RESP', payload)
                 log.debug('Sent response to challenge from client.')
 
             # Empty deferred write buffer now that we're authenticated.
-            self._write(''.join(self._write_buffer_deferred))
+            self._write(bl('').join(self._write_buffer_deferred))
             self._write_buffer_deferred = []
             self._handle_connected()
 
@@ -700,8 +713,8 @@ class Channel(Object):
         current time concatenated with 64 bytes from /dev/urandom.  This
         value is not by design a nonce, but in practice it probably is.
         """
-        rbytes = file("/dev/urandom").read(64)
-        return hashlib.sha1(str(time.time()) + rbytes).digest()
+        rbytes = os.urandom(64)
+        return hashlib.sha1(py3_b(time.time(), coerce=True) + rbytes).digest()
 
 
     def _send_auth_challenge(self):
@@ -725,9 +738,13 @@ class Channel(Object):
         was used in computing their response.  If it is None, a new 20-byte
         salt is generated and used in computing our response.
         """
-        def xor(s, byte):
-            # XORs each character in string s with byte.
-            return ''.join([ chr(ord(x) ^ byte) for x in s ])
+        # Make function to XOR each character in string s with byte.
+        if sys.hexversion >= 0x03000000:
+            def xor(s, byte):
+                return bl('').join([bytes([x ^ byte]) for x in s])
+        else:
+            def xor(s, byte):
+                return ''.join([chr(ord(x) ^ byte) for x in s])
 
         def H(s):
             # Returns the 20 byte SHA-1 digest of string s.
@@ -744,7 +761,7 @@ class Channel(Object):
             # key is larger than B, so first hash.
             K = H(K)
         # Pad K to be of length B
-        K = K + '\x00' * (B - len(K))
+        K = K + bl('\x00') * (B - len(K))
 
         return H(xor(K, 0x5c) + H(xor(K, 0x36) + challenge)), salt
 

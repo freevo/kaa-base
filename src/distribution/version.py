@@ -47,39 +47,42 @@ class Version(object):
         return str(self)
 
 
-    def __float__(self):
+    def _cmp(self, b):
         """
-        Convert to float for comparison.
+        Numeric (if possible) or lexical comparison of each verison component.
         """
-        version = 0
-        for pos, val in enumerate(self.version.split('.')):
-            version += int(val) * (float(1) / math.pow(100, pos))
-        return version
+        parts = max(self.version.count('.'), b.count('.'))
+        a = self.version.split('.') + ['0'] * (parts - self.version.count('.'))
+        b = b.split('.') + ['0'] * (parts - b.count('.'))
+        for ap, bp in zip(a, b):
+            if ap.isdigit() and bp.isdigit():
+                ap, bp = int(ap), int(bp)
+            if ap < bp:
+                return -1
+            elif ap > bp:
+                return 1
+        return 0
+
 
     def __eq__(self, obj):
-        return str(obj) == str(obj)
+        # Don't just do a string compare, because we consider 0.99.0 == 0.99
+        return self._cmp(obj) == 0
 
 
     # Python 2.
     def __cmp__(self, obj):
-        """
-        Compare two version.
-        """
-        if not isinstance(obj, Version):
-            obj = Version(obj)
-        return cmp(float(self), float(obj))
+        return self._cmp(obj)
+
 
     # Python 3
     def __lt__(self, obj):
-        if not isinstance(obj, Version):
-            obj = Version(obj)
-        return float(self) < float(obj)
+        return self._cmp(obj) == -1
 
     def __le__(self, obj):
-        return self < obj or self == obj
+        return self._cmp(obj) in (-1, 0)
 
     def __gt__(self, obj):
-        return not (self < obj) and self != obj
+        return self._cmp(obj) == 1
 
     def __ge__(self, obj):
-        return not (self < obj)
+        return self._cmp(obj) in (1, 0)

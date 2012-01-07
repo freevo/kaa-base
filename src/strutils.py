@@ -208,6 +208,16 @@ def utf8(s):
 
 
 def fsname(s):
+    """
+    Return an object appropriate to represent a filename for the current
+    Python version.
+
+    :param s: the filename to decode if needed (Python 3) or encode if
+    needed (Python 2)
+    
+    Python 2 returns a non-unicode string, while Python 3 returns a unicode
+    string using the ``surrogateescape`` handler.  See PEP 383.
+    """
     if sys.hexversion >= 0x03000000:
         return py3_str(s, fs=True, desperate=False)
     else:

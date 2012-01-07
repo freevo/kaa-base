@@ -35,7 +35,11 @@ import errno
 import logging
 import weakref
 import signal
-import cStringIO
+try:
+    from io import BytesIO
+except ImportError:
+    from cStringIO import StringIO as BytesIO
+
 
 from .utils import property
 from .callable import Callable, WeakCallable, CallableError
@@ -839,11 +843,11 @@ class Process(Object):
             yield self.write(input)
         self.stdin.close()
 
-        buf_out = cStringIO.StringIO()
+        buf_out = BytesIO()
         while self.stdout.readable:
             buf_out.write((yield self.stdout.read()))
 
-        buf_err = cStringIO.StringIO()
+        buf_err = BytesIO()
         while self.stderr.readable:
             buf_err.write((yield self.stderr.read()))
 

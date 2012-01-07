@@ -35,10 +35,14 @@ import socket
 import logging
 import time
 import fcntl
-import cStringIO
 import re
+try:
+    from io import BytesIO
+except ImportError:
+    from cStringIO import StringIO as BytesIO
 
 from .utils import property
+from .strutils import BYTES_TYPE, UNICODE_TYPE, py3_b, bl
 from . import nf_wrapper as notifier
 from .callable import WeakCallable
 from .core import Object, Signal, CoreThreading
@@ -226,10 +230,10 @@ class IOChannel(Object):
 
     def __init__(self, channel=None, mode=IO_READ|IO_WRITE, chunk_size=1024*1024, delimiter='\n'):
         super(IOChannel, self).__init__()
-        self._delimiter = delimiter
+        self.delimiter = delimiter
         self._write_queue = []
         # Read queue used for read() and readline(), and 'readline' signal.
-        self._read_queue = cStringIO.StringIO()
+        self._read_queue = BytesIO()
         # Number of bytes each queue (read and write) are limited to.
         self._queue_size = 1024*1024
         self._chunk_size = chunk_size
@@ -382,6 +386,13 @@ class IOChannel(Object):
     @delimiter.setter
     def delimiter(self, value):
         self._delimiter = value
+        if isinstance(value, (UNICODE_TYPE, BYTES_TYPE)):
+            self._delimiter_encoded = py3_b(value)
+        elif isinstance(value, (list, tuple)):
+            regexp = bl('|').join(py3_b(x) for x in value)
+            self._delimiter_encoded = re.compile(regexp)
+        else:
+            raise ValueError('delimiter must be a string, bytes, or sequence of strings or bytes')
 
 
     @property
@@ -507,12 +518,12 @@ class IOChannel(Object):
         The index position includes the delimiter.  If the delimiter is not
         found, None is returned.
         """
-        if isinstance(self._delimiter, basestring):
-            idx = buf.find(self._delimiter, start)
-            return idx + len(self._delimiter) if idx >= 0 else None
+        if type(self._delimiter_encoded) == BYTES_TYPE:
+            idx = buf.find(self._delimiter_encoded, start)
+            return idx + len(self._delimiter_encoded) if idx >= 0 else None
 
         # Delimiter is a list, so find any one of them.
-        m = re.compile('|'.join(self._delimiter)).search(buf, start)
+        m = self._delimiter_encoded.search(buf, start)
         return m.end() if m else None
 
 
@@ -751,6 +762,8 @@ class IOChannel(Object):
             raise IOError(9, 'Channel is not writable')
         if self.write_queue_used + len(data) > self._queue_size:
             raise ValueError('Data would exceed write queue limit')
+        if not isinstance(data, BYTES_TYPE):
+            raise ValueError('data must be bytes, not unicode')
 
         inprogress = InProgress()
         if data:
@@ -939,7 +952,7 @@ class IOChannel(Object):
         # Generate new queues on the channel object whose fd we are stealing, since
         # we stole its queues too.
         channel._write_queue = []
-        channel._read_queue = cStringIO.StringIO()
+        channel._read_queue = BytesIO()
         channel._channel = None
 
         def clone(src, dst):

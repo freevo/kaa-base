@@ -27,7 +27,8 @@
 
 __all__ = [
     'ENCODING', 'BYTES_TYPE', 'UNICODE_TYPE', 'get_encoding', 'set_encoding',
-    'utf8', 'str_to_unicode', 'unicode_to_str', 'format', 'py3_b', 'py3_str'
+    'utf8', 'str_to_unicode', 'unicode_to_str', 'format', 'py3_b', 'py3_str',
+    'bl'
 ]
 
 # python imports
@@ -45,11 +46,18 @@ except (UnicodeError, TypeError):
 if sys.hexversion >= 0x03000000:
     UNICODE_TYPE = str
     BYTES_TYPE = bytes
+    FS_ERRORS = 'surrogateescape'
     long = int
+    bl = lambda s: bytes(s, 'ascii')
 else:
-    bytes = lambda s, dummy: str(s)
     UNICODE_TYPE = unicode
     BYTES_TYPE = str
+    FS_ERRORS = 'strict'
+    # b'foo' syntax is not supported before Python 2.6, and kaa.base supports
+    # Python 2.5.  bl() provides a cross-version way to do byte literals.
+    # When Python 2.5 support is dropped, this function should be removed
+    # and all uses of bl('foo') should be replaced with b'foo'
+    bl = str
 
 
 def get_encoding():
@@ -74,7 +82,7 @@ def set_encoding(encoding):
         pass
 
 
-def py3_b(value, encoding=None, desperate=True, coerce=False):
+def py3_b(value, encoding=None, desperate=True, coerce=False, fs=False):
     """
     Convert (if necessary) the given value to a "string of bytes", agnostic to
     any character encoding.
@@ -91,6 +99,11 @@ def py3_b(value, encoding=None, desperate=True, coerce=False):
     :param coerce: if True, will coerce numeric types to a bytes object; if
                    False, such values will be returned untouched.
     :type coerce: bool
+    :param fs: indicates value is a file name or other environment string; if True,
+               the encoding (if not explicitly specified) will be the encoding
+               given by ``sys.getfilesystemencoding()`` and the error handler
+               used will be ``surrogateescape`` if supported.
+    :type fs: bool
     :returns: the value as a string of bytes, or the original value if coerce is
               False and the value was not a bytes or string.
 
@@ -102,16 +115,22 @@ def py3_b(value, encoding=None, desperate=True, coerce=False):
     if isinstance(value, BYTES_TYPE):
         # Nothing to do.
         return value
+    elif isinstance(value, (int, long, float)):
+        return bl(str(value)) if coerce else value
     elif not isinstance(value, UNICODE_TYPE):
-        if not coerce and isinstance(value, (int, long, float)):
-            return value
         # Need to coerce to a unicode before converting to bytes.  We can't just
         # feed it to bytes() in case the default character set can't encode it.
-        value = py3_str(value)
+        value = py3_str(value, coerce=coerce)
+
+    errors = 'strict'
+    if fs:
+        if not encoding:
+            encoding = sys.getfilesystemencoding()
+        errors = FS_ERRORS
 
     for c in (encoding or ENCODING, 'utf-8', 'latin-1'):
         try:
-            return value.encode(c)
+            return value.encode(c, errors)
         except UnicodeError:
             pass
         if not desperate:
@@ -120,7 +139,7 @@ def py3_b(value, encoding=None, desperate=True, coerce=False):
     return value.encode(encoding or ENCODING, 'replace')
 
 
-def py3_str(value, encoding=None, desperate=True, coerce=False):
+def py3_str(value, encoding=None, desperate=True, coerce=False, fs=False):
     """
     Convert (if necessary) the given value to a (unicode) string.
 
@@ -136,6 +155,11 @@ def py3_str(value, encoding=None, desperate=True, coerce=False):
     :param coerce: if True, will coerce numeric types to a unicode string; if
                    False, such values will be returned untouched.
     :type coerce: bool
+    :param fs: indicates value is a file name or other environment string; if True,
+               the encoding (if not explicitly specified) will be the encoding
+               given by ``sys.getfilesystemencoding()`` and the error handler
+               used will be ``surrogateescape`` if supported.
+    :type fs: bool
     :returns: the value as a (unicode) string, or the original value if coerce is
               False and the value was not a bytes or string.
 
@@ -146,9 +170,9 @@ def py3_str(value, encoding=None, desperate=True, coerce=False):
     if isinstance(value, UNICODE_TYPE):
         # Nothing to do.
         return value
+    elif isinstance(value, (int, long, float)):
+        return UNICODE_TYPE(value) if coerce else value
     elif not isinstance(value, BYTES_TYPE):
-        if not coerce and isinstance(value, (int, long, float)):
-            return value
         # Need to coerce this value.  Try the direct approach.
         try:
             return UNICODE_TYPE(value)
@@ -157,10 +181,16 @@ def py3_str(value, encoding=None, desperate=True, coerce=False):
             # non-8bit-clean string.  Be a bit more brute force about it.
             return py3_str(repr(value), desperate=desperate)
 
+    errors = 'strict'
+    if fs:
+        if not encoding:
+            encoding = sys.getfilesystemencoding()
+        errors = FS_ERRORS
+
     # We now have a bytes object to decode.
     for c in (encoding or ENCODING, 'utf-8', 'latin-1'):
         try:
-            return value.decode(c)
+            return value.decode(c, errors)
         except UnicodeError:
             pass
         if not desperate:
@@ -175,6 +205,13 @@ def utf8(s):
     necessary.
     """
     return py3_str(s).encode('utf-8')
+
+
+def fsname(s):
+    if sys.hexversion >= 0x03000000:
+        return py3_str(s, fs=True, desperate=False)
+    else:
+        return py3_b(s, fs=True, desperate=False)
 
 
 def str_to_unicode(s, encoding=None):

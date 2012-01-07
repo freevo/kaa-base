@@ -42,7 +42,7 @@ import Queue
 # kaa imports
 from .callable import Callable, WeakCallable, CallableError
 from .utils import property
-from .strutils import py3_b
+from .strutils import bl
 from . import nf_wrapper as notifier
 
 # get logging object
@@ -96,7 +96,7 @@ class CoreThreading:
     _mainthread = threading.currentThread()
     # Create a one byte dummy token for writing to the pipe.  Normally we'd
     # just use b'1' but Python 2.5 can't parse it.
-    _PIPE_NOTIFY_TOKEN = py3_b('1')
+    _PIPE_NOTIFY_TOKEN = bl('1')
 
 
     @staticmethod

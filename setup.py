@@ -103,10 +103,7 @@ elif sys.hexversion < 0x03000000:
     extensions.append(shm_ext)
 
 objectrow_ext = Extension('kaa.base._objectrow', ['src/extensions/objectrow.c'])
-if sys.hexversion > 0x03000000:
-    print('- kaa.db not supported on Python 3 yet')
-else:
-    extensions.append(objectrow_ext)
+extensions.append(objectrow_ext)
 
 utils_ext = Extension('kaa.base._utils', ['src/extensions/utils.c'], config='src/extensions/config.h')
 extensions.append(utils_ext)
@@ -154,6 +151,9 @@ setup(
         'exclude': ['distribution/*', 'saxutils.py', 'strutils.py'],
         'nofix': {
             '*.py': ['import'],
+            'utils.py': ['filter'],
+            'io.py': ['throw'],
+            'rpc.py': ['throw'],
         }
     },
     # Don't declare kaa.base as part of the kaa namespace.  Doing so will

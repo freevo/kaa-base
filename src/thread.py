@@ -305,13 +305,18 @@ class ThreadCallableBase(Callable, Object):
                 return
 
             # This magic uses Python/C to raise an exception inside the thread.
-            tids = [tid for tid, tobj in threading._active.items() if tobj == inprogress._thread]
-            if not tids:
-                # Thread not found.  It must already have finished.
-                return
+            if hasattr(inprogress._thread, 'ident'):
+                tid = inprogress._thread.ident
+            else:
+                tids = [tid for tid, tobj in threading._active.items() if tobj == inprogress._thread]
+                if not tids:
+                    # Thread not found.  It must already have finished.
+                    return
+                tid = tids[0]
 
             # We can't raise the exact exception into the thread, so just use the class.
-            res = ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, ctypes.py_object(exc.__class__))
+            res = ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(tid), ctypes.py_object(exc.__class__))
+            print tid, res
             if res == 0:
                 # Thread not found.  Must have terminated an instant ago.
                 return

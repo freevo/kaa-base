@@ -30,6 +30,7 @@ from __future__ import absolute_import
 __all__ = [ 'convert' ]
 
 # python imports
+import sys
 import pprint
 import os
 try:
@@ -45,12 +46,15 @@ except ImportError:
 from xml.dom import minidom
 
 def get_value(value, type):
-    if not value:
-        return eval('%s()' % type)
     if type:
         if type == 'bool':
             return {'1': True, 'true': True}.get(value.lower(), False)
-        return eval(type)(value)
+        if sys.hexversion >= 0x03000000:
+            if type in ('unicode'):
+                return str(value) if value else str()
+            elif type == 'bytes':
+                return bytes(value, 'ascii') if value else bytes()
+        return eval(type)(value) if value else eval(type)()
     if value.lower() == 'true':
         return True
     if value.lower() == 'false':

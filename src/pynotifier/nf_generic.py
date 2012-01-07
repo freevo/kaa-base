@@ -196,7 +196,7 @@ def step( sleep = True, external = True, simulate = False ):
 				sockets_ready = select( __sockets[ IO_READ ].keys(), __sockets[ IO_WRITE ].keys(),
 				                        __sockets[ IO_EXCEPT ].keys(), timeout / 1000.0 )
 			except select_error, e:
-				if e[ 0 ] != errno.EINTR:
+				if e.args[ 0 ] != errno.EINTR:
 					raise e
 		elif timeout:
 			time_sleep(timeout / 1000.0)

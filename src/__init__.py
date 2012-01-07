@@ -35,6 +35,7 @@ import zipimport
 # available immediately after importing kaa.
 from . import logger
 
+_object = object
 
 # Enable on-demand importing of all modules.  Improves speed of importing kaa
 # by almost 50x with warm cache (from 0.065s to 0.0015s) and 325x with cold
@@ -85,11 +86,11 @@ def _lazy_import(mod, names=None):
         if names:
             # from mod import <names>
             for name in names:
-                lazy = _LazyProxy(name, (__builtins__['object'],), {'_mod': mod, '_name': name, '_names': names})
+                lazy = _LazyProxy(name, (_object,), {'_mod': mod, '_name': name, '_names': names})
                 globals()[name] = lazy
         else:
             # import mod
-            globals()[mod] = _LazyProxy(mod, (__builtins__['object'],), {'_mod': mod})
+            globals()[mod] = _LazyProxy(mod, (_object,), {'_mod': mod})
     else:
         # No lazy importing, import everything immediately.
         if globals()['_activate']:
@@ -104,6 +105,8 @@ def _lazy_import(mod, names=None):
             globals()[mod] = omod
 
 
+# FIXME: can't LazyProxy exceptions because there's no way to implicitly import
+# during an except clause.  Need to move exceptions into a separate module.
 class _LazyProxy(type):
     """
     Metaclass used to construct individual proxy classes for all names within
@@ -152,10 +155,10 @@ class _LazyProxy(type):
         >>> kaa.Signal.MAX_CONNECTIONS = 10000
     """
     def __new__(cls, name, bases, dict):
-        if bases == (__builtins__['object'],):
+        if bases == (_object,):
             # called by _lazy_import(), create a new LazyProxy class for the
             # given module/name, which is defined in dict.
-            return type.__new__(cls, name, (__builtins__['object'],), dict)
+            return type.__new__(cls, name, (_object,), dict)
         else:
             # called when something tries to subclass a LazyProxy.  Replace all
             # LazyProxy bases with the actual object (importing as needed) and
@@ -283,6 +286,13 @@ class _LazyProxy(type):
     def __ge__(cls, other):
         return cls.__get() >= other
 
+    def __instancecheck__(cls, other):
+        return cls.__get().__instancecheck__(other)
+
+    def __subclasscheck__(cls, other):
+        return cls.__get().__subclasscheck__(other)
+
+
 # Version
 _lazy_import('version', ['__version__'])
 
@@ -395,7 +405,7 @@ class KaaLoader:
         return mod
         
 
-class KaaFinder(__builtins__['object']):
+class KaaFinder(_object):
     """
     Custom finder whose purposes is to intercept imports for kaa.foo, and,
     provided kaa.foo isn't a kaa sub-module (like kaa.beacon), attempt
@@ -467,7 +477,7 @@ sys.meta_path.append(KaaFinder())
 # Allow access to old Callback names, but warn.  This will go away the release
 # after next (probably 0.99.1).
 def rename(oldcls, newcls):
-    class Wrapper(__builtins__['object']):
+    class Wrapper(_object):
         def __new__(cls, *args, **kwargs):
             import logging
             import traceback

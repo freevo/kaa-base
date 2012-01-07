@@ -520,6 +520,9 @@ class InProgress(Signal, Object):
         # haven't gotten it by now, it's too late.
         if not isinstance(value, AsyncExceptionBase):
             value = AsyncException(value, stack)
+        if hasattr(value, 'with_traceback'):
+            # Remove traceback attached to exception objects in Python 3.
+            value = value.with_traceback(None)
         self._exception = value.__class__, value, None
 
         # cleanup

@@ -29,6 +29,7 @@ from __future__ import absolute_import
 __all__ = [ 'Element', 'ElementParser', 'pprint' ]
 
 # python imports
+import sys
 import os
 import codecs
 import xml.sax
@@ -43,7 +44,7 @@ except ImportError:
     from StringIO import StringIO
 
 # unicode helper functions
-from .strutils import unicode_to_str, str_to_unicode
+from .strutils import py3_b, py3_str
 
 class Element(object):
     """
@@ -188,10 +189,7 @@ class Element(object):
         for key, value in self._attr.items():
             if value is None:
                 continue
-            if isinstance(value, str):
-                value = str_to_unicode(value)
-            if not isinstance(value, unicode):
-                value = unicode(value)
+            value = py3_str(value)
             result += ' %s=%s' % (key, xml.sax.saxutils.quoteattr(value))
         if not self._children and not self._content:
             return result + '/>'
@@ -199,15 +197,24 @@ class Element(object):
         for child in self._children:
             if not isinstance(child, Element):
                 child = child.__xml__()
-            result += unicode(child)
+            result += py3_str(child)
         return result + xml.sax.saxutils.escape(self._content.strip()) + '</%s>' % self.tagname
+
 
     def __str__(self):
         """
         Convert the element into an XML string using the current
         string encoding.
         """
-        return unicode_to_str(unicode(self))
+        if sys.hexversion >= 0x03000000:
+            return self.__unicode__()
+        else:
+            return py3_b(self.__unicode__())
+
+
+    def __bytes__(self):
+        # Python 3+
+        return py3_b(self.__unicode__())
 
 
 class ElementParser(xml.sax.ContentHandler):

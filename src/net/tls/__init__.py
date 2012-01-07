@@ -29,20 +29,22 @@
 #
 # -----------------------------------------------------------------------------
 
-from common import *
+from __future__ import absolute_import
+from .common import *
+
 
 try:
-    from m2 import M2TLSSocket
+    from .m2 import M2TLSSocket
 except ImportError:
     M2TLSSocket = None
 
 try:
-    from tlslite import TLSAuthenticationError, TLSKey, TLSLiteConnection, TLSLiteSocket
+    from .tlslite import TLSAuthenticationError, TLSKey, TLSLiteConnection, TLSLiteSocket
 except ImportError:
     TLSLiteSocket = None
 
 try:
-    from gnutls import GNUTLSSocket
+    from .gnutls import GNUTLSSocket
 except ImportError:
     GNUTLSSocket = None
 

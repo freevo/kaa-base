@@ -38,7 +38,7 @@ import string
 
 # kaa imports
 import kaa
-from kaa import py3_b, py3_str
+from kaa.strutils import py3_b, bl, fsname
 try:
     # imports C module
     from . import _inotify
@@ -107,7 +107,7 @@ class INotify(kaa.Object):
         # processing a batch of events and we receive an event for a watch
         # we just removed.
         self._watches_recently_removed = []
-        self._read_buffer = py3_b('')
+        self._read_buffer = bl('')
         self._move_state = None  # For MOVED_FROM events
         self._moved_timer = kaa.WeakOneShotTimer(self._emit_last_move)
 
@@ -150,14 +150,14 @@ class INotify(kaa.Object):
         The total number of watches (across all INotify instances) is controlled
         by /proc/sys/fs/inotify/max_user_watches
         """
-        path = os.path.realpath(py3_b(path))
+        path = os.path.realpath(fsname(path))
         if path in self._watches_by_path:
             return self._watches_by_path[path][0]
 
         if mask == None:
             mask = INotify.WATCH_MASK
 
-        wd = _inotify.add_watch(self._fd, path, mask)
+        wd = _inotify.add_watch(self._fd, py3_b(path, fs=True), mask)
         if wd < 0:
             raise IOError('Failed to add watch on "%s"' % path)
 
@@ -176,7 +176,7 @@ class INotify(kaa.Object):
         :type path: str
         :returns: True if a matching monitor was removed, or False otherwise.
         """
-        path = os.path.realpath(py3_b(path))
+        path = os.path.realpath(fsname(path))
         if path not in self._watches_by_path:
             return False
 
@@ -197,7 +197,7 @@ class INotify(kaa.Object):
         :type path: str
         :returns: True if there is a matching monitor, or False otherwise.
         """
-        path = os.path.realpath(py3_b(path))
+        path = os.path.realpath(fsname(path))
         return path in self._watches_by_path
 
 
@@ -249,7 +249,7 @@ class INotify(kaa.Object):
 
             wd, mask, cookie, size = struct.unpack("IIII", self._read_buffer[0:event_len])
             if size:
-                name = self._read_buffer[event_len:event_len+size].rstrip('\0')
+                name = self._read_buffer[event_len:event_len+size].rstrip(bl('\0'))
             else:
                 name = None
 
@@ -264,7 +264,7 @@ class INotify(kaa.Object):
 
             path = self._watches[wd][1]
             if name:
-                path = os.path.join(path, name)
+                path = os.path.join(path, fsname(name))
 
             if self._move_state:
                 # Last event was a MOVED_FROM. So if this is a MOVED_TO and the

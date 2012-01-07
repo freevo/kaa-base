@@ -48,11 +48,11 @@ PyObject *init(PyObject *self, PyObject *args)
 
 PyObject *add_watch(PyObject *self, PyObject *args)
 {
-    int fd;
+    int fd, len;
     uint32_t mask;
     char *name;
 
-    if (!PyArg_ParseTuple(args, "isi", &fd, &name, &mask))
+    if (!PyArg_ParseTuple(args, "is#i", &fd, &name, &len, &mask))
         return NULL;
 
     return Py_BuildValue("i", inotify_add_watch(fd, name, mask));

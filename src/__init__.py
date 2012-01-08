@@ -59,12 +59,17 @@ def _activate():
         # Python 2.5 (all point releases) have a bug with listdir on POSIX
         # systems causing improper out of memory exceptions.  We replace the
         # standard os.listdir with a version from kaa._utils that doesn't have
-        # this bug.  Some distros will have patched their 2.5 packages, but
-        # since we can't discriminate those, we replace os.listdir regardless.
+        # this bug, if _utils is available (it is optional).  Some distros will
+        # have patched their 2.5 packages, but since we can't discriminate
+        # those, we replace os.listdir regardless.
         #
         # See http://bugs.python.org/issue1608818
-        from . import _utils
-        os.listdir = _utils.listdir
+        try:
+            from . import _utils
+        except ImportError:
+            pass
+        else:
+            os.listdir = _utils.listdir
 
     # Kill this function so it only gets invoked once.
     globals()['_activate'] = None

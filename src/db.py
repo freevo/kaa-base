@@ -411,7 +411,7 @@ else:
 
 
 try:
-    from . import _objectrow2
+    from . import _objectrow
 except ImportError:
     # Use the python-native ObjectRow
     ObjectRow = PyObjectRow

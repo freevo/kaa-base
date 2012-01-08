@@ -422,7 +422,6 @@ else:
     # pickles stored inside DB rows.
     _objectrow.dbunpickle = dbunpickle
 
-print 'Using ObjectRow %s' % ObjectRow
 
 # Register a handler for pickling ObjectRow objects.
 def _pickle_ObjectRow(o):

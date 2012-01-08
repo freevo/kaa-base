@@ -89,20 +89,12 @@ sys.modules['kaa'] = sys.modules['kaa.base'] = src
 # And now import it from the source tree.
 from kaa.distribution.core import Extension, setup
 
-shm_ext = Extension('kaa.base.shmmodule', ['src/extensions/shmmodule.c'])
-if not shm_ext.has_python_h():
-    print('ERROR: Python headers not found; please install python development package.')
-    sys.exit(1)
-
 extensions = []
-if platform.system() == 'Darwin':
-    print('- kaa.shm not supported on Darwin, not building')
-elif sys.hexversion < 0x03000000:
-    # shm not compatible with Python 3 (yet? maybe we should remove
-    # this module)
-    extensions.append(shm_ext)
 
 objectrow_ext = Extension('kaa.base._objectrow', ['src/extensions/objectrow.c'])
+if not objectrow_ext.has_python_h():
+    print('ERROR: Python headers not found; please install python development package.')
+    sys.exit(1)
 extensions.append(objectrow_ext)
 
 utils_ext = Extension('kaa.base._utils', ['src/extensions/utils.c'], config='src/extensions/config.h')

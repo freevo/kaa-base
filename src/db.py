@@ -53,9 +53,8 @@ except ImportError:
 # kaa base imports
 from .utils import property
 from .strutils import py3_str, BYTES_TYPE, UNICODE_TYPE
-from ._objectrow import ObjectRow
 from .timer import WeakOneShotTimer
-from . import main, _objectrow
+from . import main
 
 if sqlite.version < '2.1.0':
     raise ImportError('pysqlite 2.1.0 or higher required')
@@ -132,6 +131,203 @@ STOP_WORDS = (
 )
 
 
+class PyObjectRow(object):
+    """
+    ObjectRows are dictionary-like objects that represent an object in
+    the database.  They are used by pysqlite instead of tuples or indexes.
+
+    ObjectRows support on-demand unpickling of the internally stored pickle
+    which contains ATTR_SIMPLE attributes.
+
+    This is the native Python implementation of ObjectRow.  There is a faster
+    C implementation in the _objectrow extension.
+    """
+    # A dict containing per-query data: [refcount, idxmap, typemap, pickle_idx]
+    # This is constructed once for each query, and each row returned in the
+    # query references the same data.  Each ObjectRow instance adds to the
+    # refcount once initialized, and is decremented when the object is deleted.
+    # Once it reaches 0, the entry is removed from the dict.
+    queries = {}
+    # Use __slots__ as a minor optimization to improve object creation time.
+    __slots__ = ('_description', '_object_types', '_type_name', '_row', '_pickle',
+                '_idxmap', '_typemap', '_keys')
+    def __init__(self, cursor, row, pickle_dict=None):
+        # The following is done per row per query, so it should be as light as
+        # possible.
+        if pickle_dict:
+            # Created outside pysqlite, e.g. from Database.add()
+            self._pickle = pickle_dict
+            self._idxmap = None
+            return
+
+        if isinstance(cursor, tuple):
+            self._description, self._object_types = cursor
+        else:
+            self._description = cursor.description
+            self._object_types = cursor._db()._object_types
+
+        self._row = row
+        # _pickle: False == no pickle present; None == pickle present but
+        # empty; if a dict, is the unpickled dictionary; else it's a byte
+        # string containing the pickled data.
+        self._pickle = False
+        self._type_name = row[0]
+        try:
+            attrs = self._object_types[self._type_name][1]
+        except KeyError:
+            raise ValueError("Object type '%s' not defined." % self._type_name)
+
+        query_key = id(self._description)
+        if query_key in PyObjectRow.queries:
+            query_info = PyObjectRow.queries[query_key]
+            # Increase refcount to the query info
+            query_info[0] += 1
+            self._idxmap, self._typemap, pickle_idx = query_info[1:]
+            if pickle_idx != -1:
+                self._pickle = self._row[pickle_idx]
+            return
+
+        # Everything below this is done once per query, not per row, so
+        # performance isn't quite as critical.
+        idxmap = {} # attr_name -> (idx, pickled, named_ivtdx, type, flags)
+        pickle_idx = -1
+        for i in range(2, len(self._description)):
+            attr_name = self._description[i][0]
+            idxmap[attr_name] = i
+            if attr_name == 'pickle':
+                pickle_idx = i
+                self._pickle = self._row[i]
+
+        for attr_name, (attr_type, flags, ivtidx, split) in attrs.items():
+            idx = idxmap.get(attr_name, -1)
+            pickled = flags & ATTR_SIMPLE or (flags & ATTR_INDEXED_IGNORE_CASE == ATTR_INDEXED_IGNORE_CASE)
+            idxmap[attr_name] = idx, pickled, attr_name == ivtidx, attr_type, flags
+
+        # Construct dict mapping type id -> type name.  Essentially an
+        # inversion of _object_types
+        typemap = dict((v[0], k) for k, v in self._object_types.items())
+
+        self._idxmap = idxmap
+        self._typemap = typemap
+        PyObjectRow.queries[query_key] = [1, idxmap, typemap, pickle_idx]
+
+
+    def __del__(self):
+        query_key = id(self._description)
+        query_info = PyObjectRow.queries[query_key]
+        query_info[0] -= 1
+        if query_info[0] == 0:
+            # Refcount for this query info is 0, so remove from global queries
+            # dict.
+            del PyObjectRow.queries[query_key]
+
+
+    def __getitem__(self, key):
+        if self._idxmap is None:
+            # From Database.add(), work strictly from pickle
+            return self._pickle[key]
+        elif key == 'type':
+            return self._type_name
+        elif key == 'parent':
+            type_idx = self._idxmap.get('parent_type', [-1])[0]
+            id_idx = self._idxmap.get('parent_id', [-1])[0]
+            if type_idx == -1 or id_idx == -1:
+                raise KeyError('Parent attribute not available')
+            type_id = self._row[type_idx]
+            return self._typemap.get(type_id, type_id), self._row[id_idx]
+        elif key == '_row':
+            return self._row
+        elif isinstance(key, int):
+            return self._row[key]
+
+        attr = self._idxmap[key]
+        attr_idx = attr[0]
+        is_indexed_ignore_case = (attr[4] & ATTR_INDEXED_IGNORE_CASE == ATTR_INDEXED_IGNORE_CASE)
+        if attr_idx == -1:
+            # Attribute is not in the sql row
+            if attr[1] and self._pickle is None:
+                # Pickle is empty, which means this attribute was never
+                # assigned a value.  Return a default (empty list if attribute
+                # is named after an inverted index
+                return [] if attr[2] else None
+            elif not attr[1] or self._pickle is False:
+                # The requested attribute is not in the sqlite row, and neither is the pickle.
+                raise KeyError("ObjectRow does not have enough data to provide '%s'" % key)
+
+        if not attr[1]:
+            value = self._row[attr_idx]
+        elif attr_idx >= 0 and not self._pickle and is_indexed_ignore_case:
+            # Attribute is ATTR_INDEXED_IGNORE_CASE which means the
+            # authoritative source is in the pickle, but we don't have it.  So just
+            # return what we have.
+            value = self._row[attr_idx]
+        else:
+            if self._pickle and not isinstance(self._pickle, dict):
+                # We need to check the pickle but it's not unpickled, so do so now.
+                self._pickle = dbunpickle(self._pickle)
+            if is_indexed_ignore_case:
+                key = '__' + key
+            if key not in self._pickle:
+                return [] if attr[2] else None
+            else:
+                value = self._pickle[key]
+        
+        if sys.hexversion < 0x03000000 and (attr[3] == str or attr[3] == buffer):
+            # Python 2's pysqlite returns BLOBs as buffers.  If the attribute
+            # type is string or buffer (RAW_TYPE on Python 2), convert to string.
+            return str(value)
+        else:
+            return value
+
+
+    def keys(self):
+        if not self._idxmap:
+            # Ad hoc ObjectRow, proxy to pickle dict.
+            return self._pickle.keys()
+
+        if not hasattr(self, '_keys'):
+            self._keys = ['type']
+            for name, attr in self._idxmap.items():
+                if (attr[0] >= 0 or (attr[1] and self._pickle is not False)) and name != 'pickle':
+                    self._keys.append(name)
+            if 'parent_type' in self._idxmap and 'parent_id' in self._idxmap:
+                self._keys.append('parent')
+        return self._keys
+
+
+    def values(self):
+        if not self._idxmap:
+            # Ad hoc ObjectRow, proxy to pickle dict.
+            return self._pickle.values()
+        return [self[k] for k in self.keys()]
+
+
+    def items(self):
+        return zip(self.keys(), self.values())
+
+
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+
+    def has_key(self, key):
+        return key in self.keys()
+
+
+    def __iter__(self):
+        return iter(self.keys())
+
+
+    def __contains__(self, key):
+        if key == 'type' or (key == 'parent' and 'parent_id' in self._idxmap):
+            return True
+        else:
+            return key in self._idxmap
+
+    
 if sys.hexversion >= 0x03000000:
     RAW_TYPE = bytes
     PICKLE_PROTOCOL = 3
@@ -162,7 +358,7 @@ if sys.hexversion >= 0x03000000:
 
         def load_setitems(self):
             super(Proto2Unpickler, self).load_setitems()
-            d = self.stack[0]
+            d = self.stack[-1]
             for k, v in d.items():
                 if type(k) == bytes:
                     sk = str(k, self.encoding, self.errors)
@@ -214,10 +410,19 @@ else:
     copy_reg.pickle(buffer, _pickle_buffer, _unpickle_buffer)
 
 
-# Expose the custom unpickler to the _objectrow module so it can deal with
-# pickles stored inside DB rows.
-_objectrow.dbunpickle = dbunpickle
+try:
+    from . import _objectrow2
+except ImportError:
+    # Use the python-native ObjectRow
+    ObjectRow = PyObjectRow
+else:
+    # Use the faster C-based ObjectRow
+    ObjectRow = _objectrow.ObjectRow
+    # Expose the custom unpickler to the _objectrow module so it can deal with
+    # pickles stored inside DB rows.
+    _objectrow.dbunpickle = dbunpickle
 
+print 'Using ObjectRow %s' % ObjectRow
 
 # Register a handler for pickling ObjectRow objects.
 def _pickle_ObjectRow(o):
@@ -686,7 +891,6 @@ class Database(object):
                     # There is a new attribute specified for this type, or an
                     # existing one has changed.
                     new_attrs[attr_name] = attr_defn
-                    print 'CHANGE', type_name, attr_name, cur_type_attrs[attr_name], attr_defn
                     changed = True
                     if attr_flags & ATTR_SEARCHABLE:
                         # New attribute isn't simple, needs to alter table.

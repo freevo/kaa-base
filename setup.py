@@ -93,9 +93,7 @@ extensions = []
 
 objectrow_ext = Extension('kaa.base._objectrow', ['src/extensions/objectrow.c'])
 if not objectrow_ext.has_python_h():
-    print('ERROR: Python headers not found; please install python development package.')
-    sys.exit(1)
-extensions.append(objectrow_ext)
+    extensions.append(objectrow_ext)
 
 if sys.hexversion < 0x02060000:
     # Fixed os.listdir for Python 2.5.  This module is optional for Python 2.5

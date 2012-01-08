@@ -117,6 +117,8 @@ def coroutine(interval=0, policy=None, progress=False, group=None):
     :param group: Name of the group this coroutine shares its policy with.  For
                   example, multiple coroutines with POLICY_SYNCHRONIZED and the
                   same group name will all be synchronized against each other.
+                  Currently only methods within the same class may belong to
+                  the same group.
     :return: an :class:`~kaa.InProgress` object representing the coroutine.
 
     Possible policies are:

@@ -97,10 +97,13 @@ if not objectrow_ext.has_python_h():
     sys.exit(1)
 extensions.append(objectrow_ext)
 
-utils_ext = Extension('kaa.base._utils', ['src/extensions/utils.c'], config='src/extensions/config.h')
-extensions.append(utils_ext)
-if utils_ext.check_cc(['<sys/prctl.h>'], 'prctl(PR_SET_NAME, "x");'):
-    utils_ext.config('#define HAVE_PRCTL')
+if sys.hexversion < 0x02060000:
+    # Fixed os.listdir for Python 2.5.  This module is optional for Python 2.5
+    # (only installed if headers/libs are available) and not compiled for later
+    # versions.
+    utils_ext = Extension('kaa.base._utils', ['src/extensions/utils.c'])
+    if utils_ext.has_python_h():
+        extensions.append(utils_ext)
 
 if platform.system() == 'Linux':
     inotify_ext = Extension("kaa.base.inotify._inotify",

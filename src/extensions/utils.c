@@ -26,10 +26,6 @@
  */
 
 #include "Python.h"
-#include "config.h"
-#ifdef HAVE_PRCTL
-#include <sys/prctl.h>
-#endif
 
 /* Python 2.5 (all point releases) have a bug with listdir on POSIX systems.
  * We include the version from 2.6 here which is fixed.  See
@@ -39,35 +35,6 @@
 #   include <sys/types.h>
 #   include <dirent.h>
 #   define NAMLEN(dirent) strlen((dirent)->d_name)
-#endif // PY_VERSION_HEX < 0x02060000
-
-extern void Py_GetArgcArgv(int *argc, char ***argv);
-
-PyObject *set_process_name(PyObject *self, PyObject *args)
-{
-/* Python 3's Py_GetArgcArgv() does not return the original argv, but rather a
- * wchar_t copy of it, which means we can't use it.
- */
-#if PY_MAJOR_VERSION < 3
-#ifdef HAVE_PRCTL
-    int argc, limit;
-    char **argv, *name;
-
-    if (!PyArg_ParseTuple(args, "si", &name, &limit))
-        return NULL;
-
-    Py_GetArgcArgv(&argc, &argv);
-    memset(argv[0], 0, limit);
-    strncpy(argv[0], name, limit-1);
-
-    // Needed for killall
-    prctl(PR_SET_NAME, argv[0], 0, 0, 0);
-#endif
-#endif
-    Py_INCREF(Py_None);
-    return Py_None;
-}
-
 
 /* This code (until the #endif) stripped from Python 2.6
  * Modules/posixmodule.c:posix_listdir().  This code is therefore released
@@ -75,7 +42,6 @@ PyObject *set_process_name(PyObject *self, PyObject *args)
  * the Python Software Foundation.  (The PSF license is, to the best of my
  * Googling, compatible with the LGPL.)
  */
-#if PY_VERSION_HEX < 0x02060000
 static PyObject *
 posix_error_with_allocated_filename(char* name)
 {
@@ -165,7 +131,6 @@ PyObject *listdir(PyObject *self, PyObject *args)
 #endif // PY_VERSION_HEX < 0x02060000
 
 PyMethodDef utils_methods[] = {
-    {"set_process_name",  set_process_name, METH_VARARGS },
 #if PY_VERSION_HEX < 0x02060000
     {"listdir",  listdir, METH_VARARGS },
 #endif // PY_VERSION_HEX < 0x02060000

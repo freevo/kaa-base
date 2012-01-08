@@ -45,7 +45,6 @@ import ctypes, ctypes.util
 import socket
 from tempfile import mktemp
 
-from . import _utils
 from .weakref import weakref
 
 # get logging object
@@ -244,20 +243,43 @@ def set_running(name, modify = True):
     run.write(cmdline)
     run.close()
     if modify:
-        _utils.set_process_name(name, len(cmdline))
+        set_process_name(name)
 
 
 def set_process_name(name):
     """
     On Linux systems later than 2.6.9, this function sets the process name as it
-    appears in ps, and so that it can be found with killall.
+    appears in ps, and so that it can be found with killall(1) and pidof(8).
 
-    Note: name will be truncated to the cumulative length of the original
-    process name and all its arguments; once updated, passed arguments will no
-    longer be visible.
+    .. note::
+       name will be truncated to the cumulative length of the original process
+       name and all its arguments; once updated, passed arguments will no
+       longer be visible.
+
+       This function currently only works properly with Python 2.  With Python
+       3, the process will be found with killall(1), but ps(1) and pidof(8)
+       will not see the new name.
     """
-    cmdline = open('/proc/%s/cmdline' % os.getpid()).readline()
-    _utils.set_process_name(name, len(cmdline))
+    libc = ctypes.CDLL(ctypes.util.find_library("c"))
+    maxsize = len(open('/proc/%s/cmdline' % os.getpid()).readline())
+    name0 = name + '\x00'
+
+    # Python 3's Py_GetArgcArgv() does not return the original argv, but rather
+    # a wchar_t copy of it, which means we can't use it.
+    if sys.hexversion < 0x03000000:
+        c_char_pp = ctypes.POINTER(ctypes.c_char_p)
+        Py_GetArgcArgv = ctypes.pythonapi.Py_GetArgcArgv
+        Py_GetArgcArgv.restype = None
+        Py_GetArgcArgv.argtypes = [ctypes.POINTER(ctypes.c_int), ctypes.POINTER(c_char_pp)]
+
+        argc = ctypes.c_int(0)
+        argv = c_char_pp()
+        Py_GetArgcArgv(argc, argv)
+
+        ctypes.memset(argv.contents, 0, maxsize)
+        ctypes.memmove(argv.contents, name0, len(name0))
+
+    libc.prctl(ctypes.c_int(15), ctypes.c_char_p(name0), 0, 0, 0)  # 15 == PR_SET_NAME
 
 
 def get_num_cpus():
@@ -663,10 +685,10 @@ class DecoratorDataStore(object):
             # Data store requested for a specific method.  Python 2.5
             target = func.im_self
 
-        # This kludge compares the code object of newfunc (this wrapper) with the
-        # code object of the first argument's attribute of the function's name.  If
-        # they're the same, then we must be decorating a method, and we can attach
-        # the timer object to the instance instead of the function.
+        # This kludge compares the code object of newfunc with the code object
+        # of the first argument's attribute of the function's name.  If they're
+        # the same, then we must be decorating a method, and we can use the
+        # first argument (self) as the target.
         method = newfunc_args and getattr(newfunc_args[0], func.func_name, None)
         if method and newfunc.func_code == method.func_code:
             # Decorated function is a method, so store data in the instance.

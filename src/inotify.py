@@ -1,6 +1,6 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# inotify/__init__.py - Inotify interface
+# inotify.py - Inotify interface
 # -----------------------------------------------------------------------------
 # $Id$
 #
@@ -35,18 +35,15 @@ import select
 import errno
 import socket
 import string
+import ctypes, ctypes.util
 
 # kaa imports
 import kaa
 from kaa.strutils import py3_b, bl, fsname
-try:
-    # imports C module
-    from . import _inotify
-except ImportError:
-    _inotify = None
 
 # get logging object
 log = logging.getLogger('inotify')
+
 
 class INotify(kaa.Object):
     """
@@ -74,6 +71,32 @@ class INotify(kaa.Object):
             '''
     }
 
+    # INotify constants
+    ACCESS = 1
+    ALL_EVENTS = 4095
+    ATTRIB = 4
+    CLOSE = 24
+    CLOSE_NOWRITE = 16
+    CLOSE_WRITE = 8
+    CREATE = 256
+    DELETE = 512
+    DELETE_SELF = 1024
+    IGNORED = 32768
+    ISDIR = 1073741824
+    MODIFY = 2
+    MOVE = 192
+    MOVED_FROM = 64
+    MOVED_TO = 128
+    MOVE_SELF = 2048
+    ONESHOT = 2147483648
+    OPEN = 32
+    Q_OVERFLOW = 16384
+    UNMOUNT = 8192
+
+    WATCH_MASK = MODIFY | ATTRIB | DELETE | CREATE | DELETE_SELF | UNMOUNT | \
+                 MOVE | MOVE_SELF | MOVED_FROM | MOVED_TO
+    CHANGE     = MODIFY | ATTRIB
+
     @staticmethod
     def mask_to_string(mask):
         """
@@ -96,9 +119,19 @@ class INotify(kaa.Object):
 
     def __init__(self):
         super(INotify, self).__init__()
-        if not _inotify:
-            self._fd = -1
-            raise SystemError('INotify support not compiled.')
+        self._libc = ctypes.CDLL(ctypes.util.find_library("c"))
+        if self._libc.inotify_init:
+            # System libc supports INotify, so setup args/restypes for INotify calls.
+            self._libc.inotify_init.restype = ctypes.c_int
+            self._libc.inotify_init.argtypes = []
+            self._libc.inotify_add_watch.restype = ctypes.c_int
+            self._libc.inotify_add_watch.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_uint32]
+            self._libc.inotify_rm_watch.restype = ctypes.c_int
+            self._libc.inotify_rm_watch.argtypes = [ctypes.c_int, ctypes.c_int]
+        else:
+            # We could use syscall() as a fallback (which used to be the case
+            # when we used a C module instead of ctypes), but is it worth it?
+            raise OSError(errno.ENOSYS, 'INotify not available in system libc')
 
         self._watches = {}
         self._watches_by_path = {}
@@ -111,7 +144,7 @@ class INotify(kaa.Object):
         self._move_state = None  # For MOVED_FROM events
         self._moved_timer = kaa.WeakOneShotTimer(self._emit_last_move)
 
-        self._fd = _inotify.init()
+        self._fd = self._libc.inotify_init()
 
         if self._fd < 0:
             raise SystemError('INotify support not detected on this system.')
@@ -157,7 +190,7 @@ class INotify(kaa.Object):
         if mask == None:
             mask = INotify.WATCH_MASK
 
-        wd = _inotify.add_watch(self._fd, py3_b(path, fs=True), mask)
+        wd = self._libc.inotify_add_watch(self._fd, py3_b(path, fs=True), mask)
         if wd < 0:
             raise IOError('Failed to add watch on "%s"' % path)
 
@@ -181,7 +214,7 @@ class INotify(kaa.Object):
             return False
 
         wd = self._watches_by_path[path][1]
-        _inotify.rm_watch(self._fd, wd)
+        self._libc.inotify_rm_watch(self._fd, wd)
         del self._watches[wd]
         del self._watches_by_path[path]
         self._watches_recently_removed.append(wd)
@@ -310,18 +343,3 @@ class INotify(kaa.Object):
             # We've processed all pending inotify events.  We can reset the
             # recently removed watches list.
             self._watches_recently_removed = []
-
-
-if _inotify:
-    # Copy constants from _inotify to INotify
-    for attr in dir(_inotify):
-        if attr[0].isupper():
-            setattr(INotify, attr, getattr(_inotify, attr))
-
-    INotify.WATCH_MASK = INotify.MODIFY | INotify.ATTRIB | INotify.DELETE | \
-                         INotify.CREATE | INotify.DELETE_SELF | \
-                         INotify.UNMOUNT | INotify.MOVE | INotify.MOVE_SELF | \
-                         INotify.MOVED_FROM | INotify.MOVED_TO
-
-    INotify.CHANGE     = INotify.MODIFY | INotify.ATTRIB
-

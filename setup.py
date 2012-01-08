@@ -105,27 +105,6 @@ if sys.hexversion < 0x02060000:
     if utils_ext.has_python_h():
         extensions.append(utils_ext)
 
-if platform.system() == 'Linux':
-    inotify_ext = Extension("kaa.base.inotify._inotify",
-                            ["src/extensions/inotify/inotify.c"],
-                            config='src/extensions/inotify/config.h')
-    
-
-    if not inotify_ext.check_cc(["<sys/inotify.h>"], "inotify_init();"):
-        if not inotify_ext.check_cc(["<sys/syscall.h>"], "syscall(0);"):
-            print('- inotify not enabled; are system headers not installed?')
-        else:
-            print('+ inotify not supported in glibc; no problem, using built-in support instead.')
-            inotify_ext.config("#define USE_FALLBACK")
-            extensions.append(inotify_ext)
-    else:
-        print('+ inotify supported by glibc; good.')
-        extensions.append(inotify_ext)
-
-else:
-    print('- Linux-specific features not being built (inotify, set_process_name)')
-
-
 setup(
     module = 'base',
     version = '0.99.2',

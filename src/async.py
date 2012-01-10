@@ -272,6 +272,10 @@ class InProgress(Signal, Object):
             '''
     }
 
+    # Class-wide lock for the rarely-used finished event.  This is a small
+    # optimization, saving about 7% of total instance creation time.  See
+    # _finished_event_poke() for more details.  
+    _finished_event_lock = threading.Lock()
 
     def __init__(self, abortable=False, frame=0):
         """
@@ -282,15 +286,22 @@ class InProgress(Signal, Object):
         super(InProgress, self).__init__()
         self._exception_signal = Signal()
         self._finished = False
-        self._finished_event = threading.Event()
+        self._finished_event = None
         self._exception = None
         self._unhandled_exception = None
         # TODO: make progress a property so we can document it.
         self.progress = None
         self.abortable = abortable
 
-        # Stack frame for the caller who is creating us, for debugging.
-        self._stack = traceback.extract_stack()[:frame-1]
+        # If debugging is enabled, get the stack frame for the caller who is
+        # creating us.  We only do this for DEBUG or more verbose because it
+        # involves a slew of stat() calls and other overhead.
+        # XXX: getEffectiveLevel() involves walking up the logger hierarchy
+        # and is another area of optimization.
+        if log.getEffectiveLevel() <= logging.DEBUG:
+            self._stack = traceback.extract_stack()[:frame-1]
+        else:
+            self._stack = None
         self._name = None
 
 
@@ -300,11 +311,11 @@ class InProgress(Signal, Object):
             # use a more intelligent heuristic to determine IP owner.
             if self._stack:
                 frame = self._stack[-min(len(self._stack), 2)]
-                self._name = 'owner=%s:%d:%s()' % frame[:3]
+                self._name = ', owner=%s:%d:%s()' % frame[:3]
             else:
-                self._name = 'owner=unknown'
+                self._name = ''
         finished = 'finished' if self.finished else 'not finished'
-        return '<%s object (%s) at 0x%08x, %s>' % (self.__class__.__name__, finished, id(self), self._name)
+        return '<%s object (%s) at 0x%08x%s>' % (self.__class__.__name__, finished, id(self), self._name)
 
 
     def __inprogress__(self):
@@ -393,6 +404,32 @@ class InProgress(Signal, Object):
         self._abortable = abortable
 
 
+    def _finished_event_poke(self, **kwargs):
+        """
+        The finished event is used only when the main loop is currently running
+        and wait() is called in a different thread than the main loop.
+
+        This function provides an interface for a thread to create the finished
+        event on-demand before waiting on it, or for finish() and throw() to
+        test if the finished event exists before setting it.
+
+        Because we're doing a test-and-create we need a mutex, and because this
+        is not a common operation, we avoid the (roughly 7%) overhead of
+        a per-instance lock.  It means that all instances will synchronize on
+        this mutex but because it's so rarely used I doubt there will be any
+        contention on the lock.
+        """
+        if kwargs.get('set'):
+            with self._finished_event_lock:
+                if self._finished_event:
+                    self._finished_event.set()
+        elif 'wait' in kwargs:
+            with self._finished_event_lock:
+                if not self._finished_event:
+                    self._finished_event = threading.Event()
+            self._finished_event.wait(kwargs['wait'])
+
+
     def finish(self, result):
         """
         This method should be called when the owner (creator) of the InProgress is
@@ -422,7 +459,8 @@ class InProgress(Signal, Object):
         self._result = result
         self._exception = None
         # Wake any threads waiting on us
-        self._finished_event.set()
+        self._finished_event_poke(set=True)
+
         # emit signal
         self.emit_when_handled(result)
         # cleanup
@@ -483,7 +521,7 @@ class InProgress(Signal, Object):
         # the traceback object, so any threads that access the result property
         # between now and the end of this function will have an opportunity to
         # get the live traceback.
-        self._finished_event.set()
+        self._finished_event_poke(set=True)
 
         if self._exception_signal.count() == 0:
             # There are no exception handlers, so we know we will end up
@@ -562,7 +600,7 @@ class InProgress(Signal, Object):
                              (cls.__name__, trace))
             return
 
-        if log.level <= logging.INFO:
+        if log.getEffectiveLevel() <= logging.DEBUG:
             # Asynchronous exceptions create a bit of a problem in that while you
             # know where the exception came from, you don't easily know where it
             # was going.  Here we dump the stack obtained in the constructor,
@@ -717,11 +755,11 @@ class InProgress(Signal, Object):
                 main.loop(lambda: not self.finished, timeout)
             except RuntimeError:
                 # oops, there is something running, wait
-                self._finished_event.wait(timeout)
+                self._finished_event_poke(wait=timeout)
         else:
             # We're waiting in some other thread, so wait for some other
             # thread to wake us up.
-            self._finished_event.wait(timeout)
+            self._finished_event_poke(wait=timeout)
 
         if not self.finished:
             self.disconnect(dummy)

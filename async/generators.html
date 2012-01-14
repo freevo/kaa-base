@@ -1,0 +1,162 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Generators &mdash; kaa.base v0.99.2 documentation</title>
+    <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.99.2',
+        COLLAPSE_MODINDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="kaa.base v0.99.2 documentation" href="../index.html" />
+    <link rel="next" title="I/O Channels" href="../core/io.html" />
+    <link rel="prev" title="Thread Support" href="threads.html" />
+    <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../core/io.html" title="I/O Channels"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="threads.html" title="Thread Support"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="generators">
+<span id="id1"></span><h1>Generators<a class="headerlink" href="#generators" title="Permalink to this headline">¶</a></h1>
+<p>Write me.</p>
+<dl class="function">
+<dt id="kaa.generator">
+<tt class="descclassname">kaa.</tt><tt class="descname">generator</tt><big>(</big><em>generic=False</em><big>)</big><a class="headerlink" href="#kaa.generator" title="Permalink to this definition">¶</a></dt>
+<dd><p>This decorator is used to construct asynchronous generators, to be used
+in combination with functions that return InProgress objects (such as
+those functions decorated with &#64;:func:<cite>kaa.coroutine</cite> or &#64;:func:<cite>kaa.threaded</cite>).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>generic</em> &#8211; if True, a <a title="kaa.Generator" class="reference internal" href="#kaa.Generator"><tt class="xref docutils literal"><span class="pre">Generator</span></tt></a> object is passed as the 
+first argument to the decorated function.  This can be used
+for functions which have not been previously decoratored
+with a supported decorator (such as &#64;coroutine or &#64;threaded).</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<p><dl class="class">
+<dt id="kaa.Generator">
+<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">Generator</tt><a class="headerlink" href="#kaa.Generator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generator for InProgress objects</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal current">kaa.Generator</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.Generator.finish" class="reference internal" href="#kaa.Generator.finish"><tt class="xref docutils literal"><span class="pre">finish()</span></tt></a></th><td class="desc">Finish the generator, the result will be ignored</td></tr>
+<tr><th><a title="kaa.Generator.send" class="reference internal" href="#kaa.Generator.send"><tt class="xref docutils literal"><span class="pre">send()</span></tt></a></th><td class="desc">Send a new value (producer)</td></tr>
+<tr><th><a title="kaa.Generator.throw" class="reference internal" href="#kaa.Generator.throw"><tt class="xref docutils literal"><span class="pre">throw()</span></tt></a></th><td class="desc">Throw an error, this will stop the generator</td></tr>
+</table>
+
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.Generator.finish">
+<tt class="descname">finish</tt><big>(</big><em>result</em><big>)</big><a class="headerlink" href="#kaa.Generator.finish" title="Permalink to this definition">¶</a></dt>
+<dd>Finish the generator, the result will be ignored</dd></dl>
+
+<dl class="method">
+<dt id="kaa.Generator.send">
+<tt class="descname">send</tt><big>(</big><em>result</em>, <em>exception=False</em><big>)</big><a class="headerlink" href="#kaa.Generator.send" title="Permalink to this definition">¶</a></dt>
+<dd>Send a new value (producer)</dd></dl>
+
+<dl class="method">
+<dt id="kaa.Generator.throw">
+<tt class="descname">throw</tt><big>(</big><em>type</em>, <em>value</em>, <em>tb</em><big>)</big><a class="headerlink" href="#kaa.Generator.throw" title="Permalink to this definition">¶</a></dt>
+<dd>Throw an error, this will stop the generator</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <h4>Previous topic</h4>
+            <p class="topless"><a href="threads.html"
+                                  title="previous chapter">Thread Support</a></p>
+            <h4>Next topic</h4>
+            <p class="topless"><a href="../core/io.html"
+                                  title="next chapter">I/O Channels</a></p>
+            <h3>This Page</h3>
+            <ul class="this-page-menu">
+              <li><a href="../_sources/async/generators.txt"
+                     rel="nofollow">Show Source</a></li>
+            </ul>
+          <div id="searchbox" style="display: none">
+            <h3>Quick search</h3>
+              <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" size="18" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+              </form>
+              <p class="searchtip" style="font-size: 90%">
+              Enter search terms or a module, class or function name.
+              </p>
+          </div>
+          <script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../core/io.html" title="I/O Channels"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="threads.html" title="Thread Support"
+             >previous</a> |</li>
+        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on Jan 14, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+    </div>
+  </body>
+</html>

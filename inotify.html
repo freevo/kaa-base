@@ -1,0 +1,257 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>INotify &mdash; kaa.base v0.99.2 documentation</title>
+    <link rel="stylesheet" href="_static/kaa.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '#',
+        VERSION:     '0.99.2',
+        COLLAPSE_MODINDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="kaa.base v0.99.2 documentation" href="index.html" />
+    <link rel="next" title="Utility Functions" href="utils.html" />
+    <link rel="prev" title="Object Database" href="db.html" />
+    <!-- link rel="stylesheet" href="_static/kaa.css" type="text/css" /-->
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="utils.html" title="Utility Functions"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="db.html" title="Object Database"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="inotify">
+<h1>INotify<a class="headerlink" href="#inotify" title="Permalink to this headline">¶</a></h1>
+<p><dl class="class">
+<dt id="kaa.inotify.INotify">
+<em class="property">class </em><tt class="descclassname">kaa.inotify.</tt><tt class="descname">INotify</tt><a class="headerlink" href="#kaa.inotify.INotify" title="Permalink to this definition">¶</a></dt>
+<dd><p>Monitor files and directories, invoking callbacks when changes occur.</p>
+<p>Multiple instances of this class can be created, but note that there is
+a per-user limit of the number of INotify instances allowed, which is
+controlled by /proc/sys/fs/inotify/max_user_instances</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <tt class="xref docutils literal current">kaa.inotify.INotify</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.inotify.INotify.get_watches" class="reference internal" href="#kaa.inotify.INotify.get_watches"><tt class="xref docutils literal"><span class="pre">get_watches()</span></tt></a></th><td class="desc">Returns a list of all paths monitored by the object.</td></tr>
+<tr><th><a title="kaa.inotify.INotify.has_watch" class="reference internal" href="#kaa.inotify.INotify.has_watch"><tt class="xref docutils literal"><span class="pre">has_watch()</span></tt></a></th><td class="desc">Determine if the given path is currently watched by the INotify object.</td></tr>
+<tr><th><a title="kaa.inotify.INotify.ignore" class="reference internal" href="#kaa.inotify.INotify.ignore"><tt class="xref docutils literal"><span class="pre">ignore()</span></tt></a></th><td class="desc">Removes a watch on the given path.</td></tr>
+<tr><th><a title="kaa.inotify.INotify.mask_to_string" class="reference internal" href="#kaa.inotify.INotify.mask_to_string"><tt class="xref docutils literal"><span class="pre">mask_to_string()</span></tt></a></th><td class="desc">Converts a bitmask of events to a human-readable string.</td></tr>
+<tr><th><a title="kaa.inotify.INotify.watch" class="reference internal" href="#kaa.inotify.INotify.watch"><tt class="xref docutils literal"><span class="pre">watch()</span></tt></a></th><td class="desc">Begin monitoring a file or directory for specific events.</td></tr>
+</table>
+<div class="heading">Properties</div><div class="nomembers">This class has no properties.</div><div class="heading">Signals</div>
+<table>
+<tr><th><a title="kaa.inotify.INotify.signals.event" class="reference internal" href="#kaa.inotify.INotify.signals.event"><tt class="xref docutils literal"><span class="pre">event</span></tt></a></th><td class="desc">Emitted when an event occurs on any file or directory currently
+being monitored by this INotify instance.</td></tr>
+</table>
+
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.inotify.INotify.get_watches">
+<tt class="descname">get_watches</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.inotify.INotify.get_watches" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a list of all paths monitored by the object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">list of strings</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.inotify.INotify.has_watch">
+<tt class="descname">has_watch</tt><big>(</big><em>path</em><big>)</big><a class="headerlink" href="#kaa.inotify.INotify.has_watch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine if the given path is currently watched by the INotify object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>path</em> (str) &#8211; the path that had been previously passed to 
+<tt class="xref docutils literal"><span class="pre">watch()</span></tt></td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">True if there is a matching monitor, or False otherwise.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.inotify.INotify.ignore">
+<tt class="descname">ignore</tt><big>(</big><em>path</em><big>)</big><a class="headerlink" href="#kaa.inotify.INotify.ignore" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes a watch on the given path.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>path</em> (str) &#8211; the path that had been previously passed to 
+<tt class="xref docutils literal"><span class="pre">watch()</span></tt></td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">True if a matching monitor was removed, or False otherwise.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="kaa.inotify.INotify.mask_to_string">
+<em class="property">static </em><tt class="descname">mask_to_string</tt><big>(</big><em>mask</em><big>)</big><a class="headerlink" href="#kaa.inotify.INotify.mask_to_string" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts a bitmask of events to a human-readable string.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>mask</em> (int) &#8211; the bitmask of events</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">a string in the form EVENT1 | EVENT2 | EVENT3 ...</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.inotify.INotify.watch">
+<tt class="descname">watch</tt><big>(</big><em>path</em>, <em>mask=None</em><big>)</big><a class="headerlink" href="#kaa.inotify.INotify.watch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Begin monitoring a file or directory for specific events.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><em>path</em> (str) &#8211; the full path to the file or directory to be monitored</li>
+<li><em>mask</em> (int) &#8211; a bitmask of events for which to notify, or None
+to use the default mask (see below).</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><a title="kaa.Signal" class="reference external" href="core/signals.html#kaa.Signal"><tt class="xref docutils literal"><span class="pre">Signal</span></tt></a> object that is emitted when an event occurs
+on <tt class="docutils literal"><span class="pre">path</span></tt>.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>The default mask is anything that causes a change (new file, deleted
+file, modified file, or attribute change on the file).</p>
+<p>Callbacks connected to the returned signal are invoked with the same
+arguments as the <tt class="xref docutils literal"><span class="pre">event</span></tt> signal.</p>
+<p>The total number of watches (across all INotify instances) is controlled
+by /proc/sys/fs/inotify/max_user_watches</p>
+</dd></dl>
+
+<h4>Signals</h4><dl class="attribute">
+<dt id="kaa.inotify.INotify.signals.event">
+<tt class="descname">event</tt><a class="headerlink" href="#kaa.inotify.INotify.signals.event" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted when an event occurs on any file or directory currently
+being monitored by this INotify instance.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback(mask, filename, target)</tt></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>mask</em> (int) &#8211; a bitmask of events</li>
+<li><em>source</em> &#8211; the filename the event applies to</li>
+<li><em>target</em> &#8211; if the mask contains both MOVED_TO | MOVED_FROM,
+filename was renamed to target.  Otherwise,
+target is None.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <h4>Previous topic</h4>
+            <p class="topless"><a href="db.html"
+                                  title="previous chapter">Object Database</a></p>
+            <h4>Next topic</h4>
+            <p class="topless"><a href="utils.html"
+                                  title="next chapter">Utility Functions</a></p>
+            <h3>This Page</h3>
+            <ul class="this-page-menu">
+              <li><a href="_sources/inotify.txt"
+                     rel="nofollow">Show Source</a></li>
+            </ul>
+          <div id="searchbox" style="display: none">
+            <h3>Quick search</h3>
+              <form class="search" action="search.html" method="get">
+                <input type="text" name="q" size="18" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+              </form>
+              <p class="searchtip" style="font-size: 90%">
+              Enter search terms or a module, class or function name.
+              </p>
+          </div>
+          <script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="utils.html" title="Utility Functions"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="db.html" title="Object Database"
+             >previous</a> |</li>
+        <li><a href="index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on Jan 14, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+    </div>
+  </body>
+</html>

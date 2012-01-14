@@ -1,0 +1,509 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Configuration Files &mdash; kaa.base v0.99.2 documentation</title>
+    <link rel="stylesheet" href="_static/kaa.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '#',
+        VERSION:     '0.99.2',
+        COLLAPSE_MODINDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="kaa.base v0.99.2 documentation" href="index.html" />
+    <link rel="next" title="Object Database" href="db.html" />
+    <link rel="prev" title="Remote Procedure Calls with kaa.rpc" href="rpc.html" />
+    <!-- link rel="stylesheet" href="_static/kaa.css" type="text/css" /-->
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="db.html" title="Object Database"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="rpc.html" title="Remote Procedure Calls with kaa.rpc"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="configuration-files">
+<h1>Configuration Files<a class="headerlink" href="#configuration-files" title="Permalink to this headline">¶</a></h1>
+<p>Write me.</p>
+<div class="section" id="module-functions">
+<h2>Module Functions<a class="headerlink" href="#module-functions" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="kaa.config.set_default">
+<tt class="descclassname">kaa.config.</tt><tt class="descname">set_default</tt><big>(</big><em>var</em>, <em>value</em><big>)</big><a class="headerlink" href="#kaa.config.set_default" title="Permalink to this definition">¶</a></dt>
+<dd>Set default value for the given scalar config variable.</dd></dl>
+
+<dl class="function">
+<dt id="kaa.config.get_default">
+<tt class="descclassname">kaa.config.</tt><tt class="descname">get_default</tt><big>(</big><em>var</em><big>)</big><a class="headerlink" href="#kaa.config.get_default" title="Permalink to this definition">¶</a></dt>
+<dd>Returns the default value for the given scalar config variable.</dd></dl>
+
+<dl class="function">
+<dt id="kaa.config.get_description">
+<tt class="descclassname">kaa.config.</tt><tt class="descname">get_description</tt><big>(</big><em>var</em><big>)</big><a class="headerlink" href="#kaa.config.get_description" title="Permalink to this definition">¶</a></dt>
+<dd>Get the description for the given config variable or group.</dd></dl>
+
+<dl class="function">
+<dt id="kaa.config.get_type">
+<tt class="descclassname">kaa.config.</tt><tt class="descname">get_type</tt><big>(</big><em>var</em><big>)</big><a class="headerlink" href="#kaa.config.get_type" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the type of the given config variable.</p>
+<p>If the config variable is a scalar, non-enumerated type, then the return
+value will be the corresponding python type (int, str, unicode, float, etc.)</p>
+<p>If the variable is a scalar enumerated type, the return value will be a
+tuple of possible values for that variable.</p>
+<p>For non-scalar types, the return value will be one of <a title="kaa.config.List" class="reference internal" href="#kaa.config.List"><tt class="xref docutils literal"><span class="pre">List</span></tt></a>,
+<a title="kaa.config.Dict" class="reference internal" href="#kaa.config.Dict"><tt class="xref docutils literal"><span class="pre">Dict</span></tt></a>, or <a title="kaa.config.Group" class="reference internal" href="#kaa.config.Group"><tt class="xref docutils literal"><span class="pre">Group</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="kaa.config.get_schema">
+<tt class="descclassname">kaa.config.</tt><tt class="descname">get_schema</tt><big>(</big><em>var</em><big>)</big><a class="headerlink" href="#kaa.config.get_schema" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the schema for a container variable (List or Dict), or None for
+scalar variables.</p>
+<p>The schema is another config object (<a title="kaa.config.Var" class="reference internal" href="#kaa.config.Var"><tt class="xref docutils literal"><span class="pre">Var</span></tt></a>,
+<a title="kaa.config.List" class="reference internal" href="#kaa.config.List"><tt class="xref docutils literal"><span class="pre">List</span></tt></a>, <a title="kaa.config.Dict" class="reference internal" href="#kaa.config.Dict"><tt class="xref docutils literal"><span class="pre">Dict</span></tt></a>, or
+<a title="kaa.config.Group" class="reference internal" href="#kaa.config.Group"><tt class="xref docutils literal"><span class="pre">Group</span></tt></a>).</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">kaa</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_description</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">movies</span><span class="p">)</span>
+<span class="go">u&#39;Your favorite movies.&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">schema</span> <span class="o">=</span> <span class="n">kaa</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_schema</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">movies</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">kaa</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_description</span><span class="p">(</span><span class="n">schema</span><span class="p">)</span>
+<span class="go">u&#39;A movie name.&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">kaa</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_type</span><span class="p">(</span><span class="n">schema</span><span class="p">)</span>
+<span class="go">&lt;type &#39;str&#39;&gt;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="kaa.config.get_config">
+<tt class="descclassname">kaa.config.</tt><tt class="descname">get_config</tt><big>(</big><em>filename</em>, <em>module=None</em><big>)</big><a class="headerlink" href="#kaa.config.get_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a Config object representing the config file provided in
+&#8216;filenane&#8217;.  If module is None, the specified config file must have the
+module specified (in the &#8220;-<em>- module: ... -</em>-&#8221; metadata), otherwise the
+supplied module (string) is used.  The module must be importable.</p>
+<p>If the config module cannot be determined and one is not specified,
+will raise ValueError.  If import fails, will raise ImportError.
+Otherwise will return the Config object.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="config-objects">
+<h2>Config Objects<a class="headerlink" href="#config-objects" title="Permalink to this headline">¶</a></h2>
+<p><dl class="class">
+<dt id="kaa.config.Base">
+<em class="property">class </em><tt class="descclassname">kaa.config.</tt><tt class="descname">Base</tt><big>(</big><em>name=''</em>, <em>desc=u''</em>, <em>default=None</em><big>)</big><a class="headerlink" href="#kaa.config.Base" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base class for all config objects.</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal current">kaa.config.Base</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.config.Base.add_monitor" class="reference internal" href="#kaa.config.Base.add_monitor"><tt class="xref docutils literal"><span class="pre">add_monitor()</span></tt></a></th><td class="desc"></td></tr>
+<tr><th><a title="kaa.config.Base.copy" class="reference internal" href="#kaa.config.Base.copy"><tt class="xref docutils literal"><span class="pre">copy()</span></tt></a></th><td class="desc">Returns a deep-copy of the object.  Monitor callbacks are not copied.</td></tr>
+<tr><th><a title="kaa.config.Base.remove_monitor" class="reference internal" href="#kaa.config.Base.remove_monitor"><tt class="xref docutils literal"><span class="pre">remove_monitor()</span></tt></a></th><td class="desc"></td></tr>
+</table>
+<div class="heading">Properties</div>
+<table>
+<tr><th><a title="kaa.config.Base.parent" class="reference internal" href="#kaa.config.Base.parent"><tt class="xref docutils literal"><span class="pre">parent</span></tt></a></th><td>read-only</td><td class="desc"></td></tr>
+</table>
+<div class="heading">Signals</div><div class="nomembers">This class has no signals.</div>
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.config.Base.add_monitor">
+<tt class="descname">add_monitor</tt><big>(</big><em>callback</em><big>)</big><a class="headerlink" href="#kaa.config.Base.add_monitor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kaa.config.Base.copy">
+<tt class="descname">copy</tt><big>(</big><em>copy_on_write=False</em><big>)</big><a class="headerlink" href="#kaa.config.Base.copy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a deep-copy of the object.  Monitor callbacks are not copied.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>copy_on_write</em> (bool) &#8211; if False, values are copied as well, so that if the
+original is modified, the copy will retain the old
+value.  If True, fetching values in the copy will
+fetch the original&#8217;s current value, until and unless
+the copy&#8217;s value has been modified.</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">a new cloned instance of the same type.</td>
+</tr>
+</tbody>
+</table>
+<p>Note that only values may be copy-on-write.  Any changes to the original&#8217;s
+schema (including type information and defaults) will not be reflected in
+the copy.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.config.Base.remove_monitor">
+<tt class="descname">remove_monitor</tt><big>(</big><em>callback</em><big>)</big><a class="headerlink" href="#kaa.config.Base.remove_monitor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<h4>Properties</h4><dl class="attribute">
+<dt id="kaa.config.Base.parent">
+<tt class="descname">parent</tt><a class="headerlink" href="#kaa.config.Base.parent" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+<p><dl class="class">
+<dt id="kaa.config.Var">
+<em class="property">class </em><tt class="descclassname">kaa.config.</tt><tt class="descname">Var</tt><big>(</big><em>name=''</em>, <em>type=''</em>, <em>desc=u''</em>, <em>default=None</em><big>)</big><a class="headerlink" href="#kaa.config.Var" title="Permalink to this definition">¶</a></dt>
+<dd><p>A config variable that represents some scalar value such as int, str,
+unicode, or bool.</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.config.Base" class="reference internal" href="#kaa.config.Base"><tt class="xref docutils literal"><span class="pre">kaa.config.Base</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal current">kaa.config.Var</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.config.Var.copy" class="reference internal" href="#kaa.config.Var.copy"><tt class="xref docutils literal"><span class="pre">copy()</span></tt></a></th><td class="desc"></td></tr>
+</table>
+<div class="heading">Properties</div><div class="nomembers">This class has no properties.</div><div class="heading">Signals</div><div class="nomembers">This class has no signals.</div>
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.config.Var.copy">
+<tt class="descname">copy</tt><big>(</big><em>copy_on_write=False</em><big>)</big><a class="headerlink" href="#kaa.config.Var.copy" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+<p><dl class="class">
+<dt id="kaa.config.List">
+<em class="property">class </em><tt class="descclassname">kaa.config.</tt><tt class="descname">List</tt><big>(</big><em>schema</em>, <em>desc=u''</em>, <em>name=''</em>, <em>defaults=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#kaa.config.List" title="Permalink to this definition">¶</a></dt>
+<dd><p>A config list.</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.config.Base" class="reference internal" href="#kaa.config.Base"><tt class="xref docutils literal"><span class="pre">kaa.config.Base</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.config.Container</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.config.List</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.config.List.append" class="reference internal" href="#kaa.config.List.append"><tt class="xref docutils literal"><span class="pre">append()</span></tt></a></th><td class="desc"></td></tr>
+<tr><th><a title="kaa.config.List.extend" class="reference internal" href="#kaa.config.List.extend"><tt class="xref docutils literal"><span class="pre">extend()</span></tt></a></th><td class="desc"></td></tr>
+<tr><th><a title="kaa.config.List.insert" class="reference internal" href="#kaa.config.List.insert"><tt class="xref docutils literal"><span class="pre">insert()</span></tt></a></th><td class="desc"></td></tr>
+<tr><th><a title="kaa.config.List.pop" class="reference internal" href="#kaa.config.List.pop"><tt class="xref docutils literal"><span class="pre">pop()</span></tt></a></th><td class="desc"></td></tr>
+<tr><th><a title="kaa.config.List.remove" class="reference internal" href="#kaa.config.List.remove"><tt class="xref docutils literal"><span class="pre">remove()</span></tt></a></th><td class="desc"></td></tr>
+</table>
+<div class="heading">Properties</div><div class="nomembers">This class has no properties.</div><div class="heading">Signals</div><div class="nomembers">This class has no signals.</div>
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.config.List.append">
+<tt class="descname">append</tt><big>(</big><em>val</em><big>)</big><a class="headerlink" href="#kaa.config.List.append" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kaa.config.List.extend">
+<tt class="descname">extend</tt><big>(</big><em>vals</em><big>)</big><a class="headerlink" href="#kaa.config.List.extend" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kaa.config.List.insert">
+<tt class="descname">insert</tt><big>(</big><em>idx</em>, <em>val</em><big>)</big><a class="headerlink" href="#kaa.config.List.insert" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kaa.config.List.pop">
+<tt class="descname">pop</tt><big>(</big><em>idx=-1</em><big>)</big><a class="headerlink" href="#kaa.config.List.pop" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kaa.config.List.remove">
+<tt class="descname">remove</tt><big>(</big><em>val</em><big>)</big><a class="headerlink" href="#kaa.config.List.remove" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+<p><dl class="class">
+<dt id="kaa.config.Dict">
+<em class="property">class </em><tt class="descclassname">kaa.config.</tt><tt class="descname">Dict</tt><big>(</big><em>schema</em>, <em>desc=u''</em>, <em>name=''</em>, <em>type=&lt;type 'unicode'&gt;</em>, <em>defaults={}</em><big>)</big><a class="headerlink" href="#kaa.config.Dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>A config dict.</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.config.Base" class="reference internal" href="#kaa.config.Base"><tt class="xref docutils literal"><span class="pre">kaa.config.Base</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.config.Container</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.config.Dict</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.config.Dict.get" class="reference internal" href="#kaa.config.Dict.get"><tt class="xref docutils literal"><span class="pre">get()</span></tt></a></th><td class="desc">Get group or variable with the given index. Return None if it does
+not exist.</td></tr>
+<tr><th><a title="kaa.config.Dict.items" class="reference internal" href="#kaa.config.Dict.items"><tt class="xref docutils literal"><span class="pre">items()</span></tt></a></th><td class="desc">Return key,value list (sorted by key name)</td></tr>
+<tr><th><a title="kaa.config.Dict.keys" class="reference internal" href="#kaa.config.Dict.keys"><tt class="xref docutils literal"><span class="pre">keys()</span></tt></a></th><td class="desc">Return the keys (sorted by name)</td></tr>
+<tr><th><a title="kaa.config.Dict.values" class="reference internal" href="#kaa.config.Dict.values"><tt class="xref docutils literal"><span class="pre">values()</span></tt></a></th><td class="desc">Return value list (sorted by key name)</td></tr>
+</table>
+<div class="heading">Properties</div><div class="nomembers">This class has no properties.</div><div class="heading">Signals</div><div class="nomembers">This class has no signals.</div>
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.config.Dict.get">
+<tt class="descname">get</tt><big>(</big><em>index</em>, <em>default=None</em><big>)</big><a class="headerlink" href="#kaa.config.Dict.get" title="Permalink to this definition">¶</a></dt>
+<dd>Get group or variable with the given index. Return None if it does
+not exist.</dd></dl>
+
+<dl class="method">
+<dt id="kaa.config.Dict.items">
+<tt class="descname">items</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.config.Dict.items" title="Permalink to this definition">¶</a></dt>
+<dd>Return key,value list (sorted by key name)</dd></dl>
+
+<dl class="method">
+<dt id="kaa.config.Dict.keys">
+<tt class="descname">keys</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.config.Dict.keys" title="Permalink to this definition">¶</a></dt>
+<dd>Return the keys (sorted by name)</dd></dl>
+
+<dl class="method">
+<dt id="kaa.config.Dict.values">
+<tt class="descname">values</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.config.Dict.values" title="Permalink to this definition">¶</a></dt>
+<dd>Return value list (sorted by key name)</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+<p><dl class="class">
+<dt id="kaa.config.Group">
+<em class="property">class </em><tt class="descclassname">kaa.config.</tt><tt class="descname">Group</tt><big>(</big><em>schema</em>, <em>desc=u''</em>, <em>name=''</em>, <em>desc_type='default'</em><big>)</big><a class="headerlink" href="#kaa.config.Group" title="Permalink to this definition">¶</a></dt>
+<dd><p>A config group.</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.config.Base" class="reference internal" href="#kaa.config.Base"><tt class="xref docutils literal"><span class="pre">kaa.config.Base</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal current">kaa.config.Group</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.config.Group.add_variable" class="reference internal" href="#kaa.config.Group.add_variable"><tt class="xref docutils literal"><span class="pre">add_variable()</span></tt></a></th><td class="desc">Add a variable to the group. The name will be set into the
+given value. The object will _not_ be copied.</td></tr>
+<tr><th><a title="kaa.config.Group.copy" class="reference internal" href="#kaa.config.Group.copy"><tt class="xref docutils literal"><span class="pre">copy()</span></tt></a></th><td class="desc"></td></tr>
+</table>
+<div class="heading">Properties</div>
+<table>
+<tr><th><a title="kaa.config.Group.variables" class="reference internal" href="#kaa.config.Group.variables"><tt class="xref docutils literal"><span class="pre">variables</span></tt></a></th><td>read-only</td><td class="desc">List of variables for this group.</td></tr>
+</table>
+<div class="heading">Signals</div><div class="nomembers">This class has no signals.</div>
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.config.Group.add_variable">
+<tt class="descname">add_variable</tt><big>(</big><em>name</em>, <em>value</em><big>)</big><a class="headerlink" href="#kaa.config.Group.add_variable" title="Permalink to this definition">¶</a></dt>
+<dd>Add a variable to the group. The name will be set into the
+given value. The object will _not_ be copied.</dd></dl>
+
+<dl class="method">
+<dt id="kaa.config.Group.copy">
+<tt class="descname">copy</tt><big>(</big><em>copy_on_write=False</em><big>)</big><a class="headerlink" href="#kaa.config.Group.copy" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<h4>Properties</h4><dl class="attribute">
+<dt id="kaa.config.Group.variables">
+<tt class="descname">variables</tt><a class="headerlink" href="#kaa.config.Group.variables" title="Permalink to this definition">¶</a></dt>
+<dd>List of variables for this group.</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+<p><dl class="class">
+<dt id="kaa.config.Config">
+<em class="property">class </em><tt class="descclassname">kaa.config.</tt><tt class="descname">Config</tt><big>(</big><em>schema</em>, <em>desc=u''</em>, <em>name=''</em>, <em>module=None</em><big>)</big><a class="headerlink" href="#kaa.config.Config" title="Permalink to this definition">¶</a></dt>
+<dd><p>A config object. This is a group with functions to load and save a file.</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.config.Base" class="reference internal" href="#kaa.config.Base"><tt class="xref docutils literal"><span class="pre">kaa.config.Base</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <a title="kaa.config.Group" class="reference internal" href="#kaa.config.Group"><tt class="xref docutils literal"><span class="pre">kaa.config.Group</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.config.Config</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.config.Config.copy" class="reference internal" href="#kaa.config.Config.copy"><tt class="xref docutils literal"><span class="pre">copy()</span></tt></a></th><td class="desc"></td></tr>
+<tr><th><a title="kaa.config.Config.load" class="reference internal" href="#kaa.config.Config.load"><tt class="xref docutils literal"><span class="pre">load()</span></tt></a></th><td class="desc">Load values from a config file previously saved for this schema.</td></tr>
+<tr><th><a title="kaa.config.Config.save" class="reference internal" href="#kaa.config.Config.save"><tt class="xref docutils literal"><span class="pre">save()</span></tt></a></th><td class="desc">Save configuration file.</td></tr>
+<tr><th><a title="kaa.config.Config.watch" class="reference internal" href="#kaa.config.Config.watch"><tt class="xref docutils literal"><span class="pre">watch()</span></tt></a></th><td class="desc">If argument is True (default), adds a watch to the config file and will
+reload the config if it changes.  If INotify is available, use that,
+otherwise stat the file every 3 seconds.</td></tr>
+</table>
+<div class="heading">Properties</div>
+<table>
+<tr><th><a title="kaa.config.Config.autosave" class="reference internal" href="#kaa.config.Config.autosave"><tt class="xref docutils literal"><span class="pre">autosave</span></tt></a></th><td>read/write</td><td class="desc">Whether or not changes are automatically save.</td></tr>
+</table>
+<div class="heading">Signals</div>
+<table>
+<tr><th><a title="kaa.config.Config.signals.reloaded" class="reference internal" href="#kaa.config.Config.signals.reloaded"><tt class="xref docutils literal"><span class="pre">reloaded</span></tt></a></th><td class="desc">Emitted when the configuration file is automatically reloaded
+from disk due to watch().</td></tr>
+</table>
+
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.config.Config.copy">
+<tt class="descname">copy</tt><big>(</big><em>copy_on_write=False</em><big>)</big><a class="headerlink" href="#kaa.config.Config.copy" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kaa.config.Config.load">
+<tt class="descname">load</tt><big>(</big><em>filename=None</em>, <em>sync=False</em><big>)</big><a class="headerlink" href="#kaa.config.Config.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load values from a config file previously saved for this schema.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>filename</em> (str) &#8211; filename to load values from; if None, will use the
+<tt class="xref docutils literal"><span class="pre">filename</span></tt> property.</li>
+<li><em>sync</em> (bool) &#8211; if True, will overwrite the current file (retaining previous
+values, of course) if the schema has changed, or create the
+config file if it does not exist.  (Default: False)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>If no filename has been previously set with the <tt class="xref docutils literal"><span class="pre">filename</span></tt>
+property then the <tt class="docutils literal"><span class="pre">filename</span></tt> argument is required, and in that case the
+filename property will be set to this value.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.config.Config.save">
+<tt class="descname">save</tt><big>(</big><em>filename=None</em>, <em>force=False</em><big>)</big><a class="headerlink" href="#kaa.config.Config.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save configuration file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>filename</em> &#8211; the name of the file to save; if None specified, will
+use the name of the previously loaded file, or the
+value assigned to the filename property.</li>
+<li><em>force</em> (bool) &#8211; if False (default), will only write the file if there were
+any changes (to either values or the schema).</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.config.Config.watch">
+<tt class="descname">watch</tt><big>(</big><em>watch=True</em><big>)</big><a class="headerlink" href="#kaa.config.Config.watch" title="Permalink to this definition">¶</a></dt>
+<dd><p>If argument is True (default), adds a watch to the config file and will
+reload the config if it changes.  If INotify is available, use that,
+otherwise stat the file every 3 seconds.</p>
+<p>If argument is False, disable any watches.</p>
+</dd></dl>
+
+<h4>Properties</h4><dl class="attribute">
+<dt id="kaa.config.Config.autosave">
+<tt class="descname">autosave</tt><a class="headerlink" href="#kaa.config.Config.autosave" title="Permalink to this definition">¶</a></dt>
+<dd><p>Whether or not changes are automatically save.</p>
+<p>If True, will write the config filename (either previously passed to
+<a title="kaa.config.Config.load" class="reference internal" href="#kaa.config.Config.load"><tt class="xref docutils literal"><span class="pre">load()</span></tt></a> or defined by the
+<tt class="xref docutils literal"><span class="pre">filename</span></tt> property) 5 seconds after the last
+config value update (or program exit, whichever comes first).</p>
+<p>Default is False.</p>
+</dd></dl>
+
+<h4>Signals</h4><dl class="attribute">
+<dt id="kaa.config.Config.signals.reloaded">
+<tt class="descname">reloaded</tt><a class="headerlink" href="#kaa.config.Config.signals.reloaded" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted when the configuration file is automatically reloaded
+from disk due to watch().</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback(changed_names, ...)</tt></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>changed_names</em> (list) &#8211; the names of the variables that changed</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <h3><a href="index.html">Table Of Contents</a></h3>
+            <ul>
+<li><a class="reference external" href="#">Configuration Files</a><ul>
+<li><a class="reference external" href="#module-functions">Module Functions</a></li>
+<li><a class="reference external" href="#config-objects">Config Objects</a></li>
+</ul>
+</li>
+</ul>
+
+            <h4>Previous topic</h4>
+            <p class="topless"><a href="rpc.html"
+                                  title="previous chapter">Remote Procedure Calls with kaa.rpc</a></p>
+            <h4>Next topic</h4>
+            <p class="topless"><a href="db.html"
+                                  title="next chapter">Object Database</a></p>
+            <h3>This Page</h3>
+            <ul class="this-page-menu">
+              <li><a href="_sources/config.txt"
+                     rel="nofollow">Show Source</a></li>
+            </ul>
+          <div id="searchbox" style="display: none">
+            <h3>Quick search</h3>
+              <form class="search" action="search.html" method="get">
+                <input type="text" name="q" size="18" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+              </form>
+              <p class="searchtip" style="font-size: 90%">
+              Enter search terms or a module, class or function name.
+              </p>
+          </div>
+          <script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="db.html" title="Object Database"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="rpc.html" title="Remote Procedure Calls with kaa.rpc"
+             >previous</a> |</li>
+        <li><a href="index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on Jan 14, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+    </div>
+  </body>
+</html>

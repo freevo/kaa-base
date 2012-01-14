@@ -1,0 +1,698 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Thread Support &mdash; kaa.base v0.99.2 documentation</title>
+    <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.99.2',
+        COLLAPSE_MODINDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="kaa.base v0.99.2 documentation" href="../index.html" />
+    <link rel="next" title="Generators" href="generators.html" />
+    <link rel="prev" title="Coroutines" href="coroutines.html" />
+    <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="generators.html" title="Generators"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="coroutines.html" title="Coroutines"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="thread-support">
+<span id="threads"></span><h1>Thread Support<a class="headerlink" href="#thread-support" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="the-threaded-decorator">
+<span id="threaded"></span><h2>The threaded decorator<a class="headerlink" href="#the-threaded-decorator" title="Permalink to this headline">¶</a></h2>
+<p>Any function or method may be decorated with <tt class="docutils literal"><span class="pre">&#64;kaa.threaded()</span></tt> which takes
+two optional arguments: a thread name, and a priority. If a thread name is
+specified, the decorated function is wrapped in
+<a title="kaa.ThreadPoolCallable" class="reference internal" href="#kaa.ThreadPoolCallable"><tt class="xref docutils literal"><span class="pre">ThreadPoolCallable</span></tt></a>, and invocations of that function are queued
+to be executed across one or more threads. If the thread name is <tt class="docutils literal"><span class="pre">kaa.MAINTHREAD</span></tt> the
+decorated function is invoked from the main thread. If no thread name is
+specified, the function is wrapped in <a title="kaa.ThreadCallable" class="reference internal" href="#kaa.ThreadCallable"><tt class="xref docutils literal"><span class="pre">ThreadCallable</span></tt></a> so that each
+invocation is executed in a separate thread. Because these callables return
+<a title="kaa.ThreadInProgress" class="reference internal" href="#kaa.ThreadInProgress"><tt class="xref docutils literal"><span class="pre">ThreadInProgress</span></tt></a> objects, which are derived from
+<a title="kaa.InProgress" class="reference external" href="inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a>, they may be yielded from <a class="reference external" href="coroutines.html#coroutines"><em>coroutines</em></a>.</p>
+<p>For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="nd">@kaa.threaded</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">do_blocking_task</span><span class="p">():</span>
+   <span class="p">[</span><span class="o">...</span><span class="p">]</span>
+   <span class="k">return</span> <span class="mi">42</span>
+
+<span class="nd">@kaa.coroutine</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">do_something_else</span><span class="p">():</span>
+   <span class="k">try</span><span class="p">:</span>
+      <span class="n">result</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">do_blocking_task</span><span class="p">()</span>
+   <span class="k">except</span><span class="p">:</span>
+      <span class="k">print</span> <span class="s">&quot;Exception raised in thread&quot;</span>
+
+   <span class="k">print</span> <span class="s">&quot;Thread returned&quot;</span><span class="p">,</span> <span class="n">result</span>
+</pre></div>
+</div>
+<p>The threaded decorator also supports a async kwarg, which is by default True.
+When True, the decorated function returns a <a title="kaa.ThreadInProgress" class="reference internal" href="#kaa.ThreadInProgress"><tt class="xref docutils literal"><span class="pre">ThreadInProgress</span></tt></a>
+object. When False, however, invocation of the function blocks until the
+decorated function completes, and its return value is passed back.  Internally,
+the decorator merely invokes <a title="kaa.InProgress.wait" class="reference external" href="inprogress.html#kaa.InProgress.wait"><tt class="xref docutils literal"><span class="pre">wait()</span></tt></a> on the InProgress
+returned by the threaded function, which means the main loop is otherwise kept
+alive for timers and I/O handlers.  This allows a threaded function to be used
+as a standard callback (but in practice it is not used often).</p>
+<dl class="function">
+<dt id="kaa.threaded">
+<tt class="descclassname">kaa.</tt><tt class="descname">threaded</tt><big>(</big><em>pool=None</em>, <em>priority=0</em>, <em>async=True</em>, <em>progress=False</em>, <em>wait=False</em><big>)</big><a class="headerlink" href="#kaa.threaded" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decorator causing the decorated function to be executed within a thread
+when invoked.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><em>pool</em> (<a title="kaa.ThreadPool" class="reference internal" href="#kaa.ThreadPool"><tt class="xref docutils literal"><span class="pre">ThreadPool</span></tt></a>, str, <tt class="xref docutils literal"><span class="pre">kaa.MAINTHREAD</span></tt>, or None) &#8211; a <a title="kaa.ThreadPool" class="reference internal" href="#kaa.ThreadPool"><tt class="xref docutils literal"><span class="pre">ThreadPool</span></tt></a> object or name of a registered 
+thread pool; if None, a new thread will be created for each
+invocation.</li>
+<li><em>priority</em> (int) &#8211; priority for the job in the thread pool</li>
+<li><em>async</em> (bool) &#8211; if False, blocks until the decorated function completes</li>
+<li><em>progress</em> (bool) &#8211; if True, the first argument passed to the decorated function
+will be an <tt class="xref docutils literal"><span class="pre">InProgressStatus</span></tt> object in order
+to indicate execution progress to the caller.</li>
+<li><em>wait</em> (bool) &#8211; corresponds to <a title="kaa.ThreadCallable.wait_on_exit" class="reference internal" href="#kaa.ThreadCallable.wait_on_exit"><tt class="xref docutils literal"><span class="pre">kaa.ThreadCallable.wait_on_exit</span></tt></a>.  It may
+be necessary to set this to True if the kaa main loop is not
+running.  (Default: False)</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><a title="kaa.InProgress" class="reference external" href="inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> if <tt class="docutils literal"><span class="pre">progress=False</span></tt>, or the return value
+or the decorated function if <tt class="docutils literal"><span class="pre">progress=True</span></tt></p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>A special pool constant <tt class="xref docutils literal"><span class="pre">kaa.MAINTHREAD</span></tt> is available, which causes
+the decorated function to always be invoked from the main thread.  In this
+case, currently the <tt class="docutils literal"><span class="pre">priority</span></tt> argument is ignored.</p>
+<p>If <tt class="docutils literal"><span class="pre">pool</span></tt> is None, the decorated function will be wrapped in a 
+<a title="kaa.ThreadCallable" class="reference internal" href="#kaa.ThreadCallable"><tt class="xref docutils literal"><span class="pre">ThreadCallable</span></tt></a> for execution.  Otherwise, <tt class="docutils literal"><span class="pre">pool</span></tt> specifies
+either a <a title="kaa.ThreadPool" class="reference internal" href="#kaa.ThreadPool"><tt class="xref docutils literal"><span class="pre">ThreadPool</span></tt></a> object or pool name previously registered
+with <a title="kaa.register_thread_pool" class="reference internal" href="#kaa.register_thread_pool"><tt class="xref docutils literal"><span class="pre">kaa.register_thread_pool()</span></tt></a>, and the decorated function will be
+wrapped in a <a title="kaa.ThreadPoolCallable" class="reference internal" href="#kaa.ThreadPoolCallable"><tt class="xref docutils literal"><span class="pre">ThreadPoolCallable</span></tt></a> for execution.</p>
+</dd></dl>
+
+<p>As a rule of thumb, if you have a function that must always be called
+in the main thread, you would use <tt class="docutils literal"><span class="pre">&#64;kaa.threaded(kaa.MAINTHREAD)</span></tt> as
+mentioned above. If you need to decide case-by-case, don&#8217;t decorate it
+and use <a title="kaa.MainThreadCallable" class="reference internal" href="#kaa.MainThreadCallable"><tt class="xref docutils literal"><span class="pre">MainThreadCallable</span></tt></a> when needed.</p>
+</div>
+<div class="section" id="the-synchronized-decorator">
+<h2>The synchronized decorator<a class="headerlink" href="#the-synchronized-decorator" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="kaa.synchronized">
+<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">synchronized</tt><big>(</big><em>obj=None</em><big>)</big><a class="headerlink" href="#kaa.synchronized" title="Permalink to this definition">¶</a></dt>
+<dd><p>synchronized decorator and <cite>with</cite> statement similar to synchronized
+in Java. When decorating a non-member function, a lock or any class
+inheriting from object may be provided.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>obj</em> &#8211; object were all calls should be synchronized to.
+if not provided it will be the object for member functions
+or an RLock for functions.</td>
+</tr>
+</tbody>
+</table>
+<p>Create a synchronized object. Note: when used on classes a new
+member _kaa_synchronized_lock will be added to that class.</p>
+</dd></dl>
+
+<p>Some functions may need to block concurrent access to certain
+data structures, or prevent concurrent entry to the whole function.  In these
+cases, <tt class="docutils literal"><span class="pre">kaa.synchronized</span></tt> can be used, which serves as both a decorator as
+well as a context manager for use with Python&#8217;s <tt class="docutils literal"><span class="pre">with</span></tt> statement:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">Test</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">foo</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># call to do_something() can be done concurrently by other threads.</span>
+        <span class="n">do_something</span><span class="p">()</span>
+        <span class="k">with</span> <span class="n">kaa</span><span class="o">.</span><span class="n">synchronized</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="c"># Anything in this block however is synchronized between threads.</span>
+            <span class="n">do_something_else</span><span class="p">()</span>
+
+
+    <span class="c"># bar() is a protected function</span>
+    <span class="nd">@kaa.synchronized</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">bar</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="n">do_something_else</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The decorator will synchronize on the actual object. Two different
+objects can access the same function in two threads. On the other hand
+it is not possible that one thread is in the protected block of <cite>foo</cite>
+and another one calling <cite>bar</cite>.</p>
+<p>The decorator can also be used for functions outside a class. In that
+case the decorator only protects this one function. If more functions
+should be protected against each other, a Python RLock object can be
+provided:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># threading.Lock does NOT work</span>
+<span class="n">lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">()</span>
+
+<span class="nd">@kaa.synchronized</span><span class="p">(</span><span class="n">lock</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">foo</span><span class="p">():</span>
+    <span class="c"># foo and bar synchronized</span>
+    <span class="n">do_something</span><span class="p">()</span>
+
+<span class="nd">@kaa.synchronized</span><span class="p">(</span><span class="n">lock</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">bar</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="c"># foo and bar synchronized</span>
+    <span class="n">do_something</span><span class="p">()</span>
+
+<span class="nd">@kaa.synchronized</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">baz</span><span class="p">():</span>
+    <span class="c"># only_baz_synchronized</span>
+    <span class="n">do_something</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="thread-functions">
+<h2>Thread Functions<a class="headerlink" href="#thread-functions" title="Permalink to this headline">¶</a></h2>
+<p>The following thread-related functions are available:</p>
+<dl class="function">
+<dt id="kaa.is_mainthread">
+<tt class="descclassname">kaa.</tt><tt class="descname">is_mainthread</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.is_mainthread" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if the current thread is the main thread.</p>
+<p>Note that the &#8220;main thread&#8221; is considered to be the thread in which the
+kaa main loop is running.  This is usually, but not necessarily, what
+Python considers to be the main thread.  (If you call <a title="kaa.main.run" class="reference external" href="../core/mainloop.html#kaa.main.run"><tt class="xref docutils literal"><span class="pre">kaa.main.run()</span></tt></a>
+in the main Python thread, then they are equivalent.)</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="kaa.main.wakeup">
+<tt class="descclassname">kaa.main.</tt><tt class="descname">wakeup</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.main.wakeup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wakes up the mainloop.</p>
+<p>The mainloop sleeps when there are no timers to process and no activity on
+any registered <a title="kaa.IOMonitor" class="reference external" href="../core/io.html#kaa.IOMonitor"><tt class="xref docutils literal"><span class="pre">IOMonitor</span></tt></a> objects.  This function can be used
+by another thread to wake up the mainloop.  For example, when a
+<a title="kaa.MainThreadCallable" class="reference internal" href="#kaa.MainThreadCallable"><tt class="xref docutils literal"><span class="pre">MainThreadCallable</span></tt></a> is invoked, it calls <tt class="docutils literal"><span class="pre">wakeup()</span></tt>.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="kaa.register_thread_pool">
+<tt class="descclassname">kaa.</tt><tt class="descname">register_thread_pool</tt><big>(</big><em>name</em>, <em>pool</em><big>)</big><a class="headerlink" href="#kaa.register_thread_pool" title="Permalink to this definition">¶</a></dt>
+<dd><p>Registers a <a title="kaa.ThreadPool" class="reference internal" href="#kaa.ThreadPool"><tt class="xref docutils literal"><span class="pre">ThreadPool</span></tt></a> under the given name.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><em>name</em> (str) &#8211; the name under which to register this thread pool</li>
+<li><em>pool</em> (<a title="kaa.ThreadPool" class="reference internal" href="#kaa.ThreadPool"><tt class="xref docutils literal"><span class="pre">ThreadPool</span></tt></a>) &#8211; the thread pool object</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">the supplied <a title="kaa.ThreadPool" class="reference internal" href="#kaa.ThreadPool"><tt class="xref docutils literal"><span class="pre">ThreadPool</span></tt></a> object</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Once registered, the thread pool may be referenced by name when using the
+<a title="kaa.threaded" class="reference internal" href="#kaa.threaded"><tt class="xref docutils literal"><span class="pre">&#64;kaa.threaded()</span></tt></a> decorator or 
+<a title="kaa.ThreadPoolCallable" class="reference internal" href="#kaa.ThreadPoolCallable"><tt class="xref docutils literal"><span class="pre">ThreadPoolCallable</span></tt></a> class.</p>
+<p>Thread pool names are arbitrary strings, but the recommended convention
+is to format the pool name as <tt class="docutils literal"><span class="pre">appname::poolname</span></tt>, where <tt class="docutils literal"><span class="pre">appname</span></tt>
+uniquely identifies the application, and <tt class="docutils literal"><span class="pre">poolname</span></tt> describes the purpose
+of the thread pool.  An example might be <tt class="docutils literal"><span class="pre">beacon::thumbnailer</span></tt>.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="kaa.get_thread_pool">
+<tt class="descclassname">kaa.</tt><tt class="descname">get_thread_pool</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#kaa.get_thread_pool" title="Permalink to this definition">¶</a></dt>
+<dd>Returns the <a title="kaa.ThreadPool" class="reference internal" href="#kaa.ThreadPool"><tt class="xref docutils literal"><span class="pre">ThreadPool</span></tt></a> previously registered with the given
+name, or None if no <a title="kaa.ThreadPool" class="reference internal" href="#kaa.ThreadPool"><tt class="xref docutils literal"><span class="pre">ThreadPool</span></tt></a> was registered with that name.</dd></dl>
+
+</div>
+<div class="section" id="callables-and-supporting-classes">
+<h2>Callables and Supporting Classes<a class="headerlink" href="#callables-and-supporting-classes" title="Permalink to this headline">¶</a></h2>
+<p>Kaa provides a <a title="kaa.ThreadCallable" class="reference internal" href="#kaa.ThreadCallable"><tt class="xref docutils literal"><span class="pre">ThreadCallable</span></tt></a> class which can be used to invoke a
+callable in a new thread every time the ThreadCallable object is invoked.</p>
+<p>With the <a title="kaa.ThreadPoolCallable" class="reference internal" href="#kaa.ThreadPoolCallable"><tt class="xref docutils literal"><span class="pre">ThreadPoolCallable</span></tt></a> class, invocations are queued and
+each executed in an available thread within a pool of one or more threads. A
+priority may also be specified, and ThreadPoolCallable objects with the highest
+priority are first in the queue (and hence executed first). This allows you to
+create a priority-based job queue that executes asynchronously.</p>
+<p>Although the <a title="kaa.threaded" class="reference internal" href="#kaa.threaded"><tt class="xref docutils literal"><span class="pre">&#64;kaa.threaded()</span></tt></a> decorator provides a more
+convenient means to make use of these classes, they may still be used directly.</p>
+<p>Instances of the two classes above are callable, and they return
+<a title="kaa.ThreadInProgress" class="reference internal" href="#kaa.ThreadInProgress"><tt class="xref docutils literal"><span class="pre">ThreadInProgress</span></tt></a> objects:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">handle_result</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
+    <span class="c"># This runs in the main thread.</span>
+    <span class="k">print</span> <span class="s">&#39;Thread returned with&#39;</span><span class="p">,</span> <span class="n">result</span>
+
+<span class="n">kaa</span><span class="o">.</span><span class="n">ThreadCallable</span><span class="p">(</span><span class="n">do_blocking_task</span><span class="p">)(</span><span class="n">arg1</span><span class="p">,</span> <span class="n">arg2</span><span class="p">)</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">handle_result</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Or, alternatively:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="nd">@kaa.coroutine</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">some_coroutine</span><span class="p">():</span>
+    <span class="p">[</span><span class="o">...</span><span class="p">]</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">kaa</span><span class="o">.</span><span class="n">ThreadCallable</span><span class="p">(</span><span class="n">do_blocking_task</span><span class="p">)(</span><span class="n">arg1</span><span class="p">,</span> <span class="n">arg2</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><dl class="class">
+<dt id="kaa.ThreadInProgress">
+<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">ThreadInProgress</tt><big>(</big><em>func</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.ThreadInProgress" title="Permalink to this definition">¶</a></dt>
+<dd><p>An <a title="kaa.InProgress" class="reference external" href="inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> class that represents threaded tasks.  You will
+likely not need to instantiate this class directly, but <tt class="docutils literal"><span class="pre">ThreadInProgress</span></tt>
+objects are returned when invoking <a title="kaa.ThreadCallable" class="reference internal" href="#kaa.ThreadCallable"><tt class="xref docutils literal"><span class="pre">ThreadCallable</span></tt></a> or
+<a title="kaa.ThreadPoolCallable" class="reference internal" href="#kaa.ThreadPoolCallable"><tt class="xref docutils literal"><span class="pre">ThreadPoolCallable</span></tt></a> objects, or functions decorated with
+<a title="kaa.threaded" class="reference internal" href="#kaa.threaded"><tt class="xref docutils literal"><span class="pre">&#64;kaa.threaded()</span></tt></a>.</p>
+<p>Callbacks connected to this InProgress are invoked from the main thread.</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.Signal" class="reference external" href="../core/signals.html#kaa.Signal"><tt class="xref docutils literal"><span class="pre">kaa.Signal</span></tt></a><br /><tt class="xref docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <a title="kaa.InProgress" class="reference external" href="inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">kaa.InProgress</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.ThreadInProgress</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.ThreadInProgress.abort" class="reference internal" href="#kaa.ThreadInProgress.abort"><tt class="xref docutils literal"><span class="pre">abort()</span></tt></a></th><td class="desc">Aborts the callable being executed inside a thread.  (Or attempts to.)</td></tr>
+</table>
+<div class="heading">Properties</div>
+<table>
+<tr><th><a title="kaa.ThreadInProgress.active" class="reference internal" href="#kaa.ThreadInProgress.active"><tt class="xref docutils literal"><span class="pre">active</span></tt></a></th><td>read-only</td><td class="desc">True if the callable is still waiting to be processed.</td></tr>
+</table>
+
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.ThreadInProgress.abort">
+<tt class="descname">abort</tt><big>(</big><em>exc=None</em><big>)</big><a class="headerlink" href="#kaa.ThreadInProgress.abort" title="Permalink to this definition">¶</a></dt>
+<dd><p>Aborts the callable being executed inside a thread.  (Or attempts to.)</p>
+<p>Invocation of a <a title="kaa.ThreadCallable" class="reference internal" href="#kaa.ThreadCallable"><tt class="xref docutils literal"><span class="pre">ThreadCallable</span></tt></a> or
+<a title="kaa.ThreadPoolCallable" class="reference internal" href="#kaa.ThreadPoolCallable"><tt class="xref docutils literal"><span class="pre">ThreadPoolCallable</span></tt></a> will return a <tt class="docutils literal"><span class="pre">ThreadInProgress</span></tt>
+object which may be aborted by calling this method.  When an
+in-progress thread is aborted, an <a title="kaa.InProgressAborted" class="reference external" href="inprogress.html#kaa.InProgressAborted"><tt class="xref docutils literal"><span class="pre">InProgressAborted</span></tt></a>
+exception is raised inside the thread.</p>
+<p>Just prior to raising <a title="kaa.InProgressAborted" class="reference external" href="inprogress.html#kaa.InProgressAborted"><tt class="xref docutils literal"><span class="pre">InProgressAborted</span></tt></a> inside the thread, the
+<a title="kaa.ThreadCallable.signals.abort" class="reference internal" href="#kaa.ThreadCallable.signals.abort"><tt class="xref docutils literal"><span class="pre">abort</span></tt></a> signal will be emitted.
+Callbacks connected to this signal are invoked within the thread from
+which <tt class="docutils literal"><span class="pre">abort()</span></tt> was called.  If any of the callbacks return
+<tt class="xref docutils literal"><span class="pre">False</span></tt>, <a title="kaa.InProgressAborted" class="reference external" href="inprogress.html#kaa.InProgressAborted"><tt class="xref docutils literal"><span class="pre">InProgressAborted</span></tt></a> will not be raised in the thread.</p>
+<p>It is possible to catch <a title="kaa.InProgressAborted" class="reference external" href="inprogress.html#kaa.InProgressAborted"><tt class="xref docutils literal"><span class="pre">InProgressAborted</span></tt></a> within the
+thread to deal with cleanup, but any return value from the threaded
+callable will be discarded.  It is therefore not possible abort an
+abort within the thread itself.  However, if the InProgress is aborted
+before the thread has a chance to start, the thread is not started at
+all, and so obviously the threaded callable will not receive
+<a title="kaa.InProgressAborted" class="reference external" href="inprogress.html#kaa.InProgressAborted"><tt class="xref docutils literal"><span class="pre">InProgressAborted</span></tt></a>.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p>This method raises an exception asynchronously within the thread,
+and this is unreliable.  The asynchronous exception may get
+inadvertently cleared internally, and if it doesn&#8217;t, it will in any
+case take up to 100 ticks for it to trigger within the thread.</p>
+<p>A tick is one or more Python VM bytecodes, which means that if the
+thread is currently executing non-CPython C code, the thread cannot
+be interrupted.  The worst case scenario would be a blocking system
+call, which cannot be reliably interrupted when running inside a
+thread.</p>
+<p class="last">This approach still has uses as a general-purposes aborting
+mechanism, but, if possible, it is preferable for you to implement
+custom logic by attaching an abort handler to the
+<a title="kaa.ThreadCallable" class="reference internal" href="#kaa.ThreadCallable"><tt class="xref docutils literal"><span class="pre">ThreadCallable</span></tt></a> or <a title="kaa.ThreadPoolCallable" class="reference internal" href="#kaa.ThreadPoolCallable"><tt class="xref docutils literal"><span class="pre">ThreadPoolCallable</span></tt></a>
+object.</p>
+</div>
+</dd></dl>
+
+<h4>Properties</h4><dl class="attribute">
+<dt id="kaa.ThreadInProgress.active">
+<tt class="descname">active</tt><a class="headerlink" href="#kaa.ThreadInProgress.active" title="Permalink to this definition">¶</a></dt>
+<dd>True if the callable is still waiting to be processed.</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+<p><dl class="class">
+<dt id="kaa.ThreadCallable">
+<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">ThreadCallable</tt><big>(</big><em>func</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.ThreadCallable" title="Permalink to this definition">¶</a></dt>
+<dd><p>A special <a title="kaa.Callable" class="reference external" href="../core/signals.html#kaa.Callable"><tt class="xref docutils literal"><span class="pre">Callable</span></tt></a> used to execute a function or method
+inside a thread.  A new thread is created each time the ThreadCallable is
+invoked.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>func</em> &#8211; callable function or object</li>
+<li><em>args</em> &#8211; arguments to be passed to func when invoked</li>
+<li><em>kwargs</em> &#8211; keyword arguments to be passed to func when invoked</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.Callable" class="reference external" href="../core/signals.html#kaa.Callable"><tt class="xref docutils literal"><span class="pre">kaa.Callable</span></tt></a><br /><tt class="xref docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.thread.ThreadCallableBase</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.ThreadCallable</tt><br /></p>
+<div class="heading">Methods</div><div class="nomembers">This class has no methods.</div><div class="heading">Properties</div>
+<table>
+<tr><th><a title="kaa.ThreadCallable.wait_on_exit" class="reference internal" href="#kaa.ThreadCallable.wait_on_exit"><tt class="xref docutils literal"><span class="pre">wait_on_exit</span></tt></a></th><td>read/write</td><td class="desc">If True (default), wait for the thread on application exit.</td></tr>
+</table>
+<div class="heading">Signals</div>
+<table>
+<tr><th><a title="kaa.ThreadCallable.signals.abort" class="reference internal" href="#kaa.ThreadCallable.signals.abort"><tt class="xref docutils literal"><span class="pre">abort</span></tt></a></th><td class="desc">Emitted when the threaded callable is aborted.</td></tr>
+</table>
+
+</div>
+<h4>Properties</h4><dl class="attribute">
+<dt id="kaa.ThreadCallable.wait_on_exit">
+<tt class="descname">wait_on_exit</tt><a class="headerlink" href="#kaa.ThreadCallable.wait_on_exit" title="Permalink to this definition">¶</a></dt>
+<dd><p>If True (default), wait for the thread on application exit.</p>
+<p>If False, this causes the thread to be a so-called &#8220;daemon thread.&#8221;  A
+Python program exits when no non-daemon threads are left running.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">If the main loop is not running (via <a title="kaa.main.run" class="reference external" href="../core/mainloop.html#kaa.main.run"><tt class="xref docutils literal"><span class="pre">kaa.main.run()</span></tt></a>) it is
+recommended this not be set to <tt class="xref docutils literal"><span class="pre">False</span></tt>, otherwise you may experience
+intermittent exceptions during interpreter shutdown.</p>
+</div>
+</dd></dl>
+
+<h4>Signals</h4><dl class="attribute">
+<dt id="kaa.ThreadCallable.signals.abort">
+<tt class="descname">abort</tt><a class="headerlink" href="#kaa.ThreadCallable.signals.abort" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted when the threaded callable is aborted.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback()</tt></dt>
+<dd>This callback takes no arguments</dd></dl>
+
+<p>See <a title="kaa.ThreadInProgress.abort" class="reference internal" href="#kaa.ThreadInProgress.abort"><tt class="xref docutils literal"><span class="pre">abort()</span></tt></a> for a more detailed discussion.</p>
+<p>Handlers may return False to prevent
+<a title="kaa.InProgressAborted" class="reference external" href="inprogress.html#kaa.InProgressAborted"><tt class="xref docutils literal"><span class="pre">InProgressAborted</span></tt></a> from being raised inside the
+thread.  However, the ThreadInProgress is still considered aborted
+regardless.  Handlers of this signal are intended to implement more
+appropriate logic to cancel the threaded callable.</p>
+</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+<p><dl class="class">
+<dt id="kaa.ThreadPool">
+<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">ThreadPool</tt><big>(</big><em>size=1</em><big>)</big><a class="headerlink" href="#kaa.ThreadPool" title="Permalink to this definition">¶</a></dt>
+<dd><p>Manages a pool of one or more threads for use with the
+<a title="kaa.threaded" class="reference internal" href="#kaa.threaded"><tt class="xref docutils literal"><span class="pre">&#64;kaa.threaded()</span></tt></a> decorator, or
+<a title="kaa.ThreadPoolCallable" class="reference internal" href="#kaa.ThreadPoolCallable"><tt class="xref docutils literal"><span class="pre">ThreadPoolCallable</span></tt></a> objects.</p>
+<p>ThreadPool objects may be assigned a name by calling
+<a title="kaa.register_thread_pool" class="reference internal" href="#kaa.register_thread_pool"><tt class="xref docutils literal"><span class="pre">kaa.register_thread_pool()</span></tt></a>.  When done, the name can be referenced
+instead of passing the ThreadPool object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>size</em> (int) &#8211; maximum number of threads this thread pool will grow to.</td>
+</tr>
+</tbody>
+</table>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal current">kaa.ThreadPool</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.ThreadPool.dequeue" class="reference internal" href="#kaa.ThreadPool.dequeue"><tt class="xref docutils literal"><span class="pre">dequeue()</span></tt></a></th><td class="desc">Removes the given job from the thread queue.</td></tr>
+<tr><th><a title="kaa.ThreadPool.enqueue" class="reference internal" href="#kaa.ThreadPool.enqueue"><tt class="xref docutils literal"><span class="pre">enqueue()</span></tt></a></th><td class="desc">Creates a job from the given callback and adds it to the thread pool
+work queue.</td></tr>
+</table>
+<div class="heading">Properties</div>
+<table>
+<tr><th><a title="kaa.ThreadPool.name" class="reference internal" href="#kaa.ThreadPool.name"><tt class="xref docutils literal"><span class="pre">name</span></tt></a></th><td>read-only</td><td class="desc">The name under which this thread pool was registered.</td></tr>
+<tr><th><a title="kaa.ThreadPool.size" class="reference internal" href="#kaa.ThreadPool.size"><tt class="xref docutils literal"><span class="pre">size</span></tt></a></th><td>read/write</td><td class="desc">The maxium number of threads this pool may grow to.</td></tr>
+<tr><th><a title="kaa.ThreadPool.timeout" class="reference internal" href="#kaa.ThreadPool.timeout"><tt class="xref docutils literal"><span class="pre">timeout</span></tt></a></th><td>read/write</td><td class="desc">Number of seconds a thread pool member will wait for a job before stopping.</td></tr>
+</table>
+<div class="heading">Signals</div><div class="nomembers">This class has no signals.</div>
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.ThreadPool.dequeue">
+<tt class="descname">dequeue</tt><big>(</big><em>job</em><big>)</big><a class="headerlink" href="#kaa.ThreadPool.dequeue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes the given job from the thread queue.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>job</em> (<a title="kaa.ThreadInProgress" class="reference internal" href="#kaa.ThreadInProgress"><tt class="xref docutils literal"><span class="pre">ThreadInProgress</span></tt></a> object) &#8211; the job as returned by <a title="kaa.ThreadPool.enqueue" class="reference internal" href="#kaa.ThreadPool.enqueue"><tt class="xref docutils literal"><span class="pre">enqueue()</span></tt></a></td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">True if the job existed and was removed, and False if the
+job was not found.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.ThreadPool.enqueue">
+<tt class="descname">enqueue</tt><big>(</big><em>callback</em>, <em>priority=0</em><big>)</big><a class="headerlink" href="#kaa.ThreadPool.enqueue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a job from the given callback and adds it to the thread pool
+work queue.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><em>callback</em> (callable) &#8211; a callable which will be invoked inside one of the
+pool threads.</li>
+<li><em>priority</em> (int) &#8211; determines the relative priority of the job; higher
+values are higher priority.</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a <a title="kaa.ThreadInProgress" class="reference internal" href="#kaa.ThreadInProgress"><tt class="xref docutils literal"><span class="pre">ThreadInProgress</span></tt></a> object for this job.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>It should generally not be necessary to call this method directly.
+It is called implicitly when using the <a title="kaa.threaded" class="reference internal" href="#kaa.threaded"><tt class="xref docutils literal"><span class="pre">&#64;kaa.threaded()</span></tt></a>
+decorator, or <a title="kaa.ThreadPoolCallable" class="reference internal" href="#kaa.ThreadPoolCallable"><tt class="xref docutils literal"><span class="pre">ThreadPoolCallable</span></tt></a> objects.</p>
+</dd></dl>
+
+<h4>Properties</h4><dl class="attribute">
+<dt id="kaa.ThreadPool.name">
+<tt class="descname">name</tt><a class="headerlink" href="#kaa.ThreadPool.name" title="Permalink to this definition">¶</a></dt>
+<dd><p>The name under which this thread pool was registered.</p>
+<p>Thread pools are registered via <a title="kaa.register_thread_pool" class="reference internal" href="#kaa.register_thread_pool"><tt class="xref docutils literal"><span class="pre">kaa.register_thread_pool()</span></tt></a>.  Once
+registered, the thread pool may subsequently be referenced by name when
+using <a title="kaa.ThreadPoolCallable" class="reference internal" href="#kaa.ThreadPoolCallable"><tt class="xref docutils literal"><span class="pre">ThreadPoolCallable</span></tt></a> or the 
+<a title="kaa.threaded" class="reference internal" href="#kaa.threaded"><tt class="xref docutils literal"><span class="pre">&#64;kaa.threaded()</span></tt></a> decorator.</p>
+<p>An ThreadPool which has not been registered is called an anonymous thread
+pool, and may be passed directly to <a title="kaa.threaded" class="reference internal" href="#kaa.threaded"><tt class="xref docutils literal"><span class="pre">&#64;kaa.threaded()</span></tt></a>
+and <a title="kaa.ThreadPoolCallable" class="reference internal" href="#kaa.ThreadPoolCallable"><tt class="xref docutils literal"><span class="pre">ThreadPoolCallable</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.ThreadPool.size">
+<tt class="descname">size</tt><a class="headerlink" href="#kaa.ThreadPool.size" title="Permalink to this definition">¶</a></dt>
+<dd><p>The maxium number of threads this pool may grow to.</p>
+<p>If this value is increased and jobs are waiting to be processed, new
+threads will be spawned as needed (but will not exceed the limit).</p>
+<p>If this value is decreased and there are too many active pool members
+as a result, the necessary number of pool members will be stopped.  If
+those members are currently processing jobs, they will exit once the job
+is complete.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.ThreadPool.timeout">
+<tt class="descname">timeout</tt><a class="headerlink" href="#kaa.ThreadPool.timeout" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of seconds a thread pool member will wait for a job before stopping.</p>
+<p>A thread which stopped due to timeout may be restarted if new jobs are
+enqueued that would put that thread to work.</p>
+</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+<p><dl class="class">
+<dt id="kaa.ThreadPoolCallable">
+<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">ThreadPoolCallable</tt><big>(</big><em>poolinfo</em>, <em>func</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.ThreadPoolCallable" title="Permalink to this definition">¶</a></dt>
+<dd><p>A special <a title="kaa.Callable" class="reference external" href="../core/signals.html#kaa.Callable"><tt class="xref docutils literal"><span class="pre">Callable</span></tt></a> used to execute a function or method
+inside a thread as part of a thread pool.  If all threads in the thread
+pool are busy, it is queued and will be invoked when one of the threads
+become available.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>poolinfo</em> &#8211; a <a title="kaa.ThreadPool" class="reference internal" href="#kaa.ThreadPool"><tt class="xref docutils literal"><span class="pre">ThreadPool</span></tt></a> object or name of a previously
+registered thread pool, or a 2-tuple (<tt class="docutils literal"><span class="pre">pool</span></tt>, <tt class="docutils literal"><span class="pre">priority</span></tt>),
+where <tt class="docutils literal"><span class="pre">pool</span></tt> is a <a title="kaa.ThreadPool" class="reference internal" href="#kaa.ThreadPool"><tt class="xref docutils literal"><span class="pre">ThreadPool</span></tt></a> object or registered
+name, and <tt class="docutils literal"><span class="pre">priority</span></tt> is the integer priority that controls
+where in the queue the job will be placed.</li>
+<li><em>func</em> &#8211; the underlying callable that will be called from within a
+thread.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.Callable" class="reference external" href="../core/signals.html#kaa.Callable"><tt class="xref docutils literal"><span class="pre">kaa.Callable</span></tt></a><br /><tt class="xref docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.thread.ThreadCallableBase</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.ThreadPoolCallable</tt><br /></p>
+<div class="heading">Methods</div><div class="nomembers">This class has no methods.</div><div class="heading">Properties</div><div class="nomembers">This class has no properties.</div><div class="heading">Signals</div>
+<table>
+<tr><th><a title="kaa.ThreadPoolCallable.signals.abort" class="reference internal" href="#kaa.ThreadPoolCallable.signals.abort"><tt class="xref docutils literal"><span class="pre">abort</span></tt></a></th><td class="desc">Emitted when the threaded callable is aborted.</td></tr>
+</table>
+
+</div>
+<h4>Signals</h4><dl class="attribute">
+<dt id="kaa.ThreadPoolCallable.signals.abort">
+<tt class="descname">abort</tt><a class="headerlink" href="#kaa.ThreadPoolCallable.signals.abort" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted when the threaded callable is aborted.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback()</tt></dt>
+<dd>This callback takes no arguments</dd></dl>
+
+<p>See <a title="kaa.ThreadInProgress.abort" class="reference internal" href="#kaa.ThreadInProgress.abort"><tt class="xref docutils literal"><span class="pre">abort()</span></tt></a> for a more detailed discussion.</p>
+<p>Handlers may return False to prevent
+<a title="kaa.InProgressAborted" class="reference external" href="inprogress.html#kaa.InProgressAborted"><tt class="xref docutils literal"><span class="pre">InProgressAborted</span></tt></a> from being raised inside the
+thread.  However, the ThreadInProgress is still considered aborted
+regardless.  Handlers of this signal are intended to implement more
+appropriate logic to cancel the threaded callable.</p>
+</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+<p><dl class="class">
+<dt id="kaa.MainThreadCallable">
+<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">MainThreadCallable</tt><big>(</big><em>func</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.MainThreadCallable" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wraps a callable and ensures it is invoked from the main thread.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>func</em> &#8211; callable function or object</li>
+<li><em>args</em> &#8211; arguments to be passed to func when invoked</li>
+<li><em>kwargs</em> &#8211; keyword arguments to be passed to func when invoked</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>The MainThreadCallable ensures that the wrapped function or method is executed
+via main loop.  The thread calling this function will return immediately after
+calling the MainThreadCallable, without waiting for the result. Invoking
+MainThreadCallables always returns an InProgress object:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">needs_to_be_called_from_main</span><span class="p">(</span><span class="n">param</span><span class="p">):</span>
+    <span class="k">print</span> <span class="n">param</span>
+    <span class="k">return</span> <span class="mi">5</span>
+
+<span class="c"># ... suppose we are in a thread here ...</span>
+<span class="n">cb</span> <span class="o">=</span> <span class="n">kaa</span><span class="o">.</span><span class="n">MainThreadCallable</span><span class="p">(</span><span class="n">needs_to_be_called_from_main</span><span class="p">)</span>
+<span class="k">print</span> <span class="n">cb</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.Callable" class="reference external" href="../core/signals.html#kaa.Callable"><tt class="xref docutils literal"><span class="pre">kaa.Callable</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal current">kaa.MainThreadCallable</tt><br /></p>
+<div class="heading">Methods</div><div class="nomembers">This class has no methods.</div><div class="heading">Properties</div><div class="nomembers">This class has no properties.</div><div class="heading">Signals</div><div class="nomembers">This class has no signals.</div>
+</div>
+</p>
+</dd></dl>
+
+</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <h3><a href="../index.html">Table Of Contents</a></h3>
+            <ul>
+<li><a class="reference external" href="#">Thread Support</a><ul>
+<li><a class="reference external" href="#the-threaded-decorator">The threaded decorator</a></li>
+<li><a class="reference external" href="#the-synchronized-decorator">The synchronized decorator</a></li>
+<li><a class="reference external" href="#thread-functions">Thread Functions</a></li>
+<li><a class="reference external" href="#callables-and-supporting-classes">Callables and Supporting Classes</a></li>
+</ul>
+</li>
+</ul>
+
+            <h4>Previous topic</h4>
+            <p class="topless"><a href="coroutines.html"
+                                  title="previous chapter">Coroutines</a></p>
+            <h4>Next topic</h4>
+            <p class="topless"><a href="generators.html"
+                                  title="next chapter">Generators</a></p>
+            <h3>This Page</h3>
+            <ul class="this-page-menu">
+              <li><a href="../_sources/async/threads.txt"
+                     rel="nofollow">Show Source</a></li>
+            </ul>
+          <div id="searchbox" style="display: none">
+            <h3>Quick search</h3>
+              <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" size="18" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+              </form>
+              <p class="searchtip" style="font-size: 90%">
+              Enter search terms or a module, class or function name.
+              </p>
+          </div>
+          <script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="generators.html" title="Generators"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="coroutines.html" title="Coroutines"
+             >previous</a> |</li>
+        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on Jan 14, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+    </div>
+  </body>
+</html>

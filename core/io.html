@@ -1,0 +1,590 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>I/O Channels &mdash; kaa.base v0.99.2 documentation</title>
+    <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.99.2',
+        COLLAPSE_MODINDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="kaa.base v0.99.2 documentation" href="../index.html" />
+    <link rel="next" title="Socket I/O" href="socket.html" />
+    <link rel="prev" title="Generators" href="../async/generators.html" />
+    <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="socket.html" title="Socket I/O"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../async/generators.html" title="Generators"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="i-o-channels">
+<span id="io"></span><h1>I/O Channels<a class="headerlink" href="#i-o-channels" title="Permalink to this headline">¶</a></h1>
+<p>FIXME: Write some basic stuff about IO in kaa</p>
+<div class="section" id="monitoring-i-o">
+<h2>Monitoring I/O<a class="headerlink" href="#monitoring-i-o" title="Permalink to this headline">¶</a></h2>
+<p><dl class="class">
+<dt id="kaa.IOMonitor">
+<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">IOMonitor</tt><big>(</big><em>callback</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.IOMonitor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates an IOMonitor to monitor IO activity via the mainloop.</p>
+<p>Once a file descriptor is registered using the
+<a title="kaa.IOMonitor.register" class="reference internal" href="#kaa.IOMonitor.register"><tt class="xref docutils literal"><span class="pre">register()</span></tt></a> method, the given <em>callback</em> is invoked
+upon I/O activity.</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.Callable" class="reference external" href="signals.html#kaa.Callable"><tt class="xref docutils literal"><span class="pre">kaa.Callable</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.nf_wrapper.NotifierCallback</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.IOMonitor</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.IOMonitor.register" class="reference internal" href="#kaa.IOMonitor.register"><tt class="xref docutils literal"><span class="pre">register()</span></tt></a></th><td class="desc">Register the IOMonitor to a specific file descriptor.</td></tr>
+<tr><th><a title="kaa.IOMonitor.unregister" class="reference internal" href="#kaa.IOMonitor.unregister"><tt class="xref docutils literal"><span class="pre">unregister()</span></tt></a></th><td class="desc">Unregister the IOMonitor</td></tr>
+</table>
+<div class="heading">Properties</div><div class="nomembers">This class has no properties.</div><div class="heading">Signals</div><div class="nomembers">This class has no signals.</div>
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.IOMonitor.register">
+<tt class="descname">register</tt><big>(</big><em>fd</em>, <em>condition=1</em><big>)</big><a class="headerlink" href="#kaa.IOMonitor.register" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register the IOMonitor to a specific file descriptor.</p>
+<p>The IOMonitor is registered with the notifier, which means that the
+notifier holds a reference to the IOMonitor until it is explicitly
+unregistered (or until the file descriptor is closed).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>fd</em> (File descriptor or any file-like object) &#8211; The file descriptor to monitor.</li>
+<li><em>condition</em> &#8211; IO_READ, IO_WRITE, or IO_EXCEPT</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.IOMonitor.unregister">
+<tt class="descname">unregister</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.IOMonitor.unregister" title="Permalink to this definition">¶</a></dt>
+<dd>Unregister the IOMonitor</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+<p><dl class="class">
+<dt id="kaa.WeakIOMonitor">
+<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">WeakIOMonitor</tt><big>(</big><em>func</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.WeakIOMonitor" title="Permalink to this definition">¶</a></dt>
+<dd><p>IOMonitor using weak references for the callback.</p>
+<p>Any previously registered file descriptor will become unregistered from
+the notifier when the callback (or any arguments) are destroyed.</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.Callable" class="reference external" href="signals.html#kaa.Callable"><tt class="xref docutils literal"><span class="pre">kaa.Callable</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.nf_wrapper.NotifierCallback</span></tt><br />&#9492;&#9472; <a title="kaa.WeakCallable" class="reference external" href="signals.html#kaa.WeakCallable"><tt class="xref docutils literal"><span class="pre">kaa.WeakCallable</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a title="kaa.IOMonitor" class="reference internal" href="#kaa.IOMonitor"><tt class="xref docutils literal"><span class="pre">kaa.IOMonitor</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.nf_wrapper.WeakNotifierCallback</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.WeakIOMonitor</tt><br /></p>
+
+</div>
+</p>
+</dd></dl>
+
+</p>
+</div>
+<div class="section" id="communication-over-i-o-channels">
+<h2>Communication over I/O channels<a class="headerlink" href="#communication-over-i-o-channels" title="Permalink to this headline">¶</a></h2>
+<p><dl class="class">
+<dt id="kaa.IOChannel">
+<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">IOChannel</tt><big>(</big><em>channel=None</em>, <em>mode=3</em>, <em>chunk_size=1048576</em>, <em>delimiter='n'</em><big>)</big><a class="headerlink" href="#kaa.IOChannel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base class for read-only, write-only or read-write descriptors such as
+Socket and Process.  Implements logic common to communication over
+such channels such as async read/writes and read/write buffering.</p>
+<p>It may also be used directly with file descriptors or file-like objects.
+e.g. <tt class="docutils literal"><span class="pre">IOChannel(file('somefile'))</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>channel</em> (integer file descriptor, file-like object, or other IOChannel) &#8211; file descriptor to wrap into an IOChannel</li>
+<li><em>mode</em> (bitmask of kaa.IO_READ and/or kaa.IO_WRITE) &#8211; indicates whether the channel is readable, writable, or both.</li>
+<li><em>chunk_size</em> &#8211; maximum number of bytes to be read in from the channel
+at a time; defaults to 1M.</li>
+<li><em>delimiter</em> &#8211; string used to split data for use with readline; defaults
+to &#8216;\n&#8217;.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Writes may be performed to an IOChannel that is not yet open.  These writes
+will be queued until the queue size limit (controlled by the
+<a title="kaa.IOChannel.queue_size" class="reference internal" href="#kaa.IOChannel.queue_size"><tt class="xref docutils literal"><span class="pre">queue_size</span></tt></a> property) is reached, after which an
+exception will be raised.  The write queue will be written to the channel
+once it becomes writable.</p>
+<p>Reads are asynchronous and non-blocking, and may be performed using two
+possible approaches:</p>
+<blockquote>
+<ol class="arabic simple">
+<li>Connecting a callback to the <a title="kaa.IOChannel.signals.read" class="reference internal" href="#kaa.IOChannel.signals.read"><tt class="xref docutils literal"><span class="pre">read</span></tt></a> 
+or <a title="kaa.IOChannel.signals.readline" class="reference internal" href="#kaa.IOChannel.signals.readline"><tt class="xref docutils literal"><span class="pre">readline</span></tt></a> signals.</li>
+<li>Invoking the <a title="kaa.IOChannel.read" class="reference internal" href="#kaa.IOChannel.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a> or
+<a title="kaa.IOChannel.readline" class="reference internal" href="#kaa.IOChannel.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a> methods, which return
+<a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> objects.</li>
+</ol>
+</blockquote>
+<p>It is not possible to use both approaches with readline.  (That is, it
+is not permitted to connect a callback to the <em>readline</em> signal and
+subsequently invoke the <a title="kaa.IOChannel.readline" class="reference internal" href="#kaa.IOChannel.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a> method when the
+callback is still connected.)</p>
+<p>However, <a title="kaa.IOChannel.read" class="reference internal" href="#kaa.IOChannel.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a> and <a title="kaa.IOChannel.readline" class="reference internal" href="#kaa.IOChannel.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a>
+will work predictably when a callback is connected to the <em>read</em> signal.
+Such a callback always receives all data from the channel once connected,
+but will not interfere with (or &#8220;steal&#8221; data from) calls to read() or
+readline().</p>
+<p>Data is not consumed from the channel if no one is interested in reads
+(that is, when there are no read() or readline() calls in progress, and
+there are no callbacks connected to the <em>read</em> and <em>readline</em> signals).
+This is necessary for flow control.</p>
+<p>Data is read from the channel in chunks, with the maximum chunk being
+defined by the <a title="kaa.IOChannel.queue_size" class="reference internal" href="#kaa.IOChannel.queue_size"><tt class="xref docutils literal"><span class="pre">queue_size</span></tt></a> property.  Unlike other
+APIs, read() does not block and will not consume all data to the end of the
+channel, but rather returns between 0 and <em>chunk_size</em> bytes when it
+becomes available.  If read() returns a zero-byte string, it means the
+channel is closed.  (Here, &#8220;returns X&#8221; means the <a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a>
+object read() actually returns is finished with X.)</p>
+<p>In order for readline to work properly, a read queue is maintained, which
+may grow up to <em>queue_size</em>.  See the <a title="kaa.IOChannel.readline" class="reference internal" href="#kaa.IOChannel.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a> method
+for more details.</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <tt class="xref docutils literal current">kaa.IOChannel</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.IOChannel.close" class="reference internal" href="#kaa.IOChannel.close"><tt class="xref docutils literal"><span class="pre">close()</span></tt></a></th><td class="desc">Closes the channel.</td></tr>
+<tr><th><a title="kaa.IOChannel.read" class="reference internal" href="#kaa.IOChannel.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a></th><td class="desc">Reads a chunk of data from the channel.</td></tr>
+<tr><th><a title="kaa.IOChannel.readline" class="reference internal" href="#kaa.IOChannel.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a></th><td class="desc">Reads a line from the channel.</td></tr>
+<tr><th><a title="kaa.IOChannel.steal" class="reference internal" href="#kaa.IOChannel.steal"><tt class="xref docutils literal"><span class="pre">steal()</span></tt></a></th><td class="desc">Steal all state from the given channel, assuming control over the underlying
+file descriptor or socket.</td></tr>
+<tr><th><a title="kaa.IOChannel.wrap" class="reference internal" href="#kaa.IOChannel.wrap"><tt class="xref docutils literal"><span class="pre">wrap()</span></tt></a></th><td class="desc">Make the IOChannel represent a new descriptor or file-like object.</td></tr>
+<tr><th><a title="kaa.IOChannel.write" class="reference internal" href="#kaa.IOChannel.write"><tt class="xref docutils literal"><span class="pre">write()</span></tt></a></th><td class="desc">Writes the given data to the channel.</td></tr>
+</table>
+<div class="heading">Properties</div>
+<table>
+<tr><th><a title="kaa.IOChannel.alive" class="reference internal" href="#kaa.IOChannel.alive"><tt class="xref docutils literal"><span class="pre">alive</span></tt></a></th><td>read-only</td><td class="desc">True if the channel exists and is open.</td></tr>
+<tr><th><a title="kaa.IOChannel.chunk_size" class="reference internal" href="#kaa.IOChannel.chunk_size"><tt class="xref docutils literal"><span class="pre">chunk_size</span></tt></a></th><td>read/write</td><td class="desc">Number of bytes to attempt to read from the channel at a time.</td></tr>
+<tr><th><a title="kaa.IOChannel.delimiter" class="reference internal" href="#kaa.IOChannel.delimiter"><tt class="xref docutils literal"><span class="pre">delimiter</span></tt></a></th><td>read/write</td><td class="desc">String used to split data for use with <a title="kaa.IOChannel.readline" class="reference internal" href="#kaa.IOChannel.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a>.</td></tr>
+<tr><th><a title="kaa.IOChannel.fileno" class="reference internal" href="#kaa.IOChannel.fileno"><tt class="xref docutils literal"><span class="pre">fileno</span></tt></a></th><td>read-only</td><td class="desc">The file descriptor (integer) for this channel, or None if no channel
+has been set.</td></tr>
+<tr><th><a title="kaa.IOChannel.mode" class="reference internal" href="#kaa.IOChannel.mode"><tt class="xref docutils literal"><span class="pre">mode</span></tt></a></th><td>read-only</td><td class="desc">Whether the channel is read-only, or read/write.</td></tr>
+<tr><th><a title="kaa.IOChannel.queue_size" class="reference internal" href="#kaa.IOChannel.queue_size"><tt class="xref docutils literal"><span class="pre">queue_size</span></tt></a></th><td>read/write</td><td class="desc">The size limit in bytes for the read and write queues.</td></tr>
+<tr><th><a title="kaa.IOChannel.read_queue_used" class="reference internal" href="#kaa.IOChannel.read_queue_used"><tt class="xref docutils literal"><span class="pre">read_queue_used</span></tt></a></th><td>read-only</td><td class="desc">The number of bytes in the read queue.</td></tr>
+<tr><th><a title="kaa.IOChannel.readable" class="reference internal" href="#kaa.IOChannel.readable"><tt class="xref docutils literal"><span class="pre">readable</span></tt></a></th><td>read-only</td><td class="desc">True if the channel is open, or if the channel is closed but a read
+call would still succeed (due to buffered data).</td></tr>
+<tr><th><a title="kaa.IOChannel.writable" class="reference internal" href="#kaa.IOChannel.writable"><tt class="xref docutils literal"><span class="pre">writable</span></tt></a></th><td>read-only</td><td class="desc">True if write() may be called.</td></tr>
+<tr><th><a title="kaa.IOChannel.write_queue_used" class="reference internal" href="#kaa.IOChannel.write_queue_used"><tt class="xref docutils literal"><span class="pre">write_queue_used</span></tt></a></th><td>read-only</td><td class="desc">The number of bytes queued in memory to be written to the channel.</td></tr>
+</table>
+<div class="heading">Signals</div>
+<table>
+<tr><th><a title="kaa.IOChannel.signals.read" class="reference internal" href="#kaa.IOChannel.signals.read"><tt class="xref docutils literal"><span class="pre">read</span></tt></a></th><td class="desc">Emitted for each chunk of data read from the channel.</td></tr>
+<tr><th><a title="kaa.IOChannel.signals.readline" class="reference internal" href="#kaa.IOChannel.signals.readline"><tt class="xref docutils literal"><span class="pre">readline</span></tt></a></th><td class="desc">Emitted for each line read from the channel.</td></tr>
+<tr><th><a title="kaa.IOChannel.signals.closed" class="reference internal" href="#kaa.IOChannel.signals.closed"><tt class="xref docutils literal"><span class="pre">closed</span></tt></a></th><td class="desc">Emitted when the channel is closed.</td></tr>
+</table>
+
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.IOChannel.close">
+<tt class="descname">close</tt><big>(</big><em>immediate=False</em>, <em>expected=True</em><big>)</big><a class="headerlink" href="#kaa.IOChannel.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Closes the channel.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>immediate</em> (bool) &#8211; if False and there is data in the write buffer, the
+channel is closed once the write buffer is emptied.
+Otherwise the channel is closed immediately and the 
+<em>closed</em> signal is emitted.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.IOChannel.read">
+<tt class="descname">read</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.IOChannel.read" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads a chunk of data from the channel.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">An <a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> object. If the InProgress is
+finished with the empty string, it means that no data 
+was collected and the channel was closed (or the channel 
+was already closed when read() was called).</td>
+</tr>
+</tbody>
+</table>
+<p>It is therefore possible to busy-loop by reading on a closed channel:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">channel</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="c"># Or: channel.read().wait()</span>
+</pre></div>
+</div>
+<p>So the return value of read() should be checked.  Alternatively,
+channel.readable could be tested:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">while</span> <span class="n">channel</span><span class="o">.</span><span class="n">readable</span><span class="p">:</span>
+     <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">process</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.IOChannel.readline">
+<tt class="descname">readline</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.IOChannel.readline" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads a line from the channel.</p>
+<p>The line delimiter is included in the string to avoid ambiguity.  If no
+delimiter is present then either the read queue became full or the
+channel was closed before a delimiter was received.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">An <a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> object. If the InProgress is
+finished with the empty string, it means that no data 
+was collected and the channel was closed (or the channel 
+was already closed when readline() was called).</td>
+</tr>
+</tbody>
+</table>
+<p>Data from the channel is read and queued in until the delimiter (\n by
+default, but may be changed by the <a title="kaa.IOChannel.delimiter" class="reference internal" href="#kaa.IOChannel.delimiter"><tt class="xref docutils literal"><span class="pre">delimiter</span></tt></a>
+property) is found.  If the read queue size exceeds the queue limit,
+then the InProgress returned here will be finished prematurely with
+whatever is in the read queue, and the read queue will be purged.</p>
+<p>This method may not be called when a callback is connected to the
+IOChannel&#8217;s readline signal.  You must use either one approach or the
+other.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.IOChannel.steal">
+<tt class="descname">steal</tt><big>(</big><em>channel</em><big>)</big><a class="headerlink" href="#kaa.IOChannel.steal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Steal all state from the given channel, assuming control over the underlying
+file descriptor or socket.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>channel</em> (<a title="kaa.IOChannel" class="reference internal" href="#kaa.IOChannel"><tt class="xref docutils literal"><span class="pre">IOChannel</span></tt></a>) &#8211; the channel to steal from</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">self</td>
+</tr>
+</tbody>
+</table>
+<p>The use-case for this method is primarily to convert one type of
+IOChannel into another.  For example, it&#8217;s possible to convert a
+standard <a title="kaa.Socket" class="reference external" href="socket.html#kaa.Socket"><tt class="xref docutils literal"><span class="pre">Socket</span></tt></a> into a <tt class="xref docutils literal"><span class="pre">TLSSocket</span></tt> in the
+middle of a session.  This method returns <tt class="docutils literal"><span class="pre">self</span></tt> so that this idiom
+is possible:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">kaa.net.tls</span> <span class="kn">import</span> <span class="n">TLSSocket</span>
+<span class="n">sock</span> <span class="o">=</span> <span class="n">TLSSocket</span><span class="p">()</span><span class="o">.</span><span class="n">steal</span><span class="p">(</span><span class="n">sock</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This method is similar to <a title="kaa.IOChannel.wrap" class="reference internal" href="#kaa.IOChannel.wrap"><tt class="xref docutils literal"><span class="pre">wrap()</span></tt></a>, but additionally
+all state is moved from the supplied IOChannel, including read/write
+queues, and all callbacks connected to signals are added to <tt class="docutils literal"><span class="pre">self</span></tt>,
+and removed from <tt class="docutils literal"><span class="pre">channel</span></tt>.</p>
+<p>Once stolen, the given <tt class="docutils literal"><span class="pre">channel</span></tt> is rendered basically inert.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.IOChannel.wrap">
+<tt class="descname">wrap</tt><big>(</big><em>channel</em>, <em>mode</em><big>)</big><a class="headerlink" href="#kaa.IOChannel.wrap" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make the IOChannel represent a new descriptor or file-like object.</p>
+<p>This is implicitly called by the initializer.  If the IOChannel is
+already wrapping another channel, it will be closed before the given
+one is wrapped.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>channel</em> (integer file descriptor, file-like object, or 
+other IOChannel) &#8211; file descriptor to wrap into the IOChannel</li>
+<li><em>mode</em> (bitmask of kaa.IO_READ and/or kaa.IO_WRITE) &#8211; indicates whether the channel is readable, writable,
+or both.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.IOChannel.write">
+<tt class="descname">write</tt><big>(</big><em>data</em><big>)</big><a class="headerlink" href="#kaa.IOChannel.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Writes the given data to the channel.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><p class="first"><em>data</em> (string) &#8211; the data to be written to the channel.</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">An <a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> object which is finished when the
+given data is fully written to the channel.  The InProgress
+is finished with the number of bytes sent in the last write 
+required to commit the given data to the channel.  (This may
+not be the actual number of bytes of the given data.)</p>
+<p class="last">If the channel closes unexpectedly before the data was
+written, an IOError is thrown to the InProgress.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>It is not required that the channel be open in order to write to it.
+Written data is queued until the channel open and then flushed.  As
+writes are asynchronous, all written data is queued.  It is the
+caller&#8217;s responsibility to ensure the internal write queue does not
+exceed the desired size by waiting for past write() InProgress to
+finish before writing more data.</p>
+<p>If a write does not complete because the channel was closed
+prematurely, an IOError is thrown to the InProgress.</p>
+</dd></dl>
+
+<h4>Properties</h4><dl class="attribute">
+<dt id="kaa.IOChannel.alive">
+<tt class="descname">alive</tt><a class="headerlink" href="#kaa.IOChannel.alive" title="Permalink to this definition">¶</a></dt>
+<dd>True if the channel exists and is open.</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.IOChannel.chunk_size">
+<tt class="descname">chunk_size</tt><a class="headerlink" href="#kaa.IOChannel.chunk_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of bytes to attempt to read from the channel at a time.</p>
+<p>The default is 1M.  A &#8216;read&#8217; signal is emitted for each chunk read from
+the channel.  (The number of bytes read at a time may be less than the
+chunk size, but will never be more.)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.IOChannel.delimiter">
+<tt class="descname">delimiter</tt><a class="headerlink" href="#kaa.IOChannel.delimiter" title="Permalink to this definition">¶</a></dt>
+<dd><p>String used to split data for use with <a title="kaa.IOChannel.readline" class="reference internal" href="#kaa.IOChannel.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a>.</p>
+<p>Delimiter may also be a list of strings, in which case any one of the
+elements in the list will be used as a delimiter.  For example, if you
+want to delimit based on either \r or \n, specify [&#8216;\r&#8217;, &#8216;\n&#8217;].</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.IOChannel.fileno">
+<tt class="descname">fileno</tt><a class="headerlink" href="#kaa.IOChannel.fileno" title="Permalink to this definition">¶</a></dt>
+<dd>The file descriptor (integer) for this channel, or None if no channel
+has been set.</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.IOChannel.mode">
+<tt class="descname">mode</tt><a class="headerlink" href="#kaa.IOChannel.mode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Whether the channel is read-only, or read/write.</p>
+<p>A bitmask of IO_READ and/or IO_WRITE.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.IOChannel.queue_size">
+<tt class="descname">queue_size</tt><a class="headerlink" href="#kaa.IOChannel.queue_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>The size limit in bytes for the read and write queues.</p>
+<p>Each queue can consume at most this size plus the chunk size.  Setting
+a value does not affect any data currently in any of the the queues.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.IOChannel.read_queue_used">
+<tt class="descname">read_queue_used</tt><a class="headerlink" href="#kaa.IOChannel.read_queue_used" title="Permalink to this definition">¶</a></dt>
+<dd><p>The number of bytes in the read queue.</p>
+<p>The read queue is only used if either readline() or the readline signal
+is.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.IOChannel.readable">
+<tt class="descname">readable</tt><a class="headerlink" href="#kaa.IOChannel.readable" title="Permalink to this definition">¶</a></dt>
+<dd><p>True if the channel is open, or if the channel is closed but a read
+call would still succeed (due to buffered data).</p>
+<p>Note that a value of True does not mean there <strong>is</strong> data available, but
+rather that there could be and that a read() call is possible (however
+that read() call may return None, in which case the readable property
+will subsequently be False).</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.IOChannel.writable">
+<tt class="descname">writable</tt><a class="headerlink" href="#kaa.IOChannel.writable" title="Permalink to this definition">¶</a></dt>
+<dd><p>True if write() may be called.</p>
+<p>(However, if you pass too much data to write() such that the write
+queue limit is exceeded, the write will fail.)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.IOChannel.write_queue_used">
+<tt class="descname">write_queue_used</tt><a class="headerlink" href="#kaa.IOChannel.write_queue_used" title="Permalink to this definition">¶</a></dt>
+<dd>The number of bytes queued in memory to be written to the channel.</dd></dl>
+
+<h4>Signals</h4><dl class="attribute">
+<dt id="kaa.IOChannel.signals.read">
+<tt class="descname">read</tt><a class="headerlink" href="#kaa.IOChannel.signals.read" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted for each chunk of data read from the channel.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback(chunk, ...)</tt></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>chunk</em> (str) &#8211; data read from the channel</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<p>When a callback is connected to the <em>read</em> signal, data is automatically
+read from the channel as soon as it becomes available, and the signal
+is emitted.</p>
+<p>It is allowed to have a callback connected to the <em>read</em> signal
+and simultaneously use the <a title="kaa.IOChannel.read" class="reference internal" href="#kaa.IOChannel.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a> and
+<a title="kaa.IOChannel.readline" class="reference internal" href="#kaa.IOChannel.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a> methods.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.IOChannel.signals.readline">
+<tt class="descname">readline</tt><a class="headerlink" href="#kaa.IOChannel.signals.readline" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted for each line read from the channel.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback(line, ...)</tt></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>line</em> (str) &#8211; line read from the channel</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<p>It is not allowed to have a callback connected to the <em>readline</em> signal
+and simultaneously use the <a title="kaa.IOChannel.readline" class="reference internal" href="#kaa.IOChannel.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a> method.</p>
+<p>Refer to <a title="kaa.IOChannel.readline" class="reference internal" href="#kaa.IOChannel.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a> for more details.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.IOChannel.signals.closed">
+<tt class="descname">closed</tt><a class="headerlink" href="#kaa.IOChannel.signals.closed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted when the channel is closed.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback(expected, ...)</tt></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>expected</em> (bool) &#8211; True if the channel is closed because
+<a title="kaa.IOChannel.close" class="reference internal" href="#kaa.IOChannel.close"><tt class="xref docutils literal"><span class="pre">close()</span></tt></a> was called.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <h3><a href="../index.html">Table Of Contents</a></h3>
+            <ul>
+<li><a class="reference external" href="#">I/O Channels</a><ul>
+<li><a class="reference external" href="#monitoring-i-o">Monitoring I/O</a></li>
+<li><a class="reference external" href="#communication-over-i-o-channels">Communication over I/O channels</a></li>
+</ul>
+</li>
+</ul>
+
+            <h4>Previous topic</h4>
+            <p class="topless"><a href="../async/generators.html"
+                                  title="previous chapter">Generators</a></p>
+            <h4>Next topic</h4>
+            <p class="topless"><a href="socket.html"
+                                  title="next chapter">Socket I/O</a></p>
+            <h3>This Page</h3>
+            <ul class="this-page-menu">
+              <li><a href="../_sources/core/io.txt"
+                     rel="nofollow">Show Source</a></li>
+            </ul>
+          <div id="searchbox" style="display: none">
+            <h3>Quick search</h3>
+              <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" size="18" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+              </form>
+              <p class="searchtip" style="font-size: 90%">
+              Enter search terms or a module, class or function name.
+              </p>
+          </div>
+          <script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="socket.html" title="Socket I/O"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../async/generators.html" title="Generators"
+             >previous</a> |</li>
+        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on Jan 14, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+    </div>
+  </body>
+</html>

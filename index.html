@@ -1,1 +1,219 @@
-Dummy page
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>The Kaa Application Framework &mdash; kaa.base v0.99.2 documentation</title>
+    <link rel="stylesheet" href="_static/kaa.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '#',
+        VERSION:     '0.99.2',
+        COLLAPSE_MODINDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="kaa.base v0.99.2 documentation" href="#" />
+    <link rel="next" title="Signals and Callables" href="core/signals.html" />
+    <!-- link rel="stylesheet" href="_static/kaa.css" type="text/css" /-->
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="core/signals.html" title="Signals and Callables"
+             accesskey="N">next</a> |</li>
+        <li><a href="#">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="the-kaa-application-framework">
+<h1>The Kaa Application Framework<a class="headerlink" href="#the-kaa-application-framework" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="what-are-kaa-and-kaa-base">
+<h2>What are Kaa and kaa.base?<a class="headerlink" href="#what-are-kaa-and-kaa-base" title="Permalink to this headline">¶</a></h2>
+<p>Kaa is an umbrella project comprising a set of Python modules, mostly inclined
+toward solving problems in the domain of multimedia.</p>
+<p><em>kaa.base</em> is an LGPL-licensed generic Python application framework, providing
+the foundation for other modules within Kaa, and can be used in any type of
+project, from small event-driven tools, to larger, complex applications.</p>
+<p>The Kaa Application Framework includes a <a class="reference external" href="core/mainloop.html#notifier"><em>main loop facility</em></a>
+with an API for <a class="reference external" href="core/signals.html#signals"><em>signals</em></a> and <a class="reference external" href="core/signals.html#callables"><em>callables</em></a>,
+<a class="reference external" href="core/timer.html#timer"><em>timers</em></a>, <a class="reference external" href="async/threads.html#threads"><em>thread</em></a> and <a class="reference external" href="core/process.html#subprocess"><em>subprocess management</em></a>, local <a class="reference external" href="core/io.html#io"><em>IO</em></a> and <a class="reference external" href="core/socket.html#socket"><em>sockets</em></a> (with TLS
+support), inter-process communication, and much more.</p>
+<p>Kaa also &#8211; and perhaps most importantly &#8211; provides a rich, practically
+magical API for <a class="reference external" href="async/coroutines.html#coroutines"><em>asynchronous programming</em></a>.  Threads and
+coroutines in combination with <a class="reference external" href="async/inprogress.html#inprogress"><em>InProgress</em></a> objects,
+which are used extensively throughout Kaa, allow you to implement complex state
+machines responding to asynchronous events in very compact, readable code.</p>
+</div>
+<div class="section" id="where-do-i-get-kaa-base">
+<h2>Where do I get kaa.base?<a class="headerlink" href="#where-do-i-get-kaa-base" title="Permalink to this headline">¶</a></h2>
+<p>The easiest and recommended way to install kaa.base is using <em>pip</em> (available
+as the <tt class="docutils literal"><span class="pre">python-pip</span></tt> package in Ubuntu and Fedora):</p>
+<div class="highlight-bash"><div class="highlight"><pre>sudo pip install --upgrade kaa-base
+</pre></div>
+</div>
+<p>Or, if you prefer to install kaa.base as an egg using <em>setuptools</em> (package
+<tt class="docutils literal"><span class="pre">python-setuptools</span></tt> on Ubuntu and Fedora):</p>
+<div class="highlight-bash"><div class="highlight"><pre>sudo easy_install -U kaa-base
+</pre></div>
+</div>
+<p>Your distribution might already have kaa.base included in its standard
+repositories, but be aware that these are almost certainly very out of date:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="c"># For Ubuntu and Debian</span>
+sudo apt-get install python-kaa-base
+
+<span class="c"># For Fedora</span>
+yum install python-kaa-base
+</pre></div>
+</div>
+<p>The most up-to-date tree can be cloned with git:</p>
+<div class="highlight-bash"><div class="highlight"><pre>git clone git://github.com/freevo/kaa-base.git
+<span class="nb">cd </span>kaa-base
+sudo python setup.py install
+</pre></div>
+</div>
+<p>The project is <a class="reference external" href="https://github.com/freevo/kaa-base">hosted at GitHub</a>, so if
+you&#8217;d like to contribute, you can can fork it and send pull requests.</p>
+<p>Finally, source packages are <a class="reference external" href="https://github.com/freevo/kaa-base/downloads">available on GitHub</a>.</p>
+</div>
+<div class="section" id="library-documentation">
+<h2>Library Documentation<a class="headerlink" href="#library-documentation" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="core-framework">
+<h3>Core Framework<a class="headerlink" href="#core-framework" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="core/signals.html">Signals and Callables</a></li>
+<li class="toctree-l1"><a class="reference external" href="core/mainloop.html">The Main Loop</a></li>
+<li class="toctree-l1"><a class="reference external" href="core/mainloop.html#integration-with-other-frameworks">Integration With Other Frameworks</a></li>
+<li class="toctree-l1"><a class="reference external" href="core/timer.html">Timers</a></li>
+<li class="toctree-l1"><a class="reference external" href="core/event.html">Events and Event Handlers</a></li>
+<li class="toctree-l1"><a class="reference external" href="async/inprogress.html">InProgress Objects</a></li>
+<li class="toctree-l1"><a class="reference external" href="async/coroutines.html">Coroutines</a></li>
+<li class="toctree-l1"><a class="reference external" href="async/threads.html">Thread Support</a></li>
+<li class="toctree-l1"><a class="reference external" href="async/generators.html">Generators</a></li>
+<li class="toctree-l1"><a class="reference external" href="core/io.html">I/O Channels</a></li>
+<li class="toctree-l1"><a class="reference external" href="core/socket.html">Socket I/O</a></li>
+<li class="toctree-l1"><a class="reference external" href="core/process.html">Sub-Process I/O</a></li>
+</ul>
+</div>
+<div class="section" id="utility-modules">
+<h3>Utility Modules<a class="headerlink" href="#utility-modules" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="rpc.html">Remote Procedure Calls with kaa.rpc</a></li>
+<li class="toctree-l1"><a class="reference external" href="config.html">Configuration Files</a></li>
+<li class="toctree-l1"><a class="reference external" href="db.html">Object Database</a></li>
+<li class="toctree-l1"><a class="reference external" href="inotify.html">INotify</a></li>
+<li class="toctree-l1"><a class="reference external" href="utils.html">Utility Functions</a></li>
+<li class="toctree-l1"><a class="reference external" href="input.html">Input Plugins</a></li>
+</ul>
+</div>
+<div class="section" id="network">
+<h3>Network<a class="headerlink" href="#network" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="net/tls.html">TLS</a></li>
+<li class="toctree-l1"><a class="reference external" href="net/mdns.html">Multicast DNS</a></li>
+</ul>
+</div>
+<div class="section" id="miscellaneous">
+<h3>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="distribution.html">Distribution Helpers</a></li>
+<li class="toctree-l1"><a class="reference external" href="internal/index.html">Kaa Internals</a><ul>
+<li class="toctree-l2"><a class="reference external" href="internal/index.html#module-importing">Module Importing</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <h3><a href="#">Table Of Contents</a></h3>
+            <ul>
+<li><a class="reference external" href="#">The Kaa Application Framework</a><ul>
+<li><a class="reference external" href="#what-are-kaa-and-kaa-base">What are Kaa and kaa.base?</a></li>
+<li><a class="reference external" href="#where-do-i-get-kaa-base">Where do I get kaa.base?</a></li>
+<li><a class="reference external" href="#library-documentation">Library Documentation</a><ul>
+<li><a class="reference external" href="#core-framework">Core Framework</a><ul>
+</ul>
+</li>
+<li><a class="reference external" href="#utility-modules">Utility Modules</a><ul>
+</ul>
+</li>
+<li><a class="reference external" href="#network">Network</a><ul>
+</ul>
+</li>
+<li><a class="reference external" href="#miscellaneous">Miscellaneous</a><ul>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+            <h4>Next topic</h4>
+            <p class="topless"><a href="core/signals.html"
+                                  title="next chapter">Signals and Callables</a></p>
+            <h3>This Page</h3>
+            <ul class="this-page-menu">
+              <li><a href="_sources/index.txt"
+                     rel="nofollow">Show Source</a></li>
+            </ul>
+          <div id="searchbox" style="display: none">
+            <h3>Quick search</h3>
+              <form class="search" action="search.html" method="get">
+                <input type="text" name="q" size="18" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+              </form>
+              <p class="searchtip" style="font-size: 90%">
+              Enter search terms or a module, class or function name.
+              </p>
+          </div>
+          <script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="core/signals.html" title="Signals and Callables"
+             >next</a> |</li>
+        <li><a href="#">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on Jan 14, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+    </div>
+  </body>
+</html>

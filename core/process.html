@@ -1,0 +1,565 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Sub-Process I/O &mdash; kaa.base v0.99.2 documentation</title>
+    <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.99.2',
+        COLLAPSE_MODINDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="kaa.base v0.99.2 documentation" href="../index.html" />
+    <link rel="next" title="Remote Procedure Calls with kaa.rpc" href="../rpc.html" />
+    <link rel="prev" title="Socket I/O" href="socket.html" />
+    <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../rpc.html" title="Remote Procedure Calls with kaa.rpc"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="socket.html" title="Socket I/O"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="sub-process-i-o">
+<span id="subprocess"></span><h1>Sub-Process I/O<a class="headerlink" href="#sub-process-i-o" title="Permalink to this headline">¶</a></h1>
+<p><dl class="class">
+<dt id="kaa.Process">
+<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">Process</tt><big>(</big><em>cmd</em>, <em>shell=False</em>, <em>dumpfile=None</em><big>)</big><a class="headerlink" href="#kaa.Process" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a Process object.  The subprocess is not started until
+<a title="kaa.Process.start" class="reference internal" href="#kaa.Process.start"><tt class="xref docutils literal"><span class="pre">start()</span></tt></a> is called.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>cmd</em> (string or list of strings) &#8211; the command to be executed.</li>
+<li><em>shell</em> (bool) &#8211; True if the command should be executed through a shell.
+This allows for shell-like syntax (redirection, pipes,
+etc.), but in this case <em>cmd</em> must be a string.</li>
+<li><em>dumpfile</em> (None, string (path to filename), file object, IOChannel) &#8211; File to which all child stdout and stderr will be
+dumped, or None to disable output dumping.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Process objects passed to <a title="kaa.inprogress" class="reference external" href="../async/inprogress.html#kaa.inprogress"><tt class="xref docutils literal"><span class="pre">kaa.inprogress()</span></tt></a> return a
+<a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> that corresponds to the
+<a title="kaa.Process.signals.exited" class="reference internal" href="#kaa.Process.signals.exited"><tt class="xref docutils literal"><span class="pre">exited</span></tt></a> signal (not the
+<a title="kaa.Process.signals.finished" class="reference internal" href="#kaa.Process.signals.finished"><tt class="xref docutils literal"><span class="pre">finished</span></tt></a> signal).</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <tt class="xref docutils literal current">kaa.Process</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.Process.communicate" class="reference internal" href="#kaa.Process.communicate"><tt class="xref docutils literal"><span class="pre">communicate()</span></tt></a></th><td class="desc">One-time interaction with the process, sending the given input, and
+receiving all output from the child.</td></tr>
+<tr><th><a title="kaa.Process.read" class="reference internal" href="#kaa.Process.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a></th><td class="desc">Reads a chunk of data from either stdout or stderr of the process.</td></tr>
+<tr><th><a title="kaa.Process.readline" class="reference internal" href="#kaa.Process.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a></th><td class="desc">Reads a line from either stdout or stderr, whichever is available
+first.</td></tr>
+<tr><th><a title="kaa.Process.start" class="reference internal" href="#kaa.Process.start"><tt class="xref docutils literal"><span class="pre">start()</span></tt></a></th><td class="desc">Starts the process with the given arguments.</td></tr>
+<tr><th><a title="kaa.Process.stop" class="reference internal" href="#kaa.Process.stop"><tt class="xref docutils literal"><span class="pre">stop()</span></tt></a></th><td class="desc">Stops the child process.</td></tr>
+<tr><th><a title="kaa.Process.write" class="reference internal" href="#kaa.Process.write"><tt class="xref docutils literal"><span class="pre">write()</span></tt></a></th><td class="desc">Write data to child&#8217;s stdin.</td></tr>
+</table>
+<div class="heading">Properties</div>
+<table>
+<tr><th><a title="kaa.Process.delimiter" class="reference internal" href="#kaa.Process.delimiter"><tt class="xref docutils literal"><span class="pre">delimiter</span></tt></a></th><td>read/write</td><td class="desc">String used to split data for use with <a title="kaa.Process.readline" class="reference internal" href="#kaa.Process.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a>.</td></tr>
+<tr><th><a title="kaa.Process.exitcode" class="reference internal" href="#kaa.Process.exitcode"><tt class="xref docutils literal"><span class="pre">exitcode</span></tt></a></th><td>read-only</td><td class="desc">The child&#8217;s exit code once it has terminated.</td></tr>
+<tr><th><a title="kaa.Process.pid" class="reference internal" href="#kaa.Process.pid"><tt class="xref docutils literal"><span class="pre">pid</span></tt></a></th><td>read-only</td><td class="desc">The child&#8217;s pid when it is running (or stopping), or None when it is not.</td></tr>
+<tr><th><a title="kaa.Process.readable" class="reference internal" href="#kaa.Process.readable"><tt class="xref docutils literal"><span class="pre">readable</span></tt></a></th><td>read-only</td><td class="desc">True if it is possible to read data from the child.</td></tr>
+<tr><th><a title="kaa.Process.running" class="reference internal" href="#kaa.Process.running"><tt class="xref docutils literal"><span class="pre">running</span></tt></a></th><td>read-only</td><td class="desc">True if the child process is running.</td></tr>
+<tr><th><a title="kaa.Process.stderr" class="reference internal" href="#kaa.Process.stderr"><tt class="xref docutils literal"><span class="pre">stderr</span></tt></a></th><td>read-only</td><td class="desc"><a title="kaa.IOChannel" class="reference external" href="io.html#kaa.IOChannel"><tt class="xref docutils literal"><span class="pre">IOChannel</span></tt></a> of child process&#8217;s stderr.</td></tr>
+<tr><th><a title="kaa.Process.stdin" class="reference internal" href="#kaa.Process.stdin"><tt class="xref docutils literal"><span class="pre">stdin</span></tt></a></th><td>read-only</td><td class="desc"><a title="kaa.IOChannel" class="reference external" href="io.html#kaa.IOChannel"><tt class="xref docutils literal"><span class="pre">IOChannel</span></tt></a> of child process&#8217;s stdin.</td></tr>
+<tr><th><a title="kaa.Process.stdout" class="reference internal" href="#kaa.Process.stdout"><tt class="xref docutils literal"><span class="pre">stdout</span></tt></a></th><td>read-only</td><td class="desc"><a title="kaa.IOChannel" class="reference external" href="io.html#kaa.IOChannel"><tt class="xref docutils literal"><span class="pre">IOChannel</span></tt></a> of child process&#8217;s stdout.</td></tr>
+<tr><th><a title="kaa.Process.stop_command" class="reference internal" href="#kaa.Process.stop_command"><tt class="xref docutils literal"><span class="pre">stop_command</span></tt></a></th><td>read/write</td><td class="desc">Stop command for this process.</td></tr>
+<tr><th><a title="kaa.Process.stopping" class="reference internal" href="#kaa.Process.stopping"><tt class="xref docutils literal"><span class="pre">stopping</span></tt></a></th><td>read-only</td><td class="desc">True if the child process is currently being shut down.</td></tr>
+<tr><th><a title="kaa.Process.writable" class="reference internal" href="#kaa.Process.writable"><tt class="xref docutils literal"><span class="pre">writable</span></tt></a></th><td>read-only</td><td class="desc">True if it is possible to write data to the child.</td></tr>
+</table>
+<div class="heading">Signals</div>
+<table>
+<tr><th><a title="kaa.Process.signals.read" class="reference internal" href="#kaa.Process.signals.read"><tt class="xref docutils literal"><span class="pre">read</span></tt></a></th><td class="desc">Emitted for each chunk of data read from either stdout or stderr
+of the child process.</td></tr>
+<tr><th><a title="kaa.Process.signals.readline" class="reference internal" href="#kaa.Process.signals.readline"><tt class="xref docutils literal"><span class="pre">readline</span></tt></a></th><td class="desc">Emitted for each line read from either stdout or stderr of the
+child process.</td></tr>
+<tr><th><a title="kaa.Process.signals.finished" class="reference internal" href="#kaa.Process.signals.finished"><tt class="xref docutils literal"><span class="pre">finished</span></tt></a></th><td class="desc">Emitted when the child is dead and all data from stdout and stderr
+has been consumed.</td></tr>
+<tr><th><a title="kaa.Process.signals.exited" class="reference internal" href="#kaa.Process.signals.exited"><tt class="xref docutils literal"><span class="pre">exited</span></tt></a></th><td class="desc">Emitted when the child process has terminated.</td></tr>
+</table>
+
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.Process.communicate">
+<tt class="descname">communicate</tt><big>(</big><em>input=None</em><big>)</big><a class="headerlink" href="#kaa.Process.communicate" title="Permalink to this definition">¶</a></dt>
+<dd><p>One-time interaction with the process, sending the given input, and
+receiving all output from the child.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>input</em> (str) &#8211; the data to send to the child&#8217;s stdin</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">an <a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a>, which will be finished with a a
+2-tuple (stdoutdata, stderrdata)</td>
+</tr>
+</tbody>
+</table>
+<p>Any data previously written to the child with <a title="kaa.Process.write" class="reference internal" href="#kaa.Process.write"><tt class="xref docutils literal"><span class="pre">write()</span></tt></a>
+will be flushed and the pipe to the child&#8217;s stdin will be closed.  All
+subsequent data from the child&#8217;s stdout and stderr will be read until
+EOF.  The child will be terminated before returning.</p>
+<p>This method is modeled after Python&#8217;s standard library call
+<tt class="docutils literal"><span class="pre">subprocess.Popen.communicate()</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.Process.read">
+<tt class="descname">read</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.Process.read" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads a chunk of data from either stdout or stderr of the process.</p>
+<p>There is no way to determine from which (stdout or stderr) the data
+was read; if you require this, use the stdout or stderr attributes
+directly (however see warning below).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">A <a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a>, finished with the data read.
+If it is finished the empty string, it means the child&#8217;s
+stdout and stderr were both closed (which is almost certainly
+because the process exited) and no data was available.</td>
+</tr>
+</tbody>
+</table>
+<p>No exception is raised if the child is not readable.  Like
+Socket.read(), it is therefore possible to busy-loop by reading on a
+dead child:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">process</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="c"># Or: data = process.read().wait()</span>
+</pre></div>
+</div>
+<p>So the return value of read() should be tested for non-None.
+Alternatively, the readable property could be tested:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">while</span> <span class="n">process</span><span class="o">.</span><span class="n">readable</span><span class="p">:</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">process</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p>You can read directly from stdout or stderr.  However, beware of this
+code, which is wrong:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">while</span> <span class="n">process</span><span class="o">.</span><span class="n">readable</span><span class="p">:</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">process</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>In the above incorrect example, process.readable may be True even
+though process.stdout is closed (because process.stderr may not be
+closed).  In this case, process.stdout.read() will finish immediately
+with None, resulting in a busy loop.  The solution is to test the
+process.stdout.readable property instead:</p>
+<div class="last highlight-python"><div class="highlight"><pre><span class="k">while</span> <span class="n">process</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">readable</span><span class="p">:</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">process</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.Process.readline">
+<tt class="descname">readline</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.Process.readline" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads a line from either stdout or stderr, whichever is available
+first.</p>
+<p>If finished with None or the empty string, it means that no data was
+read and the process exited.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">A <a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a>, finished with the data read.
+If it is finished the empty string, it means the child&#8217;s
+stdout and stderr were both closed (which is almost certainly
+because the process exited) and no data was available.</td>
+</tr>
+</tbody>
+</table>
+<p>Like <a title="kaa.Process.read" class="reference internal" href="#kaa.Process.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a>, it is possible busy-loop with this
+method, so you should test its output or test the
+<a title="kaa.Process.readable" class="reference internal" href="#kaa.Process.readable"><tt class="xref docutils literal"><span class="pre">readable</span></tt></a> property calling.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.Process.start">
+<tt class="descname">start</tt><big>(</big><em>args=''</em><big>)</big><a class="headerlink" href="#kaa.Process.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Starts the process with the given arguments.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>args</em> (string or list of strings) &#8211; additional arguments when invoking the child, appended
+to any arguments specified to the initializer.</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">An <a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> object, finished with the exitcode
+when the child process terminates (when the <tt class="docutils literal"><span class="pre">exit</span></tt> signals is
+emitted).</td>
+</tr>
+</tbody>
+</table>
+<p>The Process is registered with a global supervisor which holds a strong
+reference to the Process object while the child process remains
+active.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">If timeout() is called on the returned InProgress and the timeout
+occurs, the InProgress returned by <tt class="docutils literal"><span class="pre">start()</span></tt> will be finished with
+a <a title="kaa.TimeoutException" class="reference external" href="../async/inprogress.html#kaa.TimeoutException"><tt class="xref docutils literal"><span class="pre">TimeoutException</span></tt></a> even though the child process isn&#8217;t
+actually dead.  You can always test the <a title="kaa.Process.running" class="reference internal" href="#kaa.Process.running"><tt class="xref docutils literal"><span class="pre">running</span></tt></a>
+property, or use the <a title="kaa.Process.signals.finished" class="reference internal" href="#kaa.Process.signals.finished"><tt class="xref docutils literal"><span class="pre">finished</span></tt></a> signal,
+which doesn&#8217;t emit until the child process is genuinely dead.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.Process.stop">
+<tt class="descname">stop</tt><big>(</big><em>cmd=None</em>, <em>wait=3.0</em><big>)</big><a class="headerlink" href="#kaa.Process.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stops the child process.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><em>cmd</em> (string or callable; see <a title="kaa.Process.stop_command" class="reference internal" href="#kaa.Process.stop_command"><tt class="xref docutils literal"><span class="pre">stop_command</span></tt></a>) &#8211; stop command used to attempt to terminate the child
+gracefully; overrides the <em>stop_command</em> property if
+specified.</li>
+<li><em>wait</em> (float) &#8211; number of seconds to wait between termination steps 
+(see below).</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A <a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a>, finished (with None) when the
+child terminates.  If the child refuses to terminate (even
+with a SIGKILL) an SystemError exception is thrown to the
+InProgress.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>The child process is terminated using the following steps:</p>
+<blockquote>
+<ol class="arabic simple">
+<li>The stop command is written (or invoked) if one is specified,
+and up to <em>wait</em> seconds is given for the child to terminate.</li>
+<li>A SIGTERM is issued to the child process, and, again, we wait up
+to <em>wait</em> seconds for the child to terminate.</li>
+<li>A SIGKILL is issued to the child process, and this time
+we wait up to <em>wait</em>*2 seconds.</li>
+</ol>
+</blockquote>
+<p>If after step 3 the child is still not dead, a SystemError exception
+is thrown to the InProgress, as well to the InProgress returned by
+<a title="kaa.Process.start" class="reference internal" href="#kaa.Process.start"><tt class="xref docutils literal"><span class="pre">start()</span></tt></a> and the <em>finished</em> signal will be emitted
+with the value None.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.Process.write">
+<tt class="descname">write</tt><big>(</big><em>data</em><big>)</big><a class="headerlink" href="#kaa.Process.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write data to child&#8217;s stdin.</p>
+<p>Returns an InProgress, which is finished when the data has actually
+been written to the child&#8217;s stdin.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><p class="first"><em>data</em> (string) &#8211; the data to be written to the channel.</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">An <a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> object, which is finished when the
+data has actually been written to the child&#8217;s stdin.</p>
+<p class="last">If the channel closes unexpectedly before the data was
+written, an IOError is thrown to the InProgress.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>This is a convenience function, as the caller could do
+<tt class="docutils literal"><span class="pre">process.stdin.write()</span></tt>.</p>
+</dd></dl>
+
+<h4>Properties</h4><dl class="attribute">
+<dt id="kaa.Process.delimiter">
+<tt class="descname">delimiter</tt><a class="headerlink" href="#kaa.Process.delimiter" title="Permalink to this definition">¶</a></dt>
+<dd>String used to split data for use with <a title="kaa.Process.readline" class="reference internal" href="#kaa.Process.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a>.</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Process.exitcode">
+<tt class="descname">exitcode</tt><a class="headerlink" href="#kaa.Process.exitcode" title="Permalink to this definition">¶</a></dt>
+<dd><p>The child&#8217;s exit code once it has terminated.</p>
+<p>If the child is still running or it has not yet been started, this
+value will be None.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Process.pid">
+<tt class="descname">pid</tt><a class="headerlink" href="#kaa.Process.pid" title="Permalink to this definition">¶</a></dt>
+<dd>The child&#8217;s pid when it is running (or stopping), or None when it is not.</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Process.readable">
+<tt class="descname">readable</tt><a class="headerlink" href="#kaa.Process.readable" title="Permalink to this definition">¶</a></dt>
+<dd><p>True if it is possible to read data from the child.</p>
+<p>The child is readable if either the child&#8217;s stdout or stderr channels
+are still open, or if they are both closed but a read call would
+succeed anyway due to data remaining in the read queue.</p>
+<p>This doesn&#8217;t necessarily mean the child is still running: a terminated
+child may still be read from (there may be data buffered in its stdout
+or stderr channels).  Use the <a title="kaa.Process.running" class="reference internal" href="#kaa.Process.running"><tt class="xref docutils literal"><span class="pre">running</span></tt></a> property if
+you want to see if the child is still running.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Process.running">
+<tt class="descname">running</tt><a class="headerlink" href="#kaa.Process.running" title="Permalink to this definition">¶</a></dt>
+<dd><p>True if the child process is running.</p>
+<p>A child that is currently stopping is still considered running.  When
+the <tt class="docutils literal"><span class="pre">running</span></tt> property is False, it means <a title="kaa.Process.start" class="reference internal" href="#kaa.Process.start"><tt class="xref docutils literal"><span class="pre">start()</span></tt></a>
+may safely be called.</p>
+<p>To test whether <a title="kaa.Process.read" class="reference internal" href="#kaa.Process.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a> or <a title="kaa.Process.write" class="reference internal" href="#kaa.Process.write"><tt class="xref docutils literal"><span class="pre">write()</span></tt></a>
+may be called, use the <a title="kaa.Process.readable" class="reference internal" href="#kaa.Process.readable"><tt class="xref docutils literal"><span class="pre">readable</span></tt></a> and
+<a title="kaa.Process.writable" class="reference internal" href="#kaa.Process.writable"><tt class="xref docutils literal"><span class="pre">writable</span></tt></a> properties respectively.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Process.stderr">
+<tt class="descname">stderr</tt><a class="headerlink" href="#kaa.Process.stderr" title="Permalink to this definition">¶</a></dt>
+<dd><p><a title="kaa.IOChannel" class="reference external" href="io.html#kaa.IOChannel"><tt class="xref docutils literal"><span class="pre">IOChannel</span></tt></a> of child process&#8217;s stderr.</p>
+<p>This object is valid even when the child is not running, although it is
+obviously not readable until the child is started.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Process.stdin">
+<tt class="descname">stdin</tt><a class="headerlink" href="#kaa.Process.stdin" title="Permalink to this definition">¶</a></dt>
+<dd><p><a title="kaa.IOChannel" class="reference external" href="io.html#kaa.IOChannel"><tt class="xref docutils literal"><span class="pre">IOChannel</span></tt></a> of child process&#8217;s stdin.</p>
+<p>This object is valid even when the child is not running.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Process.stdout">
+<tt class="descname">stdout</tt><a class="headerlink" href="#kaa.Process.stdout" title="Permalink to this definition">¶</a></dt>
+<dd><p><a title="kaa.IOChannel" class="reference external" href="io.html#kaa.IOChannel"><tt class="xref docutils literal"><span class="pre">IOChannel</span></tt></a> of child process&#8217;s stdout.</p>
+<p>This object is valid even when the child is not running, although it is
+obviously not readable until the child is started.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Process.stop_command">
+<tt class="descname">stop_command</tt><a class="headerlink" href="#kaa.Process.stop_command" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stop command for this process.</p>
+<p>The command can be either a callable or a string.  The command is
+invoked (if it is a callable) or the command is written to the child&#8217;s
+stdin (if cmd is a string or unicode) when the process is being
+terminated with a call to stop().</p>
+<p>Shutdown handlers for the process should be set with this property.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Process.stopping">
+<tt class="descname">stopping</tt><a class="headerlink" href="#kaa.Process.stopping" title="Permalink to this definition">¶</a></dt>
+<dd><p>True if the child process is currently being shut down.</p>
+<p>True when <tt class="docutils literal"><span class="pre">stop()</span></tt> was called and the process is not stopped yet.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Process.writable">
+<tt class="descname">writable</tt><a class="headerlink" href="#kaa.Process.writable" title="Permalink to this definition">¶</a></dt>
+<dd><p>True if it is possible to write data to the child.</p>
+<p>If the child process is writable, <a title="kaa.Process.write" class="reference internal" href="#kaa.Process.write"><tt class="xref docutils literal"><span class="pre">write()</span></tt></a> may
+safely be called.  A child that is in the process of stopping is not
+writable.</p>
+</dd></dl>
+
+<h4>Signals</h4><dl class="attribute">
+<dt id="kaa.Process.signals.read">
+<tt class="descname">read</tt><a class="headerlink" href="#kaa.Process.signals.read" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted for each chunk of data read from either stdout or stderr
+of the child process.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback(chunk, ...)</tt></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>chunk</em> (str) &#8211; data read from the child&#8217;s stdout or stderr.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<p>When a callback is connected to the <em>read</em> signal, data is automatically
+read from the child as soon as it becomes available, and the signal
+is emitted.</p>
+<p>It is allowed to have a callback connected to the <em>read</em> signal
+and simultaneously use the <a title="kaa.Process.read" class="reference internal" href="#kaa.Process.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a> and
+<a title="kaa.Process.readline" class="reference internal" href="#kaa.Process.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a> methods.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Process.signals.readline">
+<tt class="descname">readline</tt><a class="headerlink" href="#kaa.Process.signals.readline" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted for each line read from either stdout or stderr of the
+child process.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback(line, ...)</tt></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>line</em> (str) &#8211; line read from the child&#8217;s stdout or stderr.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<p>It is not allowed to have a callback connected to the <em>readline</em> signal
+and simultaneously use the <a title="kaa.Process.readline" class="reference internal" href="#kaa.Process.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a> method.</p>
+<p>Refer to <a title="kaa.Process.readline" class="reference internal" href="#kaa.Process.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a> for more details.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Process.signals.finished">
+<tt class="descname">finished</tt><a class="headerlink" href="#kaa.Process.signals.finished" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted when the child is dead and all data from stdout and stderr
+has been consumed.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback(exitcode, ...)</tt></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>exitcode</em> &#8211; the exit code of the child</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<p>Due to buffering, a child process may be terminated, but the pipes
+to its stdout and stderr still open possibly containing buffered
+data yet to be read.  This signal emits only when the child has
+exited and all data has been consumed (or stdout and stderr
+explicitly closed).</p>
+<p>After this signal emits, the <a title="kaa.Process.readable" class="reference internal" href="#kaa.Process.readable"><tt class="xref docutils literal"><span class="pre">readable</span></tt></a>
+property will be False.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Process.signals.exited">
+<tt class="descname">exited</tt><a class="headerlink" href="#kaa.Process.signals.exited" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted when the child process has terminated.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback(exitcode, ...)</tt></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>exitcode</em> &#8211; the exit code of the child</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<p>Unlike the <a title="kaa.Process.signals.finished" class="reference internal" href="#kaa.Process.signals.finished"><tt class="xref docutils literal"><span class="pre">finished</span></tt></a> signal, this
+signal emits when the child is dead (and has been reaped), however
+the Process may or may not still be <a title="kaa.Process.readable" class="reference internal" href="#kaa.Process.readable"><tt class="xref docutils literal"><span class="pre">readable</span></tt></a>.</p>
+</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <h4>Previous topic</h4>
+            <p class="topless"><a href="socket.html"
+                                  title="previous chapter">Socket I/O</a></p>
+            <h4>Next topic</h4>
+            <p class="topless"><a href="../rpc.html"
+                                  title="next chapter">Remote Procedure Calls with kaa.rpc</a></p>
+            <h3>This Page</h3>
+            <ul class="this-page-menu">
+              <li><a href="../_sources/core/process.txt"
+                     rel="nofollow">Show Source</a></li>
+            </ul>
+          <div id="searchbox" style="display: none">
+            <h3>Quick search</h3>
+              <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" size="18" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+              </form>
+              <p class="searchtip" style="font-size: 90%">
+              Enter search terms or a module, class or function name.
+              </p>
+          </div>
+          <script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../rpc.html" title="Remote Procedure Calls with kaa.rpc"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="socket.html" title="Socket I/O"
+             >previous</a> |</li>
+        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on Jan 14, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+    </div>
+  </body>
+</html>

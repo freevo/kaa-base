@@ -1,0 +1,170 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Events and Event Handlers &mdash; kaa.base v0.99.2 documentation</title>
+    <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.99.2',
+        COLLAPSE_MODINDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="kaa.base v0.99.2 documentation" href="../index.html" />
+    <link rel="next" title="InProgress Objects" href="../async/inprogress.html" />
+    <link rel="prev" title="Timers" href="timer.html" />
+    <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../async/inprogress.html" title="InProgress Objects"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="timer.html" title="Timers"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="events-and-event-handlers">
+<span id="event"></span><h1>Events and Event Handlers<a class="headerlink" href="#events-and-event-handlers" title="Permalink to this headline">¶</a></h1>
+<p>FIXME: this section is not yet written</p>
+<p><dl class="class">
+<dt id="kaa.Event">
+<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">Event</tt><big>(</big><em>name</em>, <em>*args</em><big>)</big><a class="headerlink" href="#kaa.Event" title="Permalink to this definition">¶</a></dt>
+<dd><p>A simple event that can be passed to the registered event handler.</p>
+<p>Init the event.</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal current">kaa.Event</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.Event.post" class="reference internal" href="#kaa.Event.post"><tt class="xref docutils literal"><span class="pre">post()</span></tt></a></th><td class="desc">Post event into the queue.</td></tr>
+</table>
+<div class="heading">Properties</div><div class="nomembers">This class has no properties.</div><div class="heading">Signals</div><div class="nomembers">This class has no signals.</div>
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.Event.post">
+<tt class="descname">post</tt><big>(</big><em>*args</em><big>)</big><a class="headerlink" href="#kaa.Event.post" title="Permalink to this definition">¶</a></dt>
+<dd>Post event into the queue.</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+<p><dl class="class">
+<dt id="kaa.EventHandler">
+<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">EventHandler</tt><big>(</big><em>callback</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.EventHandler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Event handling callback.</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.Callable" class="reference external" href="signals.html#kaa.Callable"><tt class="xref docutils literal"><span class="pre">kaa.Callable</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.nf_wrapper.NotifierCallback</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.EventHandler</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.EventHandler.register" class="reference internal" href="#kaa.EventHandler.register"><tt class="xref docutils literal"><span class="pre">register()</span></tt></a></th><td class="desc">Register to a list of events. If no event is given, all events
+will be used.</td></tr>
+<tr><th><a title="kaa.EventHandler.unregister" class="reference internal" href="#kaa.EventHandler.unregister"><tt class="xref docutils literal"><span class="pre">unregister()</span></tt></a></th><td class="desc">Unregister callback.</td></tr>
+</table>
+<div class="heading">Properties</div>
+<table>
+<tr><th><a title="kaa.EventHandler.active" class="reference internal" href="#kaa.EventHandler.active"><tt class="xref docutils literal"><span class="pre">active</span></tt></a></th><td>read-only</td><td class="desc">True if the object is bound to the event manager.</td></tr>
+</table>
+<div class="heading">Signals</div><div class="nomembers">This class has no signals.</div>
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.EventHandler.register">
+<tt class="descname">register</tt><big>(</big><em>events=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#kaa.EventHandler.register" title="Permalink to this definition">¶</a></dt>
+<dd>Register to a list of events. If no event is given, all events
+will be used.</dd></dl>
+
+<dl class="method">
+<dt id="kaa.EventHandler.unregister">
+<tt class="descname">unregister</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.EventHandler.unregister" title="Permalink to this definition">¶</a></dt>
+<dd>Unregister callback.</dd></dl>
+
+<h4>Properties</h4><dl class="attribute">
+<dt id="kaa.EventHandler.active">
+<tt class="descname">active</tt><a class="headerlink" href="#kaa.EventHandler.active" title="Permalink to this definition">¶</a></dt>
+<dd>True if the object is bound to the event manager.</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <h4>Previous topic</h4>
+            <p class="topless"><a href="timer.html"
+                                  title="previous chapter">Timers</a></p>
+            <h4>Next topic</h4>
+            <p class="topless"><a href="../async/inprogress.html"
+                                  title="next chapter">InProgress Objects</a></p>
+            <h3>This Page</h3>
+            <ul class="this-page-menu">
+              <li><a href="../_sources/core/event.txt"
+                     rel="nofollow">Show Source</a></li>
+            </ul>
+          <div id="searchbox" style="display: none">
+            <h3>Quick search</h3>
+              <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" size="18" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+              </form>
+              <p class="searchtip" style="font-size: 90%">
+              Enter search terms or a module, class or function name.
+              </p>
+          </div>
+          <script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../async/inprogress.html" title="InProgress Objects"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="timer.html" title="Timers"
+             >previous</a> |</li>
+        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on Jan 14, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+    </div>
+  </body>
+</html>

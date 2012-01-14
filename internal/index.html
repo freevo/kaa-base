@@ -1,0 +1,218 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Kaa Internals &mdash; kaa.base v0.99.2 documentation</title>
+    <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.99.2',
+        COLLAPSE_MODINDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="kaa.base v0.99.2 documentation" href="../index.html" />
+    <link rel="prev" title="Distribution Helpers" href="../distribution.html" />
+    <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../distribution.html" title="Distribution Helpers"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="kaa-internals">
+<span id="internal"></span><h1>Kaa Internals<a class="headerlink" href="#kaa-internals" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-importing">
+<h2>Module Importing<a class="headerlink" href="#module-importing" title="Permalink to this headline">¶</a></h2>
+<p>In large and complex Python libraries, it is often difficult to avoid circular
+importing.  For example, <em>main</em>, which provides functions to manage the
+kaa mainloop, requires <em>thread</em> to ensure that <a title="kaa.main.stop" class="reference external" href="../core/mainloop.html#kaa.main.stop"><tt class="xref docutils literal"><span class="pre">kaa.main.stop()</span></tt></a> runs
+in the main thread.  <em>thread</em> requires <em>async</em> so that <a title="kaa.ThreadInProgress" class="reference external" href="../async/threads.html#kaa.ThreadInProgress"><tt class="xref docutils literal"><span class="pre">ThreadInProgress</span></tt></a>
+can subclass <a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a>.  <em>async</em> in turn requires <em>main</em>
+in order to run the main loop for <a title="kaa.InProgress.wait" class="reference external" href="../async/inprogress.html#kaa.InProgress.wait"><tt class="xref docutils literal"><span class="pre">kaa.InProgress.wait()</span></tt></a>.</p>
+<dl class="docutils">
+<dt>Import cycles can generally be handled in several different ways:</dt>
+<dd><ol class="first last arabic simple">
+<li>Consolidate all code involved in import cycles into the same file to
+eliminate the circular dependencies altogether.</li>
+<li>Use only absolute imports (<tt class="docutils literal"><span class="pre">import</span> <span class="pre">foo.bar</span></tt>) and never relative imports
+(<tt class="docutils literal"><span class="pre">from</span> <span class="pre">foo</span> <span class="pre">import</span> <span class="pre">bar</span></tt>), and move imports that generate import cycles
+to the bottom of the file.</li>
+<li>Import at function invocation time, just before the module is needed.  This
+will work for most scenarios, but not when you want to subclass a class
+defined in another module.</li>
+</ol>
+</dd>
+</dl>
+<p>The first option is usually the simplest and most reliable, but for complex
+dependencies can involve merging considerable amounts of code, which makes
+maintenance more complicated.  In the case of Kaa, it would involve merging all
+the code related to signals, threads, timers, coroutines, generators, async
+(InProgress) and the mainloop.  This would result in a monstrous, nearly
+5000 line file.</p>
+<p>The second option would require explicit absolute importing of all modules
+inside the framework (<tt class="docutils literal"><span class="pre">import</span> <span class="pre">kaa.async</span></tt>) which would preclude being able to
+import directly from the source tree, which is useful for debugging and
+bootstrapping the installation.  It also splits up imports, burying the circular
+imports at the bottom of the file, and relies on proper comments to explain
+what&#8217;s happening.  Managing circular dependencies this way has shown to be
+fragile.</p>
+<p>The third option sounds tempting if it&#8217;s possible (i.e. the circular dependency
+is truly only needed at runtime, not at compile time).  However this can be
+volatile and can result in deadlocks in certain circumstances.  Generally
+we have found that importing a module that hasn&#8217;t been imported already from
+the main thread should be avoided.  However if the module is already imported,
+it is safe to import it from a thread.</p>
+<p>The solution chosen for Kaa is a combination of the first and third options.
+Namely:</p>
+<blockquote>
+<ul class="simple">
+<li>most of the nastier circular dependencies have been avoided by moving
+the Object, Signal, Signals classes, and the code used to manage the
+thread notifier pipe and callback queuing for mainthread invocation
+(<em>CoreThreading</em>) into one file <tt class="docutils literal"><span class="pre">core.py</span></tt></li>
+<li>the remaining (three) circular dependencies are resolved by performing
+run-time imports; the lazy importing code has been modified to load
+the required modules up-front to prevent (or at least mitigate) these
+modules from being imported for the first time inside a thread.</li>
+</ul>
+</blockquote>
+<p>The current circular dependencies (which are being handled by importing
+at function invocation time) are:</p>
+<blockquote>
+<ul class="simple">
+<li><em>core</em> requires <em>async</em> (for Signal.__inprogress__() and Signals.any() and
+.all()); <em>async</em> requires <em>core</em> (for everything).</li>
+<li><em>async</em> requires <em>timer</em> (for InProgress.timeout()); <em>timer</em> requires
+<em>thread</em> (for threaded decorator); <em>thread</em> needs <em>async</em> (so that
+ThreadInProgress can subclass InProgress).</li>
+<li><em>async</em> requires <em>main</em> (InProgress.wait() calls main.loop()); <em>main</em>
+requires <em>thread</em> (for threaded decorator, and thread.killall());
+<em>thread</em> requires <em>async</em> (for the reason explained above).</li>
+</ul>
+</blockquote>
+<p>There are a number of &#8220;core&#8221; modules that must be imported as a group to ensure
+that none of the modules imported at function invocation time are imported
+for the first time in a thread.  These are <em>core</em>, <em>nf_wrapper</em>, <em>async</em>,
+<em>thread</em>, <em>timer</em>, and <em>main</em>.  The (crude) diagram below documents the
+existing dependencies for these modules, showing the first level of
+dependencies for each.  A <tt class="docutils literal"><span class="pre">.</span></tt> denotes that there are no further dependencies
+(or the lower level dependencies are considered resolved):</p>
+<div class="highlight-python"><pre>   weakref -&gt; .
+     utils -&gt; .
+  strutils -&gt; .
+  callable -&gt; utils -&gt; .
+nf_wrapper -&gt; utils -&gt; .
+           -&gt; callable -&gt; .
+      core -&gt; utils -&gt; .
+           -&gt; callable -&gt; .
+           -&gt; nf_wrapper -&gt; .
+           -&gt; [imports async at runtime]
+     async -&gt; utils -&gt; .
+           -&gt; callable -&gt; .
+           -&gt; core -&gt; .
+           -&gt; [imports timer at runtime]
+           -&gt; [imports main at runtime]
+    thread -&gt; utils -&gt; .
+           -&gt; callable -&gt; .
+           -&gt; core -&gt; .
+           -&gt; async -&gt; .
+     timer -&gt; weakref -&gt; .
+           -&gt; utils -&gt; .
+           -&gt; nf_wrapper -&gt; .
+           -&gt; core -&gt; .
+           -&gt; thread -&gt; .
+      main -&gt; nf_wrapper -&gt; .
+           -&gt; core -&gt; .
+           -&gt; timer -&gt; .
+           -&gt; thread -&gt; .</pre>
+</div>
+<p>As the dependency graph shows, it is sufficient to import <em>main</em> to cause
+the six &#8220;core&#8221; modules to be imported.  The <em>_LazyProxy</em> class in
+<tt class="docutils literal"><span class="pre">__init__.py</span></tt> will implicitly import <em>main</em> when almost any kaa object is
+referenced, which should make it extremely unlikely that either <em>async</em> or
+<em>main</em> should ever be imported for the first time within a thread.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <h3><a href="../index.html">Table Of Contents</a></h3>
+            <ul>
+<li><a class="reference external" href="#">Kaa Internals</a><ul>
+<li><a class="reference external" href="#module-importing">Module Importing</a></li>
+</ul>
+</li>
+</ul>
+
+            <h4>Previous topic</h4>
+            <p class="topless"><a href="../distribution.html"
+                                  title="previous chapter">Distribution Helpers</a></p>
+            <h3>This Page</h3>
+            <ul class="this-page-menu">
+              <li><a href="../_sources/internal/index.txt"
+                     rel="nofollow">Show Source</a></li>
+            </ul>
+          <div id="searchbox" style="display: none">
+            <h3>Quick search</h3>
+              <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" size="18" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+              </form>
+              <p class="searchtip" style="font-size: 90%">
+              Enter search terms or a module, class or function name.
+              </p>
+          </div>
+          <script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../distribution.html" title="Distribution Helpers"
+             >previous</a> |</li>
+        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on Jan 14, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+    </div>
+  </body>
+</html>

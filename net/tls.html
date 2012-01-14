@@ -1,0 +1,257 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>TLS &mdash; kaa.base v0.99.2 documentation</title>
+    <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.99.2',
+        COLLAPSE_MODINDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="kaa.base v0.99.2 documentation" href="../index.html" />
+    <link rel="next" title="Multicast DNS" href="mdns.html" />
+    <link rel="prev" title="Input Plugins" href="../input.html" />
+    <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="mdns.html" title="Multicast DNS"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../input.html" title="Input Plugins"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="tls">
+<span id="id1"></span><h1>TLS<a class="headerlink" href="#tls" title="Permalink to this headline">¶</a></h1>
+<p><dl class="class">
+<dt id="kaa.net.tls.M2TLSSocket">
+<em class="property">class </em><tt class="descclassname">kaa.net.tls.</tt><tt class="descname">M2TLSSocket</tt><a class="headerlink" href="#kaa.net.tls.M2TLSSocket" title="Permalink to this definition">¶</a></dt>
+<dd><p>TLSSocket implementation that uses M2Crypto.  This class uses OpenSSL&#8217;s BIO
+pairs for guaranteed async IO; all socket communication is handled by us
+(via the IOChannel).  See:</p>
+<blockquote>
+<a class="reference external" href="http://www.openssl.org/docs/crypto/BIO_new_bio_pair.html">http://www.openssl.org/docs/crypto/BIO_new_bio_pair.html</a></blockquote>
+<p>Inspired heavily by TwistedProtocolWrapper.py from M2Crypto.</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <a title="kaa.IOChannel" class="reference external" href="../core/io.html#kaa.IOChannel"><tt class="xref docutils literal"><span class="pre">kaa.IOChannel</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a title="kaa.Socket" class="reference external" href="../core/socket.html#kaa.Socket"><tt class="xref docutils literal"><span class="pre">kaa.Socket</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.net.tls.TLSSocketBase</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.net.tls.M2TLSSocket</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.net.tls.M2TLSSocket.close" class="reference internal" href="#kaa.net.tls.M2TLSSocket.close"><tt class="xref docutils literal"><span class="pre">close()</span></tt></a></th><td class="desc"></td></tr>
+<tr><th><a title="kaa.net.tls.M2TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.M2TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">starttls_client()</span></tt></a></th><td class="desc">TODO: document me.</td></tr>
+<tr><th><a title="kaa.net.tls.M2TLSSocket.starttls_server" class="reference internal" href="#kaa.net.tls.M2TLSSocket.starttls_server"><tt class="xref docutils literal"><span class="pre">starttls_server()</span></tt></a></th><td class="desc"></td></tr>
+<tr><th><a title="kaa.net.tls.M2TLSSocket.write" class="reference internal" href="#kaa.net.tls.M2TLSSocket.write"><tt class="xref docutils literal"><span class="pre">write()</span></tt></a></th><td class="desc"></td></tr>
+</table>
+<div class="heading">Properties</div><div class="nomembers">This class has no properties.</div><div class="heading">Signals</div>
+<table>
+<tr><th><a title="kaa.net.tls.M2TLSSocket.signals.tls" class="reference internal" href="#kaa.net.tls.M2TLSSocket.signals.tls"><tt class="xref docutils literal"><span class="pre">tls</span></tt></a></th><td class="desc">Emitted when a TLS handshake has been successfully completed.</td></tr>
+</table>
+
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.net.tls.M2TLSSocket.close">
+<tt class="descname">close</tt><big>(</big><em>immediate=False</em>, <em>expected=True</em><big>)</big><a class="headerlink" href="#kaa.net.tls.M2TLSSocket.close" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kaa.net.tls.M2TLSSocket.starttls_client">
+<tt class="descname">starttls_client</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.net.tls.M2TLSSocket.starttls_client" title="Permalink to this definition">¶</a></dt>
+<dd><p>TODO: document me.</p>
+<dl class="docutils">
+<dt>Possible kwargs:</dt>
+<dd><p class="first">cert: filename to pem cert for local side
+key: private key file (if None, assumes key is in cert)
+dh: filename for Diffie-Hellman parameters (only used for server)
+verify: if True, checks that the peer cert is signed by a known CA
+check: 2-tuple (host, fingerprint) to control further peer cert checks:</p>
+<blockquote class="last">
+<dl class="docutils">
+<dt>host: None: validate CN from host from connect();</dt>
+<dd>False: don&#8217;t do any CN checking
+string: require CN match the string</dd>
+</dl>
+<p>fingerprint: peer cert digest must match fingerprint, or None not to check.</p>
+</blockquote>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.net.tls.M2TLSSocket.starttls_server">
+<tt class="descname">starttls_server</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.net.tls.M2TLSSocket.starttls_server" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kaa.net.tls.M2TLSSocket.write">
+<tt class="descname">write</tt><big>(</big><em>data</em><big>)</big><a class="headerlink" href="#kaa.net.tls.M2TLSSocket.write" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<h4>Signals</h4><dl class="attribute">
+<dt id="kaa.net.tls.M2TLSSocket.signals.tls">
+<tt class="descname">tls</tt><a class="headerlink" href="#kaa.net.tls.M2TLSSocket.signals.tls" title="Permalink to this definition">¶</a></dt>
+<dd>Emitted when a TLS handshake has been successfully completed.</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+<p><dl class="class">
+<dt id="kaa.net.tls.TLSLiteSocket">
+<em class="property">class </em><tt class="descclassname">kaa.net.tls.</tt><tt class="descname">TLSLiteSocket</tt><big>(</big><em>cafile=None</em><big>)</big><a class="headerlink" href="#kaa.net.tls.TLSLiteSocket" title="Permalink to this definition">¶</a></dt>
+<dd><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <a title="kaa.IOChannel" class="reference external" href="../core/io.html#kaa.IOChannel"><tt class="xref docutils literal"><span class="pre">kaa.IOChannel</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a title="kaa.Socket" class="reference external" href="../core/socket.html#kaa.Socket"><tt class="xref docutils literal"><span class="pre">kaa.Socket</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.net.tls.TLSSocketBase</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.net.tls.TLSLiteSocket</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.net.tls.TLSLiteSocket.starttls_client" class="reference internal" href="#kaa.net.tls.TLSLiteSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">starttls_client()</span></tt></a></th><td class="desc"></td></tr>
+<tr><th><a title="kaa.net.tls.TLSLiteSocket.starttls_server" class="reference internal" href="#kaa.net.tls.TLSLiteSocket.starttls_server"><tt class="xref docutils literal"><span class="pre">starttls_server()</span></tt></a></th><td class="desc"></td></tr>
+</table>
+<div class="heading">Properties</div><div class="nomembers">This class has no properties.</div><div class="heading">Signals</div>
+<table>
+<tr><th><a title="kaa.net.tls.TLSLiteSocket.signals.tls" class="reference internal" href="#kaa.net.tls.TLSLiteSocket.signals.tls"><tt class="xref docutils literal"><span class="pre">tls</span></tt></a></th><td class="desc">Emitted when a TLS handshake has been successfully completed.</td></tr>
+</table>
+
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.net.tls.TLSLiteSocket.starttls_client">
+<tt class="descname">starttls_client</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.net.tls.TLSLiteSocket.starttls_client" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kaa.net.tls.TLSLiteSocket.starttls_server">
+<tt class="descname">starttls_server</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.net.tls.TLSLiteSocket.starttls_server" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<h4>Signals</h4><dl class="attribute">
+<dt id="kaa.net.tls.TLSLiteSocket.signals.tls">
+<tt class="descname">tls</tt><a class="headerlink" href="#kaa.net.tls.TLSLiteSocket.signals.tls" title="Permalink to this definition">¶</a></dt>
+<dd>Emitted when a TLS handshake has been successfully completed.</dd></dl>
+
+</dd></dl>
+
+</p>
+<p><dl class="class">
+<dt id="kaa.net.tls.GNUTLSSocket">
+<em class="property">class </em><tt class="descclassname">kaa.net.tls.</tt><tt class="descname">GNUTLSSocket</tt><big>(</big><em>cafile=None</em><big>)</big><a class="headerlink" href="#kaa.net.tls.GNUTLSSocket" title="Permalink to this definition">¶</a></dt>
+<dd><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <a title="kaa.IOChannel" class="reference external" href="../core/io.html#kaa.IOChannel"><tt class="xref docutils literal"><span class="pre">kaa.IOChannel</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a title="kaa.Socket" class="reference external" href="../core/socket.html#kaa.Socket"><tt class="xref docutils literal"><span class="pre">kaa.Socket</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.net.tls.TLSSocketBase</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.net.tls.GNUTLSSocket</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.net.tls.GNUTLSSocket.handshake_client" class="reference internal" href="#kaa.net.tls.GNUTLSSocket.handshake_client"><tt class="xref docutils literal"><span class="pre">handshake_client()</span></tt></a></th><td class="desc"></td></tr>
+<tr><th><a title="kaa.net.tls.GNUTLSSocket.handshake_server" class="reference internal" href="#kaa.net.tls.GNUTLSSocket.handshake_server"><tt class="xref docutils literal"><span class="pre">handshake_server()</span></tt></a></th><td class="desc"></td></tr>
+</table>
+<div class="heading">Properties</div>
+<table>
+<tr><th><a title="kaa.net.tls.GNUTLSSocket.peer_certificate" class="reference internal" href="#kaa.net.tls.GNUTLSSocket.peer_certificate"><tt class="xref docutils literal"><span class="pre">peer_certificate</span></tt></a></th><td>read-only</td><td class="desc"></td></tr>
+</table>
+<div class="heading">Signals</div>
+<table>
+<tr><th><a title="kaa.net.tls.GNUTLSSocket.signals.tls" class="reference internal" href="#kaa.net.tls.GNUTLSSocket.signals.tls"><tt class="xref docutils literal"><span class="pre">tls</span></tt></a></th><td class="desc">Emitted when a TLS handshake has been successfully completed.</td></tr>
+</table>
+
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.net.tls.GNUTLSSocket.handshake_client">
+<tt class="descname">handshake_client</tt><big>(</big><em>credentials</em>, <em>srp=None</em><big>)</big><a class="headerlink" href="#kaa.net.tls.GNUTLSSocket.handshake_client" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kaa.net.tls.GNUTLSSocket.handshake_server">
+<tt class="descname">handshake_server</tt><big>(</big><em>credentials</em>, <em>srp=None</em><big>)</big><a class="headerlink" href="#kaa.net.tls.GNUTLSSocket.handshake_server" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<h4>Properties</h4><dl class="attribute">
+<dt id="kaa.net.tls.GNUTLSSocket.peer_certificate">
+<tt class="descname">peer_certificate</tt><a class="headerlink" href="#kaa.net.tls.GNUTLSSocket.peer_certificate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<h4>Signals</h4><dl class="attribute">
+<dt id="kaa.net.tls.GNUTLSSocket.signals.tls">
+<tt class="descname">tls</tt><a class="headerlink" href="#kaa.net.tls.GNUTLSSocket.signals.tls" title="Permalink to this definition">¶</a></dt>
+<dd>Emitted when a TLS handshake has been successfully completed.</dd></dl>
+
+</dd></dl>
+
+</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <h4>Previous topic</h4>
+            <p class="topless"><a href="../input.html"
+                                  title="previous chapter">Input Plugins</a></p>
+            <h4>Next topic</h4>
+            <p class="topless"><a href="mdns.html"
+                                  title="next chapter">Multicast DNS</a></p>
+            <h3>This Page</h3>
+            <ul class="this-page-menu">
+              <li><a href="../_sources/net/tls.txt"
+                     rel="nofollow">Show Source</a></li>
+            </ul>
+          <div id="searchbox" style="display: none">
+            <h3>Quick search</h3>
+              <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" size="18" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+              </form>
+              <p class="searchtip" style="font-size: 90%">
+              Enter search terms or a module, class or function name.
+              </p>
+          </div>
+          <script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="mdns.html" title="Multicast DNS"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../input.html" title="Input Plugins"
+             >previous</a> |</li>
+        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on Jan 14, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+    </div>
+  </body>
+</html>

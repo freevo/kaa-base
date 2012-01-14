@@ -1,0 +1,883 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Object Database &mdash; kaa.base v0.99.2 documentation</title>
+    <link rel="stylesheet" href="_static/kaa.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '#',
+        VERSION:     '0.99.2',
+        COLLAPSE_MODINDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="kaa.base v0.99.2 documentation" href="index.html" />
+    <link rel="next" title="INotify" href="inotify.html" />
+    <link rel="prev" title="Configuration Files" href="config.html" />
+    <!-- link rel="stylesheet" href="_static/kaa.css" type="text/css" /-->
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="inotify.html" title="INotify"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="config.html" title="Configuration Files"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="object-database">
+<span id="db"></span><h1>Object Database<a class="headerlink" href="#object-database" title="Permalink to this headline">¶</a></h1>
+<p>Write intro and examples.</p>
+<div class="section" id="attribute-flags">
+<span id="attrflags"></span><h2>Attribute Flags<a class="headerlink" href="#attribute-flags" title="Permalink to this headline">¶</a></h2>
+<p>These flags are used to define object attributes.  See
+<a title="kaa.db.Database.register_object_type_attrs" class="reference internal" href="#kaa.db.Database.register_object_type_attrs"><tt class="xref docutils literal"><span class="pre">register_object_type_attrs()</span></tt></a> for more details.</p>
+<dl class="attribute">
+<dt id="kaa.db.ATTR_SIMPLE">
+<tt class="descclassname">kaa.db.</tt><tt class="descname">ATTR_SIMPLE</tt><a class="headerlink" href="#kaa.db.ATTR_SIMPLE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attribute is persisted with the object, but cannot be used with
+<a title="kaa.db.Database.query" class="reference internal" href="#kaa.db.Database.query"><tt class="xref docutils literal"><span class="pre">query()</span></tt></a>.  It can be any Python type that
+is picklable.</p>
+<p>The attribute data is stored inside an internal pickled object and does
+not occupy a dedicated column in the underlying database table for the
+object type.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.db.ATTR_SEARCHABLE">
+<tt class="descclassname">kaa.db.</tt><tt class="descname">ATTR_SEARCHABLE</tt><a class="headerlink" href="#kaa.db.ATTR_SEARCHABLE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attribute can be used with <a title="kaa.db.Database.query" class="reference internal" href="#kaa.db.Database.query"><tt class="xref docutils literal"><span class="pre">query()</span></tt></a>, but the type
+must be one of <em>int</em>, <em>float</em>, <em>str</em>, <em>unicode</em>, <em>buffer</em>, or <em>bool</em>.</p>
+<p>The attribute data is stored in a dedicated column in the underlying
+database table.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.db.ATTR_INDEXED">
+<tt class="descclassname">kaa.db.</tt><tt class="descname">ATTR_INDEXED</tt><a class="headerlink" href="#kaa.db.ATTR_INDEXED" title="Permalink to this definition">¶</a></dt>
+<dd><p>If this flag is set, the attribute is indexed for faster queries.</p>
+<p>Internally, an SQL index is placed on the column.  Multiple ATTR_INDEXED
+attributes may be used in a composite index by specifying the <em>indexes</em>
+argument with <a title="kaa.db.Database.register_object_type_attrs" class="reference internal" href="#kaa.db.Database.register_object_type_attrs"><tt class="xref docutils literal"><span class="pre">register_object_type_attrs()</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.db.ATTR_IGNORE_CASE">
+<tt class="descclassname">kaa.db.</tt><tt class="descname">ATTR_IGNORE_CASE</tt><a class="headerlink" href="#kaa.db.ATTR_IGNORE_CASE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Queries on this attribute are case-insensitive, however when the attribute
+is accessed from the <a title="kaa.db.ObjectRow" class="reference internal" href="#kaa.db.ObjectRow"><tt class="xref docutils literal"><span class="pre">ObjectRow</span></tt></a>, the original case is
+preserved.</p>
+<p>Attributes with this flag require roughly double the space in the database,
+because two copies are kept (one in lower case for searching, and one in the
+original case).</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.db.ATTR_INVERTED_INDEX">
+<tt class="descclassname">kaa.db.</tt><tt class="descname">ATTR_INVERTED_INDEX</tt><a class="headerlink" href="#kaa.db.ATTR_INVERTED_INDEX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Values for this attribute are parsed into terms and individual terms can
+be searched to find the object.</p>
+<p>When it&#8217;s registered, the attribute must also be associated with a
+registered inverted index.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.db.ATTR_INDEXED_IGNORE_CASE">
+<tt class="descclassname">kaa.db.</tt><tt class="descname">ATTR_INDEXED_IGNORE_CASE</tt><a class="headerlink" href="#kaa.db.ATTR_INDEXED_IGNORE_CASE" title="Permalink to this definition">¶</a></dt>
+<dd>A bitmap of <a title="kaa.db.ATTR_INDEXED" class="reference internal" href="#kaa.db.ATTR_INDEXED"><tt class="xref docutils literal"><span class="pre">ATTR_INDEXED</span></tt></a> and
+<a title="kaa.db.ATTR_IGNORE_CASE" class="reference internal" href="#kaa.db.ATTR_IGNORE_CASE"><tt class="xref docutils literal"><span class="pre">ATTR_IGNORE_CASE</span></tt></a>.  Provided for convenience and code
+readability.</dd></dl>
+
+</div>
+<div class="section" id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Permalink to this headline">¶</a></h2>
+<p><dl class="class">
+<dt id="kaa.db.Database">
+<em class="property">class </em><tt class="descclassname">kaa.db.</tt><tt class="descname">Database</tt><big>(</big><em>dbfile</em><big>)</big><a class="headerlink" href="#kaa.db.Database" title="Permalink to this definition">¶</a></dt>
+<dd><p>Open a database, creating one if it doesn&#8217;t already exist.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>dbfile</em> (str) &#8211; path to the database file</td>
+</tr>
+</tbody>
+</table>
+<p>SQLite is used to provide the underlying database.</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal current">kaa.db.Database</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.db.Database.add" class="reference internal" href="#kaa.db.Database.add"><tt class="xref docutils literal"><span class="pre">add()</span></tt></a></th><td class="desc">Add an object to the database.</td></tr>
+<tr><th><a title="kaa.db.Database.commit" class="reference internal" href="#kaa.db.Database.commit"><tt class="xref docutils literal"><span class="pre">commit()</span></tt></a></th><td class="desc">Explicitly commit any changes made to the database.</td></tr>
+<tr><th><a title="kaa.db.Database.delete" class="reference internal" href="#kaa.db.Database.delete"><tt class="xref docutils literal"><span class="pre">delete()</span></tt></a></th><td class="desc">Delete the specified object.</td></tr>
+<tr><th><a title="kaa.db.Database.delete_by_query" class="reference internal" href="#kaa.db.Database.delete_by_query"><tt class="xref docutils literal"><span class="pre">delete_by_query()</span></tt></a></th><td class="desc">Delete all objects returned by the given query.</td></tr>
+<tr><th><a title="kaa.db.Database.get" class="reference internal" href="#kaa.db.Database.get"><tt class="xref docutils literal"><span class="pre">get()</span></tt></a></th><td class="desc">Fetch the given object from the database.</td></tr>
+<tr><th><a title="kaa.db.Database.get_db_info" class="reference internal" href="#kaa.db.Database.get_db_info"><tt class="xref docutils literal"><span class="pre">get_db_info()</span></tt></a></th><td class="desc">Return information about the database.</td></tr>
+<tr><th><a title="kaa.db.Database.get_inverted_index_terms" class="reference internal" href="#kaa.db.Database.get_inverted_index_terms"><tt class="xref docutils literal"><span class="pre">get_inverted_index_terms()</span></tt></a></th><td class="desc">Obtain terms used by objects for an inverted index.</td></tr>
+<tr><th><a title="kaa.db.Database.get_metadata" class="reference internal" href="#kaa.db.Database.get_metadata"><tt class="xref docutils literal"><span class="pre">get_metadata()</span></tt></a></th><td class="desc">Fetch metadata previously set by <a title="kaa.db.Database.set_metadata" class="reference internal" href="#kaa.db.Database.set_metadata"><tt class="xref docutils literal"><span class="pre">set_metadata()</span></tt></a>.</td></tr>
+<tr><th><a title="kaa.db.Database.query" class="reference internal" href="#kaa.db.Database.query"><tt class="xref docutils literal"><span class="pre">query()</span></tt></a></th><td class="desc">Query the database for objects matching all of the given keyword
+attributes.</td></tr>
+<tr><th><a title="kaa.db.Database.query_one" class="reference internal" href="#kaa.db.Database.query_one"><tt class="xref docutils literal"><span class="pre">query_one()</span></tt></a></th><td class="desc">Like <a title="kaa.db.Database.query" class="reference internal" href="#kaa.db.Database.query"><tt class="xref docutils literal"><span class="pre">query()</span></tt></a> but returns a single object only.</td></tr>
+<tr><th><a title="kaa.db.Database.register_inverted_index" class="reference internal" href="#kaa.db.Database.register_inverted_index"><tt class="xref docutils literal"><span class="pre">register_inverted_index()</span></tt></a></th><td class="desc">Registers a new inverted index with the database.</td></tr>
+<tr><th><a title="kaa.db.Database.register_object_type_attrs" class="reference internal" href="#kaa.db.Database.register_object_type_attrs"><tt class="xref docutils literal"><span class="pre">register_object_type_attrs()</span></tt></a></th><td class="desc">Register one or more object attributes and/or multi-column indexes for
+the given type name.</td></tr>
+<tr><th><a title="kaa.db.Database.reparent" class="reference internal" href="#kaa.db.Database.reparent"><tt class="xref docutils literal"><span class="pre">reparent()</span></tt></a></th><td class="desc">Change the parent of an object.</td></tr>
+<tr><th><a title="kaa.db.Database.retype" class="reference internal" href="#kaa.db.Database.retype"><tt class="xref docutils literal"><span class="pre">retype()</span></tt></a></th><td class="desc">Convert the object to a new type.</td></tr>
+<tr><th><a title="kaa.db.Database.set_metadata" class="reference internal" href="#kaa.db.Database.set_metadata"><tt class="xref docutils literal"><span class="pre">set_metadata()</span></tt></a></th><td class="desc">Associate simple key/value pairs with the database.</td></tr>
+<tr><th><a title="kaa.db.Database.update" class="reference internal" href="#kaa.db.Database.update"><tt class="xref docutils literal"><span class="pre">update()</span></tt></a></th><td class="desc">Update attributes for an existing object in the database.</td></tr>
+<tr><th><a title="kaa.db.Database.upgrade_to_py3" class="reference internal" href="#kaa.db.Database.upgrade_to_py3"><tt class="xref docutils literal"><span class="pre">upgrade_to_py3()</span></tt></a></th><td class="desc"></td></tr>
+<tr><th><a title="kaa.db.Database.vacuum" class="reference internal" href="#kaa.db.Database.vacuum"><tt class="xref docutils literal"><span class="pre">vacuum()</span></tt></a></th><td class="desc">Cleans up the database, removing unused inverted index terms.</td></tr>
+</table>
+<div class="heading">Properties</div>
+<table>
+<tr><th><a title="kaa.db.Database.filename" class="reference internal" href="#kaa.db.Database.filename"><tt class="xref docutils literal"><span class="pre">filename</span></tt></a></th><td>read-only</td><td class="desc">Full path to the database file.</td></tr>
+<tr><th><a title="kaa.db.Database.lazy_commit" class="reference internal" href="#kaa.db.Database.lazy_commit"><tt class="xref docutils literal"><span class="pre">lazy_commit</span></tt></a></th><td>read/write</td><td class="desc">The interval after which any changes made to the database will be
+automatically committed, or None to require explicit commiting.
+(Default is None.)</td></tr>
+<tr><th><a title="kaa.db.Database.readonly" class="reference internal" href="#kaa.db.Database.readonly"><tt class="xref docutils literal"><span class="pre">readonly</span></tt></a></th><td>read-only</td><td class="desc"></td></tr>
+</table>
+<div class="heading">Signals</div><div class="nomembers">This class has no signals.</div>
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.db.Database.add">
+<tt class="descname">add</tt><big>(</big><em>object_type</em>, <em>parent=None</em>, <em>**attrs</em><big>)</big><a class="headerlink" href="#kaa.db.Database.add" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add an object to the database.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><em>object_type</em> (str) &#8211; the name of the object type previously created by
+<a title="kaa.db.Database.register_object_type_attrs" class="reference internal" href="#kaa.db.Database.register_object_type_attrs"><tt class="xref docutils literal"><span class="pre">register_object_type_attrs()</span></tt></a>.</li>
+<li><em>parent</em> (<a title="kaa.db.ObjectRow" class="reference internal" href="#kaa.db.ObjectRow"><tt class="xref docutils literal"><span class="pre">ObjectRow</span></tt></a> or 2-tuple (object_type, object_id)) &#8211; specifies the parent of this object, if any; does not have
+to be an object of the same type.</li>
+<li><em>attrs</em> &#8211; keyword arguments specifying the attribute (which must
+have been registered) values.  Registered attributes that
+are not explicitly specified here will default to None.</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><a title="kaa.db.ObjectRow" class="reference internal" href="#kaa.db.ObjectRow"><tt class="xref docutils literal"><span class="pre">ObjectRow</span></tt></a> representing the added object</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">kaa.db</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="n">db</span> <span class="o">=</span> <span class="n">Database</span><span class="p">(</span><span class="s">&#39;test.db&#39;</span><span class="p">)</span>
+<span class="n">db</span><span class="o">.</span><span class="n">register_object_type_attrs</span><span class="p">(</span><span class="s">&#39;directory&#39;</span><span class="p">,</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">ATTR_SEARCHABLE</span><span class="p">),</span>
+    <span class="n">mtime</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">ATTR_SIMPLE</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">root</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s">&#39;directory&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;/&#39;</span><span class="p">,</span> <span class="n">mtime</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">st_mtime</span><span class="p">)</span>
+<span class="n">db</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s">&#39;directory&#39;</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">root</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;etc&#39;</span><span class="p">,</span> <span class="n">mtime</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="s">&#39;/etc&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">st_mtime</span><span class="p">)</span>
+<span class="n">db</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s">&#39;directory&#39;</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">root</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;var&#39;</span><span class="p">,</span> <span class="n">mtime</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="s">&#39;/var&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">st_mtime</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.db.Database.commit">
+<tt class="descname">commit</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.db.Database.commit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Explicitly commit any changes made to the database.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Any uncommitted changes will automatically be committed at
+program exit.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.db.Database.delete">
+<tt class="descname">delete</tt><big>(</big><em>obj</em><big>)</big><a class="headerlink" href="#kaa.db.Database.delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete the specified object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>obj</em> (<a title="kaa.db.ObjectRow" class="reference internal" href="#kaa.db.ObjectRow"><tt class="xref docutils literal"><span class="pre">ObjectRow</span></tt></a> or (object_type, object_id)) &#8211; the object to delete</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.db.Database.delete_by_query">
+<tt class="descname">delete_by_query</tt><big>(</big><em>**attrs</em><big>)</big><a class="headerlink" href="#kaa.db.Database.delete_by_query" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete all objects returned by the given query.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>attrs</em> &#8211; see <a title="kaa.db.Database.query" class="reference internal" href="#kaa.db.Database.query"><tt class="xref docutils literal"><span class="pre">query()</span></tt></a> for details.</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">the number of objects deleted</td>
+</tr>
+<tr class="field"><th class="field-name">Return type:</th><td class="field-body">int</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.db.Database.get">
+<tt class="descname">get</tt><big>(</big><em>obj</em><big>)</big><a class="headerlink" href="#kaa.db.Database.get" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fetch the given object from the database.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>obj</em> &#8211; a 2-tuple (type, id) representing the object.</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><a title="kaa.db.ObjectRow" class="reference internal" href="#kaa.db.ObjectRow"><tt class="xref docutils literal"><span class="pre">ObjectRow</span></tt></a></td>
+</tr>
+</tbody>
+</table>
+<p>obj may also be an <a title="kaa.db.ObjectRow" class="reference internal" href="#kaa.db.ObjectRow"><tt class="xref docutils literal"><span class="pre">ObjectRow</span></tt></a>, however that usage is less
+likely to be useful, because an <a title="kaa.db.ObjectRow" class="reference internal" href="#kaa.db.ObjectRow"><tt class="xref docutils literal"><span class="pre">ObjectRow</span></tt></a> already contains all
+information about the object.  One common use-case is to reload a
+possibly changed object from disk.</p>
+<p>This method is essentially shorthand for:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">database</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="nb">object</span><span class="o">=</span><span class="p">(</span><span class="n">object_type</span><span class="p">,</span> <span class="n">object_id</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.db.Database.get_db_info">
+<tt class="descname">get_db_info</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.db.Database.get_db_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return information about the database.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">a dict</td>
+</tr>
+</tbody>
+</table>
+<dl class="docutils">
+<dt>The returned dictionary has the following keys:</dt>
+<dd><ul class="first last">
+<li><p class="first">count: dict of object types holding their counts</p>
+</li>
+<li><p class="first">total: total number of objects in the database</p>
+</li>
+<li><dl class="first docutils">
+<dt>types: a dict keyed on object type which contains:</dt>
+<dd><ul class="first last simple">
+<li>attrs: a dictionary of registered attributes for this type</li>
+<li>idx: a list of composite indexes for this type</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>termcounts: a dict of the number of indexed terms for each</dt>
+<dd><p class="first last">inverted index</p>
+</dd>
+</dl>
+</li>
+<li><p class="first">file: full path to the database file</p>
+</li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.db.Database.get_inverted_index_terms">
+<tt class="descname">get_inverted_index_terms</tt><big>(</big><em>ivtidx</em>, <em>associated=None</em>, <em>prefix=None</em><big>)</big><a class="headerlink" href="#kaa.db.Database.get_inverted_index_terms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain terms used by objects for an inverted index.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><em>ivtidx</em> (str) &#8211; the name of an inverted index previously registered with
+<a title="kaa.db.Database.register_inverted_index" class="reference internal" href="#kaa.db.Database.register_inverted_index"><tt class="xref docutils literal"><span class="pre">register_inverted_index()</span></tt></a>.</li>
+<li><em>associated</em> (list of str or unicode) &#8211; specifies a list of terms, and only those terms which are
+mapped to objects <em>in addition to</em> the supplied associated
+terms will be returned.  If None, all terms for the inverted
+index are returned.</li>
+<li><em>prefix</em> (str or unicode) &#8211; only terms that begin with the specified prefix are returned.
+This is useful for auto-completion while a user is typing a
+query.</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a list of 2-tuples, where each tuple is (<em>term</em>, <em>count</em>).  If
+<em>associated</em> is not given, <em>count</em> is the total number of objects
+that term is mapped to.  Otherwise, <em>count</em> reflects the number
+of objects which have that term plus all the given associated
+terms.  The list is sorted with the highest counts appearing first.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>For example, given an otherwise empty database, if you have an object
+with terms [&#8216;vacation&#8217;, &#8216;hawaii&#8217;] and two other object with terms
+[&#8216;vacation&#8217;, &#8216;spain&#8217;] and the associated list passed is [&#8216;vacation&#8217;],
+the return value will be [(&#8216;spain&#8217;, 2), (&#8216;hawaii&#8217;, 1)].</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.db.Database.get_metadata">
+<tt class="descname">get_metadata</tt><big>(</big><em>key</em>, <em>default=None</em><big>)</big><a class="headerlink" href="#kaa.db.Database.get_metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fetch metadata previously set by <a title="kaa.db.Database.set_metadata" class="reference internal" href="#kaa.db.Database.set_metadata"><tt class="xref docutils literal"><span class="pre">set_metadata()</span></tt></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><em>key</em> (str) &#8211; the key name for the metadata, prefixed with <tt class="docutils literal"><span class="pre">appname::</span></tt>.</li>
+<li><em>default</em> &#8211; value to return if key is not found</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">unicode string containing the value for this key, or 
+the <tt class="docutils literal"><span class="pre">default</span></tt> parameter if the key was not found.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.db.Database.query">
+<tt class="descname">query</tt><big>(</big><em>**attrs</em><big>)</big><a class="headerlink" href="#kaa.db.Database.query" title="Permalink to this definition">¶</a></dt>
+<dd><p>Query the database for objects matching all of the given keyword
+attributes.</p>
+<p>Keyword arguments can be any previously registered <a title="kaa.db.ATTR_SEARCHABLE" class="reference internal" href="#kaa.db.ATTR_SEARCHABLE"><tt class="xref docutils literal"><span class="pre">ATTR_SEARCHABLE</span></tt></a>
+object attribute for any object type, or the name of a registered
+inverted index.  There are some special keyword arguments:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><em>parent</em> (<a title="kaa.db.ObjectRow" class="reference internal" href="#kaa.db.ObjectRow"><tt class="xref docutils literal"><span class="pre">ObjectRow</span></tt></a>, 2-tuple (object_type, object_id), 2-tuple
+(object_type, <a title="kaa.db.QExpr" class="reference internal" href="#kaa.db.QExpr"><tt class="xref docutils literal"><span class="pre">QExpr</span></tt></a>), or a list of those) &#8211; require all matched objects to have the given object
+(or objects) as their immediate parent ancestor.  If
+parent is a list or tuple, then they specify a list
+of possible parents, any of which would do.</li>
+<li><em>object</em> (<a title="kaa.db.ObjectRow" class="reference internal" href="#kaa.db.ObjectRow"><tt class="xref docutils literal"><span class="pre">ObjectRow</span></tt></a> or 2-tuple (object_type, object_id)) &#8211; match only a specific object. Not usually very useful,
+but could be used to test if the given object matches
+terms from an inverted index.</li>
+<li><em>type</em> (str) &#8211; only search items of this object type; if None (or not
+specified) then all types are searched</li>
+<li><em>limit</em> (int) &#8211; return only this number of results; if None (or not
+specified), all matches are returned.</li>
+<li><em>attrs</em> (list of str) &#8211; a list of attribute names to be returned; if not specified,
+all attributes registered with the object type are available
+in the result.  Only specifying the attributes required
+can help performance moderately, but generally it isn&#8217;t
+required except wit <em>distinct</em> below.</li>
+<li><em>distinct</em> &#8211; if True, ensures that each object in the result set is
+unique with respect to the attributes specified in the
+<em>attrs</em> parameter.  When distinct is True, <em>attrs</em> is
+required and none of the attributes specified may be
+simple.</li>
+<li><em>orattrs</em> (list) &#8211; attribute names that will be ORed in the query; by default,
+all attributes are ANDed.</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Raises:</th><td class="field-body"><p class="first">ValueError if the query is invalid (e.g. attempting to query
+on a simple attribute)</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a list of <a title="kaa.db.ObjectRow" class="reference internal" href="#kaa.db.ObjectRow"><tt class="xref docutils literal"><span class="pre">ObjectRow</span></tt></a> objects</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>When any of the attributes are inverted indexes, the result list is
+sorted according to a score.  The score is based upon the frequency
+of the matched terms relative to the entire database.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>If you know which type of object you&#8217;re interested in, you
+should specify the <em>type</em> as it will help improve performance by
+reducing the scope of the search, especially for inverted indexes.</p>
+<p class="last">Another significant factor in performance is whether or not a <em>limit</em>
+is specified.  Query time generally scales linearly with respect to
+the number of rows found, but in the case of searches on inverted
+indexes, specifying a limit can drastically reduce search time, but
+does not affect scoring.</p>
+</div>
+<p>Values supplied to attributes (other than inverted indexes) require
+exact matches.  To search based on an expression, such as inequality,
+ranges, substrings, set inclusion, etc. require the use of a 
+<a title="kaa.db.QExpr" class="reference internal" href="#kaa.db.QExpr"><tt class="xref docutils literal"><span class="pre">QExpr</span></tt></a> object.</p>
+<p>Expanding on the example provided in
+<a title="kaa.db.Database.register_object_type_attrs" class="reference internal" href="#kaa.db.Database.register_object_type_attrs"><tt class="xref docutils literal"><span class="pre">register_object_type_attrs()</span></tt></a>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">db</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s">&#39;msg&#39;</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="s">u&#39;Stewie Griffin&#39;</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="s">u&#39;Blast!&#39;</span><span class="p">,</span>
+<span class="go">           keywords=&#39;When the world is mine, your death shall be quick and painless.&#39;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c"># Exact match based on sender</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">sender</span><span class="o">=</span><span class="s">u&#39;Stewie Griffin&#39;</span><span class="p">)</span>
+<span class="go">[&lt;kaa.db.ObjectRow object at 0x7f652b251030&gt;]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c"># Keyword search requires all keywords</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">keywords</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;death&#39;</span><span class="p">,</span> <span class="s">&#39;blast&#39;</span><span class="p">])</span>
+<span class="go">[&lt;kaa.db.ObjectRow object at 0x7f652c3d1f90&gt;]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c"># This doesn&#39;t work, since it does an exact match ...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">sender</span><span class="o">=</span><span class="s">u&#39;Stewie&#39;</span><span class="p">)</span>
+<span class="go">[]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c"># ... but we can use QExpr to do a substring/pattern match.</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">sender</span><span class="o">=</span><span class="n">QExpr</span><span class="p">(</span><span class="s">&#39;like&#39;</span><span class="p">,</span> <span class="s">u&#39;Stewie%&#39;</span><span class="p">))</span>
+<span class="go">[&lt;kaa.db.ObjectRow object at 0x7f652c3d1f90&gt;]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c"># How about a regexp search.</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">sender</span><span class="o">=</span><span class="n">QExpr</span><span class="p">(</span><span class="s">&#39;regexp&#39;</span><span class="p">,</span> <span class="s">ur&#39;.*\bGriffin&#39;</span><span class="p">))</span>
+<span class="go">[&lt;kaa.db.ObjectRow object at 0x7f652b255030&gt;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.db.Database.query_one">
+<tt class="descname">query_one</tt><big>(</big><em>**attrs</em><big>)</big><a class="headerlink" href="#kaa.db.Database.query_one" title="Permalink to this definition">¶</a></dt>
+<dd><p>Like <a title="kaa.db.Database.query" class="reference internal" href="#kaa.db.Database.query"><tt class="xref docutils literal"><span class="pre">query()</span></tt></a> but returns a single object only.</p>
+<p>This is a convenience method, and query_one(...) is equivalent
+to:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">results</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">results</span><span class="p">:</span>
+    <span class="n">obj</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">obj</span> <span class="o">=</span> <span class="bp">None</span>
+</pre></div>
+</div>
+<p>limit=1 is implied by this query.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.db.Database.register_inverted_index">
+<tt class="descname">register_inverted_index</tt><big>(</big><em>name</em>, <em>min=None</em>, <em>max=None</em>, <em>split=None</em>, <em>ignore=None</em><big>)</big><a class="headerlink" href="#kaa.db.Database.register_inverted_index" title="Permalink to this definition">¶</a></dt>
+<dd><p>Registers a new inverted index with the database.</p>
+<p>An inverted index maps arbitrary terms to objects and allows you to
+query based on one or more terms.  If the inverted index already exists
+with the given parameters, no action is performed.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>name</em> (str) &#8211; the name of the inverted index; must be alphanumeric.</li>
+<li><em>min</em> (int) &#8211; the minimum length of terms to index; terms smaller
+than this will be ignored.  If None (default), there
+is no minimum size.</li>
+<li><em>max</em> (int) &#8211; the maximum length of terms to index; terms larger than
+this will be ignored.  If None (default), there is no
+maximum size.</li>
+<li><em>split</em> (callable, regexp (SRE_Pattern) object, or str) &#8211; used to parse string-based attributes using this inverted
+index into individual terms.  In the case of regexps, the
+split method will be called.  (If a string is specified,
+it will be compiled into a regexp first.)  If <em>split</em> is
+a callable, it will receive a string of text and must return
+a sequence, and each item in the sequence will be indexed
+as an individual term.  If split is not specified, the
+default is to split words at non-alphanumeric/underscore/digit
+boundaries.</li>
+<li><em>ignore</em> &#8211; a list of terms that will not be indexed (so-called
+<em>stop words</em>).  If specified, each indexed term for this
+inverted index will first be checked against this list.
+If it exists, the term is discarded.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">kaa.db</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="n">db</span> <span class="o">=</span> <span class="n">Database</span><span class="p">(</span><span class="s">&#39;test.db&#39;</span><span class="p">)</span>
+<span class="n">db</span><span class="o">.</span><span class="n">register_inverted_index</span><span class="p">(</span><span class="s">&#39;tags&#39;</span><span class="p">)</span>
+<span class="n">db</span><span class="o">.</span><span class="n">register_inverted_index</span><span class="p">(</span><span class="s">&#39;keywords&#39;</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">ignore</span><span class="o">=</span><span class="n">STOP_WORDS</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.db.Database.register_object_type_attrs">
+<tt class="descname">register_object_type_attrs</tt><big>(</big><em>type_name</em>, <em>indexes=</em><span class="optional">[</span><span class="optional">]</span>, <em>**attrs</em><big>)</big><a class="headerlink" href="#kaa.db.Database.register_object_type_attrs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register one or more object attributes and/or multi-column indexes for
+the given type name.</p>
+<p>This function modifies the database as needed to accommodate new
+indexes and attributes, either by creating the object&#8217;s tables (in the
+case of a new object type) or by altering the object&#8217;s tables to add
+new columns or indexes.</p>
+<p>This method is idempotent: if the attributes and indexes specified have
+not changed from previous invocations, no changes will be made to the
+database.  Moreover, newly registered attributes will not affect
+previously registered attributes.  This allows, for example, a plugin
+to extend an existing object type created by the core application
+without interfering with it.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>type_name</em> (str) &#8211; the name of object type the registered attributes or
+indexes apply to.</li>
+<li><em>indexes</em> (list of tuples of strings) &#8211; a list of tuples where each tuple contains 2 or more
+registered <a title="kaa.db.ATTR_SEARCHABLE" class="reference internal" href="#kaa.db.ATTR_SEARCHABLE"><tt class="xref docutils literal"><span class="pre">ATTR_SEARCHABLE</span></tt></a> attributes
+for which a composite index will be created in the
+underlying database.  This is useful for speeding
+up queries involving these attributes combined.</li>
+<li><em>attrs</em> (2, 3, or 4-tuple) &#8211; keyword arguments defining the attributes to be
+registered.  The keyword defining the attribute name
+cannot conflict with any of the names in
+<tt class="xref docutils literal"><span class="pre">RESERVED_ATTRIBUTES</span></tt>.  See below for a
+more complete specification of the value.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Previously registered attributes may be updated in limited ways (e.g.
+by adding an index to the attribute).  If the change requested is
+not supported, a ValueError will be raised.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Currently, indexes and attributes can only be added, not
+removed.  That is, once an attribute or indexes is added, it lives
+forever.</p>
+</div>
+<p>Object attributes, which are supplied as keyword arguments, are either
+<em>searchable</em> or <em>simple</em>.  <em>Searchable</em> attributes occupy a column in
+the underlying database table and so queries can be performed on these
+attributes, but their types are more restricted.  <em>Simple</em> attributes
+can be any type that can be pickled, but can&#8217;t be searched.</p>
+<p>The attribute kwarg value is a tuple of 2 to 4 items in length and in
+the form (attr_type, flags, ivtidx, split).</p>
+<blockquote>
+<ul class="simple">
+<li>attr_type: the type of the object attribute. For simple attributes
+(<a title="kaa.db.ATTR_SIMPLE" class="reference internal" href="#kaa.db.ATTR_SIMPLE"><tt class="xref docutils literal"><span class="pre">ATTR_SIMPLE</span></tt></a> in <em>flags</em>), this can be any picklable
+type; for searchable attributes (<a title="kaa.db.ATTR_SEARCHABLE" class="reference internal" href="#kaa.db.ATTR_SEARCHABLE"><tt class="xref docutils literal"><span class="pre">ATTR_SEARCHABLE</span></tt></a>
+in <em>flags</em>), this must be either <em>int</em>, <em>float</em>, <em>str</em>, <em>unicode</em>,
+<em>bytes</em>, or <em>bool</em>.  (On Python 2.5, you can use <tt class="docutils literal"><span class="pre">kaa.db.RAW_TYPE</span></tt>
+instead of <em>bytes</em>.)</li>
+<li>flags: a bitmap of <a class="reference internal" href="#attrflags"><em>attribute flags</em></a></li>
+<li>ivtidx: name of a previously registered inverted index used for
+this attribute. Only needed if flags contains
+<a title="kaa.db.ATTR_INVERTED_INDEX" class="reference internal" href="#kaa.db.ATTR_INVERTED_INDEX"><tt class="xref docutils literal"><span class="pre">ATTR_INVERTED_INDEX</span></tt></a></li>
+<li>split: function or regular expression used to split string-based
+values for this attribute into separate terms for indexing.  If
+this isn&#8217;t defined, then the default split strategy for the
+inverted index wil be used.</li>
+</ul>
+</blockquote>
+<p>Apart from not being allowed to conflict with one of the reserved
+names, there is a special case for attribute names: when they have
+the same name as a previously registered inverted index.  These
+attributes must be <a title="kaa.db.ATTR_SIMPLE" class="reference internal" href="#kaa.db.ATTR_SIMPLE"><tt class="xref docutils literal"><span class="pre">ATTR_SIMPLE</span></tt></a>, and of type <em>list</em>.
+Terms explicitly associated with the attribute are persisted with the
+object, but when accessed, all terms for all attributes for that
+inverted index will be contained in the list, not just those explicitly
+associated with the same-named attribute.</p>
+<p>The following example shows what an application that indexes email might
+do:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">kaa.db</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+<span class="n">db</span> <span class="o">=</span> <span class="n">Database</span><span class="p">(</span><span class="s">&#39;email.db&#39;</span><span class="p">)</span>
+<span class="n">db</span><span class="o">.</span><span class="n">register_inverted_index</span><span class="p">(</span><span class="s">&#39;keywords&#39;</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+<span class="n">db</span><span class="o">.</span><span class="n">register_object_type_attrs</span><span class="p">(</span><span class="s">&#39;msg&#39;</span><span class="p">,</span>
+    <span class="c"># Create a composite index on sender and recipient, because</span>
+    <span class="c"># (let&#39;s suppose) it&#39;s we do a lot of searches for specific</span>
+    <span class="c"># senders emailing specific recipients.</span>
+    <span class="p">[(</span><span class="s">&#39;sender&#39;</span><span class="p">,</span> <span class="s">&#39;recipient&#39;</span><span class="p">)],</span>
+
+    <span class="c"># Simple attribute can be anything that&#39;s picklable, which datetime is.</span>
+    <span class="n">date</span> <span class="o">=</span> <span class="p">(</span><span class="n">datetime</span><span class="p">,</span> <span class="n">ATTR_SIMPLE</span><span class="p">),</span>
+
+    <span class="c"># Sender and recipient names need to be ATTR_SEARCHABLE since</span>
+    <span class="c"># they&#39;re part of a composite index.</span>
+    <span class="n">sender</span> <span class="o">=</span> <span class="p">(</span><span class="nb">unicode</span><span class="p">,</span> <span class="n">ATTR_SEARCHABLE</span><span class="p">),</span>
+    <span class="n">recipient</span> <span class="o">=</span> <span class="p">(</span><span class="nb">unicode</span><span class="p">,</span> <span class="n">ATTR_SEARCHABLE</span><span class="p">),</span>
+
+    <span class="c"># Subject is searchable (standard SQL-based substring matches),</span>
+    <span class="c"># but also being indexed as part of the keywords inverted</span>
+    <span class="c"># index for fast term-based searching.</span>
+    <span class="n">subject</span> <span class="o">=</span> <span class="p">(</span><span class="nb">unicode</span><span class="p">,</span> <span class="n">ATTR_SEARCHABLE</span> <span class="o">|</span> <span class="n">ATTR_INVERTED_INDEX</span><span class="p">,</span> <span class="s">&#39;keywords&#39;</span><span class="p">),</span>
+
+    <span class="c"># Special case where an attribute name is the same as a registered </span>
+    <span class="c"># inverted index.  This lets us index on, for example, the message body</span>
+    <span class="c"># without actually storing the message inside the database.</span>
+    <span class="n">keywords</span> <span class="o">=</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="n">ATTR_SIMPLE</span> <span class="o">|</span> <span class="n">ATTR_INVERTED_INDEX</span><span class="p">,</span> <span class="s">&#39;keywords&#39;</span><span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.db.Database.reparent">
+<tt class="descname">reparent</tt><big>(</big><em>obj</em>, <em>parent</em><big>)</big><a class="headerlink" href="#kaa.db.Database.reparent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Change the parent of an object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>obj</em> (<a title="kaa.db.ObjectRow" class="reference internal" href="#kaa.db.ObjectRow"><tt class="xref docutils literal"><span class="pre">ObjectRow</span></tt></a>, or (type, id)) &#8211; the object to reparent</li>
+<li><em>parent</em> (<a title="kaa.db.ObjectRow" class="reference internal" href="#kaa.db.ObjectRow"><tt class="xref docutils literal"><span class="pre">ObjectRow</span></tt></a>, or (type, id)) &#8211; the new parent of the object</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>This is a convenience method to improve code readability, and is
+equivalent to:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">database</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.db.Database.retype">
+<tt class="descname">retype</tt><big>(</big><em>obj</em>, <em>new_type</em><big>)</big><a class="headerlink" href="#kaa.db.Database.retype" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert the object to a new type.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><em>obj</em> (<a title="kaa.db.ObjectRow" class="reference internal" href="#kaa.db.ObjectRow"><tt class="xref docutils literal"><span class="pre">ObjectRow</span></tt></a>, or (type, id)) &#8211; the object to be converted to the new type</li>
+<li><em>new_type</em> &#8211; the type to convert the object to</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">an <a title="kaa.db.ObjectRow" class="reference internal" href="#kaa.db.ObjectRow"><tt class="xref docutils literal"><span class="pre">ObjectRow</span></tt></a>, converted to the new type with the new id</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Any attribute that has not also been registered with <tt class="docutils literal"><span class="pre">new_type</span></tt>
+(and with the same name) will be removed.  Because the object is
+effectively changing ids, all of its existing children will be
+reparented to the new id.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.db.Database.set_metadata">
+<tt class="descname">set_metadata</tt><big>(</big><em>key</em>, <em>value</em><big>)</big><a class="headerlink" href="#kaa.db.Database.set_metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Associate simple key/value pairs with the database.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>key</em> (str or unicode) &#8211; the key name for the metadata; it is required that key
+is prefixed with <tt class="docutils literal"><span class="pre">appname::</span></tt> in order to avoid namespace
+collisions.</li>
+<li><em>value</em> (str or unicode) &#8211; the value to associate with the given key</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.db.Database.update">
+<tt class="descname">update</tt><big>(</big><em>obj</em>, <em>parent=None</em>, <em>**attrs</em><big>)</big><a class="headerlink" href="#kaa.db.Database.update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update attributes for an existing object in the database.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>obj</em> (<a title="kaa.db.ObjectRow" class="reference internal" href="#kaa.db.ObjectRow"><tt class="xref docutils literal"><span class="pre">ObjectRow</span></tt></a> or 2-tuple (object_type, object_id)) &#8211; the object whose attributes are being modified</li>
+<li><em>parent</em> (<a title="kaa.db.ObjectRow" class="reference internal" href="#kaa.db.ObjectRow"><tt class="xref docutils literal"><span class="pre">ObjectRow</span></tt></a> or 2-tuple (object_type, object_id)) &#8211; if specified, the object is reparented to the given
+parent object, otherwise the parent remains the
+same as when the object was added with
+<a title="kaa.db.Database.add" class="reference internal" href="#kaa.db.Database.add"><tt class="xref docutils literal"><span class="pre">add()</span></tt></a>.</li>
+<li><em>attrs</em> &#8211; keyword arguments specifying the attribute (which must
+have been registered) values.  Registered attributes that
+are not explicitly specified here will preserve their
+original values.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Continuing from the example in <a title="kaa.db.Database.add" class="reference internal" href="#kaa.db.Database.add"><tt class="xref docutils literal"><span class="pre">add()</span></tt></a>, consider:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s">&#39;directory&#39;</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">root</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;foo&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">db</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;bar&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>   <span class="c"># Reload changes</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span>
+<span class="go">&#39;bar&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.db.Database.upgrade_to_py3">
+<tt class="descname">upgrade_to_py3</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.db.Database.upgrade_to_py3" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kaa.db.Database.vacuum">
+<tt class="descname">vacuum</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.db.Database.vacuum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cleans up the database, removing unused inverted index terms.</p>
+<p>This also calls VACUUM on the underlying sqlite database, which
+rebuilds the database to reclaim unused space and reduces
+fragmentation.</p>
+<p>Applications should call this periodically, however this operation
+can be expensive for large databases so it should be done during
+an extended idle period.</p>
+</dd></dl>
+
+<h4>Properties</h4><dl class="attribute">
+<dt id="kaa.db.Database.filename">
+<tt class="descname">filename</tt><a class="headerlink" href="#kaa.db.Database.filename" title="Permalink to this definition">¶</a></dt>
+<dd>Full path to the database file.</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.db.Database.lazy_commit">
+<tt class="descname">lazy_commit</tt><a class="headerlink" href="#kaa.db.Database.lazy_commit" title="Permalink to this definition">¶</a></dt>
+<dd><p>The interval after which any changes made to the database will be
+automatically committed, or None to require explicit commiting.
+(Default is None.)</p>
+<p>The timer is restarted upon each change to the database, so prolonged
+updates may still benefit from explicit periodic commits.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.db.Database.readonly">
+<tt class="descname">readonly</tt><a class="headerlink" href="#kaa.db.Database.readonly" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+<dl class="class">
+<dt id="kaa.db.ObjectRow">
+<em class="property">class </em><tt class="descclassname">kaa.db.</tt><tt class="descname">ObjectRow</tt><a class="headerlink" href="#kaa.db.ObjectRow" title="Permalink to this definition">¶</a></dt>
+<dd><p>ObjectRow objects represent a single object from a <a title="kaa.db.Database" class="reference internal" href="#kaa.db.Database"><tt class="xref docutils literal"><span class="pre">kaa.db.Database</span></tt></a>,
+and are returned by, or may be passed to, many Database methods.</p>
+<p>For the most part, ObjectRows behave like a read-only dict, providing most
+(though not all) of the common dict methods, however ObjectRow is a custom
+type written in C for performance.</p>
+</dd></dl>
+
+<p><dl class="class">
+<dt id="kaa.db.QExpr">
+<em class="property">class </em><tt class="descclassname">kaa.db.</tt><tt class="descname">QExpr</tt><big>(</big><em>operator</em>, <em>operand</em><big>)</big><a class="headerlink" href="#kaa.db.QExpr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Flexible query expressions for use with <a title="kaa.db.Database.query" class="reference internal" href="#kaa.db.Database.query"><tt class="xref docutils literal"><span class="pre">kaa.db.Database.query()</span></tt></a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>operator</em> (str) &#8211; <tt class="docutils literal"><span class="pre">=</span></tt>, <tt class="docutils literal"><span class="pre">!=</span></tt>, <tt class="docutils literal"><span class="pre">&lt;</span></tt>, <tt class="docutils literal"><span class="pre">&lt;=</span></tt>, <tt class="docutils literal"><span class="pre">&gt;</span></tt>, <tt class="docutils literal"><span class="pre">&gt;=</span></tt>, <tt class="docutils literal"><span class="pre">in</span></tt>,
+<tt class="docutils literal"><span class="pre">not</span> <span class="pre">in</span></tt>, <tt class="docutils literal"><span class="pre">range</span></tt>, <tt class="docutils literal"><span class="pre">like</span></tt>, or <tt class="docutils literal"><span class="pre">regexp</span></tt></li>
+<li><em>operand</em> &#8211; the rvalue of the expression; any scalar values as part of
+the operand must be the same type as the attribute being
+evaluated</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Except for <tt class="docutils literal"><span class="pre">in</span></tt>, <tt class="docutils literal"><span class="pre">not</span> <span class="pre">in</span></tt>, and <tt class="docutils literal"><span class="pre">range</span></tt>, the operand must be the
+type of the registered attribute being evaluated (e.g. unicode, int,
+etc.).</p>
+<p>The operand for <tt class="docutils literal"><span class="pre">in</span></tt> and <tt class="docutils literal"><span class="pre">not</span> <span class="pre">in</span></tt> are lists or tuples of the attribute
+type, to test inclusion in the given set.</p>
+<p>The <tt class="docutils literal"><span class="pre">range</span></tt> operator accepts a 2-tuple specifying min and max values
+for the attribute.  The Python expression age=QExpr(&#8216;range&#8217;, (20, 30))
+translates to <tt class="docutils literal"><span class="pre">age</span> <span class="pre">&gt;=</span> <span class="pre">20</span> <span class="pre">AND</span> <span class="pre">age</span> <span class="pre">&lt;=</span> <span class="pre">30</span></tt>.</p>
+</dd></dl>
+
+</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <h3><a href="index.html">Table Of Contents</a></h3>
+            <ul>
+<li><a class="reference external" href="#">Object Database</a><ul>
+<li><a class="reference external" href="#attribute-flags">Attribute Flags</a></li>
+<li><a class="reference external" href="#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+
+            <h4>Previous topic</h4>
+            <p class="topless"><a href="config.html"
+                                  title="previous chapter">Configuration Files</a></p>
+            <h4>Next topic</h4>
+            <p class="topless"><a href="inotify.html"
+                                  title="next chapter">INotify</a></p>
+            <h3>This Page</h3>
+            <ul class="this-page-menu">
+              <li><a href="_sources/db.txt"
+                     rel="nofollow">Show Source</a></li>
+            </ul>
+          <div id="searchbox" style="display: none">
+            <h3>Quick search</h3>
+              <form class="search" action="search.html" method="get">
+                <input type="text" name="q" size="18" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+              </form>
+              <p class="searchtip" style="font-size: 90%">
+              Enter search terms or a module, class or function name.
+              </p>
+          </div>
+          <script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="inotify.html" title="INotify"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="config.html" title="Configuration Files"
+             >previous</a> |</li>
+        <li><a href="index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on Jan 14, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+    </div>
+  </body>
+</html>

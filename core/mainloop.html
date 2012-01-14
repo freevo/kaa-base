@@ -1,0 +1,498 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>The Main Loop &mdash; kaa.base v0.99.2 documentation</title>
+    <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.99.2',
+        COLLAPSE_MODINDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="kaa.base v0.99.2 documentation" href="../index.html" />
+    <link rel="next" title="Timers" href="timer.html" />
+    <link rel="prev" title="Signals and Callables" href="signals.html" />
+    <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="timer.html" title="Timers"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="signals.html" title="Signals and Callables"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="the-main-loop">
+<h1>The Main Loop<a class="headerlink" href="#the-main-loop" title="Permalink to this headline">¶</a></h1>
+<p id="notifier">The plumbing within Kaa that orchestrates the main loop &#8211; dispatching
+callbacks triggered by events (such as activity on a file descriptor or timers)
+&#8211; is collectively referred to as &#8220;<em>the notifier</em>.&#8221;  If you&#8217;re familiar with the
+Twisted framework, it is very similar to Twisted&#8217;s reactor.</p>
+<p>This main loop facility depends on pyNotifier. A system-wide installation of
+pynotifier will be used if it exists, otherwise kaa will fallback to an
+internal version which supports integration with gtk and Twisted main loops.
+kaa.base fully wraps and enhances stock pyNotifier API with process, thread and
+signal handling and a wide variety of classes suitable for constructing
+callables used as callbacks.</p>
+<p>To start the main loop, import kaa and call <a title="kaa.main.run" class="reference internal" href="#kaa.main.run"><tt class="xref docutils literal"><span class="pre">kaa.main.run()</span></tt></a>.  The main
+loop (but <em>not</em> the program) will terminate when SIGTERM or SIGINT (ctrl-c) is
+received.  The simplest Kaa program is therefore:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">kaa</span>
+<span class="n">kaa</span><span class="o">.</span><span class="n">main</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This program is effectively deaf and mute.  Internally, it will go to sleep for
+30 seconds, wake up briefly, sleep again, and so on.  (30 is a happenstance of
+the internal pyNotifier implementation; 30 seconds is basically infinity as far
+as a computer is concerned.)</p>
+<p>From the above basic shell, you can begin hooking functionality into the
+program via the rest of the Kaa API: <a class="reference external" href="timer.html#timer"><em>timers</em></a>, <a class="reference external" href="socket.html#socket"><em>sockets</em></a>, <a class="reference external" href="process.html#subprocess"><em>subprocesses</em></a>, <a class="reference external" href="io.html#io"><em>I/O channels</em></a>,
+<a class="reference external" href="../async/coroutines.html#coroutines"><em>coroutines</em></a>, <a class="reference external" href="../async/threads.html#threads"><em>threads</em></a>, etc.</p>
+<div class="section" id="main-loop-api">
+<h2>Main Loop API<a class="headerlink" href="#main-loop-api" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="kaa.main.run">
+<tt class="descclassname">kaa.main.</tt><tt class="descname">run</tt><big>(</big><em>threaded=False</em><big>)</big><a class="headerlink" href="#kaa.main.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start the main loop.</p>
+<p>The main loop will continue to run until an exception is raised
+(and makes its way back up to the main loop without being caught).
+SystemExit and KeyboardInterrupt exceptions will cause the main loop
+to terminate, and execution will resume after run() was called.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>threaded</em> (bool) &#8211; if True, the Kaa mainloop will start in a new thread.</td>
+</tr>
+</tbody>
+</table>
+<p>Specifying <tt class="docutils literal"><span class="pre">threaded=True</span></tt> is useful if the main Python thread has been
+co-opted by another mainloop framework and you want to use Kaa in parallel.
+Another use-case would be using kaa from the interactive Python shell:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">kaa</span><span class="o">,</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">time</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">kaa</span><span class="o">.</span><span class="n">main</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">threaded</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nd">@kaa.threaded</span><span class="p">()</span>
+<span class="gp">... </span><span class="k">def</span> <span class="nf">foo</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="k">return</span> <span class="s">&#39;Background task finished</span><span class="se">\n</span><span class="s">&#39;</span>
+<span class="gp">...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">foo</span><span class="p">()</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">)</span>
+<span class="go">&lt;Callable for &lt;built-in method write of file object at 0xb7de5068&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">Background</span> <span class="n">task</span> <span class="n">finished</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Once the main loop has been started, do not fork using <tt class="xref docutils literal"><span class="pre">os.fork()</span></tt>.
+Doing so may cause peculiar interactions when using threads.  To safely
+fork, use <a title="kaa.utils.fork" class="reference external" href="../utils.html#kaa.utils.fork"><tt class="xref docutils literal"><span class="pre">kaa.utils.fork()</span></tt></a>, which may be called whether the main
+loop has been started or not.</p>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="kaa.main.stop">
+<tt class="descclassname">kaa.main.</tt><tt class="descname">stop</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.main.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stop the main loop and terminate all child processes and thread
+pools started via the Kaa API.</p>
+<p>Any notifier callback can also cause the main loop to terminate
+by raising SystemExit.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="kaa.main.loop">
+<tt class="descclassname">kaa.main.</tt><tt class="descname">loop</tt><big>(</big><em>condition</em>, <em>timeout=None</em><big>)</big><a class="headerlink" href="#kaa.main.loop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Executes the main loop until condition is met.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>condition</em> &#8211; a callable or object that is evaluated after each step
+of the loop.  If it evaluates False, the loop
+terminates.  (If condition is therefore <tt class="xref docutils literal"><span class="pre">True</span></tt>, the
+loop will run forever.)</li>
+<li><em>timeout</em> &#8211; number of seconds after which the loop will terminate
+(regardless of the condition).</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>This function may be called recursively, however two loops may not
+run in parallel threads.</p>
+<p>Generally it is not necessary to call this function.  You probably want
+to use <a title="kaa.main.run" class="reference internal" href="#kaa.main.run"><tt class="xref docutils literal"><span class="pre">kaa.main.run()</span></tt></a> instead.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Refer to the warning detailed in <a title="kaa.main.run" class="reference internal" href="#kaa.main.run"><tt class="xref docutils literal"><span class="pre">kaa.main.run()</span></tt></a>.</p>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="kaa.main.select_notifier">
+<tt class="descclassname">kaa.main.</tt><tt class="descname">select_notifier</tt><big>(</big><em>module</em>, <em>**options</em><big>)</big><a class="headerlink" href="#kaa.main.select_notifier" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kaa.main.is_running">
+<tt class="descclassname">kaa.main.</tt><tt class="descname">is_running</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.main.is_running" title="Permalink to this definition">¶</a></dt>
+<dd>Return True if the main loop is currently running.</dd></dl>
+
+<dl class="function">
+<dt id="kaa.main.is_shutting_down">
+<tt class="descclassname">kaa.main.</tt><tt class="descname">is_shutting_down</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.main.is_shutting_down" title="Permalink to this definition">¶</a></dt>
+<dd>Return True if the main loop is currently inside stop()</dd></dl>
+
+<dl class="function">
+<dt id="kaa.main.is_stopped">
+<tt class="descclassname">kaa.main.</tt><tt class="descname">is_stopped</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.main.is_stopped" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns True if the main loop used to be running but is now shutdown.</p>
+<p>This is useful for worker tasks running a thread that need to live for
+the life of the application, but are started before kaa.main.run() is
+called.  These threads can loop until kaa.main.is_stopped()</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="kaa.main.step">
+<tt class="descclassname">kaa.main.</tt><tt class="descname">step</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.main.step" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs a single iteration of the main loop.</p>
+<p>This function should almost certainly never be called directly.  Use it
+at your own peril.  (If you do use it, you must call init() first.)</p>
+</dd></dl>
+
+</div>
+<div class="section" id="main-loop-signals">
+<h2>Main Loop Signals<a class="headerlink" href="#main-loop-signals" title="Permalink to this headline">¶</a></h2>
+<p id="mainsignals">Global Kaa signals are accessed via the <tt class="docutils literal"><span class="pre">kaa.signals</span></tt> <a title="kaa.Signals" class="reference external" href="signals.html#kaa.Signals"><tt class="xref docutils literal"><span class="pre">Signals</span></tt></a> object.
+For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">shutdown_handler</span><span class="p">():</span>
+    <span class="k">print</span> <span class="s">&#39;Shutting down&#39;</span>
+
+<span class="n">kaa</span><span class="o">.</span><span class="n">signals</span><span class="p">[</span><span class="s">&#39;shutdown&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">shutdown_handler</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Importing other Kaa modules (such as those in <tt class="docutils literal"><span class="pre">kaa.input</span></tt>) may add specialized
+signals, however by default <tt class="docutils literal"><span class="pre">kaa.signals</span></tt> contains:</p>
+<dl class="attribute">
+<dt id="shutdown">
+<tt class="descname">shutdown</tt><a class="headerlink" href="#shutdown" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted when the Kaa main loop is shutting down, but before any
+subprocesses or threads are terminated.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback()</tt></dt>
+<dd>The callback takes no arguments.</dd></dl>
+
+</dd></dl>
+
+<dl class="attribute">
+<dt id="exit">
+<tt class="descname">exit</tt><a class="headerlink" href="#exit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted when the process exits.  This differs from the <tt class="docutils literal"><span class="pre">shutdown</span></tt> signal
+in that the Python program may continue to run after <tt class="docutils literal"><span class="pre">shutdown</span></tt> emits and
+the mainloop terminates, whereas <tt class="docutils literal"><span class="pre">exit</span></tt> is invoked from an <tt class="docutils literal"><span class="pre">atexit</span></tt>
+handler.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback()</tt></dt>
+<dd>The callback takes no arguments.</dd></dl>
+
+</dd></dl>
+
+<dl class="attribute">
+<dt id="step">
+<tt class="descname">step</tt><a class="headerlink" href="#step" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted after each iteration step of the main loop.</p>
+<p>This signal is probably not suitable as an &#8216;idle worker&#8217; because the
+interval between emissions may be as much as 30 seconds.  However it is
+useful for functions which need to be called after notifier callbacks
+such as timers and IO monitors.  One example use-case is rendering a
+canvas after notifier callbacks have manipulated objects upon it.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback()</tt></dt>
+<dd>The callback takes no arguments.</dd></dl>
+
+</dd></dl>
+
+<dl class="attribute">
+<dt id="exception">
+<tt class="descname">exception</tt><a class="headerlink" href="#exception" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted when an uncaught exception has bubbled up to the main loop.  This
+signal presents the last chance to handle it before the main loop will
+be aborted.  (This also includes SystemExit and KeyboardInterrupt.)</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback(tp, exc, tb)</tt></dt>
+<dd><p>The callback parameters correspond to sys.exc_info().</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>tp</em> &#8211; the exception class</li>
+<li><em>exc</em> &#8211; the exception instance</li>
+<li><em>tb</em> &#8211; the traceback for this exception</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>If the callback returns <tt class="xref docutils literal"><span class="pre">False</span></tt>, the exception will be considered
+handled and the main loop will <em>not</em> terminate.  Otherwise, it will.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="integration-with-other-frameworks">
+<h1>Integration With Other Frameworks<a class="headerlink" href="#integration-with-other-frameworks" title="Permalink to this headline">¶</a></h1>
+<p>Kaa can be made to play nicely with other main loop facilities.  For example,
+you can write a pygtk application while still making use of Kaa&#8217;s convenient
+API.</p>
+<div class="section" id="gobject-gtk-integration">
+<h2>GObject / GTK Integration<a class="headerlink" href="#gobject-gtk-integration" title="Permalink to this headline">¶</a></h2>
+<p>The generic mainloop is compatible with the GTK/Glib mainloop and kaa
+has a special handler to hook itself into the GTK/Glib
+mainloop. Kaa will use the GTK/Glib mainloop when gtk or
+gobject is imported once the mainloop is active. But it is possible to
+force the loop to use GTK/Glib by calling init:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">kaa</span>
+<span class="n">kaa</span><span class="o">.</span><span class="n">main</span><span class="o">.</span><span class="n">select_notifier</span><span class="p">(</span><span class="s">&#39;gtk&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will the the GTK mainloop (the GTK mainloop is based on the glib
+mainloop but is a bit different). If you want the glib and not the GTK
+based mainloop add x11 = False to init.</p>
+<p>If pyNotifier is installed it will be used to run the mainloop; usage
+of packages requiring pyNotifier and not kaa is possible.</p>
+<p>A different approuch is to use the generic mainloop and start the
+gobject mainloop in a thread. This may be useful when one loop is
+extremly timing depended and it is a bad idea to block for even a
+short time. As an example, kaa.candy uses this to keep the gobject
+loop small and the animations alive even when the real mainloop is
+very busy.</p>
+<dl class="function">
+<dt id="kaa.gobject_set_threaded">
+<tt class="descclassname">kaa.</tt><tt class="descname">gobject_set_threaded</tt><big>(</big><em>self</em>, <em>mainloop=None</em><big>)</big><a class="headerlink" href="#kaa.gobject_set_threaded" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start the gobject mainloop in a thread. This function should
+always be used together with the generic mainloop.  It is
+possible to jump between the gobject and the generic mainloop
+with the threaded decorator.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>mainloop</em> &#8211; the mainloop object to use a mainloop based on gobject
+like the gstreamer or clutter mainloop. The object provided here must
+have a start and a stop function.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<p>Note that callbacks from the gobject mainloop are called in that loop
+and not the kaa mainloop. Make sure you decorate the mainloop with the
+threaded decorator if necessary. For details about thread support see
+<a class="reference external" href="../async/threads.html#threads"><em>Thread Support</em></a>. The <cite>threaded</cite> decorator can be used to force
+execution of a function in the gobject mainloop. Use <cite>kaa.GOBJECT</cite> as
+thread name:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">kaa</span>
+
+<span class="nd">@kaa.threaded</span><span class="p">(</span><span class="n">kaa</span><span class="o">.</span><span class="n">MAINTHREAD</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">executed_in_kaa_mainloop</span><span class="p">():</span>
+    <span class="o">...</span>
+
+<span class="nd">@kaa.threaded</span><span class="p">(</span><span class="n">kaa</span><span class="o">.</span><span class="n">GOBJECT</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">executed_in_gobject_mainloop</span><span class="p">():</span>
+    <span class="o">...</span>
+
+<span class="n">kaa</span><span class="o">.</span><span class="n">main</span><span class="o">.</span><span class="n">select_notifier</span><span class="p">(</span><span class="s">&#39;generic&#39;</span><span class="p">)</span>
+<span class="n">kaa</span><span class="o">.</span><span class="n">gobject_set_threaded</span><span class="p">()</span>
+<span class="n">kaa</span><span class="o">.</span><span class="n">main</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="twisted-integration">
+<h2>Twisted Integration<a class="headerlink" href="#twisted-integration" title="Permalink to this headline">¶</a></h2>
+<p>Kaa defines a Twisted reactor to integrate the Twisted
+mainloop into the kaa mainloop. After installing the reactor you can
+either run kaa.main.run() or reactor.run() to start the mainloop. Due
+to the internal design of Twisted you can not stop the mainloop from
+Twisted callbacks by calling sys.exit() or kaa.main.shutdown(), you
+need to call reactor.stop(). From kaa callbacks sys.exit() and
+kaa.main.stop() is supported:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># install special kaa reactor</span>
+<span class="kn">import</span> <span class="nn">kaa.reactor</span>
+<span class="n">kaa</span><span class="o">.</span><span class="n">reactor</span><span class="o">.</span><span class="n">install</span><span class="p">()</span>
+
+<span class="c"># get reactor</span>
+<span class="kn">from</span> <span class="nn">twisted.internet</span> <span class="kn">import</span> <span class="n">reactor</span>
+
+<span class="c"># add callbacks to Twisted or kaa</span>
+<span class="c"># see test/twisted_in_kaa.py in the kaa.base package</span>
+
+<span class="c"># you can either call kaa.main.run() or reactor.run()</span>
+<span class="n">kaa</span><span class="o">.</span><span class="n">main</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The Twisted reactor will work with any kaa mainloop backend (generic
+and gtk).</p>
+<p>There is also the reverse option putting the kaa mainloop into Twisted
+and let the Twisted reactor run. This is based on the thread mainloop
+described below and will not use an external pyNotifier installation:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># get reactor</span>
+<span class="kn">from</span> <span class="nn">twisted.internet</span> <span class="kn">import</span> <span class="n">reactor</span>
+
+<span class="kn">import</span> <span class="nn">kaa</span>
+<span class="n">kaa</span><span class="o">.</span><span class="n">main</span><span class="o">.</span><span class="n">select_notifier</span><span class="p">(</span><span class="s">&#39;twisted&#39;</span><span class="p">)</span>
+
+<span class="c"># add callbacks to Twisted or kaa</span>
+<span class="c"># see test/kaa_in_twisted.py in the kaa.base package</span>
+
+<span class="c"># run Twisted mainloop</span>
+<span class="n">reactor</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="other-mainloops">
+<h2>Other mainloops<a class="headerlink" href="#other-mainloops" title="Permalink to this headline">¶</a></h2>
+<p>PyNotifier has wrappers for qt and wxwindows but they may not work as
+expected with other kaa modules. For that reasons they can not be
+selected. It is always possible to run the kaa mainloop in a
+thread but that also means that kaa modules and other parts of the
+code have a different idea what the mainloop is.</p>
+<p>A different solution is the thread based mainloop in kaa. In
+this mode the kaa mainloop will run in an extra thread and will call a
+callback to the real mainloop that should be called from the real main
+thead. The other mainloop only needs to support a callback function
+that will be called from a thread and will execute the argument (a
+function without parameter) from the mainloop. An extra argument can
+be provided for a clean shutdown if the kaa mainloop whats to shut
+down the system. If not callback is provided, kaa.main.shutdown
+will be called.</p>
+<p>The following example will integrate the kaa mainloop in the normal
+Twisted reactor. In this case the Twisted mainloop is running,
+kaa.main.run() should not be called:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># get reactor</span>
+<span class="kn">from</span> <span class="nn">twisted.internet</span> <span class="kn">import</span> <span class="n">reactor</span>
+
+<span class="c"># start thread based mainloop and add Twisted callback</span>
+<span class="kn">import</span> <span class="nn">kaa</span>
+<span class="n">kaa</span><span class="o">.</span><span class="n">main</span><span class="o">.</span><span class="n">select_notifier</span><span class="p">(</span><span class="s">&#39;thread&#39;</span><span class="p">,</span> <span class="n">handler</span> <span class="o">=</span> <span class="n">reactor</span><span class="o">.</span><span class="n">callFromThread</span><span class="p">,</span>
+                         <span class="n">shutdown</span> <span class="o">=</span> <span class="n">reactor</span><span class="o">.</span><span class="n">stop</span><span class="p">)</span>
+
+<span class="c"># add callbacks to Twisted or kaa</span>
+<span class="c"># see test/kaa_in_twisted.py in the kaa.base package</span>
+
+<span class="c"># run Twisted mainloop</span>
+<span class="n">reactor</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Note: the step signal will only be called every step the kaa
+mainloop does and does not affect steps the real mainloop does. Future
+version of kaa may fix that problem.</p>
+<p>If you create a wrapper to use kaa with a different mainloop
+using this solution please send us an example so we can include
+support for that mainloop in the kaa distribution.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <h3><a href="../index.html">Table Of Contents</a></h3>
+            <ul>
+<li><a class="reference external" href="#">The Main Loop</a><ul>
+<li><a class="reference external" href="#main-loop-api">Main Loop API</a></li>
+<li><a class="reference external" href="#main-loop-signals">Main Loop Signals</a></li>
+</ul>
+</li>
+<li><a class="reference external" href="#integration-with-other-frameworks">Integration With Other Frameworks</a><ul>
+<li><a class="reference external" href="#gobject-gtk-integration">GObject / GTK Integration</a></li>
+<li><a class="reference external" href="#twisted-integration">Twisted Integration</a></li>
+<li><a class="reference external" href="#other-mainloops">Other mainloops</a></li>
+</ul>
+</li>
+</ul>
+
+            <h4>Previous topic</h4>
+            <p class="topless"><a href="signals.html"
+                                  title="previous chapter">Signals and Callables</a></p>
+            <h4>Next topic</h4>
+            <p class="topless"><a href="timer.html"
+                                  title="next chapter">Timers</a></p>
+            <h3>This Page</h3>
+            <ul class="this-page-menu">
+              <li><a href="../_sources/core/mainloop.txt"
+                     rel="nofollow">Show Source</a></li>
+            </ul>
+          <div id="searchbox" style="display: none">
+            <h3>Quick search</h3>
+              <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" size="18" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+              </form>
+              <p class="searchtip" style="font-size: 90%">
+              Enter search terms or a module, class or function name.
+              </p>
+          </div>
+          <script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="timer.html" title="Timers"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="signals.html" title="Signals and Callables"
+             >previous</a> |</li>
+        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on Jan 14, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+    </div>
+  </body>
+</html>

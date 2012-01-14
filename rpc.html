@@ -1,0 +1,340 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Remote Procedure Calls with kaa.rpc &mdash; kaa.base v0.99.2 documentation</title>
+    <link rel="stylesheet" href="_static/kaa.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '#',
+        VERSION:     '0.99.2',
+        COLLAPSE_MODINDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="kaa.base v0.99.2 documentation" href="index.html" />
+    <link rel="next" title="Configuration Files" href="config.html" />
+    <link rel="prev" title="Sub-Process I/O" href="core/process.html" />
+    <!-- link rel="stylesheet" href="_static/kaa.css" type="text/css" /-->
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="config.html" title="Configuration Files"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="core/process.html" title="Sub-Process I/O"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="remote-procedure-calls-with-kaa-rpc">
+<h1>Remote Procedure Calls with kaa.rpc<a class="headerlink" href="#remote-procedure-calls-with-kaa-rpc" title="Permalink to this headline">¶</a></h1>
+<p>This module defines an alternative way for InterProcessCommunication
+with less features than the ipc.py module. It does not keep
+references, return values are only given back as a callback and it is
+only possible to access functions. The difference between client and
+server is only important on connect. Both can call functions for the
+other.</p>
+<p>Start a server:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">kaa</span><span class="o">.</span><span class="n">rpc</span><span class="o">.</span><span class="n">Server</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">secret</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>When a new client connects to the server, the &#8216;client_connected&#8217;
+signals will be emitted with a Channel object as parameter. This
+object can be used to call functions on client side the same way the
+client calls functions on server side. The client and the channel
+objects have a signal &#8216;disconnected&#8217; to be called when the connection
+gets lost.</p>
+<p>Start a client:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">kaa</span><span class="o">.</span><span class="n">rpc</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">secret</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Since everything is async, the challenge response is done in the background
+and you can start using it right away. If the authentication is wrong, it
+will fail without notifing the user (I know this is bad, but it is designed
+to work internaly where everything is correct).</p>
+<p><dl class="class">
+<dt id="kaa.rpc.Server">
+<em class="property">class </em><tt class="descclassname">kaa.rpc.</tt><tt class="descname">Server</tt><big>(</big><em>address</em>, <em>auth_secret=''</em>, <em>buffer_size=None</em><big>)</big><a class="headerlink" href="#kaa.rpc.Server" title="Permalink to this definition">¶</a></dt>
+<dd><p>RPC server class.  RPC servers accept incoming connections from client,
+however RPC calls can be issued in either direction.</p>
+<p>address specifies what address to bind the socket to, and this argument
+must correspond to the <tt class="docutils literal"><span class="pre">bind_info</span></tt> argument of <a title="kaa.Socket.listen" class="reference external" href="core/socket.html#kaa.Socket.listen"><tt class="xref docutils literal"><span class="pre">kaa.Socket.listen()</span></tt></a>.</p>
+<p>See kaa.Socket.buffer_size docstring for information on buffer_size.</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <tt class="xref docutils literal current">kaa.rpc.Server</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.rpc.Server.close" class="reference internal" href="#kaa.rpc.Server.close"><tt class="xref docutils literal"><span class="pre">close()</span></tt></a></th><td class="desc">Close the server socket.</td></tr>
+<tr><th><a title="kaa.rpc.Server.disconnect" class="reference internal" href="#kaa.rpc.Server.disconnect"><tt class="xref docutils literal"><span class="pre">disconnect()</span></tt></a></th><td class="desc">Disconnects a previously connected object.</td></tr>
+<tr><th><a title="kaa.rpc.Server.register" class="reference internal" href="#kaa.rpc.Server.register"><tt class="xref docutils literal"><span class="pre">register()</span></tt></a></th><td class="desc">Registers one or more previously exposed callables to any clients
+connecting to this RPC Server.</td></tr>
+</table>
+<div class="heading">Properties</div><div class="nomembers">This class has no properties.</div><div class="heading">Signals</div>
+<table>
+<tr><th><a title="kaa.rpc.Server.signals.client-connected" class="reference internal" href="#kaa.rpc.Server.signals.client-connected"><tt class="xref docutils literal"><span class="pre">client-connected</span></tt></a></th><td class="desc">Emitted when a new RPC client connects to this RPC server.</td></tr>
+</table>
+
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.rpc.Server.close">
+<tt class="descname">close</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.rpc.Server.close" title="Permalink to this definition">¶</a></dt>
+<dd>Close the server socket.</dd></dl>
+
+<dl class="method">
+<dt id="kaa.rpc.Server.disconnect">
+<tt class="descname">disconnect</tt><big>(</big><em>obj</em><big>)</big><a class="headerlink" href="#kaa.rpc.Server.disconnect" title="Permalink to this definition">¶</a></dt>
+<dd>Disconnects a previously connected object.</dd></dl>
+
+<dl class="method">
+<dt id="kaa.rpc.Server.register">
+<tt class="descname">register</tt><big>(</big><em>obj</em><big>)</big><a class="headerlink" href="#kaa.rpc.Server.register" title="Permalink to this definition">¶</a></dt>
+<dd><p>Registers one or more previously exposed callables to any clients
+connecting to this RPC Server.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>obj</em> (callable, module, or class instance) &#8211; callable(s) to be accessible to connected clients.</td>
+</tr>
+</tbody>
+</table>
+<p>If a module is given, all exposed callables.</p>
+</dd></dl>
+
+<h4>Signals</h4><dl class="attribute">
+<dt id="kaa.rpc.Server.signals.client-connected">
+<tt class="descname">client-connected</tt><a class="headerlink" href="#kaa.rpc.Server.signals.client-connected" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted when a new RPC client connects to this RPC server.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback(client, ...)</tt></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>client</em> (<a title="kaa.rpc.Client" class="reference internal" href="#kaa.rpc.Client"><tt class="xref docutils literal"><span class="pre">Client</span></tt></a> object) &#8211; the new client that just connected</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+<p><dl class="class">
+<dt id="kaa.rpc.Client">
+<em class="property">class </em><tt class="descclassname">kaa.rpc.</tt><tt class="descname">Client</tt><big>(</big><em>address</em>, <em>auth_secret=''</em>, <em>buffer_size=None</em>, <em>retry=None</em><big>)</big><a class="headerlink" href="#kaa.rpc.Client" title="Permalink to this definition">¶</a></dt>
+<dd><p>RPC client to be connected to a server.</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.rpc.Channel</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.rpc.Client</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.rpc.Client.close" class="reference internal" href="#kaa.rpc.Client.close"><tt class="xref docutils literal"><span class="pre">close()</span></tt></a></th><td class="desc">Forcefully close the RPC channel.</td></tr>
+<tr><th><a title="kaa.rpc.Client.register" class="reference internal" href="#kaa.rpc.Client.register"><tt class="xref docutils literal"><span class="pre">register()</span></tt></a></th><td class="desc">Registers one or more previously exposed callables to the peer</td></tr>
+<tr><th><a title="kaa.rpc.Client.rpc" class="reference internal" href="#kaa.rpc.Client.rpc"><tt class="xref docutils literal"><span class="pre">rpc()</span></tt></a></th><td class="desc">Call the remote command and return InProgress.</td></tr>
+</table>
+<div class="heading">Properties</div>
+<table>
+<tr><th><a title="kaa.rpc.Client.connected" class="reference internal" href="#kaa.rpc.Client.connected"><tt class="xref docutils literal"><span class="pre">connected</span></tt></a></th><td>read-only</td><td class="desc"></td></tr>
+</table>
+<div class="heading">Signals</div>
+<table>
+<tr><th><a title="kaa.rpc.Client.signals.open" class="reference internal" href="#kaa.rpc.Client.signals.open"><tt class="xref docutils literal"><span class="pre">open</span></tt></a></th><td class="desc">Emitted when the RPC channel has successfully authenticated.</td></tr>
+<tr><th><a title="kaa.rpc.Client.signals.closed" class="reference internal" href="#kaa.rpc.Client.signals.closed"><tt class="xref docutils literal"><span class="pre">closed</span></tt></a></th><td class="desc">Emitted when the RPC channel is closed.</td></tr>
+</table>
+
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.rpc.Client.close">
+<tt class="descname">close</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.rpc.Client.close" title="Permalink to this definition">¶</a></dt>
+<dd>Forcefully close the RPC channel.</dd></dl>
+
+<dl class="method">
+<dt id="kaa.rpc.Client.register">
+<tt class="descname">register</tt><big>(</big><em>obj</em><big>)</big><a class="headerlink" href="#kaa.rpc.Client.register" title="Permalink to this definition">¶</a></dt>
+<dd><p>Registers one or more previously exposed callables to the peer</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>obj</em> (callable, module, or class instance) &#8211; callable(s) to be accessible to.</td>
+</tr>
+</tbody>
+</table>
+<p>If a module is given, all exposed callables.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.rpc.Client.rpc">
+<tt class="descname">rpc</tt><big>(</big><em>cmd</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.rpc.Client.rpc" title="Permalink to this definition">¶</a></dt>
+<dd>Call the remote command and return InProgress.</dd></dl>
+
+<h4>Properties</h4><dl class="attribute">
+<dt id="kaa.rpc.Client.connected">
+<tt class="descname">connected</tt><a class="headerlink" href="#kaa.rpc.Client.connected" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<h4>Signals</h4><dl class="attribute">
+<dt id="kaa.rpc.Client.signals.open">
+<tt class="descname">open</tt><a class="headerlink" href="#kaa.rpc.Client.signals.open" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted when the RPC channel has successfully authenticated.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback(...)</tt></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.rpc.Client.signals.closed">
+<tt class="descname">closed</tt><a class="headerlink" href="#kaa.rpc.Client.signals.closed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted when the RPC channel is closed.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback(...)</tt></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+<div class="section" id="expose-functions">
+<h2>Expose Functions<a class="headerlink" href="#expose-functions" title="Permalink to this headline">¶</a></h2>
+<p>Next you need to define functions the remote side is allowed to call
+and give it a name. Use use expose for that. Connect the object with
+that function to the server/client. You can connect as many objects as
+you want. The client can now call do_something (not my_function, this
+is the internal name). If the internal name should be exposed the
+expose decorator does not need its first argument:</p>
+<div class="highlight-python"><pre>class MyClass(object)
+
+    @kaa.rpc.expose("do_something")
+    def my_function(self, foo):
+        ...
+
+    @kaa.rpc.expose()
+    def name(self, foo):
+        ...
+
+server.connect(MyClass())</pre>
+</div>
+<dl class="function">
+<dt id="kaa.rpc.expose">
+<tt class="descclassname">kaa.rpc.</tt><tt class="descname">expose</tt><big>(</big><em>command=None</em>, <em>add_client=False</em>, <em>coroutine=False</em><big>)</big><a class="headerlink" href="#kaa.rpc.expose" title="Permalink to this definition">¶</a></dt>
+<dd>Decorator to expose a function. If add_client is True, the client
+object will be added to the command list as first argument.</dd></dl>
+
+</div>
+<div class="section" id="calling-remote-functions">
+<h2>Calling Remote Functions<a class="headerlink" href="#calling-remote-functions" title="Permalink to this headline">¶</a></h2>
+<p>A remote function call be called with the rpc method in the client or
+the server. The result is an InProgress object. Connect to it to get
+the result:</p>
+<div class="highlight-python"><pre>x = client.rpc('do_something', 6) or
+x = client.rpc('do_something', foo=4)</pre>
+</div>
+<p>Using Python 2.5 and coroutines the asynchronous call can be wrapped
+in a yield statement, hiding the delay of the RPC. If the server
+raises an exception, it will be raised on client side. This makes
+remote functions look like local functions. Note: Python will jump
+back to the mainloop in each yield:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="nd">@kaa.coroutine</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">foo</span><span class="p">():</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">client</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s">&#39;name&#39;</span><span class="p">)</span>
+    <span class="k">print</span> <span class="n">name</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <h3><a href="index.html">Table Of Contents</a></h3>
+            <ul>
+<li><a class="reference external" href="#">Remote Procedure Calls with kaa.rpc</a><ul>
+<li><a class="reference external" href="#expose-functions">Expose Functions</a></li>
+<li><a class="reference external" href="#calling-remote-functions">Calling Remote Functions</a></li>
+</ul>
+</li>
+</ul>
+
+            <h4>Previous topic</h4>
+            <p class="topless"><a href="core/process.html"
+                                  title="previous chapter">Sub-Process I/O</a></p>
+            <h4>Next topic</h4>
+            <p class="topless"><a href="config.html"
+                                  title="next chapter">Configuration Files</a></p>
+            <h3>This Page</h3>
+            <ul class="this-page-menu">
+              <li><a href="_sources/rpc.txt"
+                     rel="nofollow">Show Source</a></li>
+            </ul>
+          <div id="searchbox" style="display: none">
+            <h3>Quick search</h3>
+              <form class="search" action="search.html" method="get">
+                <input type="text" name="q" size="18" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+              </form>
+              <p class="searchtip" style="font-size: 90%">
+              Enter search terms or a module, class or function name.
+              </p>
+          </div>
+          <script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="config.html" title="Configuration Files"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="core/process.html" title="Sub-Process I/O"
+             >previous</a> |</li>
+        <li><a href="index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on Jan 14, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+    </div>
+  </body>
+</html>

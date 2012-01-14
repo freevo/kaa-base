@@ -1,0 +1,376 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Socket I/O &mdash; kaa.base v0.99.2 documentation</title>
+    <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.99.2',
+        COLLAPSE_MODINDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="kaa.base v0.99.2 documentation" href="../index.html" />
+    <link rel="next" title="Sub-Process I/O" href="process.html" />
+    <link rel="prev" title="I/O Channels" href="io.html" />
+    <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="process.html" title="Sub-Process I/O"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="io.html" title="I/O Channels"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="socket-i-o">
+<span id="socket"></span><h1>Socket I/O<a class="headerlink" href="#socket-i-o" title="Permalink to this headline">¶</a></h1>
+<p><dl class="class">
+<dt id="kaa.Socket">
+<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">Socket</tt><big>(</big><em>buffer_size=None</em>, <em>chunk_size=1048576</em><big>)</big><a class="headerlink" href="#kaa.Socket" title="Permalink to this definition">¶</a></dt>
+<dd><p>Communicate over TCP or Unix sockets, implementing fully asynchronous reads
+and writes.</p>
+<p>kaa.Socket requires an IPv6-capable stack, and favors IPv6 connectivity
+when available.  This should generally be completely transparent on
+IPv4-only networks.  See <a title="kaa.Socket.connect" class="reference internal" href="#kaa.Socket.connect"><tt class="xref docutils literal"><span class="pre">connect()</span></tt></a> for more information.</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <a title="kaa.IOChannel" class="reference external" href="io.html#kaa.IOChannel"><tt class="xref docutils literal"><span class="pre">kaa.IOChannel</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.Socket</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.Socket.connect" class="reference internal" href="#kaa.Socket.connect"><tt class="xref docutils literal"><span class="pre">connect()</span></tt></a></th><td class="desc">Connects to the host specified in address.</td></tr>
+<tr><th><a title="kaa.Socket.listen" class="reference internal" href="#kaa.Socket.listen"><tt class="xref docutils literal"><span class="pre">listen()</span></tt></a></th><td class="desc">Set the socket to accept incoming connections.</td></tr>
+<tr><th><a title="kaa.Socket.steal" class="reference internal" href="#kaa.Socket.steal"><tt class="xref docutils literal"><span class="pre">steal()</span></tt></a></th><td class="desc"></td></tr>
+<tr><th><a title="kaa.Socket.wrap" class="reference internal" href="#kaa.Socket.wrap"><tt class="xref docutils literal"><span class="pre">wrap()</span></tt></a></th><td class="desc">Wraps an existing low-level socket object.</td></tr>
+</table>
+<div class="heading">Properties</div>
+<table>
+<tr><th><a title="kaa.Socket.address" class="reference internal" href="#kaa.Socket.address"><tt class="xref docutils literal"><span class="pre">address</span></tt></a></th><td>read-only</td><td class="desc">This property is deprecated; use <em>peer</em> instead.</td></tr>
+<tr><th><a title="kaa.Socket.alive" class="reference internal" href="#kaa.Socket.alive"><tt class="xref docutils literal"><span class="pre">alive</span></tt></a></th><td>read-only</td><td class="desc">True if the socket is alive, and False otherwise.</td></tr>
+<tr><th><a title="kaa.Socket.buffer_size" class="reference internal" href="#kaa.Socket.buffer_size"><tt class="xref docutils literal"><span class="pre">buffer_size</span></tt></a></th><td>read/write</td><td class="desc">Size of the send and receive socket buffers (SO_SNDBUF and SO_RCVBUF)
+in bytes.</td></tr>
+<tr><th><a title="kaa.Socket.connected" class="reference internal" href="#kaa.Socket.connected"><tt class="xref docutils literal"><span class="pre">connected</span></tt></a></th><td>read-only</td><td class="desc">Boolean representing the connected state of the socket.</td></tr>
+<tr><th><a title="kaa.Socket.connecting" class="reference internal" href="#kaa.Socket.connecting"><tt class="xref docutils literal"><span class="pre">connecting</span></tt></a></th><td>read-only</td><td class="desc">True if the socket is in the process of establishing a connection
+but is not yet connected.</td></tr>
+<tr><th><a title="kaa.Socket.fileno" class="reference internal" href="#kaa.Socket.fileno"><tt class="xref docutils literal"><span class="pre">fileno</span></tt></a></th><td>read-only</td><td class="desc"></td></tr>
+<tr><th><a title="kaa.Socket.listening" class="reference internal" href="#kaa.Socket.listening"><tt class="xref docutils literal"><span class="pre">listening</span></tt></a></th><td>read-only</td><td class="desc">True if this is a listening socket, and False otherwise.</td></tr>
+<tr><th><a title="kaa.Socket.local" class="reference internal" href="#kaa.Socket.local"><tt class="xref docutils literal"><span class="pre">local</span></tt></a></th><td>read-only</td><td class="desc">Returns either the tuple <tt class="docutils literal"><span class="pre">(host,</span> <span class="pre">port,</span> <span class="pre">flowinfo,</span> <span class="pre">scopeid,</span> <span class="pre">scope)</span></tt>
+representing the local end of a TCP socket, or the string containing
+the name of a Unix socket.</td></tr>
+<tr><th><a title="kaa.Socket.peer" class="reference internal" href="#kaa.Socket.peer"><tt class="xref docutils literal"><span class="pre">peer</span></tt></a></th><td>read-only</td><td class="desc">Returns the tuple <tt class="docutils literal"><span class="pre">(host,</span> <span class="pre">port,</span> <span class="pre">flowinfo,</span> <span class="pre">scopeid,</span> <span class="pre">scope,</span> <span class="pre">reqhost)</span></tt>
+representing the remote end of the socket.</td></tr>
+<tr><th><a title="kaa.Socket.readable" class="reference internal" href="#kaa.Socket.readable"><tt class="xref docutils literal"><span class="pre">readable</span></tt></a></th><td>read-only</td><td class="desc">True if the socket is readable, and False otherwise.</td></tr>
+</table>
+<div class="heading">Signals</div>
+<table>
+<tr><th><a title="kaa.Socket.signals.new-client" class="reference internal" href="#kaa.Socket.signals.new-client"><tt class="xref docutils literal"><span class="pre">new-client</span></tt></a></th><td class="desc">Emitted when a new client connects to a listening socket.</td></tr>
+</table>
+
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.Socket.connect">
+<tt class="descname">connect</tt><big>(</big><em>addr</em>, <em>ipv6=True</em><big>)</big><a class="headerlink" href="#kaa.Socket.connect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Connects to the host specified in address.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><em>addr</em> (str, or 2- or 4-tuple) &#8211; Address for a remote host, or a Unix socket.  If a str,
+it is either a Unix socket path or represents a TCP
+socket when in the form <tt class="docutils literal"><span class="pre">host:service[%scope]</span></tt>.  See
+below for further details.</li>
+<li><em>ipv6</em> &#8211; if True, will connect to the remote host using IPv6 if
+it is reachable via IPv6.  This is perfectly safe for IPv4
+only hosts too.  Set this to False if the remote host
+has a AAAA record and the local host has an IPv6 route to
+it, but you want to force IPv4 anyway.</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">An <a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> object.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>If <em>addr</em> is given as a 4-tuple, it is in the form <tt class="docutils literal"><span class="pre">(host,</span> <span class="pre">service,</span>
+<span class="pre">flowinfo,</span> <span class="pre">scope)</span></tt>.  If given as a 2-tuple, it is in the form <tt class="docutils literal"><span class="pre">(host,</span>
+<span class="pre">service)</span></tt>, and in this case the <em>flowinfo</em> and <em>scope</em> are assumed to
+be 0.</p>
+<p>The <em>flowinfo</em> and <em>scope</em> fields are only relevant for IPv6 hosts,
+where they represent the <tt class="docutils literal"><span class="pre">sin6_flowinfo</span></tt> and <tt class="docutils literal"><span class="pre">sin6_scope_id</span></tt>
+members in <tt class="xref docutils literal"><span class="pre">struct</span> <span class="pre">sockaddr_in6</span></tt> in C.  <em>scope</em> may be the name
+of an interface (e.g. <tt class="docutils literal"><span class="pre">eth0</span></tt>) or an interface id, and is needed when
+connecting to link-local addresses (<tt class="docutils literal"><span class="pre">fe80::/16</span></tt>).</p>
+<p>If <em>addr</em> is given as a string, it is treated as a Unix socket path if it
+does not contain <tt class="docutils literal"><span class="pre">:</span></tt>, otherwise it is specified as <tt class="docutils literal"><span class="pre">host:service[%scope]</span></tt>,
+where <tt class="docutils literal"><span class="pre">[x]</span></tt> indicates that <tt class="docutils literal"><span class="pre">x</span></tt> is optional, and where:</p>
+<blockquote>
+<ul class="simple">
+<li><em>host</em> is a hostname, an IPv4 dotted quad, or an IPv6 address
+wrapped in square brackets.  e.g. freevo.org, 192.168.0.1,
+[3000::1]</li>
+<li><em>service</em> is a service name or port number.  e.g. http, 80</li>
+<li><em>scope</em> is an interface name or number.  e.g. eth0, 2</li>
+</ul>
+</blockquote>
+<p>When connecting to a link-local address (fe80::/16), <em>scope</em> must be
+specified.  Relative Unix socket names (those not prefixed with <tt class="docutils literal"><span class="pre">/</span></tt>)
+are created via kaa.tempfile.</p>
+<p>This function is executed in a thread to avoid blocking.  It therefore
+returns an InProgress object.  If the socket is connected, the InProgress
+is finished with no arguments.  If the connection cannot be established,
+an exception is thrown to the InProgress.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.Socket.listen">
+<tt class="descname">listen</tt><big>(</big><em>addr</em>, <em>backlog=5</em>, <em>ipv6=True</em><big>)</big><a class="headerlink" href="#kaa.Socket.listen" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the socket to accept incoming connections.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><em>addr</em> (int, str, or 2- or 4-tuple) &#8211; Binds the socket to this address.  If an int, this
+specifies a TCP port that is bound on all interfaces; if a
+str, it is either a Unix socket path or represents a TCP
+socket when in the form <tt class="docutils literal"><span class="pre">[host]:[service][%scope]</span></tt>.  
+See below for further details.</li>
+<li><em>backlog</em> (int) &#8211; the maximum length to which the queue of pending
+connections for the socket may grow.</li>
+<li><em>ipv6</em> (bool) &#8211; if True, will prefer binding to IPv6 addresses if addr is
+a hostname that contains both AAAA and A records.  If addr
+is specified as an IP address, this argument does nothing.</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last">ValueError if <em>addr</em> is invalid, or socket.error if the bind fails.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>If <em>addr</em> is given as a 4-tuple, it is in the form <tt class="docutils literal"><span class="pre">(host,</span> <span class="pre">service,</span>
+<span class="pre">flowinfo,</span> <span class="pre">scope)</span></tt>.  If passed as a 2-tuple, it is in the form
+<tt class="docutils literal"><span class="pre">(host,</span> <span class="pre">service)</span></tt>, and in this case, it is assumed that <em>flowinfo</em> and
+<em>scope</em> are both 0.  See <a title="kaa.Socket.connect" class="reference internal" href="#kaa.Socket.connect"><tt class="xref docutils literal"><span class="pre">connect()</span></tt></a> for more
+information.</p>
+<p>If <em>host</em> is given as a string, it is treated as a Unix socket path if it
+does not contain <tt class="docutils literal"><span class="pre">:</span></tt>, otherwise it is specified as <tt class="docutils literal"><span class="pre">[host]:[service][%scope]</span></tt>,
+where <tt class="docutils literal"><span class="pre">[x]</span></tt> indicates that <tt class="docutils literal"><span class="pre">x</span></tt> is optional, and where:</p>
+<blockquote>
+<ul class="simple">
+<li><em>host</em> is a hostname, an IPv4 dotted quad, or an IPv6 address
+wrapped in square brackets.  e.g. localhost, 192.168.0.1,
+[3000::1].  If host is not specified, the socket will listen on
+all interfaces.</li>
+<li><em>service</em> is a service name or port number.  e.g. http, 80</li>
+<li><em>scope</em> is an interface name or number.  e.g. eth0, 2</li>
+</ul>
+</blockquote>
+<p>When binding to a link-local address (<tt class="docutils literal"><span class="pre">fe80::/16</span></tt>), <em>scope</em> must be
+specified.  Relative Unix socket names (those not prefixed with
+<tt class="docutils literal"><span class="pre">/</span></tt>) are created via kaa.tempfile.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">If the bind address supplied is a hostname rather than an IPv4 or
+IPv6 address, this function will block in order to resolve the
+hostname if the name is not specified in /etc/hosts.  (In other words,
+<tt class="docutils literal"><span class="pre">localhost</span></tt> is probably safe.)</p>
+</div>
+<p>Once listening, new connections are automatically accepted, and the
+<a title="kaa.Socket.signals.new-client" class="reference internal" href="#kaa.Socket.signals.new-client"><tt class="xref docutils literal"><span class="pre">new-client</span></tt></a> signal is emitted for each new
+connection.  Callbacks connecting to the signal will receive a new
+Socket object representing the client connection.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.Socket.steal">
+<tt class="descname">steal</tt><big>(</big><em>socket</em><big>)</big><a class="headerlink" href="#kaa.Socket.steal" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="kaa.Socket.wrap">
+<tt class="descname">wrap</tt><big>(</big><em>sock</em>, <em>mode=3</em><big>)</big><a class="headerlink" href="#kaa.Socket.wrap" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wraps an existing low-level socket object.</p>
+<p>addr specifies the 4-tuple address corresponding to the socket.</p>
+</dd></dl>
+
+<h4>Properties</h4><dl class="attribute">
+<dt id="kaa.Socket.address">
+<tt class="descname">address</tt><a class="headerlink" href="#kaa.Socket.address" title="Permalink to this definition">¶</a></dt>
+<dd>This property is deprecated; use <em>peer</em> instead.</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Socket.alive">
+<tt class="descname">alive</tt><a class="headerlink" href="#kaa.Socket.alive" title="Permalink to this definition">¶</a></dt>
+<dd><p>True if the socket is alive, and False otherwise.</p>
+<p>A socket is considered alive when it is connected or in the process of
+connecting.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Socket.buffer_size">
+<tt class="descname">buffer_size</tt><a class="headerlink" href="#kaa.Socket.buffer_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Size of the send and receive socket buffers (SO_SNDBUF and SO_RCVBUF)
+in bytes.</p>
+<p>Setting this to higher values (say 1M) improves performance when
+sending large amounts of data across the socket.  Note that the upper
+bound may be restricted by the kernel.  (Under Linux, this can be tuned
+by adjusting /proc/sys/net/core/[rw]mem_max)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Socket.connected">
+<tt class="descname">connected</tt><a class="headerlink" href="#kaa.Socket.connected" title="Permalink to this definition">¶</a></dt>
+<dd>Boolean representing the connected state of the socket.</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Socket.connecting">
+<tt class="descname">connecting</tt><a class="headerlink" href="#kaa.Socket.connecting" title="Permalink to this definition">¶</a></dt>
+<dd><p>True if the socket is in the process of establishing a connection
+but is not yet connected.</p>
+<p>Once the socket is connected, the connecting property will be False,
+but the connected property will be True.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Socket.fileno">
+<tt class="descname">fileno</tt><a class="headerlink" href="#kaa.Socket.fileno" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Socket.listening">
+<tt class="descname">listening</tt><a class="headerlink" href="#kaa.Socket.listening" title="Permalink to this definition">¶</a></dt>
+<dd>True if this is a listening socket, and False otherwise.</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Socket.local">
+<tt class="descname">local</tt><a class="headerlink" href="#kaa.Socket.local" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns either the tuple <tt class="docutils literal"><span class="pre">(host,</span> <span class="pre">port,</span> <span class="pre">flowinfo,</span> <span class="pre">scopeid,</span> <span class="pre">scope)</span></tt>
+representing the local end of a TCP socket, or the string containing
+the name of a Unix socket.</p>
+<p><em>scope</em> is the interface name represented by <em>scopeid</em>, and is None if
+<em>scopeid</em> is 0.</p>
+<p>On Python 2.6 and later, the returned value is a namedtuple.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Socket.peer">
+<tt class="descname">peer</tt><a class="headerlink" href="#kaa.Socket.peer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the tuple <tt class="docutils literal"><span class="pre">(host,</span> <span class="pre">port,</span> <span class="pre">flowinfo,</span> <span class="pre">scopeid,</span> <span class="pre">scope,</span> <span class="pre">reqhost)</span></tt>
+representing the remote end of the socket.</p>
+<p><em>scope</em> is the interface name represented by <em>scopeid</em>, and is None if
+<em>scopeid</em> is 0.  <em>reqhost</em> is the requested hostname if
+<a title="kaa.Socket.connect" class="reference internal" href="#kaa.Socket.connect"><tt class="xref docutils literal"><span class="pre">connect()</span></tt></a> was called, or None if this is a listening
+socket.</p>
+<p>On Python 2.6 and later, the returned value is a namedtuple.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.Socket.readable">
+<tt class="descname">readable</tt><a class="headerlink" href="#kaa.Socket.readable" title="Permalink to this definition">¶</a></dt>
+<dd><p>True if the socket is readable, and False otherwise.</p>
+<p>A socket is considered readable when it is listening or alive.</p>
+</dd></dl>
+
+<h4>Signals</h4><dl class="attribute">
+<dt id="kaa.Socket.signals.new-client">
+<tt class="descname">new-client</tt><a class="headerlink" href="#kaa.Socket.signals.new-client" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted when a new client connects to a listening socket.</p>
+<p><tt class="docutils literal"><span class="pre">def</span> <span class="pre">callback(client,</span> <span class="pre">...)</span></tt></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>client</em> (<a title="kaa.Socket" class="reference internal" href="#kaa.Socket"><tt class="xref docutils literal"><span class="pre">Socket</span></tt></a> object) &#8211; the new client that just connected.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <h4>Previous topic</h4>
+            <p class="topless"><a href="io.html"
+                                  title="previous chapter">I/O Channels</a></p>
+            <h4>Next topic</h4>
+            <p class="topless"><a href="process.html"
+                                  title="next chapter">Sub-Process I/O</a></p>
+            <h3>This Page</h3>
+            <ul class="this-page-menu">
+              <li><a href="../_sources/core/socket.txt"
+                     rel="nofollow">Show Source</a></li>
+            </ul>
+          <div id="searchbox" style="display: none">
+            <h3>Quick search</h3>
+              <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" size="18" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+              </form>
+              <p class="searchtip" style="font-size: 90%">
+              Enter search terms or a module, class or function name.
+              </p>
+          </div>
+          <script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="process.html" title="Sub-Process I/O"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="io.html" title="I/O Channels"
+             >previous</a> |</li>
+        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on Jan 14, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+    </div>
+  </body>
+</html>

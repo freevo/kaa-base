@@ -1,0 +1,555 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Utility Functions &mdash; kaa.base v0.99.2 documentation</title>
+    <link rel="stylesheet" href="_static/kaa.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '#',
+        VERSION:     '0.99.2',
+        COLLAPSE_MODINDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="kaa.base v0.99.2 documentation" href="index.html" />
+    <link rel="next" title="Input Plugins" href="input.html" />
+    <link rel="prev" title="INotify" href="inotify.html" />
+    <!-- link rel="stylesheet" href="_static/kaa.css" type="text/css" /-->
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="input.html" title="Input Plugins"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="inotify.html" title="INotify"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="utility-functions">
+<h1>Utility Functions<a class="headerlink" href="#utility-functions" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="string">
+<h2>String<a class="headerlink" href="#string" title="Permalink to this headline">¶</a></h2>
+<p>The following two functions (py3_str() and py3_b()) are commonly used utility functions,
+and so they are exposed directly in the kaa namespace.</p>
+<dl class="function">
+<dt id="kaa.py3_str">
+<tt class="descclassname">kaa.</tt><tt class="descname">py3_str</tt><big>(</big><em>value</em>, <em>encoding=None</em>, <em>desperate=True</em>, <em>coerce=False</em>, <em>fs=False</em><big>)</big><a class="headerlink" href="#kaa.py3_str" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert (if necessary) the given value to a (unicode) string.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><em>value</em> &#8211; the value to be converted to a unicode string</li>
+<li><em>encoding</em> (str) &#8211; the character set to first try to decode as; if None, will
+use the system default (from the locale).</li>
+<li><em>desperate</em> (bool) &#8211; if True and decoding to the given (or default) charset
+fails, will also try utf-8 and latin-1 (in that order),
+and if those fail, will decode as the preferred charset,
+replacing unknown characters with \uFFFD.</li>
+<li><em>coerce</em> (bool) &#8211; if True, will coerce numeric types to a unicode string; if
+False, such values will be returned untouched.</li>
+<li><em>fs</em> (bool) &#8211; indicates value is a file name or other environment string; if True,
+the encoding (if not explicitly specified) will be the encoding
+given by <tt class="docutils literal"><span class="pre">sys.getfilesystemencoding()</span></tt> and the error handler
+used will be <tt class="docutils literal"><span class="pre">surrogateescape</span></tt> if supported.</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">the value as a (unicode) string, or the original value if coerce is
+False and the value was not a bytes or string.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The naming of <tt class="docutils literal"><span class="pre">str</span></tt> is relative Python 3&#8217;s notion of a <em>str</em> object,
+hence the <tt class="docutils literal"><span class="pre">py3_</span></tt> prefix.  On Python 2, the returned value is a <em>unicode</em>
+object while on Python 3, the returned value is a <em>str</em> object.</p>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="kaa.py3_b">
+<tt class="descclassname">kaa.</tt><tt class="descname">py3_b</tt><big>(</big><em>value</em>, <em>encoding=None</em>, <em>desperate=True</em>, <em>coerce=False</em>, <em>fs=False</em><big>)</big><a class="headerlink" href="#kaa.py3_b" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert (if necessary) the given value to a &#8220;string of bytes&#8221;, agnostic to
+any character encoding.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><em>value</em> &#8211; the value to be converted to a string of bytes</li>
+<li><em>encoding</em> (str) &#8211; the character set to first try to encode to; if None, will
+use the system default (from the locale).</li>
+<li><em>desperate</em> (bool) &#8211; if True and encoding to the given (or default) charset
+fails, will also try utf-8 and latin-1 (in that order),
+and if those fail, will encode to the preferred charset,
+replacing unknown characters with \uFFFD.</li>
+<li><em>coerce</em> (bool) &#8211; if True, will coerce numeric types to a bytes object; if
+False, such values will be returned untouched.</li>
+<li><em>fs</em> (bool) &#8211; indicates value is a file name or other environment string; if True,
+the encoding (if not explicitly specified) will be the encoding
+given by <tt class="docutils literal"><span class="pre">sys.getfilesystemencoding()</span></tt> and the error handler
+used will be <tt class="docutils literal"><span class="pre">surrogateescape</span></tt> if supported.</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">the value as a string of bytes, or the original value if coerce is
+False and the value was not a bytes or string.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The notion of &#8220;bytes&#8221; was introduced in Python 3 (and included
+in Python 2.6 as an alias to str), hence the <tt class="docutils literal"><span class="pre">py3_</span></tt> prefix.  On Python
+2, the returned value is a <em>str</em> object while on Python 3, the returned
+value is a <em>bytes</em> object.</p>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="kaa.strutils.utf8">
+<tt class="descclassname">kaa.strutils.</tt><tt class="descname">utf8</tt><big>(</big><em>s</em><big>)</big><a class="headerlink" href="#kaa.strutils.utf8" title="Permalink to this definition">¶</a></dt>
+<dd>Returns a UTF-8 string, converting from other character sets if
+necessary.</dd></dl>
+
+<dl class="function">
+<dt id="kaa.strutils.get_encoding">
+<tt class="descclassname">kaa.strutils.</tt><tt class="descname">get_encoding</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.strutils.get_encoding" title="Permalink to this definition">¶</a></dt>
+<dd>Return the current encoding.</dd></dl>
+
+<dl class="function">
+<dt id="kaa.strutils.set_encoding">
+<tt class="descclassname">kaa.strutils.</tt><tt class="descname">set_encoding</tt><big>(</big><em>encoding</em><big>)</big><a class="headerlink" href="#kaa.strutils.set_encoding" title="Permalink to this definition">¶</a></dt>
+<dd>Set default character encoding. This function also sets the global Python
+encoding.</dd></dl>
+
+<dl class="function">
+<dt id="kaa.strutils.format">
+<tt class="descclassname">kaa.strutils.</tt><tt class="descname">format</tt><big>(</big><em>s</em>, <em>*args</em><big>)</big><a class="headerlink" href="#kaa.strutils.format" title="Permalink to this definition">¶</a></dt>
+<dd>Format a string and make sure all string or unicode arguments are
+converted to the correct type.</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.strutils.BYTES_TYPE">
+<tt class="descclassname">kaa.strutils.</tt><tt class="descname">BYTES_TYPE</tt><a class="headerlink" href="#kaa.strutils.BYTES_TYPE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.strutils.UNICODE_TYPE">
+<tt class="descclassname">kaa.strutils.</tt><tt class="descname">UNICODE_TYPE</tt><a class="headerlink" href="#kaa.strutils.UNICODE_TYPE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="date-and-time">
+<h2>Date and Time<a class="headerlink" href="#date-and-time" title="Permalink to this headline">¶</a></h2>
+<p>TODO: utc, local</p>
+</div>
+<div class="section" id="miscellaneous">
+<h2>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Permalink to this headline">¶</a></h2>
+<p>TODO: property</p>
+<dl class="function">
+<dt id="kaa.utils.tempfile">
+<tt class="descclassname">kaa.utils.</tt><tt class="descname">tempfile</tt><big>(</big><em>name</em>, <em>unique=False</em><big>)</big><a class="headerlink" href="#kaa.utils.tempfile" title="Permalink to this definition">¶</a></dt>
+<dd>Return a filename in the secure kaa tmp directory with the given name.
+Name can also be a relative path in the temp directory, directories will
+be created if missing. If unique is set, it will return a unique name based
+on the given name.</dd></dl>
+
+<dl class="function">
+<dt id="kaa.utils.which">
+<tt class="descclassname">kaa.utils.</tt><tt class="descname">which</tt><big>(</big><em>file</em>, <em>path=None</em><big>)</big><a class="headerlink" href="#kaa.utils.which" title="Permalink to this definition">¶</a></dt>
+<dd>Does what which(1) does: searches the PATH in order for a given file name
+and returns the full path to first match.</dd></dl>
+
+<dl class="function">
+<dt id="kaa.utils.fork">
+<tt class="descclassname">kaa.utils.</tt><tt class="descname">fork</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.utils.fork" title="Permalink to this definition">¶</a></dt>
+<dd>Forks the process.  May safely be called after the main loop has been
+started.</dd></dl>
+
+<dl class="function">
+<dt id="kaa.utils.daemonize">
+<tt class="descclassname">kaa.utils.</tt><tt class="descname">daemonize</tt><big>(</big><em>stdin='/dev/null'</em>, <em>stdout='/dev/null'</em>, <em>stderr=None</em>, <em>pidfile=None</em>, <em>exit=True</em>, <em>wait=False</em><big>)</big><a class="headerlink" href="#kaa.utils.daemonize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Does a double-fork to daemonize the current process using the technique
+described at <a class="reference external" href="http://www.erlenstar.demon.co.uk/unix/faq_2.html#SEC16">http://www.erlenstar.demon.co.uk/unix/faq_2.html#SEC16</a> .</p>
+<p>If exit is True (default), parent exits immediately.  If false, caller will receive
+the pid of the forked child.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="kaa.utils.is_running">
+<tt class="descclassname">kaa.utils.</tt><tt class="descname">is_running</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#kaa.utils.is_running" title="Permalink to this definition">¶</a></dt>
+<dd>Check if the program with the given name is running. The program
+must have called set_running itself. Returns the pid or 0.</dd></dl>
+
+<dl class="function">
+<dt id="kaa.utils.set_running">
+<tt class="descclassname">kaa.utils.</tt><tt class="descname">set_running</tt><big>(</big><em>name</em>, <em>modify=True</em><big>)</big><a class="headerlink" href="#kaa.utils.set_running" title="Permalink to this definition">¶</a></dt>
+<dd>Set this program as running with the given name.  If modify is True,
+the process name is updated as described in set_process_name().</dd></dl>
+
+<dl class="function">
+<dt id="kaa.utils.set_process_name">
+<tt class="descclassname">kaa.utils.</tt><tt class="descname">set_process_name</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#kaa.utils.set_process_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>On Linux systems later than 2.6.9, this function sets the process name as it
+appears in ps, and so that it can be found with killall(1) and pidof(8).</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>name will be truncated to the cumulative length of the original process
+name and all its arguments; once updated, passed arguments will no
+longer be visible.</p>
+<p class="last">This function currently only works properly with Python 2.  With Python
+3, the process will be found with killall(1), but ps(1) and pidof(8)
+will not see the new name.</p>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="kaa.utils.get_num_cpus">
+<tt class="descclassname">kaa.utils.</tt><tt class="descname">get_num_cpus</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.utils.get_num_cpus" title="Permalink to this definition">¶</a></dt>
+<dd>Returns the number of processors on the system, or raises RuntimeError
+if that value cannot be determined.</dd></dl>
+
+<dl class="function">
+<dt id="kaa.utils.get_machine_uuid">
+<tt class="descclassname">kaa.utils.</tt><tt class="descname">get_machine_uuid</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.utils.get_machine_uuid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a unique (and hopefully persistent) identifier for the current
+machine.</p>
+<p>This function will return the D-Bus UUID if it exists (which should be
+available on modern Linuxes), otherwise it will return the machine&#8217;s
+hostname.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="kaa.utils.get_plugins">
+<tt class="descclassname">kaa.utils.</tt><tt class="descname">get_plugins</tt><big>(</big><em>group=None</em>, <em>location=None</em>, <em>attr=None</em>, <em>filter=None</em>, <em>scope=None</em><big>)</big><a class="headerlink" href="#kaa.utils.get_plugins" title="Permalink to this definition">¶</a></dt>
+<dd><p>Flexible plugin loader, supporting Python eggs as well as on-disk trees.
+All modules at the specified location or entry point group (for eggs) are
+loaded and returned as a dict mapping plugin names to plugin objects.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><em>group</em> (str or None) &#8211; a setuptools entry point group name (more below)</li>
+<li><em>location</em> (str or None) &#8211; path within which to load plugins.  If a filename is
+included, it will be stripped, which means you can
+conveniently pass <tt class="docutils literal"><span class="pre">__file__</span></tt> here.  Paths inside eggs are
+also supported.  All modules at the given location will
+be imported except for <tt class="docutils literal"><span class="pre">__init__</span></tt>.</li>
+<li><em>attr</em> (str or None) &#8211; if specified, this attribute is fetched from all modules loaded
+from the specified <tt class="docutils literal"><span class="pre">location</span></tt> and used as the value in the
+plugin dict; if not specified, the module itself is used as the
+module.</li>
+<li><em>filter</em> (callable or None) &#8211; an optional callable to which all candidate module names
+found at <tt class="docutils literal"><span class="pre">location</span></tt> will be passed. If the filter returns
+a zero value that module will skipped, otherwise it will be
+imported; if the filter returns a string, it specifies the
+name of a module to be imported instead.</li>
+<li><em>scope</em> (dict) &#8211; the global scope to use when importing plugin modules.  If
+this is not specified, the caller&#8217;s scope will be used (using
+stack inspection trickery).  If get_plugins() is being called
+indirectly, you will need to pass through the value of
+globals().</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a dict mapping plugin names to plugin objects.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>If a plugin raises an exception while it is being imported, the value in
+the returned dictionary for that plugin will be the Exception object that
+was raised.</p>
+<dl class="docutils">
+<dt>Plugins can be loaded by one or both of the following methods:</dt>
+<dd><ol class="first last arabic simple">
+<li>Loading modules from a specified directory location either on-disk
+or inside a zipped egg</li>
+<li>Entry point groups offered by setuptools</li>
+</ol>
+</dd>
+</dl>
+<p>Method 1 is the more traditional approach to plugins in Python.  For example,
+you might have a directory structure like:</p>
+<div class="highlight-python"><pre>module/
+    plugins/
+        __init__.py
+        plugin1.py
+        plugin2.py</pre>
+</div>
+<p>There is typically logic inside <tt class="docutils literal"><span class="pre">plugins/__init__.py</span></tt> to import all other
+files in the same directory (<tt class="docutils literal"><span class="pre">os.path.dirname(__file__)</span></tt>).  It can pass
+<tt class="docutils literal"><span class="pre">location=__file__</span></tt> to <tt class="docutils literal"><span class="pre">kaa.utils.get_plugins()</span></tt> to do this:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">kaa</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">get_plugins</span><span class="p">(</span><span class="n">location</span><span class="o">=</span><span class="n">__file__</span><span class="p">)</span>
+<span class="go">{&#39;plugin1&#39;: &lt;module &#39;module.plugins.plugin1&#39; from &#39;.../module/plugins/plugin1.py&#39;&gt;, </span>
+<span class="go"> &#39;plugin2&#39;: &lt;module &#39;module.plugins.plugin2&#39; from &#39;.../module/plugins/plugin2.py&#39;&gt;}</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Plugins will be imported relative to the caller&#8217;s module name.  So if
+the caller is module <tt class="docutils literal"><span class="pre">module.plugins</span></tt>, plugin1 will be imported as
+<tt class="docutils literal"><span class="pre">module.plugins.plugin1</span></tt>.</p>
+</div>
+<p>This also works when <tt class="docutils literal"><span class="pre">plugins/__init__.py</span></tt> is inside a zipped egg.
+However, if you reference <tt class="docutils literal"><span class="pre">__file__</span></tt> as above, setuptools (assuming it&#8217;s
+available on the system), when it examines the source code during
+installation, will think it&#8217;s not safe to zip the tree into an egg file,
+and so it will install it as an on-disk directory tree instead.  You can
+override this by passing <tt class="docutils literal"><span class="pre">zip_safe=True</span></tt> to <tt class="docutils literal"><span class="pre">setup()</span></tt> in the setup
+script for the application that loads plugins.</p>
+<p>Method 2 is the approach to take when setuptools is available.  Plugin modules
+register themselves with an entry point group name.  For example, a plugin
+module&#8217;s <tt class="docutils literal"><span class="pre">setup.py</span></tt> may call <tt class="docutils literal"><span class="pre">setup()</span></tt> with:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">setup</span><span class="p">(</span>
+    <span class="n">module</span><span class="o">=</span><span class="s">&#39;myplugin&#39;</span><span class="p">,</span>
+    <span class="c"># ...</span>
+    <span class="n">plugins</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;someapplication.plugins&#39;</span><span class="p">:</span> <span class="s">&#39;src/submodule&#39;</span><span class="p">},</span>
+    <span class="n">entry_points</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;someapplication.plugins&#39;</span><span class="p">:</span> <span class="s">&#39;plugname = myplugin.submodule:SomeClass&#39;</span><span class="p">},</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>When SomeApplication wants to load all registered modules, it can do:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">kaa</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">get_plugins</span><span class="p">(</span><span class="n">group</span><span class="o">=</span><span class="s">&#39;someapplication.plugins&#39;</span><span class="p">)</span>
+<span class="go">{&#39;plugname&#39;: &lt;class myplugin.submodule.SomeClass at 0xdeadbeef&gt;}</span>
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">entry_points</span></tt> kwarg specified in the plugin module can specify multiple
+plugin names, and <tt class="docutils literal"><span class="pre">SomeClass</span></tt> could be any python object, as long as it is
+exposed within <tt class="docutils literal"><span class="pre">myplugin.submodule</span></tt>.  For more information on entry
+points, refer to <a class="reference external" href="http://peak.telecommunity.com/DevCenter/PkgResources#entry-points">setuptools documentation</a>.</p>
+<p>It is possible and in fact recommended to mix both methods.  (If your
+project makes setuptools a mandatory dependency, then you can use entry
+point groups exclusively.)  If <tt class="docutils literal"><span class="pre">group</span></tt> is not specified, then it becomes
+impossible for either the application or the plugin to be installed as
+eggs.</p>
+<p>The <tt class="docutils literal"><span class="pre">attr</span></tt> kwarg makes it more convenient to combine both methods.
+Plugins loaded from entry points will be SomeClass objects.  If (assuming
+now the application is not installed as a zipped egg but rather an on-disk
+source tree) some plugins were installed to the applications source tree,
+while others installed as eggs registered with the entry point group,
+you would want to pull <tt class="docutils literal"><span class="pre">SomeClass</span></tt> from those modules loaded from
+<tt class="docutils literal"><span class="pre">location</span></tt>.  So:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">kaa</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">get_plugins</span><span class="p">(</span><span class="n">group</span><span class="o">=</span><span class="s">&#39;someapplication.plugins&#39;</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="n">__file__</span><span class="p">,</span> <span class="n">attr</span><span class="o">=</span><span class="s">&#39;SomeClass&#39;</span><span class="p">)</span>
+<span class="go">{&#39;plugin1&#39;: &lt;class module.plugins.plugin1.SomeClass at 0xdeadbeef&gt;,</span>
+<span class="go"> &#39;plugin2&#39;: &lt;class module.plugins.plugin2.SomeClass at 0xcafebabe&gt;,</span>
+<span class="go"> &#39;plugname&#39;: &lt;class myplugin.submodule.SomeClass at 0xbaadf00d&gt;}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="kaa.utils.wraps">
+<tt class="descclassname">kaa.utils.</tt><tt class="descname">wraps</tt><big>(</big><em>origfunc</em>, <em>lshift=0</em><big>)</big><a class="headerlink" href="#kaa.utils.wraps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decorator factory: used to create a decorator that assumes the same
+attributes (name, docstring, signature) as its decorated function when
+sphinx has been imported.  This is necessary because sphinx uses
+introspection to construct the documentation.</p>
+<p>This logic is inspired from Michele Simionato&#8217;s decorator module.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">decorator</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="k">def</span> <span class="nf">newfunc</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="gp">... </span>            <span class="c"># custom logic here ...</span>
+<span class="gp">... </span>            <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="k">return</span> <span class="n">newfunc</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><em>origfunc</em> &#8211; the original function being decorated which is to be
+wrapped.</li>
+<li><em>lshift</em> &#8211; number of arguments to shift from the left of the original
+function&#8217;s call spec.  Wrapped function will have this
+nubmer of arguments removed.</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a decorator which has the attributes of the decorated function.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="kaa.utils.DecoratorDataStore">
+<em class="property">class </em><tt class="descclassname">kaa.utils.</tt><tt class="descname">DecoratorDataStore</tt><big>(</big><em>func</em>, <em>newfunc=None</em>, <em>newfunc_args=None</em>, <em>identifier=None</em><big>)</big><a class="headerlink" href="#kaa.utils.DecoratorDataStore" title="Permalink to this definition">¶</a></dt>
+<dd><p>A utility class for decorators that sets or gets a value to/from a
+decorated function.  Attributes of instances of this class can be get, set,
+or deleted, and those attributes are associated with the decorated
+function.</p>
+<p>The object to which the data is attached is either the function itself for
+non-method, or the instance object for methods.</p>
+<p>There are two possible perspectives of using the data store: from inside
+the decorator, and from outside the decorator.  This allows, for example, a
+method to access data stored by one of its decorators.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="kaa.utils.weakref">
+<tt class="descclassname">kaa.utils.</tt><tt class="descname">weakref</tt><big>(</big><em>cls</em>, <em>object</em><big>)</big><a class="headerlink" href="#kaa.utils.weakref" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class represents a weak reference based on the python
+module weakref. The difference between weakref.ref and this class
+is that you can access the ref without calling it first.
+E.g.: foo = weak(bar) and bar has the attribute x. With a normal
+weakref.ref you need to call foo().x to get, this class makes it
+possible to just use foo.x.</p>
+<p>All functions are passed to the real object behind the weakref. To
+check if the weakref is alive or not, you can compare the object with
+None. Do not use a simple if, because an object still alive can also
+be False (e.g. an empty list).</p>
+</dd></dl>
+
+</div>
+<div class="section" id="ioctl">
+<h2>IOCTL<a class="headerlink" href="#ioctl" title="Permalink to this headline">¶</a></h2>
+<p>The <em>kaa.ioctl</em> module provides functions for the C-level ioctl macros that are
+defined in <tt class="docutils literal"><span class="pre">/usr/include/asm-generic/ioctl.h</span></tt> used for creating and decoding
+ioctl numbers.</p>
+<dl class="function">
+<dt id="kaa.ioctl.IO">
+<tt class="descclassname">kaa.ioctl.</tt><tt class="descname">IO</tt><big>(</big><em>type</em>, <em>nr</em><big>)</big><a class="headerlink" href="#kaa.ioctl.IO" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kaa.ioctl.IOR">
+<tt class="descclassname">kaa.ioctl.</tt><tt class="descname">IOR</tt><big>(</big><em>type</em>, <em>nr</em>, <em>size</em><big>)</big><a class="headerlink" href="#kaa.ioctl.IOR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt>
+<tt class="descclassname">kaa.ioctl.</tt><tt class="descname">IOR</tt><big>(</big><em>type</em>, <em>nr</em>, <em>size</em><big>)</big></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kaa.ioctl.IOWR">
+<tt class="descclassname">kaa.ioctl.</tt><tt class="descname">IOWR</tt><big>(</big><em>type</em>, <em>nr</em>, <em>size</em><big>)</big><a class="headerlink" href="#kaa.ioctl.IOWR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kaa.ioctl.IOC_DIR">
+<tt class="descclassname">kaa.ioctl.</tt><tt class="descname">IOC_DIR</tt><big>(</big><em>nr</em><big>)</big><a class="headerlink" href="#kaa.ioctl.IOC_DIR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kaa.ioctl.IOC_TYPE">
+<tt class="descclassname">kaa.ioctl.</tt><tt class="descname">IOC_TYPE</tt><big>(</big><em>nr</em><big>)</big><a class="headerlink" href="#kaa.ioctl.IOC_TYPE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kaa.ioctl.IOC_NR">
+<tt class="descclassname">kaa.ioctl.</tt><tt class="descname">IOC_NR</tt><big>(</big><em>nr</em><big>)</big><a class="headerlink" href="#kaa.ioctl.IOC_NR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kaa.ioctl.IOC_SIZE">
+<tt class="descclassname">kaa.ioctl.</tt><tt class="descname">IOC_SIZE</tt><big>(</big><em>nr</em><big>)</big><a class="headerlink" href="#kaa.ioctl.IOC_SIZE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="kaa.ioctl.ioctl">
+<tt class="descclassname">kaa.ioctl.</tt><tt class="descname">ioctl</tt><big>(</big><em>fd</em>, <em>code</em>, <em>*args</em>, <em>**kargs</em><big>)</big><a class="headerlink" href="#kaa.ioctl.ioctl" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <h3><a href="index.html">Table Of Contents</a></h3>
+            <ul>
+<li><a class="reference external" href="#">Utility Functions</a><ul>
+<li><a class="reference external" href="#string">String</a></li>
+<li><a class="reference external" href="#date-and-time">Date and Time</a></li>
+<li><a class="reference external" href="#miscellaneous">Miscellaneous</a></li>
+<li><a class="reference external" href="#ioctl">IOCTL</a></li>
+</ul>
+</li>
+</ul>
+
+            <h4>Previous topic</h4>
+            <p class="topless"><a href="inotify.html"
+                                  title="previous chapter">INotify</a></p>
+            <h4>Next topic</h4>
+            <p class="topless"><a href="input.html"
+                                  title="next chapter">Input Plugins</a></p>
+            <h3>This Page</h3>
+            <ul class="this-page-menu">
+              <li><a href="_sources/utils.txt"
+                     rel="nofollow">Show Source</a></li>
+            </ul>
+          <div id="searchbox" style="display: none">
+            <h3>Quick search</h3>
+              <form class="search" action="search.html" method="get">
+                <input type="text" name="q" size="18" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+              </form>
+              <p class="searchtip" style="font-size: 90%">
+              Enter search terms or a module, class or function name.
+              </p>
+          </div>
+          <script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="input.html" title="Input Plugins"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="inotify.html" title="INotify"
+             >previous</a> |</li>
+        <li><a href="index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on Jan 14, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+    </div>
+  </body>
+</html>

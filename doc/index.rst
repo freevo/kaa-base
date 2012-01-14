@@ -54,18 +54,19 @@ repositories, but be aware that these are almost certainly very out of date:
     # For Fedora
     yum install python-kaa-base
 
-
-The most recent in-development version can be obtained via subversion:
+The most up-to-date tree can be cloned with git:
 
 .. code-block:: bash
 
-    svn co svn://svn.freevo.org/kaa/trunk/base kaa-base
+    git clone git://github.com/freevo/kaa-base.git
     cd kaa-base
     sudo python setup.py install
 
+The project is `hosted at GitHub <https://github.com/freevo/kaa-base>`_, so if
+you'd like to contribute, you can can fork it and send pull requests.  
 
-Finally, source packages are `available on SourceForge
-<http://sourceforge.net/projects/freevo/files/kaa-base/>`_.
+Finally, source packages are `available on GitHub 
+<https://github.com/freevo/kaa-base/downloads>`_.
 
 
 

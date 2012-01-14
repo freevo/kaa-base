@@ -43,6 +43,17 @@ Or, if you prefer to install kaa.base as an egg using *setuptools* (package
 
     sudo easy_install -U kaa-base
 
+The most up-to-date tree can be cloned with git:
+
+.. code-block:: bash
+
+    git clone git://github.com/freevo/kaa-base.git
+    cd kaa-base
+    sudo python setup.py install
+
+The project is `hosted at GitHub <https://github.com/freevo/kaa-base>`_, so if
+you'd like to contribute, you can can fork it and send pull requests.  
+
 Your distribution might already have kaa.base included in its standard
 repositories, but be aware that these are almost certainly very out of date:
 
@@ -54,16 +65,6 @@ repositories, but be aware that these are almost certainly very out of date:
     # For Fedora
     yum install python-kaa-base
 
-The most up-to-date tree can be cloned with git:
-
-.. code-block:: bash
-
-    git clone git://github.com/freevo/kaa-base.git
-    cd kaa-base
-    sudo python setup.py install
-
-The project is `hosted at GitHub <https://github.com/freevo/kaa-base>`_, so if
-you'd like to contribute, you can can fork it and send pull requests.  
 
 Finally, source packages are `available on GitHub 
 <https://github.com/freevo/kaa-base/downloads>`_.

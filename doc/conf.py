@@ -52,7 +52,7 @@ master_doc = 'index'
 
 # General substitutions.
 project = 'kaa.base'
-copyright = '2005-2009, Dirk Meyer, Jason Tackaberry'
+copyright = '2005-2012, Dirk Meyer, Jason Tackaberry'
 
 # The default replacements for |version| and |release|, also used in various
 # other places throughout the built documents.
@@ -195,3 +195,4 @@ latex_documents = [
 #latex_use_modindex = True
 
 autoclass_content = 'both'
+html_style = 'kaa.css'

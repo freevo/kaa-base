@@ -1,5 +1,6 @@
-kaa.base --- The Kaa Application Framework
-==========================================
+The Kaa Application Framework
+=============================
+
 
 What are Kaa and kaa.base?
 --------------------------
@@ -18,27 +19,34 @@ with an API for :ref:`signals <signals>` and :ref:`callables <callables>`,
 support), inter-process communication, and much more.
 
 Kaa also -- and perhaps most importantly -- provides a rich, practically
-magical API for :ref:`asynchronous programming <async>`.  Threads and
+magical API for :ref:`asynchronous programming <coroutines>`.  Threads and
 coroutines in combination with :ref:`InProgress <inprogress>` objects,
 which are used extensively throughout Kaa, allow you to implement complex state
 machines responding to asynchronous events in very compact, readable code.
+
 
 Where do I get kaa.base?
 ------------------------
 
 The easiest and recommended way to install kaa.base is using *pip* (available
-as the ``python-pip`` package in Ubuntu and Fedora)::
+as the ``python-pip`` package in Ubuntu and Fedora):
+
+.. code-block:: bash
 
     sudo pip install --upgrade kaa-base
 
 
 Or, if you prefer to install kaa.base as an egg using *setuptools* (package
-``python-setuptools`` on Ubuntu and Fedora)::
+``python-setuptools`` on Ubuntu and Fedora):
+
+.. code-block:: bash
 
     sudo easy_install -U kaa-base
 
 Your distribution might already have kaa.base included in its standard
-repositories, but be aware that these are almost certainly very out of date::
+repositories, but be aware that these are almost certainly very out of date:
+
+.. code-block:: bash
 
     # For Ubuntu and Debian
     sudo apt-get install python-kaa-base
@@ -47,7 +55,9 @@ repositories, but be aware that these are almost certainly very out of date::
     yum install python-kaa-base
 
 
-The most recent in-development version can be obtained via subversion::
+The most recent in-development version can be obtained via subversion:
+
+.. code-block:: bash
 
     svn co svn://svn.freevo.org/kaa/trunk/base kaa-base
     cd kaa-base
@@ -62,26 +72,56 @@ Finally, source packages are `available on SourceForge
 Library Documentation
 ---------------------
 
-.. toctree::
-   :maxdepth: 2
+Core Framework
+~~~~~~~~~~~~~~
 
-   core/index
-   async/index
+.. toctree::
+   :maxdepth: 1
+   :glob:
+
+   core/signals
+   core/mainloop
+   core/timer
+   core/event
+   async/inprogress
+   async/coroutines
+   async/threads
+   async/generators
+   core/io
+   core/socket
+   core/process
+
+
+Utility Modules
+~~~~~~~~~~~~~~~
+
+.. toctree::
+   :maxdepth: 1
+   :glob:
+
    rpc
    config
    db
+   inotify
    utils
    input
-   net/index
-   inotify
-   shm
+
+
+Network
+~~~~~~~
+
+.. toctree::
+   :maxdepth: 2
+
+   net/tls
+   net/mdns
+
+
+Miscellaneous
+~~~~~~~~~~~~~
+
+.. toctree::
+   :maxdepth: 2
+
    distribution
    internal/index
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

@@ -1,7 +1,7 @@
 .. _timer:
 
-Timer
-=====
+Timers
+======
 
 The timed decorator
 -------------------

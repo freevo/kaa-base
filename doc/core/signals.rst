@@ -213,7 +213,7 @@ via :func:`kaa.inprogress`, and can therefore be yielded from a :ref:`coroutine 
 
 Here, the ``stop_process()`` coroutine is finished when the ``terminated`` signal
 is emitted.  For more information on coroutines, see the section on
-:ref:`asynchronous programming in Kaa <async>`.
+:ref:`asynchronous programming in Kaa <coroutines>`.
 
 A collection of many Signal objects is represented by a :class:`~kaa.Signals`
 object, which behaves like a dictionary.  There are several additional methods

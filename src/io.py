@@ -553,6 +553,11 @@ class IOChannel(Object):
         return s[:idx]
 
 
+    def _abort_read_inprogress(self, exc, inprogress, signal):
+        signal.disconnect(inprogress)
+        self._update_read_monitor()
+
+
     def _async_read(self, signal):
         """
         Common implementation for read() and readline().
@@ -565,13 +570,7 @@ class IOChannel(Object):
             return InProgress().finish(None)
 
         ip = inprogress(signal)
-
-        def abort(exc):
-            # XXX: closure around ip and signal holds strong refs; is this bad?
-            signal.disconnect(ip)
-            self._update_read_monitor()
-
-        ip.signals['abort'].connect(abort)
+        ip.signals['abort'].connect(self._abort_read_inprogress, inprogress, signal)
         return ip
 
 
@@ -747,6 +746,14 @@ class IOChannel(Object):
         return os.write(self.fileno, data)
 
 
+    def _abort_write_inprogress(self, exc, inprogress):
+        try:
+            self._write_queue.remove((data, inprogress))
+        except ValueError:
+            # Too late to abort.
+            return False
+
+
     def write(self, data):
         """
         Writes the given data to the channel.
@@ -784,13 +791,7 @@ class IOChannel(Object):
 
         inprogress = InProgress()
         if data:
-            def abort(exc):
-                try:
-                    self._write_queue.remove((data, inprogress))
-                except ValueError:
-                    # Too late to abort.
-                    return False
-            inprogress.signals['abort'].connect(abort)
+            inprogress.signals['abort'].connect(self._abort_write_inprogress, inprogress)
             self._write_queue.append((data, inprogress))
             if self._channel and self._wmon and not self._wmon.active:
                 self._wmon.register(self.fileno, IO_WRITE)

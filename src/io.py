@@ -553,8 +553,8 @@ class IOChannel(Object):
         return s[:idx]
 
 
-    def _abort_read_inprogress(self, exc, inprogress, signal):
-        signal.disconnect(inprogress)
+    def _abort_read_inprogress(self, exc, signal, ip):
+        signal.disconnect(ip)
         self._update_read_monitor()
 
 
@@ -570,7 +570,7 @@ class IOChannel(Object):
             return InProgress().finish(None)
 
         ip = inprogress(signal)
-        ip.signals['abort'].connect(self._abort_read_inprogress, inprogress, signal)
+        ip.signals['abort'].connect(self._abort_read_inprogress, signal, ip)
         return ip
 
 
@@ -746,9 +746,9 @@ class IOChannel(Object):
         return os.write(self.fileno, data)
 
 
-    def _abort_write_inprogress(self, exc, inprogress):
+    def _abort_write_inprogress(self, exc, data, ip):
         try:
-            self._write_queue.remove((data, inprogress))
+            self._write_queue.remove((data, ip))
         except ValueError:
             # Too late to abort.
             return False
@@ -789,17 +789,17 @@ class IOChannel(Object):
         if not isinstance(data, BYTES_TYPE):
             raise ValueError('data must be bytes, not unicode')
 
-        inprogress = InProgress()
+        ip = InProgress()
         if data:
-            inprogress.signals['abort'].connect(self._abort_write_inprogress, inprogress)
-            self._write_queue.append((data, inprogress))
+            ip.signals['abort'].connect(self._abort_write_inprogress, data, ip)
+            self._write_queue.append((data, ip))
             if self._channel and self._wmon and not self._wmon.active:
                 self._wmon.register(self.fileno, IO_WRITE)
         else:
             # We're writing the null string, nothing really to do.  We're
             # implicitly done.
-            inprogress.finish(0)
-        return inprogress
+            ip.finish(0)
+        return ip
 
 
     def _handle_write(self):

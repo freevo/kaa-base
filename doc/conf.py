@@ -196,3 +196,4 @@ latex_documents = [
 
 autoclass_content = 'both'
 html_style = 'kaa.css'
+modindex_common_prefix = ['kaa.']

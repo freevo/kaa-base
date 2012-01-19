@@ -1,3 +1,5 @@
+.. module:: kaa.thread
+   :synopsis: Threaded tasks managed through InProgress objects
 .. _threads:
 
 Thread Support

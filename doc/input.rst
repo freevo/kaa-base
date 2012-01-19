@@ -1,3 +1,6 @@
+.. module:: kaa.input
+   :synopsis: Input plugins for stdin and LIRC
+
 Input Plugins
 =============
 

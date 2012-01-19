@@ -1,3 +1,5 @@
+.. module:: kaa.net.tls
+   :synopsis: TLS Sockets
 .. _tls:
 
 TLS

@@ -1,3 +1,7 @@
+.. module:: kaa.generator
+   :synopsis: Coroutines that can yield multiple values (like native 
+              generators, only asynchronous)
+
 .. _generators:
 
 Generators

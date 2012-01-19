@@ -1,3 +1,7 @@
+.. module:: kaa.coroutine
+   :synopsis: Functions that can yield and resume after some asynchronous
+              task completes
+
 .. _coroutines:
 
 Coroutines

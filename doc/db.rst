@@ -1,3 +1,6 @@
+.. module:: kaa.db
+   :synopsis: A flexible sqlite-backed object database with support 
+              for inverted indexes
 .. _db:
 
 Object Database

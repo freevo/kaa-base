@@ -1,3 +1,6 @@
+.. module:: kaa.strutils
+   :synopsis: String utility functions
+
 Utility Functions
 =================
 
@@ -16,6 +19,9 @@ and so they are exposed directly in the kaa namespace.
 .. attribute:: kaa.strutils.BYTES_TYPE
 .. attribute:: kaa.strutils.UNICODE_TYPE
 
+
+.. module:: kaa.utils
+   :synopsis: Miscellaneous useful helper functions
 
 Date and Time
 -------------

@@ -367,14 +367,16 @@ class Object(object):
         class.  Newer (most descended) __kaasignals__ will replace older ones if
         there are conflicts.
         """
-        signals = {}
-        for c in reversed(inspect.getmro(cls)):
-            if hasattr(c, '__kaasignals__'):
-                signals.update(c.__kaasignals__)
+        if not hasattr(cls, '__kaasignals_cached__'):
+            signals = {}
+            for c in reversed(inspect.getmro(cls)):
+                if hasattr(c, '__kaasignals__'):
+                    signals.update(c.__kaasignals__)
 
-        # Remove all signals whose value is None.
-        [ signals.pop(k) for k, v in signals.items() if v is None ]
-        return signals
+            # Remove all signals whose value is None.
+            [ signals.pop(k) for k, v in signals.items() if v is None ]
+            cls.__kaasignals_cached__ = signals
+        return cls.__kaasignals_cached__
 
         
     def __init__(self, *args, **kwargs):
@@ -387,8 +389,11 @@ class Object(object):
             # Construct the kaa.Signals object and attach the docstrings to
             # each signal in the Signal object's __doc__ attribute.
             self.signals = Signals(*signals.keys())
-            for name in signals:
-                self.signals[name].__doc__ = signals[name]
+            if 'sphinx.builders' in sys.modules:
+                # Tiny optimization: only add docstring if we're doing doc
+                # generation.
+                for name in signals:
+                    self.signals[name].__doc__ = signals[name]
 
 
 class Signal(object):

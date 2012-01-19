@@ -127,8 +127,8 @@ class IOChannel(Object):
     Socket and Process.  Implements logic common to communication over
     such channels such as async read/writes and read/write buffering.
 
-    It may also be used directly with file descriptors or file-like objects.
-    e.g. ``IOChannel(file('somefile'))``
+    It may also be used directly with file descriptors or (probably less
+    usefully) file-like objects.  e.g. ``IOChannel(file('somefile'))``
 
     :param channel: file descriptor to wrap into an IOChannel
     :type channel: integer file descriptor, file-like object, or other IOChannel
@@ -279,15 +279,15 @@ class IOChannel(Object):
     @property
     def readable(self):
         """
-        True if the channel is open, or if the channel is closed but a read
-        call would still succeed (due to buffered data).
+        True if the channel is open and readable, or if the channel is closed
+        but a read call would still succeed (due to buffered data).
 
         Note that a value of True does not mean there **is** data available, but
         rather that there could be and that a read() call is possible (however
         that read() call may return None, in which case the readable property
         will subsequently be False).
         """
-        return self._channel != None or self._read_queue.tell() > 0
+        return self._mode & IO_READ and (self._channel != None or self._read_queue.tell() > 0)
 
 
     @property
@@ -301,7 +301,7 @@ class IOChannel(Object):
         # By default, this is always True regardless if the channel is open, so
         # long as there is space available in the write queue, but subclasses
         # may want to override.
-        return self.write_queue_used < self._queue_size
+        return self._mode & IO_WRITE and self.write_queue_used < self._queue_size
 
 
     @property
@@ -459,7 +459,9 @@ class IOChannel(Object):
         :type channel: integer file descriptor, file-like object, or 
                        other IOChannel
         :param mode: indicates whether the channel is readable, writable,
-                     or both.
+                     or both.  Only applies to file descriptor channels or
+                     IOChannel objects; for file-like objects, the underlying
+                     channel's mode will be assumed.
         :type mode: bitmask of kaa.IO_READ and/or kaa.IO_WRITE
         """
         if hasattr(self, '_channel') and self._channel:
@@ -473,9 +475,18 @@ class IOChannel(Object):
             channel = channel._channel
 
         self._channel = channel
-        self._mode = mode
+        self._mode = 0
         if not channel:
             return
+        elif hasattr(channel, 'mode'):
+            if 'r' in channel.mode:
+                self._mode |= IO_READ
+            if 'w' in channel.mode:
+                self._mode |= IO_WRITE
+            if 'a' in channel.mode or '+' in channel.mode:
+                self._mode = IO_READ | IO_WRITE
+        else:
+            self._mode = mode
         self._set_non_blocking()
 
         if self._rmon:
@@ -651,7 +662,13 @@ class IOChannel(Object):
         try:
             data = self._read(self._chunk_size)
             log.debug2('IOChannel read data: channel=%s fd=%s len=%d', self._channel, self.fileno, len(data))
-        except (IOError, socket.error), (errno, msg):
+        except (IOError, socket.error), e:
+            if len(e.args) != 2:
+                # IOError and socket.error typically have (errno, msg) args but
+                # occasionally don't (e.g. 'File not open for reading').  Reraise
+                # before attempting to unpack args.
+                raise
+            errno, msg = e.args
             if errno == 11:
                 # Resource temporarily unavailable -- we are trying to read
                 # data on a socket when none is available.
@@ -909,6 +926,7 @@ class IOChannel(Object):
                 raise
         finally:
             self._channel = None
+            self._mode = 0
 
             self.signals['closed'].emit(expected)
             # We aren't attaching to 'shutdown' in wrap() after all.  Comment

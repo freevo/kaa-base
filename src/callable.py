@@ -125,9 +125,7 @@ class Callable(object):
         :param kwargs: keyword arguments to be passed to func when invoked
         """
         super(Callable, self).__init__()
-        assert(callable(func))
         self._func = func
-        self._func_name = str(func)
         self._args = args
         self._kwargs = kwargs
         self._ignore_caller_args = False
@@ -219,8 +217,8 @@ class Callable(object):
         The wrapped callable's return value is returned.
         """
         cb = self._get_func()
-        if not cb:
-            raise CallableError('The Callable (%s) has become invalid.' % self._func_name)
+        if cb is None:
+            raise CallableError('attempting to invoke an invalid callable')
 
         cb_args, cb_kwargs = self._merge_args(args, kwargs)
         return cb(*cb_args, **cb_kwargs)

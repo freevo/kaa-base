@@ -91,12 +91,13 @@ def init(module=None, reset=False, **options):
     Initialize the Kaa main loop facilities.
 
     :param module: the main loop implementation to use.
-                   ``generic``: Native python-based main loop (default),
-                   ``gtk``: use pygtk's main loop (automatically selected if
-                            the gtk module is imported);
-                   ``twisted``: Twisted main loop;
-                   ``thread``: Native python-based main loop in a separate thread
-                               with custom hooks (needs ``handler`` kwarg)
+
+                   * ``generic``: Native python-based main loop (default),
+                   * ``gtk``: use pygtk's main loop (automatically selected if
+                     the gtk module is imported);
+                   * ``twisted``: Twisted main loop;
+                   * ``thread``: Native python-based main loop in a separate thread
+                     with custom hooks (needs ``handler`` kwarg)
     :type module: str
     :param reset: discards any jobs queued by other threads; this is useful
                   following a fork.
@@ -104,10 +105,11 @@ def init(module=None, reset=False, **options):
 
     This function must be called from the Python main thread.
 
-    Normally it's not necessary to expliticly invoke this function; calling
-    loop() or run() will do it for you.  However if you want to use a different
-    main loop module than the default, or you begin using the Kaa API in a thread
-    before the main loop is started, you will need to invoke init() first.
+    .. note::
+       Normally it's not necessary to expliticly invoke this function; calling
+       loop() or run() will do it for you.  However if you want to use a different
+       main loop module than the default, or you begin using the Kaa API in a thread
+       before the main loop is started, you will need to invoke init() first.
     """
     global _initialized
     if threading.enumerate()[0] != threading.currentThread():
@@ -343,8 +345,10 @@ def step(*args, **kwargs):
     """
     Performs a single iteration of the main loop.
 
-    This function should almost certainly never be called directly.  Use it
-    at your own peril.  (If you do use it, you must call init() first.)
+    .. warning::
+       This function should almost certainly never be called directly.  Use it
+       at your own peril.  (If you do use it, you must call
+       :func:`~kaa.main.init` first.)
     """
     if not CoreThreading.is_mainthread():
         # If step is being called from a thread, wake up the mainthread

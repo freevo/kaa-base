@@ -1,3 +1,6 @@
+.. module:: kaa.event
+   :synopsis: Register callbacks to a global event queue with arbitrarily 
+              named events
 .. _event:
 
 Events and Event Handlers

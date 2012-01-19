@@ -6,6 +6,9 @@ Signals and Callables
 Signal and Callable objects are among the core building blocks of Kaa and are
 used extensively throughout the framework.
 
+.. module:: kaa.callable
+   :synopsis: Encapsulate functions or methods and arguments into a callable
+
 
 Callables
 ---------

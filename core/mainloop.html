@@ -33,6 +33,9 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
+          <a href="../modindex.html" title="Global Module Index"
+             accesskey="M">modules</a> |</li>
+        <li class="right" >
           <a href="timer.html" title="Timers"
              accesskey="N">next</a> |</li>
         <li class="right" >
@@ -48,7 +51,7 @@
           <div class="body">
             
   <div class="section" id="the-main-loop">
-<h1>The Main Loop<a class="headerlink" href="#the-main-loop" title="Permalink to this headline">¶</a></h1>
+<span id="module-kaa.main"></span><h1>The Main Loop<a class="headerlink" href="#the-main-loop" title="Permalink to this headline">¶</a></h1>
 <p id="notifier">The plumbing within Kaa that orchestrates the main loop &#8211; dispatching
 callbacks triggered by events (such as activity on a file descriptor or timers)
 &#8211; is collectively referred to as &#8220;<em>the notifier</em>.&#8221;  If you&#8217;re familiar with the
@@ -155,11 +158,6 @@ to use <a title="kaa.main.run" class="reference internal" href="#kaa.main.run"><
 </dd></dl>
 
 <dl class="function">
-<dt id="kaa.main.select_notifier">
-<tt class="descclassname">kaa.main.</tt><tt class="descname">select_notifier</tt><big>(</big><em>module</em>, <em>**options</em><big>)</big><a class="headerlink" href="#kaa.main.select_notifier" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
 <dt id="kaa.main.is_running">
 <tt class="descclassname">kaa.main.</tt><tt class="descname">is_running</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.main.is_running" title="Permalink to this definition">¶</a></dt>
 <dd>Return True if the main loop is currently running.</dd></dl>
@@ -182,8 +180,49 @@ called.  These threads can loop until kaa.main.is_stopped()</p>
 <dt id="kaa.main.step">
 <tt class="descclassname">kaa.main.</tt><tt class="descname">step</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.main.step" title="Permalink to this definition">¶</a></dt>
 <dd><p>Performs a single iteration of the main loop.</p>
-<p>This function should almost certainly never be called directly.  Use it
-at your own peril.  (If you do use it, you must call init() first.)</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">This function should almost certainly never be called directly.  Use it
+at your own peril.  (If you do use it, you must call
+<a title="kaa.main.init" class="reference internal" href="#kaa.main.init"><tt class="xref docutils literal"><span class="pre">init()</span></tt></a> first.)</p>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="kaa.main.init">
+<tt class="descclassname">kaa.main.</tt><tt class="descname">init</tt><big>(</big><em>module=None</em>, <em>reset=False</em>, <em>**options</em><big>)</big><a class="headerlink" href="#kaa.main.init" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the Kaa main loop facilities.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>module</em> (str) &#8211; <p>the main loop implementation to use.</p>
+<ul>
+<li><tt class="docutils literal"><span class="pre">generic</span></tt>: Native python-based main loop (default),</li>
+<li><tt class="docutils literal"><span class="pre">gtk</span></tt>: use pygtk&#8217;s main loop (automatically selected if
+the gtk module is imported);</li>
+<li><tt class="docutils literal"><span class="pre">twisted</span></tt>: Twisted main loop;</li>
+<li><tt class="docutils literal"><span class="pre">thread</span></tt>: Native python-based main loop in a separate thread
+with custom hooks (needs <tt class="docutils literal"><span class="pre">handler</span></tt> kwarg)</li>
+</ul>
+</li>
+<li><em>reset</em> &#8211; discards any jobs queued by other threads; this is useful
+following a fork.</li>
+<li><em>options</em> &#8211; module-specific keyword arguments</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>This function must be called from the Python main thread.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Normally it&#8217;s not necessary to expliticly invoke this function; calling
+loop() or run() will do it for you.  However if you want to use a different
+main loop module than the default, or you begin using the Kaa API in a thread
+before the main loop is started, you will need to invoke init() first.</p>
+</div>
 </dd></dl>
 
 </div>
@@ -197,11 +236,11 @@ For example:</p>
 <span class="n">kaa</span><span class="o">.</span><span class="n">signals</span><span class="p">[</span><span class="s">&#39;shutdown&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">shutdown_handler</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Importing other Kaa modules (such as those in <tt class="docutils literal"><span class="pre">kaa.input</span></tt>) may add specialized
+<p>Importing other Kaa modules (such as those in <a title="Input plugins for stdin and LIRC" class="reference external" href="../input.html#module-kaa.input"><tt class="xref docutils literal"><span class="pre">kaa.input</span></tt></a>) may add specialized
 signals, however by default <tt class="docutils literal"><span class="pre">kaa.signals</span></tt> contains:</p>
 <dl class="attribute">
-<dt id="shutdown">
-<tt class="descname">shutdown</tt><a class="headerlink" href="#shutdown" title="Permalink to this definition">¶</a></dt>
+<dt id="kaa.main.shutdown">
+<tt class="descclassname">kaa.main.</tt><tt class="descname">shutdown</tt><a class="headerlink" href="#kaa.main.shutdown" title="Permalink to this definition">¶</a></dt>
 <dd><p>Emitted when the Kaa main loop is shutting down, but before any
 subprocesses or threads are terminated.</p>
 <dl class="describe">
@@ -212,8 +251,8 @@ subprocesses or threads are terminated.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="exit">
-<tt class="descname">exit</tt><a class="headerlink" href="#exit" title="Permalink to this definition">¶</a></dt>
+<dt id="kaa.main.exit">
+<tt class="descclassname">kaa.main.</tt><tt class="descname">exit</tt><a class="headerlink" href="#kaa.main.exit" title="Permalink to this definition">¶</a></dt>
 <dd><p>Emitted when the process exits.  This differs from the <tt class="docutils literal"><span class="pre">shutdown</span></tt> signal
 in that the Python program may continue to run after <tt class="docutils literal"><span class="pre">shutdown</span></tt> emits and
 the mainloop terminates, whereas <tt class="docutils literal"><span class="pre">exit</span></tt> is invoked from an <tt class="docutils literal"><span class="pre">atexit</span></tt>
@@ -226,8 +265,8 @@ handler.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="step">
-<tt class="descname">step</tt><a class="headerlink" href="#step" title="Permalink to this definition">¶</a></dt>
+<dt>
+<tt class="descclassname">kaa.main.</tt><tt class="descname">step</tt></dt>
 <dd><p>Emitted after each iteration step of the main loop.</p>
 <p>This signal is probably not suitable as an &#8216;idle worker&#8217; because the
 interval between emissions may be as much as 30 seconds.  However it is
@@ -242,8 +281,8 @@ canvas after notifier callbacks have manipulated objects upon it.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="exception">
-<tt class="descname">exception</tt><a class="headerlink" href="#exception" title="Permalink to this definition">¶</a></dt>
+<dt id="kaa.main.exception">
+<tt class="descclassname">kaa.main.</tt><tt class="descname">exception</tt><a class="headerlink" href="#kaa.main.exception" title="Permalink to this definition">¶</a></dt>
 <dd><p>Emitted when an uncaught exception has bubbled up to the main loop.  This
 signal presents the last chance to handle it before the main loop will
 be aborted.  (This also includes SystemExit and KeyboardInterrupt.)</p>
@@ -481,6 +520,9 @@ support for that mainloop in the kaa distribution.</p>
           <a href="../genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
+          <a href="../modindex.html" title="Global Module Index"
+             >modules</a> |</li>
+        <li class="right" >
           <a href="timer.html" title="Timers"
              >next</a> |</li>
         <li class="right" >
@@ -491,7 +533,7 @@ support for that mainloop in the kaa distribution.</p>
     </div>
     <div class="footer">
       &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jan 14, 2012.
+      Last updated on Jan 18, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
     </div>
   </body>

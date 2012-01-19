@@ -1,3 +1,5 @@
+.. module:: kaa.process
+   :synopsis: Sub-process communication
 .. _subprocess:
 
 Sub-Process I/O

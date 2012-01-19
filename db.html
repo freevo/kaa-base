@@ -33,6 +33,9 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
+          <a href="modindex.html" title="Global Module Index"
+             accesskey="M">modules</a> |</li>
+        <li class="right" >
           <a href="inotify.html" title="INotify"
              accesskey="N">next</a> |</li>
         <li class="right" >
@@ -48,15 +51,15 @@
           <div class="body">
             
   <div class="section" id="object-database">
-<span id="db"></span><h1>Object Database<a class="headerlink" href="#object-database" title="Permalink to this headline">¶</a></h1>
+<span id="db"></span><span id="module-kaa.db"></span><h1>Object Database<a class="headerlink" href="#object-database" title="Permalink to this headline">¶</a></h1>
 <p>Write intro and examples.</p>
 <div class="section" id="attribute-flags">
 <span id="attrflags"></span><h2>Attribute Flags<a class="headerlink" href="#attribute-flags" title="Permalink to this headline">¶</a></h2>
 <p>These flags are used to define object attributes.  See
 <a title="kaa.db.Database.register_object_type_attrs" class="reference internal" href="#kaa.db.Database.register_object_type_attrs"><tt class="xref docutils literal"><span class="pre">register_object_type_attrs()</span></tt></a> for more details.</p>
 <dl class="attribute">
-<dt id="kaa.db.ATTR_SIMPLE">
-<tt class="descclassname">kaa.db.</tt><tt class="descname">ATTR_SIMPLE</tt><a class="headerlink" href="#kaa.db.ATTR_SIMPLE" title="Permalink to this definition">¶</a></dt>
+<dt id="kaa.db.kaa.db.ATTR_SIMPLE">
+<tt class="descclassname">kaa.db.</tt><tt class="descname">ATTR_SIMPLE</tt><a class="headerlink" href="#kaa.db.kaa.db.ATTR_SIMPLE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Attribute is persisted with the object, but cannot be used with
 <a title="kaa.db.Database.query" class="reference internal" href="#kaa.db.Database.query"><tt class="xref docutils literal"><span class="pre">query()</span></tt></a>.  It can be any Python type that
 is picklable.</p>
@@ -66,8 +69,8 @@ object type.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="kaa.db.ATTR_SEARCHABLE">
-<tt class="descclassname">kaa.db.</tt><tt class="descname">ATTR_SEARCHABLE</tt><a class="headerlink" href="#kaa.db.ATTR_SEARCHABLE" title="Permalink to this definition">¶</a></dt>
+<dt id="kaa.db.kaa.db.ATTR_SEARCHABLE">
+<tt class="descclassname">kaa.db.</tt><tt class="descname">ATTR_SEARCHABLE</tt><a class="headerlink" href="#kaa.db.kaa.db.ATTR_SEARCHABLE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Attribute can be used with <a title="kaa.db.Database.query" class="reference internal" href="#kaa.db.Database.query"><tt class="xref docutils literal"><span class="pre">query()</span></tt></a>, but the type
 must be one of <em>int</em>, <em>float</em>, <em>str</em>, <em>unicode</em>, <em>buffer</em>, or <em>bool</em>.</p>
 <p>The attribute data is stored in a dedicated column in the underlying
@@ -75,8 +78,8 @@ database table.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="kaa.db.ATTR_INDEXED">
-<tt class="descclassname">kaa.db.</tt><tt class="descname">ATTR_INDEXED</tt><a class="headerlink" href="#kaa.db.ATTR_INDEXED" title="Permalink to this definition">¶</a></dt>
+<dt id="kaa.db.kaa.db.ATTR_INDEXED">
+<tt class="descclassname">kaa.db.</tt><tt class="descname">ATTR_INDEXED</tt><a class="headerlink" href="#kaa.db.kaa.db.ATTR_INDEXED" title="Permalink to this definition">¶</a></dt>
 <dd><p>If this flag is set, the attribute is indexed for faster queries.</p>
 <p>Internally, an SQL index is placed on the column.  Multiple ATTR_INDEXED
 attributes may be used in a composite index by specifying the <em>indexes</em>
@@ -84,8 +87,8 @@ argument with <a title="kaa.db.Database.register_object_type_attrs" class="refer
 </dd></dl>
 
 <dl class="attribute">
-<dt id="kaa.db.ATTR_IGNORE_CASE">
-<tt class="descclassname">kaa.db.</tt><tt class="descname">ATTR_IGNORE_CASE</tt><a class="headerlink" href="#kaa.db.ATTR_IGNORE_CASE" title="Permalink to this definition">¶</a></dt>
+<dt id="kaa.db.kaa.db.ATTR_IGNORE_CASE">
+<tt class="descclassname">kaa.db.</tt><tt class="descname">ATTR_IGNORE_CASE</tt><a class="headerlink" href="#kaa.db.kaa.db.ATTR_IGNORE_CASE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Queries on this attribute are case-insensitive, however when the attribute
 is accessed from the <a title="kaa.db.ObjectRow" class="reference internal" href="#kaa.db.ObjectRow"><tt class="xref docutils literal"><span class="pre">ObjectRow</span></tt></a>, the original case is
 preserved.</p>
@@ -95,8 +98,8 @@ original case).</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="kaa.db.ATTR_INVERTED_INDEX">
-<tt class="descclassname">kaa.db.</tt><tt class="descname">ATTR_INVERTED_INDEX</tt><a class="headerlink" href="#kaa.db.ATTR_INVERTED_INDEX" title="Permalink to this definition">¶</a></dt>
+<dt id="kaa.db.kaa.db.ATTR_INVERTED_INDEX">
+<tt class="descclassname">kaa.db.</tt><tt class="descname">ATTR_INVERTED_INDEX</tt><a class="headerlink" href="#kaa.db.kaa.db.ATTR_INVERTED_INDEX" title="Permalink to this definition">¶</a></dt>
 <dd><p>Values for this attribute are parsed into terms and individual terms can
 be searched to find the object.</p>
 <p>When it&#8217;s registered, the attribute must also be associated with a
@@ -104,10 +107,10 @@ registered inverted index.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="kaa.db.ATTR_INDEXED_IGNORE_CASE">
-<tt class="descclassname">kaa.db.</tt><tt class="descname">ATTR_INDEXED_IGNORE_CASE</tt><a class="headerlink" href="#kaa.db.ATTR_INDEXED_IGNORE_CASE" title="Permalink to this definition">¶</a></dt>
-<dd>A bitmap of <a title="kaa.db.ATTR_INDEXED" class="reference internal" href="#kaa.db.ATTR_INDEXED"><tt class="xref docutils literal"><span class="pre">ATTR_INDEXED</span></tt></a> and
-<a title="kaa.db.ATTR_IGNORE_CASE" class="reference internal" href="#kaa.db.ATTR_IGNORE_CASE"><tt class="xref docutils literal"><span class="pre">ATTR_IGNORE_CASE</span></tt></a>.  Provided for convenience and code
+<dt id="kaa.db.kaa.db.ATTR_INDEXED_IGNORE_CASE">
+<tt class="descclassname">kaa.db.</tt><tt class="descname">ATTR_INDEXED_IGNORE_CASE</tt><a class="headerlink" href="#kaa.db.kaa.db.ATTR_INDEXED_IGNORE_CASE" title="Permalink to this definition">¶</a></dt>
+<dd>A bitmap of <a title="kaa.db.kaa.db.ATTR_INDEXED" class="reference internal" href="#kaa.db.kaa.db.ATTR_INDEXED"><tt class="xref docutils literal"><span class="pre">ATTR_INDEXED</span></tt></a> and
+<a title="kaa.db.kaa.db.ATTR_IGNORE_CASE" class="reference internal" href="#kaa.db.kaa.db.ATTR_IGNORE_CASE"><tt class="xref docutils literal"><span class="pre">ATTR_IGNORE_CASE</span></tt></a>.  Provided for convenience and code
 readability.</dd></dl>
 
 </div>
@@ -371,7 +374,7 @@ the <tt class="docutils literal"><span class="pre">default</span></tt> parameter
 <tt class="descname">query</tt><big>(</big><em>**attrs</em><big>)</big><a class="headerlink" href="#kaa.db.Database.query" title="Permalink to this definition">¶</a></dt>
 <dd><p>Query the database for objects matching all of the given keyword
 attributes.</p>
-<p>Keyword arguments can be any previously registered <a title="kaa.db.ATTR_SEARCHABLE" class="reference internal" href="#kaa.db.ATTR_SEARCHABLE"><tt class="xref docutils literal"><span class="pre">ATTR_SEARCHABLE</span></tt></a>
+<p>Keyword arguments can be any previously registered <a title="kaa.db.kaa.db.ATTR_SEARCHABLE" class="reference internal" href="#kaa.db.kaa.db.ATTR_SEARCHABLE"><tt class="xref docutils literal"><span class="pre">ATTR_SEARCHABLE</span></tt></a>
 object attribute for any object type, or the name of a registered
 inverted index.  There are some special keyword arguments:</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -541,7 +544,7 @@ without interfering with it.</p>
 <li><em>type_name</em> (str) &#8211; the name of object type the registered attributes or
 indexes apply to.</li>
 <li><em>indexes</em> (list of tuples of strings) &#8211; a list of tuples where each tuple contains 2 or more
-registered <a title="kaa.db.ATTR_SEARCHABLE" class="reference internal" href="#kaa.db.ATTR_SEARCHABLE"><tt class="xref docutils literal"><span class="pre">ATTR_SEARCHABLE</span></tt></a> attributes
+registered <a title="kaa.db.kaa.db.ATTR_SEARCHABLE" class="reference internal" href="#kaa.db.kaa.db.ATTR_SEARCHABLE"><tt class="xref docutils literal"><span class="pre">ATTR_SEARCHABLE</span></tt></a> attributes
 for which a composite index will be created in the
 underlying database.  This is useful for speeding
 up queries involving these attributes combined.</li>
@@ -574,15 +577,15 @@ the form (attr_type, flags, ivtidx, split).</p>
 <blockquote>
 <ul class="simple">
 <li>attr_type: the type of the object attribute. For simple attributes
-(<a title="kaa.db.ATTR_SIMPLE" class="reference internal" href="#kaa.db.ATTR_SIMPLE"><tt class="xref docutils literal"><span class="pre">ATTR_SIMPLE</span></tt></a> in <em>flags</em>), this can be any picklable
-type; for searchable attributes (<a title="kaa.db.ATTR_SEARCHABLE" class="reference internal" href="#kaa.db.ATTR_SEARCHABLE"><tt class="xref docutils literal"><span class="pre">ATTR_SEARCHABLE</span></tt></a>
+(<a title="kaa.db.kaa.db.ATTR_SIMPLE" class="reference internal" href="#kaa.db.kaa.db.ATTR_SIMPLE"><tt class="xref docutils literal"><span class="pre">ATTR_SIMPLE</span></tt></a> in <em>flags</em>), this can be any picklable
+type; for searchable attributes (<a title="kaa.db.kaa.db.ATTR_SEARCHABLE" class="reference internal" href="#kaa.db.kaa.db.ATTR_SEARCHABLE"><tt class="xref docutils literal"><span class="pre">ATTR_SEARCHABLE</span></tt></a>
 in <em>flags</em>), this must be either <em>int</em>, <em>float</em>, <em>str</em>, <em>unicode</em>,
 <em>bytes</em>, or <em>bool</em>.  (On Python 2.5, you can use <tt class="docutils literal"><span class="pre">kaa.db.RAW_TYPE</span></tt>
 instead of <em>bytes</em>.)</li>
 <li>flags: a bitmap of <a class="reference internal" href="#attrflags"><em>attribute flags</em></a></li>
 <li>ivtidx: name of a previously registered inverted index used for
 this attribute. Only needed if flags contains
-<a title="kaa.db.ATTR_INVERTED_INDEX" class="reference internal" href="#kaa.db.ATTR_INVERTED_INDEX"><tt class="xref docutils literal"><span class="pre">ATTR_INVERTED_INDEX</span></tt></a></li>
+<a title="kaa.db.kaa.db.ATTR_INVERTED_INDEX" class="reference internal" href="#kaa.db.kaa.db.ATTR_INVERTED_INDEX"><tt class="xref docutils literal"><span class="pre">ATTR_INVERTED_INDEX</span></tt></a></li>
 <li>split: function or regular expression used to split string-based
 values for this attribute into separate terms for indexing.  If
 this isn&#8217;t defined, then the default split strategy for the
@@ -592,7 +595,7 @@ inverted index wil be used.</li>
 <p>Apart from not being allowed to conflict with one of the reserved
 names, there is a special case for attribute names: when they have
 the same name as a previously registered inverted index.  These
-attributes must be <a title="kaa.db.ATTR_SIMPLE" class="reference internal" href="#kaa.db.ATTR_SIMPLE"><tt class="xref docutils literal"><span class="pre">ATTR_SIMPLE</span></tt></a>, and of type <em>list</em>.
+attributes must be <a title="kaa.db.kaa.db.ATTR_SIMPLE" class="reference internal" href="#kaa.db.kaa.db.ATTR_SIMPLE"><tt class="xref docutils literal"><span class="pre">ATTR_SIMPLE</span></tt></a>, and of type <em>list</em>.
 Terms explicitly associated with the attribute are persisted with the
 object, but when accessed, all terms for all attributes for that
 inverted index will be contained in the list, not just those explicitly
@@ -866,6 +869,9 @@ translates to <tt class="docutils literal"><span class="pre">age</span> <span cl
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
+          <a href="modindex.html" title="Global Module Index"
+             >modules</a> |</li>
+        <li class="right" >
           <a href="inotify.html" title="INotify"
              >next</a> |</li>
         <li class="right" >
@@ -876,7 +882,7 @@ translates to <tt class="docutils literal"><span class="pre">age</span> <span cl
     </div>
     <div class="footer">
       &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jan 14, 2012.
+      Last updated on Jan 18, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
     </div>
   </body>

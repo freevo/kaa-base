@@ -1,3 +1,5 @@
+.. module:: kaa.async
+   :synopsis: InProgress objects: the foundation to all asynchronous tasks in Kaa
 .. _inprogress:
 
 

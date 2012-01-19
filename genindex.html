@@ -30,6 +30,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="#" title="General Index"
              accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="modindex.html" title="Global Module Index"
+             accesskey="M">modules</a> |</li>
         <li><a href="index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>  
@@ -87,12 +90,12 @@
 <dt><a href="core/signals.html#kaa.Signals.any">any() (kaa.Signals method)</a></dt>
 <dt><a href="config.html#kaa.config.List.append">append() (kaa.config.List method)</a></dt>
 <dt><a href="core/timer.html#kaa.AtTimer">AtTimer (class in kaa)</a></dt>
-<dt><a href="db.html#kaa.db.ATTR_IGNORE_CASE">ATTR_IGNORE_CASE (kaa.db attribute)</a></dt>
-<dt><a href="db.html#kaa.db.ATTR_INDEXED">ATTR_INDEXED (kaa.db attribute)</a></dt>
-<dt><a href="db.html#kaa.db.ATTR_INDEXED_IGNORE_CASE">ATTR_INDEXED_IGNORE_CASE (kaa.db attribute)</a></dt>
-<dt><a href="db.html#kaa.db.ATTR_INVERTED_INDEX">ATTR_INVERTED_INDEX (kaa.db attribute)</a></dt>
-<dt><a href="db.html#kaa.db.ATTR_SEARCHABLE">ATTR_SEARCHABLE (kaa.db attribute)</a></dt>
-<dt><a href="db.html#kaa.db.ATTR_SIMPLE">ATTR_SIMPLE (kaa.db attribute)</a></dt>
+<dt><a href="db.html#kaa.db.kaa.db.ATTR_IGNORE_CASE">ATTR_IGNORE_CASE (kaa.db.kaa.db attribute)</a></dt>
+<dt><a href="db.html#kaa.db.kaa.db.ATTR_INDEXED">ATTR_INDEXED (kaa.db.kaa.db attribute)</a></dt>
+<dt><a href="db.html#kaa.db.kaa.db.ATTR_INDEXED_IGNORE_CASE">ATTR_INDEXED_IGNORE_CASE (kaa.db.kaa.db attribute)</a></dt>
+<dt><a href="db.html#kaa.db.kaa.db.ATTR_INVERTED_INDEX">ATTR_INVERTED_INDEX (kaa.db.kaa.db attribute)</a></dt>
+<dt><a href="db.html#kaa.db.kaa.db.ATTR_SEARCHABLE">ATTR_SEARCHABLE (kaa.db.kaa.db attribute)</a></dt>
+<dt><a href="db.html#kaa.db.kaa.db.ATTR_SIMPLE">ATTR_SIMPLE (kaa.db.kaa.db attribute)</a></dt>
 <dt><a href="config.html#kaa.config.Config.autosave">autosave (kaa.config.Config attribute)</a></dt>
 <dt><a href="net/mdns.html#kaa.net.mdns.Avahi">Avahi (class in kaa.net.mdns)</a></dt>
 </dl></td></tr></table>
@@ -103,7 +106,7 @@
 
 <dt><a href="config.html#kaa.config.Base">Base (class in kaa.config)</a></dt>
 <dt><a href="core/socket.html#kaa.Socket.buffer_size">buffer_size (kaa.Socket attribute)</a></dt></dl></td><td width="33%" valign="top"><dl>
-<dt><a href="utils.html#kaa.strutils.BYTES_TYPE">BYTES_TYPE (kaa.strutils attribute)</a></dt>
+<dt><a href="utils.html#kaa.strutils.kaa.strutils.BYTES_TYPE">BYTES_TYPE (kaa.strutils.kaa.strutils attribute)</a></dt>
 </dl></td></tr></table>
 
 <h2 id="C">C</h2>
@@ -190,12 +193,12 @@
 <dt><a href="core/event.html#kaa.Event">Event (class in kaa)</a></dt>
 <dt><a href="inotify.html#kaa.inotify.INotify.signals.event">event (kaa.inotify.INotify.signals attribute)</a></dt>
 <dt><a href="core/event.html#kaa.EventHandler">EventHandler (class in kaa)</a></dt>
-<dt><a href="core/mainloop.html#exception">exception</a></dt>
+<dt><a href="core/mainloop.html#kaa.main.exception">exception (in module kaa.main)</a></dt>
   <dd><dl>
     <dt><a href="async/inprogress.html#kaa.InProgress.exception">(kaa.InProgress attribute)</a></dt>
   </dl></dd></dl></td><td width="33%" valign="top"><dl>
 <dt><a href="async/inprogress.html#kaa.InProgress.execute">execute() (kaa.InProgress method)</a></dt>
-<dt><a href="core/mainloop.html#exit">exit</a></dt>
+<dt><a href="core/mainloop.html#kaa.main.exit">exit (in module kaa.main)</a></dt>
 <dt><a href="core/process.html#kaa.Process.exitcode">exitcode (kaa.Process attribute)</a></dt>
 <dt><a href="core/process.html#kaa.Process.signals.exited">exited (kaa.Process.signals attribute)</a></dt>
 <dt><a href="rpc.html#kaa.rpc.expose">expose() (in module kaa.rpc)</a></dt>
@@ -272,6 +275,9 @@
 <dt><a href="inotify.html#kaa.inotify.INotify.ignore">ignore() (kaa.inotify.INotify method)</a></dt>
 <dt><a href="core/signals.html#kaa.Callable.ignore_caller_args">ignore_caller_args (kaa.Callable attribute)</a></dt>
 <dt><a href="input.html#kaa.input.lirc.init">init() (in module kaa.input.lirc)</a></dt>
+  <dd><dl>
+    <dt><a href="core/mainloop.html#kaa.main.init">(in module kaa.main)</a></dt>
+  </dl></dd>
 <dt><a href="inotify.html#kaa.inotify.INotify">INotify (class in kaa.inotify)</a></dt>
 <dt><a href="async/inprogress.html#kaa.InProgress">InProgress (class in kaa)</a></dt>
 <dt><a href="async/inprogress.html#kaa.inprogress">inprogress() (in module kaa)</a></dt>
@@ -304,10 +310,29 @@
 <table width="100%" class="indextable"><tr><td width="33%" valign="top">
 <dl>
 
+<dt><a href="async/inprogress.html#module-kaa.async">kaa.async (module)</a></dt>
+<dt><a href="core/signals.html#module-kaa.callable">kaa.callable (module)</a></dt>
+<dt><a href="config.html#module-kaa.config">kaa.config (module)</a></dt>
+<dt><a href="async/coroutines.html#module-kaa.coroutine">kaa.coroutine (module)</a></dt>
+<dt><a href="db.html#module-kaa.db">kaa.db (module)</a></dt>
+<dt><a href="core/event.html#module-kaa.event">kaa.event (module)</a></dt>
+<dt><a href="async/generators.html#module-kaa.generator">kaa.generator (module)</a></dt>
+<dt><a href="inotify.html#module-kaa.inotify">kaa.inotify (module)</a></dt>
+<dt><a href="input.html#module-kaa.input">kaa.input (module)</a></dt>
+<dt><a href="core/io.html#module-kaa.io">kaa.io (module)</a></dt>
+<dt><a href="core/mainloop.html#module-kaa.main">kaa.main (module)</a></dt></dl></td><td width="33%" valign="top"><dl>
+<dt><a href="net/tls.html#module-kaa.net.tls">kaa.net.tls (module)</a></dt>
+<dt><a href="core/process.html#module-kaa.process">kaa.process (module)</a></dt>
+<dt><a href="rpc.html#module-kaa.rpc">kaa.rpc (module)</a></dt>
+<dt><a href="core/socket.html#module-kaa.sockets">kaa.sockets (module)</a></dt>
+<dt><a href="utils.html#module-kaa.strutils">kaa.strutils (module)</a></dt>
+<dt><a href="async/threads.html#module-kaa.thread">kaa.thread (module)</a></dt>
+<dt><a href="core/timer.html#module-kaa.timer">kaa.timer (module)</a></dt>
+<dt><a href="utils.html#module-kaa.utils">kaa.utils (module)</a></dt>
 <dt><a href="config.html#kaa.config.Dict.keys">keys() (kaa.config.Dict method)</a></dt>
   <dd><dl>
     <dt><a href="core/signals.html#kaa.Signals.keys">(kaa.Signals method)</a></dt>
-  </dl></dd></dl></td><td width="33%" valign="top"><dl>
+  </dl></dd>
 </dl></td></tr></table>
 
 <h2 id="L">L</h2>
@@ -431,7 +456,6 @@
 <dl>
 
 <dt><a href="config.html#kaa.config.Config.save">save() (kaa.config.Config method)</a></dt>
-<dt><a href="core/mainloop.html#kaa.main.select_notifier">select_notifier() (in module kaa.main)</a></dt>
 <dt><a href="async/generators.html#kaa.Generator.send">send() (kaa.Generator method)</a></dt>
 <dt><a href="rpc.html#kaa.rpc.Server">Server (class in kaa.rpc)</a></dt>
 <dt><a href="config.html#kaa.config.set_default">set_default() (in module kaa.config)</a></dt>
@@ -439,7 +463,7 @@
 <dt><a href="db.html#kaa.db.Database.set_metadata">set_metadata() (kaa.db.Database method)</a></dt>
 <dt><a href="utils.html#kaa.utils.set_process_name">set_process_name() (in module kaa.utils)</a></dt>
 <dt><a href="utils.html#kaa.utils.set_running">set_running() (in module kaa.utils)</a></dt>
-<dt><a href="core/mainloop.html#shutdown">shutdown</a></dt>
+<dt><a href="core/mainloop.html#kaa.main.shutdown">shutdown (in module kaa.main)</a></dt>
 <dt><a href="core/signals.html#kaa.Signal">Signal (class in kaa)</a></dt>
 <dt><a href="core/signals.html#kaa.Signals">Signals (class in kaa)</a></dt>
 <dt><a href="async/threads.html#kaa.ThreadPool.size">size (kaa.ThreadPool attribute)</a></dt>
@@ -464,7 +488,7 @@
   <dd><dl>
     <dt><a href="core/socket.html#kaa.Socket.steal">(kaa.Socket method)</a></dt>
   </dl></dd>
-<dt><a href="core/mainloop.html#step">step</a></dt>
+<dt><a href="core/mainloop.html#kaa.main.step">step (in module kaa.main)</a></dt>
 <dt><a href="core/mainloop.html#kaa.main.step">step() (in module kaa.main)</a></dt>
 <dt><a href="core/mainloop.html#kaa.main.stop">stop() (in module kaa.main)</a></dt>
   <dd><dl>
@@ -508,7 +532,7 @@
 <table width="100%" class="indextable"><tr><td width="33%" valign="top">
 <dl>
 
-<dt><a href="utils.html#kaa.strutils.UNICODE_TYPE">UNICODE_TYPE (kaa.strutils attribute)</a></dt>
+<dt><a href="utils.html#kaa.strutils.kaa.strutils.UNICODE_TYPE">UNICODE_TYPE (kaa.strutils.kaa.strutils attribute)</a></dt>
 <dt><a href="core/event.html#kaa.EventHandler.unregister">unregister() (kaa.EventHandler method)</a></dt>
   <dd><dl>
     <dt><a href="core/io.html#kaa.IOMonitor.unregister">(kaa.IOMonitor method)</a></dt>
@@ -601,12 +625,15 @@
         <li class="right" style="margin-right: 10px">
           <a href="#" title="General Index"
              >index</a></li>
+        <li class="right" >
+          <a href="modindex.html" title="Global Module Index"
+             >modules</a> |</li>
         <li><a href="index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
       &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jan 14, 2012.
+      Last updated on Jan 18, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
     </div>
   </body>

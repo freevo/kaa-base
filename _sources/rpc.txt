@@ -1,3 +1,6 @@
+.. module:: kaa.rpc
+   :synopsis: Inter-process communication through Remote Procedure Calls 
+
 Remote Procedure Calls with kaa.rpc
 ===================================
 

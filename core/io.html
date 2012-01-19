@@ -33,6 +33,9 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
+          <a href="../modindex.html" title="Global Module Index"
+             accesskey="M">modules</a> |</li>
+        <li class="right" >
           <a href="socket.html" title="Socket I/O"
              accesskey="N">next</a> |</li>
         <li class="right" >
@@ -48,7 +51,7 @@
           <div class="body">
             
   <div class="section" id="i-o-channels">
-<span id="io"></span><h1>I/O Channels<a class="headerlink" href="#i-o-channels" title="Permalink to this headline">¶</a></h1>
+<span id="io"></span><span id="module-kaa.io"></span><h1>I/O Channels<a class="headerlink" href="#i-o-channels" title="Permalink to this headline">¶</a></h1>
 <p>FIXME: Write some basic stuff about IO in kaa</p>
 <div class="section" id="monitoring-i-o">
 <h2>Monitoring I/O<a class="headerlink" href="#monitoring-i-o" title="Permalink to this headline">¶</a></h2>
@@ -121,8 +124,8 @@ the notifier when the callback (or any arguments) are destroyed.</p>
 <dd><p>Base class for read-only, write-only or read-write descriptors such as
 Socket and Process.  Implements logic common to communication over
 such channels such as async read/writes and read/write buffering.</p>
-<p>It may also be used directly with file descriptors or file-like objects.
-e.g. <tt class="docutils literal"><span class="pre">IOChannel(file('somefile'))</span></tt></p>
+<p>It may also be used directly with file descriptors or (probably less
+usefully) file-like objects.  e.g. <tt class="docutils literal"><span class="pre">IOChannel(file('somefile'))</span></tt></p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -200,8 +203,8 @@ has been set.</td></tr>
 <tr><th><a title="kaa.IOChannel.mode" class="reference internal" href="#kaa.IOChannel.mode"><tt class="xref docutils literal"><span class="pre">mode</span></tt></a></th><td>read-only</td><td class="desc">Whether the channel is read-only, or read/write.</td></tr>
 <tr><th><a title="kaa.IOChannel.queue_size" class="reference internal" href="#kaa.IOChannel.queue_size"><tt class="xref docutils literal"><span class="pre">queue_size</span></tt></a></th><td>read/write</td><td class="desc">The size limit in bytes for the read and write queues.</td></tr>
 <tr><th><a title="kaa.IOChannel.read_queue_used" class="reference internal" href="#kaa.IOChannel.read_queue_used"><tt class="xref docutils literal"><span class="pre">read_queue_used</span></tt></a></th><td>read-only</td><td class="desc">The number of bytes in the read queue.</td></tr>
-<tr><th><a title="kaa.IOChannel.readable" class="reference internal" href="#kaa.IOChannel.readable"><tt class="xref docutils literal"><span class="pre">readable</span></tt></a></th><td>read-only</td><td class="desc">True if the channel is open, or if the channel is closed but a read
-call would still succeed (due to buffered data).</td></tr>
+<tr><th><a title="kaa.IOChannel.readable" class="reference internal" href="#kaa.IOChannel.readable"><tt class="xref docutils literal"><span class="pre">readable</span></tt></a></th><td>read-only</td><td class="desc">True if the channel is open and readable, or if the channel is closed
+but a read call would still succeed (due to buffered data).</td></tr>
 <tr><th><a title="kaa.IOChannel.writable" class="reference internal" href="#kaa.IOChannel.writable"><tt class="xref docutils literal"><span class="pre">writable</span></tt></a></th><td>read-only</td><td class="desc">True if write() may be called.</td></tr>
 <tr><th><a title="kaa.IOChannel.write_queue_used" class="reference internal" href="#kaa.IOChannel.write_queue_used"><tt class="xref docutils literal"><span class="pre">write_queue_used</span></tt></a></th><td>read-only</td><td class="desc">The number of bytes queued in memory to be written to the channel.</td></tr>
 </table>
@@ -333,7 +336,9 @@ one is wrapped.</p>
 <li><em>channel</em> (integer file descriptor, file-like object, or 
 other IOChannel) &#8211; file descriptor to wrap into the IOChannel</li>
 <li><em>mode</em> (bitmask of kaa.IO_READ and/or kaa.IO_WRITE) &#8211; indicates whether the channel is readable, writable,
-or both.</li>
+or both.  Only applies to file descriptor channels or
+IOChannel objects; for file-like objects, the underlying
+channel&#8217;s mode will be assumed.</li>
 </ul>
 </td>
 </tr>
@@ -428,8 +433,8 @@ is.</p>
 <dl class="attribute">
 <dt id="kaa.IOChannel.readable">
 <tt class="descname">readable</tt><a class="headerlink" href="#kaa.IOChannel.readable" title="Permalink to this definition">¶</a></dt>
-<dd><p>True if the channel is open, or if the channel is closed but a read
-call would still succeed (due to buffered data).</p>
+<dd><p>True if the channel is open and readable, or if the channel is closed
+but a read call would still succeed (due to buffered data).</p>
 <p>Note that a value of True does not mean there <strong>is</strong> data available, but
 rather that there could be and that a read() call is possible (however
 that read() call may return None, in which case the readable property
@@ -573,6 +578,9 @@ and simultaneously use the <a title="kaa.IOChannel.readline" class="reference in
           <a href="../genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
+          <a href="../modindex.html" title="Global Module Index"
+             >modules</a> |</li>
+        <li class="right" >
           <a href="socket.html" title="Socket I/O"
              >next</a> |</li>
         <li class="right" >
@@ -583,7 +591,7 @@ and simultaneously use the <a title="kaa.IOChannel.readline" class="reference in
     </div>
     <div class="footer">
       &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jan 14, 2012.
+      Last updated on Jan 18, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
     </div>
   </body>

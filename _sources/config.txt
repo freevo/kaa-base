@@ -1,3 +1,6 @@
+.. module:: kaa.config
+   :synopsis: Structured configuration files
+
 Configuration Files
 ===================
 

@@ -318,9 +318,34 @@ class CoroutineInProgress(InProgress):
 
     def _continue(self, *args, **kwargs):
         """
-        Restart timer to call _step() after interval seconds.
+        Some dependent InProgress task completed and now we can resume the
+        coroutine.
         """
-        if self._timer:
+        if self._interval == 0:
+            # If the coroutine interval is 0, then we reenter the generator
+            # immediately rather than starting a 0 second timer.  If the generator
+            # yields kaa.NotFinished (or some other unfinished InProgress) now
+            # then we will start the timer and give control back to the main loop.
+            #
+            # This prevents the proliferation of select() calls in the main loop
+            # with 0s timeouts.  Consider a coroutine that has this loop:
+            #
+            #    while socket.connected:
+            #        yield socket.read()
+            #
+            # Without this optimization, we would perform two select() calls
+            # for every socket read: once with normal timeout (30 seconds
+            # unless there are other timers that need to fire), and once again
+            # with a 0 timeout to reenter the coroutine.  When you're
+            # transferring a lot of data from a socket, halving the number of
+            # syscalls is not a trivial optimization.
+            if self._step():
+                # If _step() returns True it means the coroutine yielded
+                # NotFinished so we must start the timer now.
+                self._timer.start(self._interval)
+        elif self._timer:
+            # Non-zero coroutine interval, so we start the timer which will
+            # call _step() after the interval.
             self._timer.start(self._interval)
 
 

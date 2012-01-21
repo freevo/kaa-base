@@ -303,7 +303,10 @@ def run(threaded=False):
             stop()
 
 
-@thread.threaded(thread.MAINTHREAD)
+# Put stop() in a timer to ensure we unravel the stack before shutting down.
+# This function does a lot of cleanup and there is a possibility of deadlocks
+# otherwise.
+@timer.timed(0, policy=timer.POLICY_ONCE)
 def stop():
     """
     Stop the main loop and terminate all child processes and thread

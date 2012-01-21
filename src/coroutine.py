@@ -270,6 +270,16 @@ class CoroutineInProgress(InProgress):
         self._prerequisite_ip = None
         self._valid = True
 
+        if progress is NotFinished:
+            # coroutine was stopped NotFinished, start the step timer
+            self._timer.start(interval)
+        elif isinstance(progress, InProgress):
+            # continue when InProgress is done
+            self._prerequisite_ip = progress
+            progress.connect_both(self._continue, self._continue)
+        elif progress is not None:
+            raise AttributeError('invalid progress %s' % progress)
+
         # This object (self) represents a coroutine that is in progress: that
         # is, at some point in the coroutine, it has yielded and expects
         # to be reentered at some point.  Even if there are no outside
@@ -288,16 +298,6 @@ class CoroutineInProgress(InProgress):
         # stopped.
         #
         _active_coroutines.add(self)
-
-        if progress is NotFinished:
-            # coroutine was stopped NotFinished, start the step timer
-            self._timer.start(interval)
-        elif isinstance(progress, InProgress):
-            # continue when InProgress is done
-            self._prerequisite_ip = progress
-            progress.connect_both(self._continue, self._continue)
-        elif progress is not None:
-            raise AttributeError('invalid progress %s' % progress)
 
 
     @property

@@ -129,7 +129,7 @@ class Callable(object):
         self._args = args
         self._kwargs = kwargs
         self._ignore_caller_args = False
-        self._user_args_first = False
+        self._init_args_first = False
 
 
     @property
@@ -148,27 +148,38 @@ class Callable(object):
 
 
     @property
-    def user_args_first(self):
+    def init_args_first(self):
         """
         If True, any arguments passed upon invocation of the Callable object take
-        precedence over those arguments passed to the constructor ("user args").
+        precedence over those arguments passed at object initialization time.
         e.g. ``func(constructor_args..., invocation_args...)``
 
-        Default value is False, so invocation arguments take precedence over user
+        Default value is False, so invocation arguments take precedence over init
         arguments. e.g. ``func(invocation_args..., constructor_args...)``
 
         "A takes precedence over B" means that non-keyword arguments are passed
         in order of A + B, and keyword arguments from A override same-named keyword
         arguments from B.
         """
-        return self._user_args_first
+        return self._init_args_first
+
+    @init_args_first.setter
+    def init_args_first(self, value):
+        self._init_args_first = value
+
+
+    @property
+    def user_args_first(self):
+        log.warning('user_args_first is deprecated; use init_args_first')
+        return self._init_args_first
 
     @user_args_first.setter
     def user_args_first(self, value):
-        self._user_args_first = value
+        log.warning('user_args_first is deprecated; use init_args_first')
+        self._init_args_first = value
 
 
-    def _get_user_args(self):
+    def _get_init_args(self):
         """
         Return the arguments provided by the user on __init__.
         """
@@ -179,30 +190,30 @@ class Callable(object):
         return self._func
 
 
-    def _merge_args(self, args, kwargs, user_args=None, user_kwargs=None):
-        if user_args is None:
-            # We don't use _get_user_args() here to avoid the extra function
+    def _merge_args(self, args, kwargs, init_args=None, init_kwargs=None):
+        if init_args is None:
+            # We don't use _get_init_args() here to avoid the extra function
             # call, even though it would make WeakCallable implementation
             # slightly more elegant.  WeakCallable overrides _merge_args
             # instead.
-            user_args, user_kwargs = self._args, self._kwargs
+            init_args, init_kwargs = self._args, self._kwargs
 
         if self._ignore_caller_args:
-            return user_args, user_kwargs
+            return init_args, init_kwargs
         else:
             # Fast paths.
             if not args and not kwargs:
-                return user_args, user_kwargs
-            elif not user_args and not user_kwargs:
+                return init_args, init_kwargs
+            elif not init_args and not init_kwargs:
                 return args, kwargs
 
             # Slower paths, where we must copy kwargs in order to merge user
             # kwargs and invocation-time kwargs.
-            if self._user_args_first:
-                cb_args, cb_kwargs = user_args + args, kwargs.copy()
-                cb_kwargs.update(user_kwargs)
+            if self._init_args_first:
+                cb_args, cb_kwargs = init_args + args, kwargs.copy()
+                cb_kwargs.update(init_kwargs)
             else:
-                cb_args, cb_kwargs = args + user_args, user_kwargs.copy()
+                cb_args, cb_kwargs = args + init_args, init_kwargs.copy()
                 cb_kwargs.update(kwargs)
 
         return cb_args, cb_kwargs
@@ -213,7 +224,7 @@ class Callable(object):
         Invoke the callable.
 
         The arguments passed here take precedence over constructor arguments
-        if the :attr:`~kaa.Callable.user_args_first` property is False (default).
+        if the :attr:`~kaa.Callable.init_args_first` property is False (default).
         The wrapped callable's return value is returned.
         """
         cb = self._get_func()
@@ -294,14 +305,14 @@ class WeakCallable(Callable):
             return self._func
 
 
-    def _get_user_args(self):
+    def _get_init_args(self):
         # Needed by Signal.disconnect()
         return unweakref_data(self._args), unweakref_data(self._kwargs)
 
 
-    def _merge_args(self, args, kwargs, user_args=None, user_kwargs=None):
-        user_args, user_kwargs = unweakref_data(self._args), unweakref_data(self._kwargs)
-        return super(WeakCallable, self)._merge_args(args, kwargs, user_args, user_kwargs)
+    def _merge_args(self, args, kwargs, init_args=None, init_kwargs=None):
+        init_args, init_kwargs = unweakref_data(self._args), unweakref_data(self._kwargs)
+        return super(WeakCallable, self)._merge_args(args, kwargs, init_args, init_kwargs)
 
 
     def __call__(self, *args, **kwargs):

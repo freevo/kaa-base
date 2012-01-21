@@ -974,8 +974,8 @@ class InProgressAny(InProgress):
                         # This one is finished already, no need to connect to it.
                         continue
                     args = self._get_connect_args(ip, n)
-                    ip.connect(self.finish, False, *args).user_args_first = True
-                    ip.exception.connect(self.finish, True, *args).user_args_first = True
+                    ip.connect(self.finish, False, *args).init_args_first = True
+                    ip.exception.connect(self.finish, True, *args).init_args_first = True
 
         elif len(self) == 0 and action == Signal.DISCONNECTED:
             for ip in self._objects:

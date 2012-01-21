@@ -588,7 +588,7 @@ class Signal(object):
         assert(callable(callback))
         new_callbacks = []
         for cb in self._callbacks[:]:
-            if cb == callback and (len(args) == len(kwargs) == 0 or (args, kwargs) == cb._get_user_args()):
+            if cb == callback and (len(args) == len(kwargs) == 0 or (args, kwargs) == cb._get_init_args()):
                 # This matches what we want to disconnect.
                 continue
             new_callbacks.append(cb)
@@ -831,7 +831,7 @@ class Signals(dict):
         if attr.startswith('_') or not hasattr(Signal, attr):
             return getattr(super(Signals, self), attr)
         callback = Callable(self._callattr, attr)
-        callback.user_args_first = True
+        callback.init_args_first = True
         return callback
 
 

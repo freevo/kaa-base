@@ -808,7 +808,7 @@ class Signals(dict):
 
     def any(self):
         """
-        Returns an InProgressAny object with all signals in self.
+        Returns an :class:`~kaa.InProgressAny` object with all signals in self.
         """
         from .async import InProgressAny
         return InProgressAny(*self.values())
@@ -816,7 +816,7 @@ class Signals(dict):
 
     def all(self):
         """
-        Returns an InProgressAll object with all signals in self.
+        Returns an :class:`~kaa.InProgressAll` object with all signals in self.
         """
         from .async import InProgressAll
         return InProgressAll(*self.values())

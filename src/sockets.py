@@ -225,11 +225,18 @@ class Socket(IOChannel):
     def connected(self):
         """
         Boolean representing the connected state of the socket.
+
+        When a socket is in the process of connecting, it is considered alive
+        but not connected.
         """
         try:
-            # Will raise exception if socket is not connected.
-            self._channel.getpeername()
-            return True
+            if self._connecting:
+                # Another thread is in the process of connecting.  Try calling
+                # getpeername() which will raise if not actually connected yet.
+                self._channel.getpeername()
+                return True
+            else:
+                return self._channel != None and not self._closing
         except (AttributeError, socket.error):
             # AttributeError is raised if _channel is None, socket.error is
             # raised if the socket is disconnected
@@ -534,10 +541,9 @@ class Socket(IOChannel):
             else:
                 self._reqhost = addr[0]
                 self._resolve_hostname_with_action(addr, sock.connect, ipv6)
+            self.wrap(sock, IO_READ | IO_WRITE)
         finally:
             self._connecting = False
-
-        self.wrap(sock, IO_READ | IO_WRITE)
 
 
     def connect(self, addr, ipv6=True):

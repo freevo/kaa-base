@@ -238,6 +238,7 @@ class IOChannel(Object):
         self._queue_size = 1024*1024
         self._chunk_size = chunk_size
         self._queue_close = False
+        self._closing = False
     
         # Internal signals for read() and readline()  (these are different from
         # the same-named public signals as they get emitted even when data is
@@ -273,7 +274,7 @@ class IOChannel(Object):
         True if the channel exists and is open.
         """
         # If the channel is closed, self._channel will be None.
-        return self._channel != None
+        return self._channel != None and not self._closing
 
 
     @property
@@ -903,6 +904,13 @@ class IOChannel(Object):
         self._wmon = None
         self._queue_close = False
 
+        # Set _closing flag in case any callbacks connected to any pending
+        # read/write InProgress objects test the 'alive' property, which we
+        # want to be False.  Yet we don't want to actually _close() before
+        # finishing the pending InProgress in case _close() raises, which
+        # we want to let propagate.
+        self._closing = True
+
         # Finish any InProgress waiting on read() or readline() with whatever
         # is left in the read queue.
         s = self._read_queue.getvalue()
@@ -927,6 +935,7 @@ class IOChannel(Object):
                 raise
         finally:
             self._channel = None
+            self._closing = False
             self._mode = 0
 
             self.signals['closed'].emit(expected)

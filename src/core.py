@@ -367,7 +367,9 @@ class Object(object):
         class.  Newer (most descended) __kaasignals__ will replace older ones if
         there are conflicts.
         """
-        if not hasattr(cls, '__kaasignals_cached__'):
+        cached_attr = '__kaasignals_%s_cached__' % cls.__name__
+        signals = getattr(cls, cached_attr, None)
+        if signals is None:
             signals = {}
             for c in reversed(inspect.getmro(cls)):
                 if hasattr(c, '__kaasignals__'):
@@ -375,8 +377,8 @@ class Object(object):
 
             # Remove all signals whose value is None.
             [ signals.pop(k) for k, v in signals.items() if v is None ]
-            cls.__kaasignals_cached__ = signals
-        return cls.__kaasignals_cached__
+            setattr(cls, cached_attr, signals)
+        return signals
 
         
     def __init__(self, *args, **kwargs):

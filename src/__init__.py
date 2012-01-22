@@ -275,35 +275,45 @@ class _LazyProxy(type):
         return dir(cls.__get())
 
     def __eq__(cls, other):
+        other = other.__get() if type(other) == _LazyProxy else other
         return cls.__get() == other
 
     def __or__(cls, other):
+        other = other.__get() if type(other) == _LazyProxy else other
         return cls.__get() | other
 
     def __and__(cls, other):
+        other = other.__get() if type(other) == _LazyProxy else other
         return cls.__get() & other
 
     def __cmp__(cls, other):
         # Python 2
+        other = other.__get() if type(other) == _LazyProxy else other
         return cmp(cls.__get(), other)
 
     # Python 3+
     def __lt__(cls, other):
+        other = other.__get() if type(other) == _LazyProxy else other
         return cls.__get() < other
 
     def __le__(cls, other):
+        other = other.__get() if type(other) == _LazyProxy else other
         return cls.__get() <= other
 
     def __gt__(cls, other):
+        other = other.__get() if type(other) == _LazyProxy else other
         return cls.__get() > other
 
     def __ge__(cls, other):
+        other = other.__get() if type(other) == _LazyProxy else other
         return cls.__get() >= other
 
     def __instancecheck__(cls, other):
+        other = other.__get() if type(other) == _LazyProxy else other
         return cls.__get().__instancecheck__(other)
 
     def __subclasscheck__(cls, other):
+        other = other.__get() if type(other) == _LazyProxy else other
         return cls.__get().__subclasscheck__(other)
 
 

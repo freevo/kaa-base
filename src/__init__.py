@@ -158,6 +158,9 @@ class _LazyProxy(type):
         # imports core (setattr hook)
         >>> import kaa
         >>> kaa.Signal.MAX_CONNECTIONS = 10000
+
+        # imports io (bitwise operator hook)
+        >>> kaa.IO_READ | kaa.IO_WRITE
     """
     def __new__(cls, name, bases, dict):
         if bases == (_object,):
@@ -273,6 +276,12 @@ class _LazyProxy(type):
 
     def __eq__(cls, other):
         return cls.__get() == other
+
+    def __or__(cls, other):
+        return cls.__get() | other
+
+    def __and__(cls, other):
+        return cls.__get() & other
 
     def __cmp__(cls, other):
         # Python 2

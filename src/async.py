@@ -416,15 +416,19 @@ class InProgress(Signal, Object):
         Because we're doing a test-and-create we need a mutex, and because this
         is not a common operation, we avoid the (roughly 7%) overhead of
         a per-instance lock.  It means that all instances will synchronize on
-        this mutex but because it's so rarely used I doubt there will be any
-        contention on the lock.
+        this mutex but because it's so rarely accessed from multiple threads I
+        doubt there will be any contention on the lock.
         """
         if kwargs.get('set'):
             with self._finished_event_lock:
+                self._finished = True
                 if self._finished_event:
                     self._finished_event.set()
         elif 'wait' in kwargs:
             with self._finished_event_lock:
+                if self._finished:
+                    # Nothing to wait on, we're already done.
+                    return
                 if not self._finished_event:
                     self._finished_event = threading.Event()
             self._finished_event.wait(kwargs['wait'])
@@ -455,7 +459,6 @@ class InProgress(Signal, Object):
             return self
 
         # store result
-        self._finished = True
         self._result = result
         self._exception = None
         # Wake any threads waiting on us
@@ -503,7 +506,6 @@ class InProgress(Signal, Object):
         # custom traceback object in C code that preserves the parts of the
         # stack frames needed for printing tracebacks, but discarding objects
         # that would create circular references.  This might be a TODO.
-        self._finished = True
         if type is None:
             type, value, tb = sys.exc_info()
             if value is None:

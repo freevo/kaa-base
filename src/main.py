@@ -222,7 +222,7 @@ def loop(condition, timeout=None):
             _set_running(False)
 
 
-def run(threaded=False):
+def run(threaded=False, daemon=True):
     """
     Start the main loop.
 
@@ -233,6 +233,10 @@ def run(threaded=False):
 
     :param threaded: if True, the Kaa mainloop will start in a new thread.
     :type threaded: bool
+    :param daemon: applies when ``threaded=True``, and indicates if the thread
+                   running the main loop is a daemon thread.  Daemon threads will
+                   not block the program from exiting when the main Python thread
+                   terminates.
 
     Specifying ``threaded=True`` is useful if the main Python thread has been
     co-opted by another mainloop framework and you want to use Kaa in parallel.
@@ -267,13 +271,7 @@ def run(threaded=False):
         event = threading.Event()
         timer.OneShotTimer(event.set).start(0)
         t = threading.Thread(target=run, name='kaa mainloop')
-        if 'readline' in sys.modules:
-            # If the readline module is loaded, this almost certainly means
-            # that we're running interactively.  If so, and the main loop is
-            # being run in a separate thread, make that thread a daemon thread
-            # so when the user exits the interactive interpreter it doesn't
-            # block.
-            t.setDaemon(True)
+        t.setDaemon(daemon)
         t.start()
         return event.wait()
 

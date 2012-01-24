@@ -280,13 +280,17 @@ class IOChannel(Object):
     @property
     def readable(self):
         """
-        True if the channel is open and readable, or if the channel is closed
-        but a read call would still succeed (due to buffered data).
+        True if :meth:`read` may be called.
 
-        Note that a value of True does not mean there **is** data available, but
-        rather that there could be and that a read() call is possible (however
-        that read() call may return None, in which case the readable property
-        will subsequently be False).
+        The channel is *readable* if it's open and its mode has IO_READ, or if
+        the channel is closed but a :meth:`read` call would still succeed (due
+        to buffered data).
+
+        .. note::
+           A value of True does not mean there **is** data available, but
+           rather that there could be and that a :meth:`read` call is possible
+           (however that :meth:`read` call may return None, in which case the
+           readable property will subsequently be False).
         """
         return self._mode & IO_READ and (self._channel != None or self._read_queue.tell() > 0)
 
@@ -294,7 +298,7 @@ class IOChannel(Object):
     @property
     def writable(self):
         """
-        True if write() may be called.
+        True if :meth:`write` may be called.
         
         (However, if you pass too much data to write() such that the write
         queue limit is exceeded, the write will fail.)
@@ -375,7 +379,7 @@ class IOChannel(Object):
     @property
     def delimiter(self):
         """
-        String used to split data for use with :meth:`~kaa.IOChannel.readline`.
+        String used to split data for use with :meth:`readline`.
 
         Delimiter may also be a list of strings, in which case any one of the
         elements in the list will be used as a delimiter.  For example, if you
@@ -591,7 +595,7 @@ class IOChannel(Object):
                 # Or: channel.read().wait()
 
         So the return value of read() should be checked.  Alternatively,
-        channel.readable could be tested::
+        the :attr:`readable` property could be tested::
 
             while channel.readable:
                  data = yield process.read()
@@ -619,7 +623,7 @@ class IOChannel(Object):
                   was already closed when readline() was called).
 
         Data from the channel is read and queued in until the delimiter (\\\\n by
-        default, but may be changed by the :attr:`~kaa.IOChannel.delimiter`
+        default, but may be changed by the :attr:`delimiter`
         property) is found.  If the read queue size exceeds the queue limit,
         then the InProgress returned here will be finished prematurely with
         whatever is in the read queue, and the read queue will be purged.
@@ -962,7 +966,7 @@ class IOChannel(Object):
             from kaa.net.tls import TLSSocket
             sock = TLSSocket().steal(sock)
 
-        This method is similar to :meth:`~kaa.IOChannel.wrap`, but additionally
+        This method is similar to :meth:`wrap`, but additionally
         all state is moved from the supplied IOChannel, including read/write
         queues, and all callbacks connected to signals are added to ``self``,
         and removed from ``channel``.

@@ -12,6 +12,8 @@ and so they are exposed directly in the kaa namespace.
 
 .. autofunction:: kaa.py3_str
 .. autofunction:: kaa.py3_b
+.. autofunction:: kaa.strutils.nativestr
+.. autofunction:: kaa.strutils.fsname
 .. autofunction:: kaa.strutils.utf8
 .. autofunction:: kaa.strutils.get_encoding
 .. autofunction:: kaa.strutils.set_encoding

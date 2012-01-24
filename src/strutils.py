@@ -207,21 +207,40 @@ def utf8(s):
     return py3_str(s).encode('utf-8')
 
 
+def nativestr(s, encoding=None, desperate=True, coerce=False, fs=False):
+    """
+    Returns a string object native to the current Python version, converting
+    between types if needed.
+
+    :param s: bytes or unicode object to convert
+
+    This is useful for functions like __str__ which expects a native string
+    type.
+    """
+    if sys.hexversion >= 0x03000000:
+        return py3_str(s, encoding, desperate, coerce, fs)
+    else:
+        return py3_b(s, encoding, desperate, coerce, fs)
+
+
 def fsname(s):
     """
     Return an object appropriate to represent a filename for the current
     Python version.
 
     :param s: the filename to decode if needed (Python 3) or encode if
-    needed (Python 2)
+              needed (Python 2)
     
     Python 2 returns a non-unicode string, while Python 3 returns a unicode
     string using the ``surrogateescape`` handler.  See PEP 383.
+
+    .. note::
+       This is a convenience function, equivalent to::
+
+           nativestr(s, fs=True, desperate=False)
     """
-    if sys.hexversion >= 0x03000000:
-        return py3_str(s, fs=True, desperate=False)
-    else:
-        return py3_b(s, fs=True, desperate=False)
+    return nativestr(s, fs=True, desperate=False)
+
 
 
 def str_to_unicode(s, encoding=None):

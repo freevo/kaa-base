@@ -5,24 +5,28 @@
 TLS
 ===
 
-.. kaaclass:: kaa.net.tls.M2TLSSocket
+.. kaaclass:: kaa.net.tls.openssl.TLSSocket
+   :synopsis:
+
+   .. automethods::
+      :remove: close
+   .. autoproperties::
+   .. autosignals::
+
+
+.. kaaclass:: kaa.net.tls.openssl.TLSContext
    :synopsis:
 
    .. automethods::
    .. autoproperties::
-   .. autosignals::
 
-.. kaaclass:: kaa.net.tls.TLSLiteSocket
+.. kaaclass:: kaa.net.tls.openssl.Certificate
    :synopsis:
 
    .. automethods::
    .. autoproperties::
-   .. autosignals::
 
-.. kaaclass:: kaa.net.tls.GNUTLSSocket
+
+.. kaaclass:: kaa.net.tls.openssl.X509Name
    :synopsis:
-
-   .. automethods::
-   .. autoproperties::
-   .. autosignals::
 

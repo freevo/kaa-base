@@ -137,6 +137,48 @@ value is a <em>bytes</em> object.</p>
 </dd></dl>
 
 <dl class="function">
+<dt id="kaa.strutils.nativestr">
+<tt class="descclassname">kaa.strutils.</tt><tt class="descname">nativestr</tt><big>(</big><em>s</em>, <em>encoding=None</em>, <em>desperate=True</em>, <em>coerce=False</em>, <em>fs=False</em><big>)</big><a class="headerlink" href="#kaa.strutils.nativestr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a string object native to the current Python version, converting
+between types if needed.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>s</em> &#8211; bytes or unicode object to convert</td>
+</tr>
+</tbody>
+</table>
+<p>This is useful for functions like __str__ which expects a native string
+type.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="kaa.strutils.fsname">
+<tt class="descclassname">kaa.strutils.</tt><tt class="descname">fsname</tt><big>(</big><em>s</em><big>)</big><a class="headerlink" href="#kaa.strutils.fsname" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an object appropriate to represent a filename for the current
+Python version.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>s</em> &#8211; the filename to decode if needed (Python 3) or encode if
+needed (Python 2)</td>
+</tr>
+</tbody>
+</table>
+<p>Python 2 returns a non-unicode string, while Python 3 returns a unicode
+string using the <tt class="docutils literal"><span class="pre">surrogateescape</span></tt> handler.  See PEP 383.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>This is a convenience function, equivalent to:</p>
+<div class="last highlight-python"><div class="highlight"><pre><span class="n">nativestr</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">fs</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">desperate</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+<dl class="function">
 <dt id="kaa.strutils.utf8">
 <tt class="descclassname">kaa.strutils.</tt><tt class="descname">utf8</tt><big>(</big><em>s</em><big>)</big><a class="headerlink" href="#kaa.strutils.utf8" title="Permalink to this definition">¶</a></dt>
 <dd>Returns a UTF-8 string, converting from other character sets if
@@ -554,7 +596,7 @@ ioctl numbers.</p>
     </div>
     <div class="footer">
       &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jan 18, 2012.
+      Last updated on Jan 23, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
     </div>
   </body>

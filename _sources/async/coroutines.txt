@@ -57,7 +57,7 @@ To recap, if a coroutine yields:
    can run (such as other timers, I/O handlers, etc.) and resumed on the next
    main loop iteration.
  * an :class:`~kaa.InProgress` object: control is returned to the main loop and
-   the coroutine is resumed with the yielded InProgress is finished.  Inside
+   the coroutine is resumed when the yielded InProgress is finished.  Inside
    the coroutine, the yield call "returns" the value that InProgress was finished
    with.
  * any other value: the coroutine terminates, and the InProgress the coroutine
@@ -119,8 +119,8 @@ In the above example, the difference between threaded functions
 :meth:`~kaa.IOChannel.read`) is transparent.  Both return InProgress objects. (As
 an aside, we didn't really need to yield socket.write() because writes are
 queued and written to the socket when it becomes writable.  However, yielding a
-write means that when the coroutine resumes, the data has been
-written.)
+write means that when the coroutine resumes, the data has been fully sent to the
+socket.)
 
 To more clearly see the benefit of implementing the above example as a coroutine,
 consider the following code, which is rewritten using the more traditional approach

@@ -203,9 +203,8 @@ has been set.</td></tr>
 <tr><th><a title="kaa.IOChannel.mode" class="reference internal" href="#kaa.IOChannel.mode"><tt class="xref docutils literal"><span class="pre">mode</span></tt></a></th><td>read-only</td><td class="desc">Whether the channel is read-only, or read/write.</td></tr>
 <tr><th><a title="kaa.IOChannel.queue_size" class="reference internal" href="#kaa.IOChannel.queue_size"><tt class="xref docutils literal"><span class="pre">queue_size</span></tt></a></th><td>read/write</td><td class="desc">The size limit in bytes for the read and write queues.</td></tr>
 <tr><th><a title="kaa.IOChannel.read_queue_used" class="reference internal" href="#kaa.IOChannel.read_queue_used"><tt class="xref docutils literal"><span class="pre">read_queue_used</span></tt></a></th><td>read-only</td><td class="desc">The number of bytes in the read queue.</td></tr>
-<tr><th><a title="kaa.IOChannel.readable" class="reference internal" href="#kaa.IOChannel.readable"><tt class="xref docutils literal"><span class="pre">readable</span></tt></a></th><td>read-only</td><td class="desc">True if the channel is open and readable, or if the channel is closed
-but a read call would still succeed (due to buffered data).</td></tr>
-<tr><th><a title="kaa.IOChannel.writable" class="reference internal" href="#kaa.IOChannel.writable"><tt class="xref docutils literal"><span class="pre">writable</span></tt></a></th><td>read-only</td><td class="desc">True if write() may be called.</td></tr>
+<tr><th><a title="kaa.IOChannel.readable" class="reference internal" href="#kaa.IOChannel.readable"><tt class="xref docutils literal"><span class="pre">readable</span></tt></a></th><td>read-only</td><td class="desc">True if <a title="kaa.IOChannel.read" class="reference internal" href="#kaa.IOChannel.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a> may be called.</td></tr>
+<tr><th><a title="kaa.IOChannel.writable" class="reference internal" href="#kaa.IOChannel.writable"><tt class="xref docutils literal"><span class="pre">writable</span></tt></a></th><td>read-only</td><td class="desc">True if <a title="kaa.IOChannel.write" class="reference internal" href="#kaa.IOChannel.write"><tt class="xref docutils literal"><span class="pre">write()</span></tt></a> may be called.</td></tr>
 <tr><th><a title="kaa.IOChannel.write_queue_used" class="reference internal" href="#kaa.IOChannel.write_queue_used"><tt class="xref docutils literal"><span class="pre">write_queue_used</span></tt></a></th><td>read-only</td><td class="desc">The number of bytes queued in memory to be written to the channel.</td></tr>
 </table>
 <div class="heading">Signals</div>
@@ -255,7 +254,7 @@ was already closed when read() was called).</td>
 </pre></div>
 </div>
 <p>So the return value of read() should be checked.  Alternatively,
-channel.readable could be tested:</p>
+the <a title="kaa.IOChannel.readable" class="reference internal" href="#kaa.IOChannel.readable"><tt class="xref docutils literal"><span class="pre">readable</span></tt></a> property could be tested:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="k">while</span> <span class="n">channel</span><span class="o">.</span><span class="n">readable</span><span class="p">:</span>
      <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">process</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
 </pre></div>
@@ -433,18 +432,23 @@ is.</p>
 <dl class="attribute">
 <dt id="kaa.IOChannel.readable">
 <tt class="descname">readable</tt><a class="headerlink" href="#kaa.IOChannel.readable" title="Permalink to this definition">¶</a></dt>
-<dd><p>True if the channel is open and readable, or if the channel is closed
-but a read call would still succeed (due to buffered data).</p>
-<p>Note that a value of True does not mean there <strong>is</strong> data available, but
-rather that there could be and that a read() call is possible (however
-that read() call may return None, in which case the readable property
-will subsequently be False).</p>
+<dd><p>True if <a title="kaa.IOChannel.read" class="reference internal" href="#kaa.IOChannel.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a> may be called.</p>
+<p>The channel is <em>readable</em> if it&#8217;s open and its mode has IO_READ, or if
+the channel is closed but a <a title="kaa.IOChannel.read" class="reference internal" href="#kaa.IOChannel.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a> call would still succeed (due
+to buffered data).</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">A value of True does not mean there <strong>is</strong> data available, but
+rather that there could be and that a <a title="kaa.IOChannel.read" class="reference internal" href="#kaa.IOChannel.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a> call is possible
+(however that <a title="kaa.IOChannel.read" class="reference internal" href="#kaa.IOChannel.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a> call may return None, in which case the
+readable property will subsequently be False).</p>
+</div>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kaa.IOChannel.writable">
 <tt class="descname">writable</tt><a class="headerlink" href="#kaa.IOChannel.writable" title="Permalink to this definition">¶</a></dt>
-<dd><p>True if write() may be called.</p>
+<dd><p>True if <a title="kaa.IOChannel.write" class="reference internal" href="#kaa.IOChannel.write"><tt class="xref docutils literal"><span class="pre">write()</span></tt></a> may be called.</p>
 <p>(However, if you pass too much data to write() such that the write
 queue limit is exceeded, the write will fail.)</p>
 </dd></dl>
@@ -591,7 +595,7 @@ and simultaneously use the <a title="kaa.IOChannel.readline" class="reference in
     </div>
     <div class="footer">
       &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jan 18, 2012.
+      Last updated on Jan 23, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
     </div>
   </body>

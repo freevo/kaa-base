@@ -53,150 +53,570 @@
   <div class="section" id="tls">
 <span id="module-kaa.net.tls"></span><span id="id1"></span><h1>TLS<a class="headerlink" href="#tls" title="Permalink to this headline">¶</a></h1>
 <p><dl class="class">
-<dt id="kaa.net.tls.M2TLSSocket">
-<em class="property">class </em><tt class="descclassname">kaa.net.tls.</tt><tt class="descname">M2TLSSocket</tt><a class="headerlink" href="#kaa.net.tls.M2TLSSocket" title="Permalink to this definition">¶</a></dt>
-<dd><p>TLSSocket implementation that uses M2Crypto.  This class uses OpenSSL&#8217;s BIO
-pairs for guaranteed async IO; all socket communication is handled by us
-(via the IOChannel).  See:</p>
-<blockquote>
-<a class="reference external" href="http://www.openssl.org/docs/crypto/BIO_new_bio_pair.html">http://www.openssl.org/docs/crypto/BIO_new_bio_pair.html</a></blockquote>
-<p>Inspired heavily by TwistedProtocolWrapper.py from M2Crypto.</p>
+<dt id="kaa.net.tls.openssl.TLSSocket">
+<em class="property">class </em><tt class="descclassname">kaa.net.tls.openssl.</tt><tt class="descname">TLSSocket</tt><big>(</big><em>ctx=None</em><big>)</big><a class="headerlink" href="#kaa.net.tls.openssl.TLSSocket" title="Permalink to this definition">¶</a></dt>
+<dd><p>TLSSocket extends <a title="kaa.Socket" class="reference external" href="../core/socket.html#kaa.Socket"><tt class="xref docutils literal"><span class="pre">Socket</span></tt></a> by adding SSL/TLS support.</p>
+<p>Until <tt class="xref docutils literal"><span class="pre">starttls_client()</span></tt> or <tt class="xref docutils literal"><span class="pre">starttls_server()</span></tt> is called,
+a TLSSocket operates like a standard <a title="kaa.Socket" class="reference external" href="../core/socket.html#kaa.Socket"><tt class="xref docutils literal"><span class="pre">Socket</span></tt></a>.  After TLS
+handshaking is initiated, data passed to/from the socket is transparently
+encrypted.</p>
 <p><h4>Synopsis</h4><div class="kaa synopsis">
-<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <a title="kaa.IOChannel" class="reference external" href="../core/io.html#kaa.IOChannel"><tt class="xref docutils literal"><span class="pre">kaa.IOChannel</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a title="kaa.Socket" class="reference external" href="../core/socket.html#kaa.Socket"><tt class="xref docutils literal"><span class="pre">kaa.Socket</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.net.tls.TLSSocketBase</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.net.tls.M2TLSSocket</tt><br /></p>
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <a title="kaa.IOChannel" class="reference external" href="../core/io.html#kaa.IOChannel"><tt class="xref docutils literal"><span class="pre">kaa.IOChannel</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a title="kaa.Socket" class="reference external" href="../core/socket.html#kaa.Socket"><tt class="xref docutils literal"><span class="pre">kaa.Socket</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.net.tls.TLSSocket</tt><br /></p>
 <div class="heading">Methods</div>
 <table>
-<tr><th><a title="kaa.net.tls.M2TLSSocket.close" class="reference internal" href="#kaa.net.tls.M2TLSSocket.close"><tt class="xref docutils literal"><span class="pre">close()</span></tt></a></th><td class="desc"></td></tr>
-<tr><th><a title="kaa.net.tls.M2TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.M2TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">starttls_client()</span></tt></a></th><td class="desc">TODO: document me.</td></tr>
-<tr><th><a title="kaa.net.tls.M2TLSSocket.starttls_server" class="reference internal" href="#kaa.net.tls.M2TLSSocket.starttls_server"><tt class="xref docutils literal"><span class="pre">starttls_server()</span></tt></a></th><td class="desc"></td></tr>
-<tr><th><a title="kaa.net.tls.M2TLSSocket.write" class="reference internal" href="#kaa.net.tls.M2TLSSocket.write"><tt class="xref docutils literal"><span class="pre">write()</span></tt></a></th><td class="desc"></td></tr>
+<tr><th><a title="kaa.net.tls.openssl.TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">starttls_client()</span></tt></a></th><td class="desc">Send a ClientHello to initiate SSL session negotiation.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.TLSSocket.starttls_server" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.starttls_server"><tt class="xref docutils literal"><span class="pre">starttls_server()</span></tt></a></th><td class="desc">Wait for a ClientHello before continuing communication.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.TLSSocket.verify" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.verify"><tt class="xref docutils literal"><span class="pre">verify()</span></tt></a></th><td class="desc">Verify one certificate in the peer&#8217;s certificate chain.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.TLSSocket.write" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.write"><tt class="xref docutils literal"><span class="pre">write()</span></tt></a></th><td class="desc">Write data to the socket, encrypting if necessary.</td></tr>
 </table>
-<div class="heading">Properties</div><div class="nomembers">This class has no properties.</div><div class="heading">Signals</div>
+<div class="heading">Properties</div>
 <table>
-<tr><th><a title="kaa.net.tls.M2TLSSocket.signals.tls" class="reference internal" href="#kaa.net.tls.M2TLSSocket.signals.tls"><tt class="xref docutils literal"><span class="pre">tls</span></tt></a></th><td class="desc">Emitted when a TLS handshake has been successfully completed.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.TLSSocket.cipher" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.cipher"><tt class="xref docutils literal"><span class="pre">cipher</span></tt></a></th><td>read-only</td><td class="desc">The cipher negotiated with the peer.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.TLSSocket.ctx" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.ctx"><tt class="xref docutils literal"><span class="pre">ctx</span></tt></a></th><td>read/write</td><td class="desc">The <a title="kaa.net.tls.openssl.TLSContext" class="reference internal" href="#kaa.net.tls.openssl.TLSContext"><tt class="xref docutils literal"><span class="pre">TLSContext</span></tt></a> object associated with this TLSSocket.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.TLSSocket.handshaked" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.handshaked"><tt class="xref docutils literal"><span class="pre">handshaked</span></tt></a></th><td>read-only</td><td class="desc">True when the SSL handshake has completed.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.TLSSocket.peer_cert_chain" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.peer_cert_chain"><tt class="xref docutils literal"><span class="pre">peer_cert_chain</span></tt></a></th><td>read-only</td><td class="desc">A list of <a title="kaa.net.tls.openssl.Certificate" class="reference internal" href="#kaa.net.tls.openssl.Certificate"><tt class="xref docutils literal"><span class="pre">Certificate</span></tt></a> objects representing the certificate chain for
+the connected peer.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.TLSSocket.verified" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.verified"><tt class="xref docutils literal"><span class="pre">verified</span></tt></a></th><td>read-only</td><td class="desc">The status of the peer&#8217;s certificate chain verification.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.TLSSocket.verify_cb" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.verify_cb"><tt class="xref docutils literal"><span class="pre">verify_cb</span></tt></a></th><td>read/write</td><td class="desc">User-installable callback for peer certificate verification.</td></tr>
+</table>
+<div class="heading">Signals</div>
+<table>
+<tr><th><a title="kaa.net.tls.openssl.TLSSocket.signals.tls" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.signals.tls"><tt class="xref docutils literal"><span class="pre">tls</span></tt></a></th><td class="desc">Emitted when a TLS handshake has been successfully completed.</td></tr>
 </table>
 
 </div>
 <h4>Methods</h4><dl class="method">
-<dt id="kaa.net.tls.M2TLSSocket.close">
-<tt class="descname">close</tt><big>(</big><em>immediate=False</em>, <em>expected=True</em><big>)</big><a class="headerlink" href="#kaa.net.tls.M2TLSSocket.close" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dt id="kaa.net.tls.openssl.TLSSocket.starttls_client">
+<tt class="descname">starttls_client</tt><big>(</big><em>cert=None</em>, <em>key=None</em>, <em>password=None</em>, <em>verify=True</em>, <em>cn=None</em>, <em>fingerprint=None</em><big>)</big><a class="headerlink" href="#kaa.net.tls.openssl.TLSSocket.starttls_client" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a ClientHello to initiate SSL session negotiation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><em>cert, key, password</em> &#8211; corresponds to <a title="kaa.net.tls.openssl.TLSContext.load_cert_chain" class="reference internal" href="#kaa.net.tls.openssl.TLSContext.load_cert_chain"><tt class="xref docutils literal"><span class="pre">TLSContext.load_cert_chain()</span></tt></a></li>
+<li><em>verify</em> (bool) &#8211; if True, the server must present a certificate and
+must verify successfully until further communication is
+allowed; if False, no server certificate verification
+is done.</li>
+<li><em>cn</em> (str) &#8211; the default verification function will verify that the server
+presents a certificate with a commonName or subjectAltName
+matching this value; if None, the hostname passed to connect()
+is used instead.</li>
+<li><em>fingerprint</em> (str) &#8211; require the server&#8217;s certificate to match the given
+SHA1 hex digest</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> that finishes when TLS handshaking
+succeeds or fails.  If the handshake fails, an exception is
+thrown to the InProgress</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Before this method (or <a title="kaa.net.tls.openssl.TLSSocket.starttls_server" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.starttls_server"><tt class="xref docutils literal"><span class="pre">starttls_server()</span></tt></a>) is invoked,
+a TLSSocket behaves like a standard <a title="kaa.Socket" class="reference external" href="../core/socket.html#kaa.Socket"><tt class="xref docutils literal"><span class="pre">Socket</span></tt></a>.</p>
+</dd></dl>
 
 <dl class="method">
-<dt id="kaa.net.tls.M2TLSSocket.starttls_client">
-<tt class="descname">starttls_client</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.net.tls.M2TLSSocket.starttls_client" title="Permalink to this definition">¶</a></dt>
-<dd><p>TODO: document me.</p>
+<dt id="kaa.net.tls.openssl.TLSSocket.starttls_server">
+<tt class="descname">starttls_server</tt><big>(</big><em>cert=None</em>, <em>key=None</em>, <em>password=None</em>, <em>verify=False</em>, <em>dh=None</em><big>)</big><a class="headerlink" href="#kaa.net.tls.openssl.TLSSocket.starttls_server" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wait for a ClientHello before continuing communication.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><em>cert, key, password</em> &#8211; corresponds to <a title="kaa.net.tls.openssl.TLSContext.load_cert_chain" class="reference internal" href="#kaa.net.tls.openssl.TLSContext.load_cert_chain"><tt class="xref docutils literal"><span class="pre">TLSContext.load_cert_chain()</span></tt></a></li>
+<li><em>verify</em> (bool) &#8211; if True, the client must present a certificate and
+must verify successfully until further communication is
+allowed; if False, no client certificate verification
+is done.</li>
+<li><em>dh</em> (str) &#8211; filename for Diffie-Hellman parameters in PEM format, needed
+for EDH ciphers.  If None, temporary DH params will be used.</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> that finishes when TLS handshaking
+succeeds or fails.  If the handshake fails, an exception is
+thrown to the InProgress</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Before this method (or <a title="kaa.net.tls.openssl.TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">starttls_client()</span></tt></a>) is invoked,
+a TLSSocket behaves like a standard <a title="kaa.Socket" class="reference external" href="../core/socket.html#kaa.Socket"><tt class="xref docutils literal"><span class="pre">Socket</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.net.tls.openssl.TLSSocket.verify">
+<tt class="descname">verify</tt><big>(</big><em>cert</em>, <em>depth</em>, <em>err</em>, <em>errmsg</em><big>)</big><a class="headerlink" href="#kaa.net.tls.openssl.TLSSocket.verify" title="Permalink to this definition">¶</a></dt>
+<dd><p>Verify one certificate in the peer&#8217;s certificate chain.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><em>cert</em> (<a title="kaa.net.tls.openssl.Certificate" class="reference internal" href="#kaa.net.tls.openssl.Certificate"><tt class="xref docutils literal"><span class="pre">Certificate</span></tt></a>) &#8211; the certificate in the chain currently being verified</li>
+<li><em>depth</em> (int) &#8211; the depth within the peer&#8217;s certificate chain for the
+certificate; the values are inverted such that 0 is the
+peer&#8217;s certificate, and increasing values walk up the
+issuer chain.</li>
+<li><em>err</em> (int or None) &#8211; an error code indicating any pre-validation failures detected
+by OpenSSL, or None if no errors were found.</li>
+<li><em>errmsg</em> (str or None) &#8211; a human-readable string of <em>err</em>, or None if no errors
+were found.</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">anything if the certificate should be accepted, otherwise
+it will raise an exception to reject it</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><tt class="xref docutils literal"><span class="pre">TLSVerificationError</span></tt></p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>If <tt class="docutils literal"><span class="pre">verify=True</span></tt> was passed to either <a title="kaa.net.tls.openssl.TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">starttls_client()</span></tt></a> or
+<a title="kaa.net.tls.openssl.TLSSocket.starttls_server" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.starttls_server"><tt class="xref docutils literal"><span class="pre">starttls_server()</span></tt></a>, this method is invoked for each certificate in
+the peer&#8217;s chain to give it an opportunity to accept or reject it by
+raising <tt class="xref docutils literal"><span class="pre">TLSVerificationError</span></tt>.</p>
+<p>Raising an exception will cause the exception to be thrown to the
+<a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> of a pending <a title="kaa.net.tls.openssl.TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">starttls_client()</span></tt></a> or
+<a title="kaa.net.tls.openssl.TLSSocket.starttls_server" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.starttls_server"><tt class="xref docutils literal"><span class="pre">starttls_server()</span></tt></a>.  The <a title="kaa.net.tls.openssl.TLSSocket.verified" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.verified"><tt class="xref docutils literal"><span class="pre">verified</span></tt></a> property will be False,
+and the socket will be immediately closed.</p>
+<p>The default behaviour requires the certificate is issued by a
+recognized CA (see <a title="kaa.net.tls.openssl.TLSContext.load_verify_locations" class="reference internal" href="#kaa.net.tls.openssl.TLSContext.load_verify_locations"><tt class="xref docutils literal"><span class="pre">TLSContext.load_verify_locations()</span></tt></a>), the
+current time is within the certificate&#8217;s validity period, and
+<a title="kaa.net.tls.openssl.Certificate.match_subject_name" class="reference internal" href="#kaa.net.tls.openssl.Certificate.match_subject_name"><tt class="xref docutils literal"><span class="pre">Certificate.match_subject_name()</span></tt></a> succeeds given the hostname
+given to <a title="kaa.Socket.connect" class="reference external" href="../core/socket.html#kaa.Socket.connect"><tt class="xref docutils literal"><span class="pre">connect()</span></tt></a> (or <tt class="docutils literal"><span class="pre">cn</span></tt> kwarg passed to
+<a title="kaa.net.tls.openssl.TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">starttls_client()</span></tt></a>)</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Subclasses may override this method to implement custom verification
+behaviour, but it may be more convenient to set the
+<a title="kaa.net.tls.openssl.TLSSocket.verify_cb" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.verify_cb"><tt class="xref docutils literal"><span class="pre">verify_cb</span></tt></a> property with a callback.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.net.tls.openssl.TLSSocket.write">
+<tt class="descname">write</tt><big>(</big><em>data</em><big>)</big><a class="headerlink" href="#kaa.net.tls.openssl.TLSSocket.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write data to the socket, encrypting if necessary.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>data</em> (str) &#8211; the plaintext data to be sent to the peer</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">an <a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> as described in <a title="kaa.IOChannel.write" class="reference external" href="../core/io.html#kaa.IOChannel.write"><tt class="xref docutils literal"><span class="pre">kaa.IOChannel.write()</span></tt></a></td>
+</tr>
+</tbody>
+</table>
+<p>Until <a title="kaa.net.tls.openssl.TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">starttls_client()</span></tt></a> or <a title="kaa.net.tls.openssl.TLSSocket.starttls_server" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.starttls_server"><tt class="xref docutils literal"><span class="pre">starttls_server()</span></tt></a> is called, the
+data passed is sent plaintext, just as it is with a standard
+<a title="kaa.Socket" class="reference external" href="../core/socket.html#kaa.Socket"><tt class="xref docutils literal"><span class="pre">Socket</span></tt></a>.  After either is called, TLS handshaking must be
+completed and verification passed (if enabled) before writing is allowed,
+after which the supplied data is encrypted before being sent to the peer.</p>
+</dd></dl>
+
+<h4>Properties</h4><dl class="attribute">
+<dt id="kaa.net.tls.openssl.TLSSocket.cipher">
+<tt class="descname">cipher</tt><a class="headerlink" href="#kaa.net.tls.openssl.TLSSocket.cipher" title="Permalink to this definition">¶</a></dt>
+<dd><p>The cipher negotiated with the peer.</p>
+<p>If no TLS handshake has been performed, this value is None.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.net.tls.openssl.TLSSocket.ctx">
+<tt class="descname">ctx</tt><a class="headerlink" href="#kaa.net.tls.openssl.TLSSocket.ctx" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <a title="kaa.net.tls.openssl.TLSContext" class="reference internal" href="#kaa.net.tls.openssl.TLSContext"><tt class="xref docutils literal"><span class="pre">TLSContext</span></tt></a> object associated with this TLSSocket.</p>
+<p>By default, a new context is created for each TLSSocket.  You can set
+this property or pass a <a title="kaa.net.tls.openssl.TLSContext" class="reference internal" href="#kaa.net.tls.openssl.TLSContext"><tt class="xref docutils literal"><span class="pre">TLSContext</span></tt></a> object when creating the
+TLSSocket to share contexts between connections.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">For active connections that have completed handshaking, setting this
+property will have no effect until the next time <a title="kaa.net.tls.openssl.TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">starttls_client()</span></tt></a>
+or <a title="kaa.net.tls.openssl.TLSSocket.starttls_server" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.starttls_server"><tt class="xref docutils literal"><span class="pre">starttls_server()</span></tt></a> is called.</p>
+</div>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.net.tls.openssl.TLSSocket.handshaked">
+<tt class="descname">handshaked</tt><a class="headerlink" href="#kaa.net.tls.openssl.TLSSocket.handshaked" title="Permalink to this definition">¶</a></dt>
+<dd>True when the SSL handshake has completed.</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.net.tls.openssl.TLSSocket.peer_cert_chain">
+<tt class="descname">peer_cert_chain</tt><a class="headerlink" href="#kaa.net.tls.openssl.TLSSocket.peer_cert_chain" title="Permalink to this definition">¶</a></dt>
+<dd><p>A list of <a title="kaa.net.tls.openssl.Certificate" class="reference internal" href="#kaa.net.tls.openssl.Certificate"><tt class="xref docutils literal"><span class="pre">Certificate</span></tt></a> objects representing the certificate chain for
+the connected peer.</p>
+<p>The list is ordered such that the first element is the peer&#8217;s certificate,
+and the last element is the top-level certificate authority.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.net.tls.openssl.TLSSocket.verified">
+<tt class="descname">verified</tt><a class="headerlink" href="#kaa.net.tls.openssl.TLSSocket.verified" title="Permalink to this definition">¶</a></dt>
+<dd><p>The status of the peer&#8217;s certificate chain verification.</p>
 <dl class="docutils">
-<dt>Possible kwargs:</dt>
-<dd><p class="first">cert: filename to pem cert for local side
-key: private key file (if None, assumes key is in cert)
-dh: filename for Diffie-Hellman parameters (only used for server)
-verify: if True, checks that the peer cert is signed by a known CA
-check: 2-tuple (host, fingerprint) to control further peer cert checks:</p>
-<blockquote class="last">
-<dl class="docutils">
-<dt>host: None: validate CN from host from connect();</dt>
-<dd>False: don&#8217;t do any CN checking
-string: require CN match the string</dd>
-</dl>
-<p>fingerprint: peer cert digest must match fingerprint, or None not to check.</p>
-</blockquote>
+<dt>Possible values:</dt>
+<dd><ul class="first last simple">
+<li><strong>None</strong>: verification was not yet performed (e.g. TLS handshake
+has not yet occurred)</li>
+<li><strong>False</strong>: verification was performed and failed</li>
+<li><strong>True</strong>: peer certificate chain passed verfication.</li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
 
-<dl class="method">
-<dt id="kaa.net.tls.M2TLSSocket.starttls_server">
-<tt class="descname">starttls_server</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.net.tls.M2TLSSocket.starttls_server" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dl class="attribute">
+<dt id="kaa.net.tls.openssl.TLSSocket.verify_cb">
+<tt class="descname">verify_cb</tt><a class="headerlink" href="#kaa.net.tls.openssl.TLSSocket.verify_cb" title="Permalink to this definition">¶</a></dt>
+<dd><p>User-installable callback for peer certificate verification.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback(cert, depth, err, errmsg)</tt></dt>
+<dd>See <a title="kaa.net.tls.openssl.TLSSocket.verify" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.verify"><tt class="xref docutils literal"><span class="pre">verify()</span></tt></a> for argument details.</dd></dl>
 
-<dl class="method">
-<dt id="kaa.net.tls.M2TLSSocket.write">
-<tt class="descname">write</tt><big>(</big><em>data</em><big>)</big><a class="headerlink" href="#kaa.net.tls.M2TLSSocket.write" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<p>If a callback is set, it will be invoked for each certificate in the peer&#8217;s
+chain <em>instead</em> of the <a title="kaa.net.tls.openssl.TLSSocket.verify" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.verify"><tt class="xref docutils literal"><span class="pre">verify()</span></tt></a> method.</p>
+</dd></dl>
 
 <h4>Signals</h4><dl class="attribute">
-<dt id="kaa.net.tls.M2TLSSocket.signals.tls">
-<tt class="descname">tls</tt><a class="headerlink" href="#kaa.net.tls.M2TLSSocket.signals.tls" title="Permalink to this definition">¶</a></dt>
-<dd>Emitted when a TLS handshake has been successfully completed.</dd></dl>
+<dt id="kaa.net.tls.openssl.TLSSocket.signals.tls">
+<tt class="descname">tls</tt><a class="headerlink" href="#kaa.net.tls.openssl.TLSSocket.signals.tls" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted when a TLS handshake has been successfully completed.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback(...)</tt></dt>
+<dd></dd></dl>
+
+</dd></dl>
 
 </p>
 </dd></dl>
 
 </p>
 <p><dl class="class">
-<dt id="kaa.net.tls.TLSLiteSocket">
-<em class="property">class </em><tt class="descclassname">kaa.net.tls.</tt><tt class="descname">TLSLiteSocket</tt><big>(</big><em>cafile=None</em><big>)</big><a class="headerlink" href="#kaa.net.tls.TLSLiteSocket" title="Permalink to this definition">¶</a></dt>
-<dd><h4>Synopsis</h4><div class="kaa synopsis">
-<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <a title="kaa.IOChannel" class="reference external" href="../core/io.html#kaa.IOChannel"><tt class="xref docutils literal"><span class="pre">kaa.IOChannel</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a title="kaa.Socket" class="reference external" href="../core/socket.html#kaa.Socket"><tt class="xref docutils literal"><span class="pre">kaa.Socket</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.net.tls.TLSSocketBase</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.net.tls.TLSLiteSocket</tt><br /></p>
+<dt id="kaa.net.tls.openssl.TLSContext">
+<em class="property">class </em><tt class="descclassname">kaa.net.tls.openssl.</tt><tt class="descname">TLSContext</tt><big>(</big><em>protocol=None</em><big>)</big><a class="headerlink" href="#kaa.net.tls.openssl.TLSContext" title="Permalink to this definition">¶</a></dt>
+<dd><p>Encapsulates one or more <a title="kaa.net.tls.openssl.TLSSocket" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket"><tt class="xref docutils literal"><span class="pre">TLSSocket</span></tt></a> objects with common
+configuration (like certificates) and shared data (like sessions).</p>
+<p>By default, TLSSockets will each create their own TLSContext.  Sharing the
+same context allows things like SSL session resumption between multiple
+sockets.</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal current">kaa.net.tls.openssl.TLSContext</tt><br /></p>
 <div class="heading">Methods</div>
 <table>
-<tr><th><a title="kaa.net.tls.TLSLiteSocket.starttls_client" class="reference internal" href="#kaa.net.tls.TLSLiteSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">starttls_client()</span></tt></a></th><td class="desc"></td></tr>
-<tr><th><a title="kaa.net.tls.TLSLiteSocket.starttls_server" class="reference internal" href="#kaa.net.tls.TLSLiteSocket.starttls_server"><tt class="xref docutils literal"><span class="pre">starttls_server()</span></tt></a></th><td class="desc"></td></tr>
-</table>
-<div class="heading">Properties</div><div class="nomembers">This class has no properties.</div><div class="heading">Signals</div>
-<table>
-<tr><th><a title="kaa.net.tls.TLSLiteSocket.signals.tls" class="reference internal" href="#kaa.net.tls.TLSLiteSocket.signals.tls"><tt class="xref docutils literal"><span class="pre">tls</span></tt></a></th><td class="desc">Emitted when a TLS handshake has been successfully completed.</td></tr>
-</table>
-
-</div>
-<h4>Methods</h4><dl class="method">
-<dt id="kaa.net.tls.TLSLiteSocket.starttls_client">
-<tt class="descname">starttls_client</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.net.tls.TLSLiteSocket.starttls_client" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="kaa.net.tls.TLSLiteSocket.starttls_server">
-<tt class="descname">starttls_server</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.net.tls.TLSLiteSocket.starttls_server" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<h4>Signals</h4><dl class="attribute">
-<dt id="kaa.net.tls.TLSLiteSocket.signals.tls">
-<tt class="descname">tls</tt><a class="headerlink" href="#kaa.net.tls.TLSLiteSocket.signals.tls" title="Permalink to this definition">¶</a></dt>
-<dd>Emitted when a TLS handshake has been successfully completed.</dd></dl>
-
-</dd></dl>
-
-</p>
-<p><dl class="class">
-<dt id="kaa.net.tls.GNUTLSSocket">
-<em class="property">class </em><tt class="descclassname">kaa.net.tls.</tt><tt class="descname">GNUTLSSocket</tt><big>(</big><em>cafile=None</em><big>)</big><a class="headerlink" href="#kaa.net.tls.GNUTLSSocket" title="Permalink to this definition">¶</a></dt>
-<dd><h4>Synopsis</h4><div class="kaa synopsis">
-<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <a title="kaa.IOChannel" class="reference external" href="../core/io.html#kaa.IOChannel"><tt class="xref docutils literal"><span class="pre">kaa.IOChannel</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a title="kaa.Socket" class="reference external" href="../core/socket.html#kaa.Socket"><tt class="xref docutils literal"><span class="pre">kaa.Socket</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.net.tls.TLSSocketBase</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.net.tls.GNUTLSSocket</tt><br /></p>
-<div class="heading">Methods</div>
-<table>
-<tr><th><a title="kaa.net.tls.GNUTLSSocket.handshake_client" class="reference internal" href="#kaa.net.tls.GNUTLSSocket.handshake_client"><tt class="xref docutils literal"><span class="pre">handshake_client()</span></tt></a></th><td class="desc"></td></tr>
-<tr><th><a title="kaa.net.tls.GNUTLSSocket.handshake_server" class="reference internal" href="#kaa.net.tls.GNUTLSSocket.handshake_server"><tt class="xref docutils literal"><span class="pre">handshake_server()</span></tt></a></th><td class="desc"></td></tr>
+<tr><th><a title="kaa.net.tls.openssl.TLSContext.load_cert_chain" class="reference internal" href="#kaa.net.tls.openssl.TLSContext.load_cert_chain"><tt class="xref docutils literal"><span class="pre">load_cert_chain()</span></tt></a></th><td class="desc">Load a certificate chain and keys into the context.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.TLSContext.load_dh_params" class="reference internal" href="#kaa.net.tls.openssl.TLSContext.load_dh_params"><tt class="xref docutils literal"><span class="pre">load_dh_params()</span></tt></a></th><td class="desc">Load parameters for Ephemeral Diffie-Hellman.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.TLSContext.load_verify_locations" class="reference internal" href="#kaa.net.tls.openssl.TLSContext.load_verify_locations"><tt class="xref docutils literal"><span class="pre">load_verify_locations()</span></tt></a></th><td class="desc">Set the location of trusted certificates for certificate verification.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.TLSContext.set_ciphers" class="reference internal" href="#kaa.net.tls.openssl.TLSContext.set_ciphers"><tt class="xref docutils literal"><span class="pre">set_ciphers()</span></tt></a></th><td class="desc">Set the available ciphers for sockets created with this context.</td></tr>
 </table>
 <div class="heading">Properties</div>
 <table>
-<tr><th><a title="kaa.net.tls.GNUTLSSocket.peer_certificate" class="reference internal" href="#kaa.net.tls.GNUTLSSocket.peer_certificate"><tt class="xref docutils literal"><span class="pre">peer_certificate</span></tt></a></th><td>read-only</td><td class="desc"></td></tr>
-</table>
-<div class="heading">Signals</div>
-<table>
-<tr><th><a title="kaa.net.tls.GNUTLSSocket.signals.tls" class="reference internal" href="#kaa.net.tls.GNUTLSSocket.signals.tls"><tt class="xref docutils literal"><span class="pre">tls</span></tt></a></th><td class="desc">Emitted when a TLS handshake has been successfully completed.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.TLSContext.dh_size" class="reference internal" href="#kaa.net.tls.openssl.TLSContext.dh_size"><tt class="xref docutils literal"><span class="pre">dh_size</span></tt></a></th><td>read-only</td><td class="desc">The size of the currently loaded DH parameters in bits.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.TLSContext.local_cert" class="reference internal" href="#kaa.net.tls.openssl.TLSContext.local_cert"><tt class="xref docutils literal"><span class="pre">local_cert</span></tt></a></th><td>read-only</td><td class="desc">A <a title="kaa.net.tls.openssl.Certificate" class="reference internal" href="#kaa.net.tls.openssl.Certificate"><tt class="xref docutils literal"><span class="pre">Certificate</span></tt></a> object of the local certificate loaded by
+<a title="kaa.net.tls.openssl.TLSContext.load_cert_chain" class="reference internal" href="#kaa.net.tls.openssl.TLSContext.load_cert_chain"><tt class="xref docutils literal"><span class="pre">load_cert_chain()</span></tt></a>.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.TLSContext.verify_location" class="reference internal" href="#kaa.net.tls.openssl.TLSContext.verify_location"><tt class="xref docutils literal"><span class="pre">verify_location</span></tt></a></th><td>read-only</td><td class="desc">The location set (or discovered) by <a title="kaa.net.tls.openssl.TLSContext.load_verify_locations" class="reference internal" href="#kaa.net.tls.openssl.TLSContext.load_verify_locations"><tt class="xref docutils literal"><span class="pre">load_verify_locations()</span></tt></a></td></tr>
 </table>
 
 </div>
 <h4>Methods</h4><dl class="method">
-<dt id="kaa.net.tls.GNUTLSSocket.handshake_client">
-<tt class="descname">handshake_client</tt><big>(</big><em>credentials</em>, <em>srp=None</em><big>)</big><a class="headerlink" href="#kaa.net.tls.GNUTLSSocket.handshake_client" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dt id="kaa.net.tls.openssl.TLSContext.load_cert_chain">
+<tt class="descname">load_cert_chain</tt><big>(</big><em>cert</em>, <em>key=None</em>, <em>password=None</em><big>)</big><a class="headerlink" href="#kaa.net.tls.openssl.TLSContext.load_cert_chain" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a certificate chain and keys into the context.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>cert</em> (str) &#8211; filename for side certificate in PEM format</li>
+<li><em>key</em> (str) &#8211; filename for the private key for the given <em>cert</em> in PEM
+format; if None and cert is not None, then it assumes the
+key is contained in the cert file.</li>
+<li><em>password</em> &#8211; password to unlock the private key; if None and
+cert is not None, then it assumes the key is not
+protected by a password.  If arg is a callable,
+it is passed no arguments and must return a string.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>For clients, a loaded certificate will be presented to the server
+when <a title="kaa.net.tls.openssl.TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">TLSSocket.starttls_client()</span></tt></a> is called.  For servers, it is
+mandatory that a certificate is loaded.</p>
+<p>In either case, the certificate chain can be loaded by explicitly
+calling this method, or passing the <tt class="docutils literal"><span class="pre">cert</span></tt>, <tt class="docutils literal"><span class="pre">key</span></tt>, and <tt class="docutils literal"><span class="pre">password</span></tt>
+kwargs in <a title="kaa.net.tls.openssl.TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">TLSSocket.starttls_client()</span></tt></a> and
+<a title="kaa.net.tls.openssl.TLSSocket.starttls_server" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.starttls_server"><tt class="xref docutils literal"><span class="pre">TLSSocket.starttls_server()</span></tt></a>.</p>
+</dd></dl>
 
 <dl class="method">
-<dt id="kaa.net.tls.GNUTLSSocket.handshake_server">
-<tt class="descname">handshake_server</tt><big>(</big><em>credentials</em>, <em>srp=None</em><big>)</big><a class="headerlink" href="#kaa.net.tls.GNUTLSSocket.handshake_server" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dt id="kaa.net.tls.openssl.TLSContext.load_dh_params">
+<tt class="descname">load_dh_params</tt><big>(</big><em>file=None</em><big>)</big><a class="headerlink" href="#kaa.net.tls.openssl.TLSContext.load_dh_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load parameters for Ephemeral Diffie-Hellman.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>file</em> (str) &#8211; filename containing DH parameters in PEM format; if None,
+hardcoded defaults are used</td>
+</tr>
+</tbody>
+</table>
+<p>DH parameters are required to be loaded in order for EDH ciphers to be
+available.</p>
+<p>The size of the loaded DH parameters can be gotten from the
+<a title="kaa.net.tls.openssl.TLSContext.dh_size" class="reference internal" href="#kaa.net.tls.openssl.TLSContext.dh_size"><tt class="xref docutils literal"><span class="pre">dh_size</span></tt></a> property.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.net.tls.openssl.TLSContext.load_verify_locations">
+<tt class="descname">load_verify_locations</tt><big>(</big><em>location=None</em><big>)</big><a class="headerlink" href="#kaa.net.tls.openssl.TLSContext.load_verify_locations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the location of trusted certificates for certificate verification.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>location</em> (str) &#8211; path to a file containing concatenated certificates in
+PEM format, or directory containing individual certificates
+as files; if None, a location is auto-discovered based on
+OpenSSL system configuration.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.net.tls.openssl.TLSContext.set_ciphers">
+<tt class="descname">set_ciphers</tt><big>(</big><em>ciphers</em><big>)</big><a class="headerlink" href="#kaa.net.tls.openssl.TLSContext.set_ciphers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the available ciphers for sockets created with this context.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>ciphers</em> (str) &#8211; a string in the <a class="reference external" href="http://www.openssl.org/docs/apps/ciphers.html#CIPHER_LIST_FORMAT">OpenSSL cipher list format</a>.</td>
+</tr>
+<tr class="field"><th class="field-name">Raises:</th><td class="field-body">TLSError if no ciphers could be selected</td>
+</tr>
+</tbody>
+</table>
+<p>Once a <a title="kaa.net.tls.openssl.TLSSocket" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket"><tt class="xref docutils literal"><span class="pre">TLSSocket</span></tt></a> is connected, the <a title="kaa.net.tls.openssl.TLSSocket.cipher" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket.cipher"><tt class="xref docutils literal"><span class="pre">cipher</span></tt></a>
+property can be checked to see which cipher was selected.</p>
+</dd></dl>
 
 <h4>Properties</h4><dl class="attribute">
-<dt id="kaa.net.tls.GNUTLSSocket.peer_certificate">
-<tt class="descname">peer_certificate</tt><a class="headerlink" href="#kaa.net.tls.GNUTLSSocket.peer_certificate" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dt id="kaa.net.tls.openssl.TLSContext.dh_size">
+<tt class="descname">dh_size</tt><a class="headerlink" href="#kaa.net.tls.openssl.TLSContext.dh_size" title="Permalink to this definition">¶</a></dt>
+<dd>The size of the currently loaded DH parameters in bits.</dd></dl>
 
-<h4>Signals</h4><dl class="attribute">
-<dt id="kaa.net.tls.GNUTLSSocket.signals.tls">
-<tt class="descname">tls</tt><a class="headerlink" href="#kaa.net.tls.GNUTLSSocket.signals.tls" title="Permalink to this definition">¶</a></dt>
-<dd>Emitted when a TLS handshake has been successfully completed.</dd></dl>
+<dl class="attribute">
+<dt id="kaa.net.tls.openssl.TLSContext.local_cert">
+<tt class="descname">local_cert</tt><a class="headerlink" href="#kaa.net.tls.openssl.TLSContext.local_cert" title="Permalink to this definition">¶</a></dt>
+<dd><p>A <a title="kaa.net.tls.openssl.Certificate" class="reference internal" href="#kaa.net.tls.openssl.Certificate"><tt class="xref docutils literal"><span class="pre">Certificate</span></tt></a> object of the local certificate loaded by
+<a title="kaa.net.tls.openssl.TLSContext.load_cert_chain" class="reference internal" href="#kaa.net.tls.openssl.TLSContext.load_cert_chain"><tt class="xref docutils literal"><span class="pre">load_cert_chain()</span></tt></a>.</p>
+<p>If None, <a title="kaa.net.tls.openssl.TLSContext.load_cert_chain" class="reference internal" href="#kaa.net.tls.openssl.TLSContext.load_cert_chain"><tt class="xref docutils literal"><span class="pre">load_cert_chain()</span></tt></a> was never called (or had failed).</p>
+</dd></dl>
 
+<dl class="attribute">
+<dt id="kaa.net.tls.openssl.TLSContext.verify_location">
+<tt class="descname">verify_location</tt><a class="headerlink" href="#kaa.net.tls.openssl.TLSContext.verify_location" title="Permalink to this definition">¶</a></dt>
+<dd><p>The location set (or discovered) by <a title="kaa.net.tls.openssl.TLSContext.load_verify_locations" class="reference internal" href="#kaa.net.tls.openssl.TLSContext.load_verify_locations"><tt class="xref docutils literal"><span class="pre">load_verify_locations()</span></tt></a></p>
+<p>If None, <a title="kaa.net.tls.openssl.TLSContext.load_verify_locations" class="reference internal" href="#kaa.net.tls.openssl.TLSContext.load_verify_locations"><tt class="xref docutils literal"><span class="pre">load_verify_locations()</span></tt></a> was either never called or no
+location was auto-discovered.</p>
+</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+<p><dl class="class">
+<dt id="kaa.net.tls.openssl.Certificate">
+<em class="property">class </em><tt class="descclassname">kaa.net.tls.openssl.</tt><tt class="descname">Certificate</tt><big>(</big><em>x509</em>, <em>copy=False</em><big>)</big><a class="headerlink" href="#kaa.net.tls.openssl.Certificate" title="Permalink to this definition">¶</a></dt>
+<dd><p>An X.509 certificate.</p>
+<p>You will not instantiate these objects directly, but they will be returned
+from various <a title="kaa.net.tls.openssl.TLSSocket" class="reference internal" href="#kaa.net.tls.openssl.TLSSocket"><tt class="xref docutils literal"><span class="pre">TLSSocket</span></tt></a> methods and properties.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Certificate objects are presently read-only.</p>
+</div>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal current">kaa.net.tls.openssl.Certificate</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr><th><a title="kaa.net.tls.openssl.Certificate.digest" class="reference internal" href="#kaa.net.tls.openssl.Certificate.digest"><tt class="xref docutils literal"><span class="pre">digest()</span></tt></a></th><td class="desc">Generate a binary digest for the certificate.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.Certificate.hexdigest" class="reference internal" href="#kaa.net.tls.openssl.Certificate.hexdigest"><tt class="xref docutils literal"><span class="pre">hexdigest()</span></tt></a></th><td class="desc">Generate a hex string digest for the certificate.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.Certificate.match_subject_name" class="reference internal" href="#kaa.net.tls.openssl.Certificate.match_subject_name"><tt class="xref docutils literal"><span class="pre">match_subject_name()</span></tt></a></th><td class="desc">Match the given name with either the subject&#8217;s commonName or one of
+the subjectAltNames.</td></tr>
+</table>
+<div class="heading">Properties</div>
+<table>
+<tr><th><a title="kaa.net.tls.openssl.Certificate.expired" class="reference internal" href="#kaa.net.tls.openssl.Certificate.expired"><tt class="xref docutils literal"><span class="pre">expired</span></tt></a></th><td>read-only</td><td class="desc">True if the current time is outside the certificate&#8217;s validity period.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.Certificate.extensions" class="reference internal" href="#kaa.net.tls.openssl.Certificate.extensions"><tt class="xref docutils literal"><span class="pre">extensions</span></tt></a></th><td>read-only</td><td class="desc">A dictionary of X509 v3 extensions present in the certificate.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.Certificate.issuer" class="reference internal" href="#kaa.net.tls.openssl.Certificate.issuer"><tt class="xref docutils literal"><span class="pre">issuer</span></tt></a></th><td>read-only</td><td class="desc">An <a title="kaa.net.tls.openssl.X509Name" class="reference internal" href="#kaa.net.tls.openssl.X509Name"><tt class="xref docutils literal"><span class="pre">X509Name</span></tt></a> for the entity that signed and issued the
+certificate.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.Certificate.not_after" class="reference internal" href="#kaa.net.tls.openssl.Certificate.not_after"><tt class="xref docutils literal"><span class="pre">not_after</span></tt></a></th><td>read-only</td><td class="desc">A datetime object representing the expiry date of the certificate.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.Certificate.not_before" class="reference internal" href="#kaa.net.tls.openssl.Certificate.not_before"><tt class="xref docutils literal"><span class="pre">not_before</span></tt></a></th><td>read-only</td><td class="desc">A datetime object representing the date the certificate becomes valid.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.Certificate.serial_number" class="reference internal" href="#kaa.net.tls.openssl.Certificate.serial_number"><tt class="xref docutils literal"><span class="pre">serial_number</span></tt></a></th><td>read-only</td><td class="desc">The serial number assigned to the certificate by the issuer (which must
+be unique per CA).</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.Certificate.subject" class="reference internal" href="#kaa.net.tls.openssl.Certificate.subject"><tt class="xref docutils literal"><span class="pre">subject</span></tt></a></th><td>read-only</td><td class="desc">An <a title="kaa.net.tls.openssl.X509Name" class="reference internal" href="#kaa.net.tls.openssl.X509Name"><tt class="xref docutils literal"><span class="pre">X509Name</span></tt></a> for the entity the certificate belongs to.</td></tr>
+<tr><th><a title="kaa.net.tls.openssl.Certificate.version" class="reference internal" href="#kaa.net.tls.openssl.Certificate.version"><tt class="xref docutils literal"><span class="pre">version</span></tt></a></th><td>read-only</td><td class="desc">The version of the certificate (usually 2).</td></tr>
+</table>
+
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.net.tls.openssl.Certificate.digest">
+<tt class="descname">digest</tt><big>(</big><em>name='sha1'</em><big>)</big><a class="headerlink" href="#kaa.net.tls.openssl.Certificate.digest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a binary digest for the certificate.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>name</em> (str) &#8211; the name of the digest algorithm to use (e.g. <tt class="docutils literal"><span class="pre">md5</span></tt>, <tt class="docutils literal"><span class="pre">sha1</span></tt>,
+<tt class="docutils literal"><span class="pre">sha256</span></tt>, <tt class="docutils literal"><span class="pre">sha512</span></tt>)</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">a byte string containing the binary digest</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.net.tls.openssl.Certificate.hexdigest">
+<tt class="descname">hexdigest</tt><big>(</big><em>name='sha1'</em><big>)</big><a class="headerlink" href="#kaa.net.tls.openssl.Certificate.hexdigest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a hex string digest for the certificate.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>name</em> (str) &#8211; see <a title="kaa.net.tls.openssl.Certificate.digest" class="reference internal" href="#kaa.net.tls.openssl.Certificate.digest"><tt class="xref docutils literal"><span class="pre">digest()</span></tt></a></td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">a hex string of the digest</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kaa.net.tls.openssl.Certificate.match_subject_name">
+<tt class="descname">match_subject_name</tt><big>(</big><em>name</em>, <em>wildcards=True</em><big>)</big><a class="headerlink" href="#kaa.net.tls.openssl.Certificate.match_subject_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Match the given name with either the subject&#8217;s commonName or one of
+the subjectAltNames.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><em>name</em> &#8211; the hostname to match</li>
+<li><em>wildcards</em> &#8211; allow wildcards in the subject names</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">the name that matched the supplied name, or None if no matches
+were found.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<h4>Properties</h4><dl class="attribute">
+<dt id="kaa.net.tls.openssl.Certificate.expired">
+<tt class="descname">expired</tt><a class="headerlink" href="#kaa.net.tls.openssl.Certificate.expired" title="Permalink to this definition">¶</a></dt>
+<dd><p>True if the current time is outside the certificate&#8217;s validity period.</p>
+<p>For convenience, if a certificate is not yet valid (because the current
+time is before <a title="kaa.net.tls.openssl.Certificate.not_before" class="reference internal" href="#kaa.net.tls.openssl.Certificate.not_before"><tt class="xref docutils literal"><span class="pre">not_before</span></tt></a>), this property will be True.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.net.tls.openssl.Certificate.extensions">
+<tt class="descname">extensions</tt><a class="headerlink" href="#kaa.net.tls.openssl.Certificate.extensions" title="Permalink to this definition">¶</a></dt>
+<dd><p>A dictionary of X509 v3 extensions present in the certificate.</p>
+<p>The keys are the extension name (e.g. <tt class="docutils literal"><span class="pre">subjectAltName</span></tt>), and each value
+is a dict mapping data type names (e.g. <tt class="docutils literal"><span class="pre">dns</span></tt>) to a list of data values.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Currently the only supported extension is <tt class="docutils literal"><span class="pre">subjectAltName</span></tt>.  Other
+extensions will be present in the extensions dict, but their values
+will be None.</p>
+</div>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.net.tls.openssl.Certificate.issuer">
+<tt class="descname">issuer</tt><a class="headerlink" href="#kaa.net.tls.openssl.Certificate.issuer" title="Permalink to this definition">¶</a></dt>
+<dd>An <a title="kaa.net.tls.openssl.X509Name" class="reference internal" href="#kaa.net.tls.openssl.X509Name"><tt class="xref docutils literal"><span class="pre">X509Name</span></tt></a> for the entity that signed and issued the
+certificate.</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.net.tls.openssl.Certificate.not_after">
+<tt class="descname">not_after</tt><a class="headerlink" href="#kaa.net.tls.openssl.Certificate.not_after" title="Permalink to this definition">¶</a></dt>
+<dd><p>A datetime object representing the expiry date of the certificate.</p>
+<p>The datetime object is timezone-aware in UTC.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.net.tls.openssl.Certificate.not_before">
+<tt class="descname">not_before</tt><a class="headerlink" href="#kaa.net.tls.openssl.Certificate.not_before" title="Permalink to this definition">¶</a></dt>
+<dd><p>A datetime object representing the date the certificate becomes valid.</p>
+<p>The datetime object is timezone-aware in UTC.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.net.tls.openssl.Certificate.serial_number">
+<tt class="descname">serial_number</tt><a class="headerlink" href="#kaa.net.tls.openssl.Certificate.serial_number" title="Permalink to this definition">¶</a></dt>
+<dd>The serial number assigned to the certificate by the issuer (which must
+be unique per CA).</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.net.tls.openssl.Certificate.subject">
+<tt class="descname">subject</tt><a class="headerlink" href="#kaa.net.tls.openssl.Certificate.subject" title="Permalink to this definition">¶</a></dt>
+<dd>An <a title="kaa.net.tls.openssl.X509Name" class="reference internal" href="#kaa.net.tls.openssl.X509Name"><tt class="xref docutils literal"><span class="pre">X509Name</span></tt></a> for the entity the certificate belongs to.</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.net.tls.openssl.Certificate.version">
+<tt class="descname">version</tt><a class="headerlink" href="#kaa.net.tls.openssl.Certificate.version" title="Permalink to this definition">¶</a></dt>
+<dd>The version of the certificate (usually 2).</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
+<p><dl class="class">
+<dt id="kaa.net.tls.openssl.X509Name">
+<em class="property">class </em><tt class="descclassname">kaa.net.tls.openssl.</tt><tt class="descname">X509Name</tt><big>(</big><em>x509name</em>, <em>cert</em><big>)</big><a class="headerlink" href="#kaa.net.tls.openssl.X509Name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents an X509 name element as a dictionary.</p>
+<dl class="docutils">
+<dt>Typical keys are:</dt>
+<dd><ul class="first last simple">
+<li><tt class="docutils literal"><span class="pre">C</span></tt>: country</li>
+<li><tt class="docutils literal"><span class="pre">ST</span></tt>: state</li>
+<li><tt class="docutils literal"><span class="pre">L</span></tt>: city</li>
+<li><tt class="docutils literal"><span class="pre">O</span></tt>: organization</li>
+<li><tt class="docutils literal"><span class="pre">OU</span></tt>: organizational unit</li>
+<li><tt class="docutils literal"><span class="pre">CN</span></tt>: common name (hostname)</li>
+</ul>
+</dd>
+</dl>
+<p><tt class="docutils literal"><span class="pre">str(x509name)</span></tt> will return a single line representing all elements of the
+X509Name in an OpenSSL-specific format.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">X509Name objects are presently read-only.</p>
+</div>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal"><span class="pre">__builtin__.dict</span></tt><br />&#9492;&#9472; <tt class="xref docutils literal current">kaa.net.tls.openssl.X509Name</tt><br /></p>
+
+</div>
+</p>
 </dd></dl>
 
 </p>
@@ -256,7 +676,7 @@ string: require CN match the string</dd>
     </div>
     <div class="footer">
       &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jan 18, 2012.
+      Last updated on Jan 23, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
     </div>
   </body>

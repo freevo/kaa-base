@@ -80,7 +80,7 @@ program via the rest of the Kaa API: <a class="reference external" href="timer.h
 <h2>Main Loop API<a class="headerlink" href="#main-loop-api" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt id="kaa.main.run">
-<tt class="descclassname">kaa.main.</tt><tt class="descname">run</tt><big>(</big><em>threaded=False</em><big>)</big><a class="headerlink" href="#kaa.main.run" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">kaa.main.</tt><tt class="descname">run</tt><big>(</big><em>threaded=False</em>, <em>daemon=True</em><big>)</big><a class="headerlink" href="#kaa.main.run" title="Permalink to this definition">¶</a></dt>
 <dd><p>Start the main loop.</p>
 <p>The main loop will continue to run until an exception is raised
 (and makes its way back up to the main loop without being caught).
@@ -90,7 +90,14 @@ to terminate, and execution will resume after run() was called.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>threaded</em> (bool) &#8211; if True, the Kaa mainloop will start in a new thread.</td>
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><em>threaded</em> (bool) &#8211; if True, the Kaa mainloop will start in a new thread.</li>
+<li><em>daemon</em> &#8211; applies when <tt class="docutils literal"><span class="pre">threaded=True</span></tt>, and indicates if the thread
+running the main loop is a daemon thread.  Daemon threads will
+not block the program from exiting when the main Python thread
+terminates.</li>
+</ul>
+</td>
 </tr>
 </tbody>
 </table>
@@ -533,7 +540,7 @@ support for that mainloop in the kaa distribution.</p>
     </div>
     <div class="footer">
       &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jan 18, 2012.
+      Last updated on Jan 23, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
     </div>
   </body>

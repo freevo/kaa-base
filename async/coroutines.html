@@ -95,7 +95,7 @@ other InProgress tasks, including other coroutines.</p>
 can run (such as other timers, I/O handlers, etc.) and resumed on the next
 main loop iteration.</li>
 <li>an <a title="kaa.InProgress" class="reference external" href="inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> object: control is returned to the main loop and
-the coroutine is resumed with the yielded InProgress is finished.  Inside
+the coroutine is resumed when the yielded InProgress is finished.  Inside
 the coroutine, the yield call &#8220;returns&#8221; the value that InProgress was finished
 with.</li>
 <li>any other value: the coroutine terminates, and the InProgress the coroutine
@@ -157,8 +157,8 @@ These can be therefore yielded from a coroutine in the same way:</p>
 <a title="kaa.IOChannel.read" class="reference external" href="../core/io.html#kaa.IOChannel.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a>) is transparent.  Both return InProgress objects. (As
 an aside, we didn&#8217;t really need to yield socket.write() because writes are
 queued and written to the socket when it becomes writable.  However, yielding a
-write means that when the coroutine resumes, the data has been
-written.)</p>
+write means that when the coroutine resumes, the data has been fully sent to the
+socket.)</p>
 <p>To more clearly see the benefit of implementing the above example as a coroutine,
 consider the following code, which is rewritten using the more traditional approach
 of connecting callbacks at the various stages of the task:</p>
@@ -321,7 +321,7 @@ inside the coroutine, or its interval may be adjusted via the
     </div>
     <div class="footer">
       &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jan 18, 2012.
+      Last updated on Jan 23, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
     </div>
   </body>

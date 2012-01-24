@@ -74,15 +74,15 @@ achieve the same result with less overhead.  But it helps to start simple.)</p>
 <p>By default, all arguments passed upon invocation of the Callable are passed to the
 wrapped callable first, followed by arguments passed upon construction.  So the
 above example translates to <tt class="docutils literal"><span class="pre">pow(5,</span> <span class="pre">2)</span></tt>.  It is possible to reverse this behaviour
-by setting the <a title="kaa.Callable.user_args_first" class="reference internal" href="#kaa.Callable.user_args_first"><tt class="xref docutils literal"><span class="pre">user_args_first</span></tt></a> property to True:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">square</span><span class="o">.</span><span class="n">user_args_first</span> <span class="o">=</span> <span class="bp">True</span>
+by setting the <a title="kaa.Callable.init_args_first" class="reference internal" href="#kaa.Callable.init_args_first"><tt class="xref docutils literal"><span class="pre">init_args_first</span></tt></a> property to True:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">square</span><span class="o">.</span><span class="n">init_args_first</span> <span class="o">=</span> <span class="bp">True</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">square</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>  <span class="c"># Of course, now this isn&#39;t a square</span>
 <span class="go">32</span>
 </pre></div>
 </div>
 <p>Keyword arguments work in a similar way.  Keyword arguments given to the
 constructor as well as those passed upon invocation are passed to the
-wrapped callable.  When <tt class="docutils literal"><span class="pre">user_args_first</span></tt> is <tt class="xref docutils literal"><span class="pre">False</span></tt> (default), keyword
+wrapped callable.  When <tt class="docutils literal"><span class="pre">init_args_first</span></tt> is <tt class="xref docutils literal"><span class="pre">False</span></tt> (default), keyword
 arguments passed on invocation take precedence (overwrite) same-named keyword
 arguments passed on the constructor.  When <tt class="xref docutils literal"><span class="pre">True</span></tt>, keyword arguments from the
 constructor take precedence over those passed upon invocation.</p>
@@ -95,7 +95,7 @@ constructor take precedence over those passed upon invocation.</p>
 <span class="go">Callable: (1, 2) {&#39;foo&#39;: 42, &#39;bar&#39;: &#39;kaa&#39;}</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cb</span><span class="p">(</span><span class="s">&#39;hello world&#39;</span><span class="p">,</span> <span class="n">foo</span><span class="o">=</span><span class="s">&#39;overrides&#39;</span><span class="p">,</span> <span class="n">another</span><span class="o">=</span><span class="s">&#39;kwarg&#39;</span><span class="p">)</span>
 <span class="go">Callable: (&#39;hello world&#39;, 1, 2) {&#39;foo&#39;: &#39;overrides&#39;, &#39;bar&#39;: &#39;kaa&#39;, &#39;another&#39;: &#39;kwarg&#39;}</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">cb</span><span class="o">.</span><span class="n">user_args_first</span> <span class="o">=</span> <span class="bp">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cb</span><span class="o">.</span><span class="n">init_args_first</span> <span class="o">=</span> <span class="bp">True</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cb</span><span class="p">(</span><span class="s">&#39;hello world&#39;</span><span class="p">,</span> <span class="n">foo</span><span class="o">=</span><span class="s">&quot;doesn&#39;t override&quot;</span><span class="p">,</span> <span class="n">another</span><span class="o">=</span><span class="s">&#39;kwarg&#39;</span><span class="p">)</span>
 <span class="go">Callable: (1, 2, &#39;hello world&#39;) {&#39;foo&#39;: 42, &#39;bar&#39;: &#39;kaa&#39;, &#39;another&#39;: &#39;kwarg&#39;}</span>
 </pre></div>
@@ -182,8 +182,8 @@ underlying callable is invoked with those arguments.</p>
 <table>
 <tr><th><a title="kaa.Callable.ignore_caller_args" class="reference internal" href="#kaa.Callable.ignore_caller_args"><tt class="xref docutils literal"><span class="pre">ignore_caller_args</span></tt></a></th><td>read/write</td><td class="desc">If True, any arguments passed when invoking the Callable object are not
 passed to the underlying callable.</td></tr>
-<tr><th><a title="kaa.Callable.user_args_first" class="reference internal" href="#kaa.Callable.user_args_first"><tt class="xref docutils literal"><span class="pre">user_args_first</span></tt></a></th><td>read/write</td><td class="desc">If True, any arguments passed upon invocation of the Callable object take
-precedence over those arguments passed to the constructor (&#8220;user args&#8221;).
+<tr><th><a title="kaa.Callable.init_args_first" class="reference internal" href="#kaa.Callable.init_args_first"><tt class="xref docutils literal"><span class="pre">init_args_first</span></tt></a></th><td>read/write</td><td class="desc">If True, any arguments passed upon invocation of the Callable object take
+precedence over those arguments passed at object initialization time.
 e.g. <tt class="docutils literal"><span class="pre">func(constructor_args...,</span> <span class="pre">invocation_args...)</span></tt></td></tr>
 </table>
 
@@ -193,7 +193,7 @@ e.g. <tt class="docutils literal"><span class="pre">func(constructor_args...,</s
 <tt class="descname">__call__</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.Callable.__call__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Invoke the callable.</p>
 <p>The arguments passed here take precedence over constructor arguments
-if the <a title="kaa.Callable.user_args_first" class="reference internal" href="#kaa.Callable.user_args_first"><tt class="xref docutils literal"><span class="pre">user_args_first</span></tt></a> property is False (default).
+if the <a title="kaa.Callable.init_args_first" class="reference internal" href="#kaa.Callable.init_args_first"><tt class="xref docutils literal"><span class="pre">init_args_first</span></tt></a> property is False (default).
 The wrapped callable&#8217;s return value is returned.</p>
 </dd></dl>
 
@@ -206,12 +206,12 @@ passed to the underlying callable.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="kaa.Callable.user_args_first">
-<tt class="descname">user_args_first</tt><a class="headerlink" href="#kaa.Callable.user_args_first" title="Permalink to this definition">¶</a></dt>
+<dt id="kaa.Callable.init_args_first">
+<tt class="descname">init_args_first</tt><a class="headerlink" href="#kaa.Callable.init_args_first" title="Permalink to this definition">¶</a></dt>
 <dd><p>If True, any arguments passed upon invocation of the Callable object take
-precedence over those arguments passed to the constructor (&#8220;user args&#8221;).
+precedence over those arguments passed at object initialization time.
 e.g. <tt class="docutils literal"><span class="pre">func(constructor_args...,</span> <span class="pre">invocation_args...)</span></tt></p>
-<p>Default value is False, so invocation arguments take precedence over user
+<p>Default value is False, so invocation arguments take precedence over init
 arguments. e.g. <tt class="docutils literal"><span class="pre">func(invocation_args...,</span> <span class="pre">constructor_args...)</span></tt></p>
 <p>&#8220;A takes precedence over B&#8221; means that non-keyword arguments are passed
 in order of A + B, and keyword arguments from A override same-named keyword
@@ -575,8 +575,8 @@ disconnected from the Signal.</p>
 <table>
 <tr><th><a title="kaa.Signals.add" class="reference internal" href="#kaa.Signals.add"><tt class="xref docutils literal"><span class="pre">add()</span></tt></a></th><td class="desc">Creates a new Signals object by merging all signals defined in
 self and the signals specified in the arguments.</td></tr>
-<tr><th><a title="kaa.Signals.all" class="reference internal" href="#kaa.Signals.all"><tt class="xref docutils literal"><span class="pre">all()</span></tt></a></th><td class="desc">Returns an InProgressAll object with all signals in self.</td></tr>
-<tr><th><a title="kaa.Signals.any" class="reference internal" href="#kaa.Signals.any"><tt class="xref docutils literal"><span class="pre">any()</span></tt></a></th><td class="desc">Returns an InProgressAny object with all signals in self.</td></tr>
+<tr><th><a title="kaa.Signals.all" class="reference internal" href="#kaa.Signals.all"><tt class="xref docutils literal"><span class="pre">all()</span></tt></a></th><td class="desc">Returns an <a title="kaa.InProgressAll" class="reference external" href="../async/inprogress.html#kaa.InProgressAll"><tt class="xref docutils literal"><span class="pre">InProgressAll</span></tt></a> object with all signals in self.</td></tr>
+<tr><th><a title="kaa.Signals.any" class="reference internal" href="#kaa.Signals.any"><tt class="xref docutils literal"><span class="pre">any()</span></tt></a></th><td class="desc">Returns an <a title="kaa.InProgressAny" class="reference external" href="../async/inprogress.html#kaa.InProgressAny"><tt class="xref docutils literal"><span class="pre">InProgressAny</span></tt></a> object with all signals in self.</td></tr>
 <tr><th><a title="kaa.Signals.keys" class="reference internal" href="#kaa.Signals.keys"><tt class="xref docutils literal"><span class="pre">keys()</span></tt></a></th><td class="desc">List of signal names (strings).</td></tr>
 <tr><th><a title="kaa.Signals.subset" class="reference internal" href="#kaa.Signals.subset"><tt class="xref docutils literal"><span class="pre">subset()</span></tt></a></th><td class="desc">Returns a new Signals object by taking a subset of the supplied
 signal names.</td></tr>
@@ -596,12 +596,12 @@ here.</p>
 <dl class="method">
 <dt id="kaa.Signals.all">
 <tt class="descname">all</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.Signals.all" title="Permalink to this definition">¶</a></dt>
-<dd>Returns an InProgressAll object with all signals in self.</dd></dl>
+<dd>Returns an <a title="kaa.InProgressAll" class="reference external" href="../async/inprogress.html#kaa.InProgressAll"><tt class="xref docutils literal"><span class="pre">InProgressAll</span></tt></a> object with all signals in self.</dd></dl>
 
 <dl class="method">
 <dt id="kaa.Signals.any">
 <tt class="descname">any</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.Signals.any" title="Permalink to this definition">¶</a></dt>
-<dd>Returns an InProgressAny object with all signals in self.</dd></dl>
+<dd>Returns an <a title="kaa.InProgressAny" class="reference external" href="../async/inprogress.html#kaa.InProgressAny"><tt class="xref docutils literal"><span class="pre">InProgressAny</span></tt></a> object with all signals in self.</dd></dl>
 
 <dl class="method">
 <dt id="kaa.Signals.keys">
@@ -702,7 +702,7 @@ names parameter.</p>
     </div>
     <div class="footer">
       &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jan 18, 2012.
+      Last updated on Jan 23, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
     </div>
   </body>

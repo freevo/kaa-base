@@ -224,23 +224,21 @@ class Socket(IOChannel):
     @property
     def connected(self):
         """
-        Boolean representing the connected state of the socket.
+        True when the socket is currently connected to a peer.
 
-        When a socket is in the process of connecting, it is considered alive
-        but not connected.
+        When a socket is in the process of :attr:`connecting`, it is not
+        considered connected, although it is considered :attr:`alive`.
+
+        .. note::
+           This property will not change until a :meth:`read` or :meth:`write`
+           is attempted on the socket.  Only then can it be determined if
+           the socket has disconnected.
+
+        .. warning::
+           When you want to read all data from the socket until it closes,
+           you should use the :attr:`readable` property instead.
         """
-        try:
-            if self._connecting:
-                # Another thread is in the process of connecting.  Try calling
-                # getpeername() which will raise if not actually connected yet.
-                self._channel.getpeername()
-                return True
-            else:
-                return self._channel != None and not self._closing
-        except (AttributeError, socket.error):
-            # AttributeError is raised if _channel is None, socket.error is
-            # raised if the socket is disconnected
-            return False
+        return self._channel != None and not self._closing and not self._listening
 
 
     @property

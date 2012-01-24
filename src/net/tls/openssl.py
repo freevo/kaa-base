@@ -28,7 +28,10 @@
 # -----------------------------------------------------------------------------
 from __future__ import absolute_import
 
-__all__ = ['TLSSocket']
+__all__ = [
+    'TLSSocket', 'TLSContext', 'Certificate', 'X509Name', 'TLSError',
+    'TLSVerificationError', 'TLSProtocolError'
+    ]
 
 # python imports
 import sys

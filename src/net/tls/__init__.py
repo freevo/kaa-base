@@ -23,4 +23,4 @@
 # -----------------------------------------------------------------------------
 
 from __future__ import absolute_import
-from .openssl import TLSSocket
+from .openssl import *

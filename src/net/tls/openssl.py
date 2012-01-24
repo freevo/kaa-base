@@ -1310,10 +1310,15 @@ class TLSSocket(kaa.Socket):
     """
     TLSSocket extends :class:`~kaa.Socket` by adding SSL/TLS support.
 
-    Until :meth:`starttls_client` or :meth:`starttls_server` is called,
-    a TLSSocket operates like a standard :class:`~kaa.Socket`.  After TLS
-    handshaking is initiated, data passed to/from the socket is transparently
-    encrypted.
+    Until :meth:`~TLSSocket.starttls_client` or
+    :meth:`~TLSSocket.starttls_server` is called, a TLSSocket operates like a
+    standard :class:`~kaa.Socket`.  After TLS handshaking is initiated, data
+    passed to/from the socket is transparently encrypted.
+
+    TLSSockets that :meth:`~kaa.Socket.listen` will emit 
+    :attr:`~kaa.Socket.signals.new-client` with a TLSSocket object as the
+    client.  This TLSSocket will share the same :class:`TLSContext` as the
+    listening TLSSocket.
     """
     __kaasignals__ = {
         'tls':

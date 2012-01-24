@@ -2,13 +2,6 @@
 # -----------------------------------------------------------------------------
 # tls/__init__.py - TLS support for the Kaa Framework
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# This module wraps TLS for client and server based on tlslite. See
-# http://trevp.net/tlslite/docs/public/tlslite.TLSConnection.TLSConnection-class.html
-# for more information about optional paramater.
-#
-# -----------------------------------------------------------------------------
 # Copyright 2008-2012 Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.
@@ -30,29 +23,4 @@
 # -----------------------------------------------------------------------------
 
 from __future__ import absolute_import
-from .common import *
-
-
-try:
-    from .m2 import M2TLSSocket
-except ImportError:
-    M2TLSSocket = None
-
-try:
-    from .tlslite import TLSAuthenticationError, TLSKey, TLSLiteConnection, TLSLiteSocket
-except ImportError:
-    TLSLiteSocket = None
-
-try:
-    from .gnutls import GNUTLSSocket
-except ImportError:
-    GNUTLSSocket = None
-
-# FIXME: for now, keep TLSLiteSocket as general TLSSocket object. This
-# must change since tlslite is not maintained anymore. IMHO the best
-# solution would be to use gnutls but the python-gnutls bindings have
-# no SRP support.
-TLSSocket = TLSLiteSocket or M2TLSSocket or GNUTLSSocket
-
-if TLSLiteSocket == M2TLSSocket == None:
-    raise ImportError('No suitable TLS backend found: tried tlslite, M2Crypto and gnutls')
+from .openssl import TLSSocket

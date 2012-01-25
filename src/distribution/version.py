@@ -51,6 +51,7 @@ class Version(object):
         """
         Numeric (if possible) or lexical comparison of each verison component.
         """
+        b = str(b)  # coerce floats if needed
         parts = max(self.version.count('.'), b.count('.'))
         a = self.version.split('.') + ['0'] * (parts - self.version.count('.'))
         b = b.split('.') + ['0'] * (parts - b.count('.'))

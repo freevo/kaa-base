@@ -80,6 +80,7 @@ SSL_ERROR_WANT_ACCEPT = 8
 SSL_ST_OK = 0x03
 
 SSL_CTRL_SET_TMP_DH = 3
+SSL_CTRL_GET_SESSION_REUSED = 8
 SSL_CTRL_OPTIONS = 32
 SSL_CTRL_MODE = 33
 SSL_CTRL_SET_SESS_CACHE_SIZE = 42
@@ -305,6 +306,15 @@ def get_libssl():
     # int SSL_get_error(const SSL *s,int ret_code);
     libssl.SSL_get_error.restype = c_int
     libssl.SSL_get_error.argtypes = [c_void_p, c_int]
+    # SSL_SESSION *SSL_get1_session(SSL *ssl);
+    libssl.SSL_get1_session.restype = c_void_p
+    libssl.SSL_get1_session.argtypes = [c_void_p]
+    # int SSL_set_session(SSL *to, SSL_SESSION *session);
+    libssl.SSL_set_session.restype = c_int
+    libssl.SSL_set_session.argtypes = [c_void_p, c_void_p]
+    # void SSL_SESSION_free(SSL_SESSION *ses);
+    libssl.SSL_SESSION_free.restype = None
+    libssl.SSL_SESSION_free.argtypes = [c_void_p]
     
     # BIO *BIO_new(BIO_METHOD *type);
     libssl.BIO_new.restype = c_void_p
@@ -865,8 +875,7 @@ class TLSContext(object):
 
         method = libssl.SSLv23_method()
         self._ctx = libssl.SSL_CTX_new(method)
-        # Initialize session cache.  TODO: provide a way for client connections
-        # to do session resumption
+        # Initialize server-side session cache.
         _check(libssl.SSL_CTX_ctrl(self._ctx, SSL_CTRL_SET_SESS_CACHE_SIZE, 10240, None))
         _check(libssl.SSL_CTX_ctrl(self._ctx, SSL_CTRL_SET_SESS_CACHE_MODE, SSL_SESS_CACHE_BOTH, None))
         # We disable SSLv2.  It's vulnerable, deprecated, and I've never seen
@@ -1162,6 +1171,37 @@ class TLSContext(object):
         return self._local_cert
 
 
+class TLSSession(object):
+    """
+    Represents the session state of a previously established TLS connection.
+    """
+    def __init__(self, session, peer_cert_chain, verified):
+        self._libssl = libssl
+        self._session = session
+        self._peer_cert_chain = peer_cert_chain
+        self._verified = verified
+
+
+    def __del__(self):
+        self._libssl.SSL_SESSION_free(self._session)
+
+
+    @property
+    def peer_cert_chain(self):
+        """
+        The saved :attr:`~TLSSocket.peer_cert_chain` from the established session.
+        """
+        return self._peer_cert_chain
+
+
+    @property
+    def verified(self):
+        """
+        Indicates whether the peer's certificate chain was properly verified.
+        """
+        return self._verified
+
+
 
 class _SSLMemoryBIO(object):
     """
@@ -1329,13 +1369,15 @@ class TLSSocket(kaa.Socket):
             '''
     }
 
-    def __init__(self, ctx=None):
+    def __init__(self, ctx=None, reuse_sessions=False):
         super(TLSSocket, self).__init__()
         self._ctx = None
         self._libssl = libssl
         # We need to keep a reference to the ctypes callback to keep it alive, but
         # use a WeakCallable to avoid the refcycle.
         self._user_verify_cb = None
+        self._reuse_sessions = reuse_sessions
+        self._session = None
         self._verify_callback_c = VERIFY_CALLBACK(kaa.WeakCallable(self._verify_callback))
         self._lock = threading.Lock()
         self._reset()
@@ -1369,6 +1411,9 @@ class TLSSocket(kaa.Socket):
         self._starttls_kwargs = None
         # Reference to the TLSContext currently in use for a connected socket.
         self._active_ctx = None
+        # TLSSession object for the current session (if set)
+        if not self._reuse_sessions:
+            self._session = None
         # InProgress finished when starttls completes or fails.
         self._tls_ip = kaa.InProgress()
         self._lock.release()
@@ -1559,6 +1604,15 @@ class TLSSocket(kaa.Socket):
         plaintext = self._flush_recv_bio()
         if self._handshaking and self._membio.is_handshake_done():
             self._handshaking = False
+            if self.session_reused and self._session:
+                # We were able to reuse our session, so pull in the cert chain
+                # and verified values stored in the session.
+                self._peer_cert_chain = self._session._peer_cert_chain
+                self._verified = self._session._verified
+            elif self._reuse_sessions:
+                # We're asked to re-use sessions, so store this session for
+                # future re-use.
+                self._session = self.session
             if not self._tls_ip.finished:
                 self._tls_ip.finish(True)
             self._update_read_monitor()
@@ -1714,6 +1768,7 @@ class TLSSocket(kaa.Socket):
         """
         return self._tls_started and not self._handshaking
 
+
     @property
     def cipher(self):
         """
@@ -1723,6 +1778,71 @@ class TLSSocket(kaa.Socket):
         """
         if self._membio:
             return libssl.SSL_get_cipher_list(self._membio.ssl, 0)
+
+
+    @property
+    def session(self):
+        """
+        A :class:`TLSSession` object representing the session state for the
+        current connection.
+
+        This value can be set with an existing :class:`TLSSession` and later calls
+        to :meth:`starttls_client` will attempt to reuse the session.
+        """
+        if self._session:
+            # Object previously set, use that one.
+            return self._session
+        elif self._membio:
+            s = libssl.SSL_get1_session(self._membio.ssl)
+            if s:
+                return TLSSession(s, self._peer_cert_chain, self._verified)
+
+
+    @session.setter
+    def session(self, s):
+        if not isinstance(s, TLSSession):
+            raise ValueError('session must be a TLSSession')
+        self._session = s
+        # XXX: should we raise if already connected?
+
+
+    @property
+    def session_reused(self):
+        """
+        True if the SSL session was able to be reused for this connection.
+        """
+        if not self._membio:
+            return False
+        return bool(libssl.SSL_ctrl(self._membio.ssl, SSL_CTRL_GET_SESSION_REUSED, 0, None))
+
+
+    @property
+    def reuse_sessions(self):
+        """
+        True if session state will be preserved between connections.
+
+        SSL session resumption performs an abbreviated handshake if the server
+        side recognizes the session id.  This is allows substantially more
+        efficient reconnections.
+
+        This value is False by default.  If True, for clients, the session
+        state will be perserved between subsequent :meth:`connect` and
+        :meth:`starttls_client` calls.
+        
+        .. note:: 
+           Currently, servers will always maintain a session cache and allow
+           clients to attempt session resumption.
+
+        It is possible to explicitly reuse sessions by saving and restoring
+        the :attr:`session` property between connections (which also works
+        across different TLSSocket instances, and across TLSContexts).
+        """
+        return self._reuse_sessions
+
+
+    @reuse_sessions.setter
+    def reuse_sessions(self, value):
+        self._reuse_sessions = value
 
 
     def verify(self, cert, depth, err, errmsg):
@@ -1776,7 +1896,7 @@ class TLSSocket(kaa.Socket):
             host = self._starttls_kwargs['cn'] or self._reqhost
             if not cert.match_subject_name(host):
                 raise TLSVerificationError(1000, 'Hostname "%s" does not match certificate' % host)
- 
+
 
     def _starttls(self, **kwargs):
         self._starttls_kwargs = kwargs
@@ -1818,6 +1938,8 @@ class TLSSocket(kaa.Socket):
         else:
             libssl.SSL_set_accept_state(self._membio.ssl)
         libssl.SSL_set_verify(self._membio.ssl, SSL_VERIFY_NONE, self._verify_callback_c)
+        if self._session:
+            libssl.SSL_set_session(self._membio.ssl, self._session._session)
 
         self._tls_started = True
         if kwargs['client']:

@@ -40,6 +40,8 @@ import thread
 import logging
 import os
 import binascii
+import hmac
+import hashlib
 from fnmatch import fnmatch # for wildcard certs
 from datetime import datetime
 from ctypes import *
@@ -85,6 +87,7 @@ SSL_CTRL_OPTIONS = 32
 SSL_CTRL_MODE = 33
 SSL_CTRL_SET_SESS_CACHE_SIZE = 42
 SSL_CTRL_SET_SESS_CACHE_MODE = 44
+SSL_CTRL_SET_TLSEXT_TICKET_KEYS = 59
 
 SSL_SESS_CACHE_OFF = 0x0000
 SSL_SESS_CACHE_CLIENT = 0x0001
@@ -867,6 +870,7 @@ class TLSContext(object):
         self._libssl = libssl
         # For _passwd_cb()
         self._key_passwd = None
+        self._ticket_key = None
         self._local_cert = None
         self._verify_location = None
         self._dh_size = None
@@ -1140,6 +1144,41 @@ class TLSContext(object):
         property can be checked to see which cipher was selected.
         """
         _check(libssl.SSL_CTX_set_cipher_list(self._ctx, ciphers))
+
+
+    @property
+    def ticket_key(self):
+        """
+        A 48 byte string used to encrypt session tickets.
+
+        Setting this value enables the session ticket extension, and clients
+        will receive session tickets during handshake.  Clients that present
+        tickets encrypted using this key can resume SSL sessions without the
+        need for server-side session cache.
+
+        Clients don't need to do anything special to use the tickets except
+        to set :attr:`~TLSSocket.reuse_sessions`.
+
+        .. note::
+           The actual key used to encrypt the tickets is derived from an
+           HMAC of the local certificate using the given key.  This means it
+           is necessary to first call :meth:`load_cert_chain`.
+        """
+        return self._ticket_key
+
+
+    @ticket_key.setter
+    def ticket_key(self, key):
+        # Follow Apache's approach to generate the actual ticket key: use
+        # an HMAC of the server certificate with the user-supplied secret.
+        if len(key) < 48:
+            raise ValueError('ticket key must be at least 48 bytes long')
+        elif not self._local_cert:
+            raise ValueError('must call load_cert_chain() first')
+        self._ticket_key = key
+        digest = self._local_cert.digest('sha384')
+        private = hmac.new(key, digest, hashlib.sha384).digest()
+        _check(libssl.SSL_CTX_ctrl(self._ctx, SSL_CTRL_SET_TLSEXT_TICKET_KEYS, 48, private))
 
 
     @property
@@ -1822,8 +1861,9 @@ class TLSSocket(kaa.Socket):
         True if session state will be preserved between connections.
 
         SSL session resumption performs an abbreviated handshake if the server
-        side recognizes the session id.  This is allows substantially more
-        efficient reconnections.
+        side recognizes the session id, or if the client presents a valid
+        session ticket the server can decrypt.  This is allows substantially
+        more efficient reconnections.
 
         This value is False by default.  If True, for clients, the session
         state will be perserved between subsequent :meth:`connect` and
@@ -1932,6 +1972,9 @@ class TLSSocket(kaa.Socket):
                 # certs it is impossible.
                 raise TLSError('CA bundle not found but verification requested')
 
+        if 'ticket_key' in kwargs and ctx.ticket_key != kwargs['ticket_key']:
+            ctx.ticket_key = kwargs['ticket_key']
+
         self._membio = _SSLMemoryBIO(ctx)
         if kwargs['client']:
             libssl.SSL_set_connect_state(self._membio.ssl)
@@ -1986,7 +2029,7 @@ class TLSSocket(kaa.Socket):
                               cn=cn, fingerprint=fingerprint)
 
 
-    def starttls_server(self, cert=None, key=None, password=None, verify=False, dh=None):
+    def starttls_server(self, cert=None, key=None, password=None, verify=False, dh=None, ticket_key=None):
         """
         Wait for a ClientHello before continuing communication.
 
@@ -1999,6 +2042,8 @@ class TLSSocket(kaa.Socket):
         :param dh: filename for Diffie-Hellman parameters in PEM format, needed
                    for EDH ciphers.  If None, temporary DH params will be used.
         :type dh: str
+        :param ticket_key: corresponds to :attr:`TLSContext.ticket_key`
+        :type ticket_key: str
         :returns: :class:`~kaa.InProgress` that finishes when TLS handshaking
                   succeeds or fails.  If the handshake fails, an exception is
                   thrown to the InProgress
@@ -2006,4 +2051,5 @@ class TLSSocket(kaa.Socket):
         Before this method (or :meth:`~TLSSocket.starttls_client`) is invoked,
         a TLSSocket behaves like a standard :class:`~kaa.Socket`.
         """
-        return self._starttls(client=False, cert=cert, key=key, password=password, verify=verify, dh=dh)
+        return self._starttls(client=False, cert=cert, key=key, password=password, 
+                              verify=verify, dh=dh, ticket_key=ticket_key)

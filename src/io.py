@@ -265,7 +265,7 @@ class IOChannel(Object):
         clsname = self.__class__.__name__
         if not hasattr(self, '_channel') or not self._channel:
             return '<kaa.%s - disconnected>' % clsname
-        return '<kaa.%s fd=%d>' % (clsname, self.fileno)
+        return '<kaa.%s fd=%s>' % (clsname, self.fileno)
 
 
     @property

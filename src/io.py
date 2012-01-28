@@ -889,6 +889,10 @@ class IOChannel(Object):
         :type immediate: bool
         """
         log.debug('IOChannel closed: channel=%s, immediate=%s, fd=%s', self, immediate, self.fileno)
+        if not self._rmon and not self._wmon:
+            # already closed
+            return
+
         if not immediate and self._write_queue:
             # Immediate close not requested and we have some data left
             # to be written, so defer close until after write queue
@@ -896,9 +900,6 @@ class IOChannel(Object):
             self._queue_close = True
             return
 
-        if not self._rmon and not self._wmon:
-            # already closed
-            return
 
         if self._rmon:
             self._rmon.unregister()

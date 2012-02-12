@@ -1,3 +1,5 @@
+.. module:: kaa.io
+   :synopsis: Base asynchronous I/O support
 .. _io:
 
 I/O Channels

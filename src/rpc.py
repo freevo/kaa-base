@@ -125,10 +125,6 @@ RPC_PACKET_HEADER_SIZE = struct.calcsize("I4sI")
 # Protocol compatible between Python 2 and 3.  (Well, quasi-compatible, there
 # are some issues due to the str/unicode changes in 3.)
 PICKLE_PROTOCOL = 2
-try:
-    memoryview
-except NameError:
-    memoryview = None
 
 
 class RemoteException(AsyncExceptionBase):
@@ -411,8 +407,6 @@ class Channel(Object):
         # At this point we know we have enough data in the buffer for the
         # packet, so we merge the array into a single buffer.
         strbuf = bl('').join(self._read_buffer)
-        if memoryview:
-            strbuf = memoryview(strbuf)
         self._read_buffer = []
         while True:
             if len(strbuf) <= RPC_PACKET_HEADER_SIZE:
@@ -425,17 +419,13 @@ class Channel(Object):
                 # We've also received portion of another packet that we
                 # haven't fully received yet.  Put back to the buffer what
                 # we have so far, and we can exit the loop.
-                self._read_buffer.append(py3_b(strbuf))
+                self._read_buffer.append(strbuf)
                 break
 
             # Grab the payload for this packet, and shuffle strbuf to the
             # next packet.
             payload = strbuf[RPC_PACKET_HEADER_SIZE:RPC_PACKET_HEADER_SIZE + payload_len]
-            if memoryview:
-                strbuf = strbuf[RPC_PACKET_HEADER_SIZE + payload_len:]
-            else:
-                strbuf = buffer(strbuf, RPC_PACKET_HEADER_SIZE + payload_len)
-            #log.debug("Got packet %s", packet_type)
+            strbuf = strbuf[RPC_PACKET_HEADER_SIZE + payload_len:]
             if not self._authenticated:
                 self._handle_packet_before_auth(seq, packet_type, payload)
             else:

@@ -367,13 +367,17 @@ class Object(object):
         class.  Newer (most descended) __kaasignals__ will replace older ones if
         there are conflicts.
         """
-        signals = {}
-        for c in reversed(inspect.getmro(cls)):
-            if hasattr(c, '__kaasignals__'):
-                signals.update(c.__kaasignals__)
+        cached_attr = '__kaasignals_%s_cached__' % cls.__name__
+        signals = getattr(cls, cached_attr, None)
+        if signals is None:
+            signals = {}
+            for c in reversed(inspect.getmro(cls)):
+                if hasattr(c, '__kaasignals__'):
+                    signals.update(c.__kaasignals__)
 
-        # Remove all signals whose value is None.
-        [ signals.pop(k) for k, v in signals.items() if v is None ]
+            # Remove all signals whose value is None.
+            [ signals.pop(k) for k, v in signals.items() if v is None ]
+            setattr(cls, cached_attr, signals)
         return signals
 
         
@@ -387,8 +391,11 @@ class Object(object):
             # Construct the kaa.Signals object and attach the docstrings to
             # each signal in the Signal object's __doc__ attribute.
             self.signals = Signals(*signals.keys())
-            for name in signals:
-                self.signals[name].__doc__ = signals[name]
+            if 'sphinx.builders' in sys.modules:
+                # Tiny optimization: only add docstring if we're doing doc
+                # generation.
+                for name in signals:
+                    self.signals[name].__doc__ = signals[name]
 
 
 class Signal(object):
@@ -583,7 +590,7 @@ class Signal(object):
         assert(callable(callback))
         new_callbacks = []
         for cb in self._callbacks[:]:
-            if cb == callback and (len(args) == len(kwargs) == 0 or (args, kwargs) == cb._get_user_args()):
+            if cb == callback and (len(args) == len(kwargs) == 0 or (args, kwargs) == cb._get_init_args()):
                 # This matches what we want to disconnect.
                 continue
             new_callbacks.append(cb)
@@ -803,7 +810,7 @@ class Signals(dict):
 
     def any(self):
         """
-        Returns an InProgressAny object with all signals in self.
+        Returns an :class:`~kaa.InProgressAny` object with all signals in self.
         """
         from .async import InProgressAny
         return InProgressAny(*self.values())
@@ -811,7 +818,7 @@ class Signals(dict):
 
     def all(self):
         """
-        Returns an InProgressAll object with all signals in self.
+        Returns an :class:`~kaa.InProgressAll` object with all signals in self.
         """
         from .async import InProgressAll
         return InProgressAll(*self.values())
@@ -826,7 +833,7 @@ class Signals(dict):
         if attr.startswith('_') or not hasattr(Signal, attr):
             return getattr(super(Signals, self), attr)
         callback = Callable(self._callattr, attr)
-        callback.user_args_first = True
+        callback.init_args_first = True
         return callback
 
 

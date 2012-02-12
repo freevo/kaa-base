@@ -1,3 +1,6 @@
+.. module:: kaa.strutils
+   :synopsis: String utility functions
+
 Utility Functions
 =================
 
@@ -9,6 +12,8 @@ and so they are exposed directly in the kaa namespace.
 
 .. autofunction:: kaa.py3_str
 .. autofunction:: kaa.py3_b
+.. autofunction:: kaa.strutils.nativestr
+.. autofunction:: kaa.strutils.fsname
 .. autofunction:: kaa.strutils.utf8
 .. autofunction:: kaa.strutils.get_encoding
 .. autofunction:: kaa.strutils.set_encoding
@@ -16,6 +21,9 @@ and so they are exposed directly in the kaa namespace.
 .. attribute:: kaa.strutils.BYTES_TYPE
 .. attribute:: kaa.strutils.UNICODE_TYPE
 
+
+.. module:: kaa.utils
+   :synopsis: Miscellaneous useful helper functions
 
 Date and Time
 -------------

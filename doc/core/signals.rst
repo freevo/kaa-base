@@ -6,6 +6,9 @@ Signals and Callables
 Signal and Callable objects are among the core building blocks of Kaa and are
 used extensively throughout the framework.
 
+.. module:: kaa.callable
+   :synopsis: Encapsulate functions or methods and arguments into a callable
+
 
 Callables
 ---------
@@ -30,15 +33,15 @@ achieve the same result with less overhead.  But it helps to start simple.)
 By default, all arguments passed upon invocation of the Callable are passed to the
 wrapped callable first, followed by arguments passed upon construction.  So the
 above example translates to ``pow(5, 2)``.  It is possible to reverse this behaviour
-by setting the :attr:`~kaa.Callable.user_args_first` property to True::
+by setting the :attr:`~kaa.Callable.init_args_first` property to True::
 
-    >>> square.user_args_first = True
+    >>> square.init_args_first = True
     >>> square(5)  # Of course, now this isn't a square
     32
 
 Keyword arguments work in a similar way.  Keyword arguments given to the
 constructor as well as those passed upon invocation are passed to the
-wrapped callable.  When ``user_args_first`` is ``False`` (default), keyword
+wrapped callable.  When ``init_args_first`` is ``False`` (default), keyword
 arguments passed on invocation take precedence (overwrite) same-named keyword
 arguments passed on the constructor.  When ``True``, keyword arguments from the
 constructor take precedence over those passed upon invocation.
@@ -53,7 +56,7 @@ Here's an example that more clearly demonstrates the rules of precedence::
     Callable: (1, 2) {'foo': 42, 'bar': 'kaa'}
     >>> cb('hello world', foo='overrides', another='kwarg')
     Callable: ('hello world', 1, 2) {'foo': 'overrides', 'bar': 'kaa', 'another': 'kwarg'}
-    >>> cb.user_args_first = True
+    >>> cb.init_args_first = True
     >>> cb('hello world', foo="doesn't override", another='kwarg')
     Callable: (1, 2, 'hello world') {'foo': 42, 'bar': 'kaa', 'another': 'kwarg'}
 
@@ -126,6 +129,7 @@ Callable API
       :add: __call__
 
    .. autoproperties::
+      :remove: user_args_first
 
 
 .. kaaclass:: kaa.WeakCallable
@@ -213,7 +217,7 @@ via :func:`kaa.inprogress`, and can therefore be yielded from a :ref:`coroutine 
 
 Here, the ``stop_process()`` coroutine is finished when the ``terminated`` signal
 is emitted.  For more information on coroutines, see the section on
-:ref:`asynchronous programming in Kaa <async>`.
+:ref:`asynchronous programming in Kaa <coroutines>`.
 
 A collection of many Signal objects is represented by a :class:`~kaa.Signals`
 object, which behaves like a dictionary.  There are several additional methods

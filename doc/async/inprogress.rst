@@ -1,4 +1,7 @@
+.. module:: kaa.async
+   :synopsis: InProgress objects: the foundation to all asynchronous tasks in Kaa
 .. _inprogress:
+
 
 InProgress Objects
 ==================
@@ -77,6 +80,7 @@ in a coroutine), the exception will be logged to stderr with the heading
 
 
 .. kaaclass:: kaa.InProgress
+   :synopsis:
 
    .. automethods::
       :order: abort, connect, connect_both, execute, finish, throw, timeout, wait, waitfor

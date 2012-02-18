@@ -213,6 +213,9 @@ class PyObjectRow(object):
 
 
     def __del__(self):
+        if self._idxmap is None:
+            # From Database.add(), pickle only, no pysqlite row.
+            return
         query_key = id(self._description)
         query_info = PyObjectRow.queries[query_key]
         query_info[0] -= 1

@@ -95,9 +95,9 @@ class weakref(object):
 
     def __nonzero__(self):
         if self._ref():
-            return 1
+            return True
         else:
-            return 0
+            return False
 
     def __cmp__(self, other):
         if type(other) == weakref:

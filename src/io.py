@@ -127,8 +127,8 @@ class IOChannel(Object):
     Socket and Process.  Implements logic common to communication over
     such channels such as async read/writes and read/write buffering.
 
-    It may also be used directly with file descriptors or file-like objects.
-    e.g. ``IOChannel(file('somefile'))``
+    It may also be used directly with file descriptors or (probably less
+    usefully) file-like objects.  e.g. ``IOChannel(file('somefile'))``
 
     :param channel: file descriptor to wrap into an IOChannel
     :type channel: integer file descriptor, file-like object, or other IOChannel
@@ -238,6 +238,7 @@ class IOChannel(Object):
         self._queue_size = 1024*1024
         self._chunk_size = chunk_size
         self._queue_close = False
+        self._closing = False
     
         # Internal signals for read() and readline()  (these are different from
         # the same-named public signals as they get emitted even when data is
@@ -264,7 +265,7 @@ class IOChannel(Object):
         clsname = self.__class__.__name__
         if not hasattr(self, '_channel') or not self._channel:
             return '<kaa.%s - disconnected>' % clsname
-        return '<kaa.%s fd=%d>' % (clsname, self.fileno)
+        return '<kaa.%s fd=%s>' % (clsname, self.fileno)
 
 
     @property
@@ -273,27 +274,31 @@ class IOChannel(Object):
         True if the channel exists and is open.
         """
         # If the channel is closed, self._channel will be None.
-        return self._channel != None
+        return self._channel != None and not self._closing
 
 
     @property
     def readable(self):
         """
-        True if the channel is open, or if the channel is closed but a read
-        call would still succeed (due to buffered data).
+        True if :meth:`read` may be called.
 
-        Note that a value of True does not mean there **is** data available, but
-        rather that there could be and that a read() call is possible (however
-        that read() call may return None, in which case the readable property
-        will subsequently be False).
+        The channel is *readable* if it's open and its mode has IO_READ, or if
+        the channel is closed but a :meth:`read` call would still succeed (due
+        to buffered data).
+
+        .. note::
+           A value of True does not mean there **is** data available, but
+           rather that there could be and that a :meth:`read` call is possible
+           (however that :meth:`read` call may return None, in which case the
+           readable property will subsequently be False).
         """
-        return self._channel != None or self._read_queue.tell() > 0
+        return self._mode & IO_READ and (self._channel != None or self._read_queue.tell() > 0)
 
 
     @property
     def writable(self):
         """
-        True if write() may be called.
+        True if :meth:`write` may be called.
         
         (However, if you pass too much data to write() such that the write
         queue limit is exceeded, the write will fail.)
@@ -301,7 +306,7 @@ class IOChannel(Object):
         # By default, this is always True regardless if the channel is open, so
         # long as there is space available in the write queue, but subclasses
         # may want to override.
-        return self.write_queue_used < self._queue_size
+        return self._mode & IO_WRITE and self.write_queue_used < self._queue_size
 
 
     @property
@@ -374,7 +379,7 @@ class IOChannel(Object):
     @property
     def delimiter(self):
         """
-        String used to split data for use with :meth:`~kaa.IOChannel.readline`.
+        String used to split data for use with :meth:`readline`.
 
         Delimiter may also be a list of strings, in which case any one of the
         elements in the list will be used as a delimiter.  For example, if you
@@ -459,7 +464,9 @@ class IOChannel(Object):
         :type channel: integer file descriptor, file-like object, or 
                        other IOChannel
         :param mode: indicates whether the channel is readable, writable,
-                     or both.
+                     or both.  Only applies to file descriptor channels or
+                     IOChannel objects; for file-like objects, the underlying
+                     channel's mode will be assumed.
         :type mode: bitmask of kaa.IO_READ and/or kaa.IO_WRITE
         """
         if hasattr(self, '_channel') and self._channel:
@@ -473,9 +480,18 @@ class IOChannel(Object):
             channel = channel._channel
 
         self._channel = channel
-        self._mode = mode
+        self._mode = 0
         if not channel:
             return
+        elif hasattr(channel, 'mode'):
+            if 'r' in channel.mode:
+                self._mode |= IO_READ
+            if 'w' in channel.mode:
+                self._mode |= IO_WRITE
+            if 'a' in channel.mode or '+' in channel.mode:
+                self._mode = IO_READ | IO_WRITE
+        else:
+            self._mode = mode
         self._set_non_blocking()
 
         if self._rmon:
@@ -542,6 +558,11 @@ class IOChannel(Object):
         return s[:idx]
 
 
+    def _abort_read_inprogress(self, exc, signal, ip):
+        signal.disconnect(ip)
+        self._update_read_monitor()
+
+
     def _async_read(self, signal):
         """
         Common implementation for read() and readline().
@@ -554,13 +575,7 @@ class IOChannel(Object):
             return InProgress().finish(None)
 
         ip = inprogress(signal)
-
-        def abort(exc):
-            # XXX: closure around ip and signal holds strong refs; is this bad?
-            signal.disconnect(ip)
-            self._update_read_monitor()
-
-        ip.signals['abort'].connect(abort)
+        ip.signals['abort'].connect(self._abort_read_inprogress, signal, ip)
         return ip
 
 
@@ -580,7 +595,7 @@ class IOChannel(Object):
                 # Or: channel.read().wait()
 
         So the return value of read() should be checked.  Alternatively,
-        channel.readable could be tested::
+        the :attr:`readable` property could be tested::
 
             while channel.readable:
                  data = yield process.read()
@@ -608,7 +623,7 @@ class IOChannel(Object):
                   was already closed when readline() was called).
 
         Data from the channel is read and queued in until the delimiter (\\\\n by
-        default, but may be changed by the :attr:`~kaa.IOChannel.delimiter`
+        default, but may be changed by the :attr:`delimiter`
         property) is found.  If the read queue size exceeds the queue limit,
         then the InProgress returned here will be finished prematurely with
         whatever is in the read queue, and the read queue will be purged.
@@ -651,7 +666,13 @@ class IOChannel(Object):
         try:
             data = self._read(self._chunk_size)
             log.debug2('IOChannel read data: channel=%s fd=%s len=%d', self._channel, self.fileno, len(data))
-        except (IOError, socket.error), (errno, msg):
+        except (IOError, socket.error), e:
+            if len(e.args) != 2:
+                # IOError and socket.error typically have (errno, msg) args but
+                # occasionally don't (e.g. 'File not open for reading').  Reraise
+                # before attempting to unpack args.
+                raise
+            errno, msg = e.args
             if errno == 11:
                 # Resource temporarily unavailable -- we are trying to read
                 # data on a socket when none is available.
@@ -730,6 +751,14 @@ class IOChannel(Object):
         return os.write(self.fileno, data)
 
 
+    def _abort_write_inprogress(self, exc, data, ip):
+        try:
+            self._write_queue.remove((data, ip))
+        except ValueError:
+            # Too late to abort.
+            return False
+
+
     def write(self, data):
         """
         Writes the given data to the channel.
@@ -765,23 +794,17 @@ class IOChannel(Object):
         if not isinstance(data, BYTES_TYPE):
             raise ValueError('data must be bytes, not unicode')
 
-        inprogress = InProgress()
+        ip = InProgress()
         if data:
-            def abort(exc):
-                try:
-                    self._write_queue.remove((data, inprogress))
-                except ValueError:
-                    # Too late to abort.
-                    return False
-            inprogress.signals['abort'].connect(abort)
-            self._write_queue.append((data, inprogress))
+            ip.signals['abort'].connect(self._abort_write_inprogress, data, ip)
+            self._write_queue.append((data, ip))
             if self._channel and self._wmon and not self._wmon.active:
                 self._wmon.register(self.fileno, IO_WRITE)
         else:
             # We're writing the null string, nothing really to do.  We're
             # implicitly done.
-            inprogress.finish(0)
-        return inprogress
+            ip.finish(0)
+        return ip
 
 
     def _handle_write(self):
@@ -866,6 +889,10 @@ class IOChannel(Object):
         :type immediate: bool
         """
         log.debug('IOChannel closed: channel=%s, immediate=%s, fd=%s', self, immediate, self.fileno)
+        if not self._rmon and not self._wmon:
+            # already closed
+            return
+
         if not immediate and self._write_queue:
             # Immediate close not requested and we have some data left
             # to be written, so defer close until after write queue
@@ -873,9 +900,6 @@ class IOChannel(Object):
             self._queue_close = True
             return
 
-        if not self._rmon and not self._wmon:
-            # already closed
-            return
 
         if self._rmon:
             self._rmon.unregister()
@@ -884,6 +908,13 @@ class IOChannel(Object):
         self._rmon = None
         self._wmon = None
         self._queue_close = False
+
+        # Set _closing flag in case any callbacks connected to any pending
+        # read/write InProgress objects test the 'alive' property, which we
+        # want to be False.  Yet we don't want to actually _close() before
+        # finishing the pending InProgress in case _close() raises, which
+        # we want to let propagate.
+        self._closing = True
 
         # Finish any InProgress waiting on read() or readline() with whatever
         # is left in the read queue.
@@ -909,6 +940,8 @@ class IOChannel(Object):
                 raise
         finally:
             self._channel = None
+            self._closing = False
+            self._mode = 0
 
             self.signals['closed'].emit(expected)
             # We aren't attaching to 'shutdown' in wrap() after all.  Comment
@@ -934,7 +967,7 @@ class IOChannel(Object):
             from kaa.net.tls import TLSSocket
             sock = TLSSocket().steal(sock)
 
-        This method is similar to :meth:`~kaa.IOChannel.wrap`, but additionally
+        This method is similar to :meth:`wrap`, but additionally
         all state is moved from the supplied IOChannel, including read/write
         queues, and all callbacks connected to signals are added to ``self``,
         and removed from ``channel``.

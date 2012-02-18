@@ -110,7 +110,7 @@ def generator(generic=False):
     """
     This decorator is used to construct asynchronous generators, to be used
     in combination with functions that return InProgress objects (such as
-    those functions decorated with @:func:`kaa.coroutine` or @:func:`kaa.threaded`).
+    those functions decorated with :func:`kaa.coroutine` or :func:`kaa.threaded`).
 
     :param generic: if True, a :class:`~kaa.Generator` object is passed as the 
                     first argument to the decorated function.  This can be used

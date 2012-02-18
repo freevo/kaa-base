@@ -1,3 +1,6 @@
+.. module:: kaa.main
+   :synopsis: The main loop facility
+
 The Main Loop
 =============
 
@@ -42,8 +45,6 @@ Main Loop API
 
 .. autofunction:: kaa.main.loop
 
-.. autofunction:: kaa.main.select_notifier
-
 .. autofunction:: kaa.main.is_running
 
 .. autofunction:: kaa.main.is_shutting_down
@@ -51,6 +52,9 @@ Main Loop API
 .. autofunction:: kaa.main.is_stopped
 
 .. autofunction:: kaa.main.step
+
+.. autofunction:: kaa.main.init
+
 
 
 Main Loop Signals
@@ -67,7 +71,7 @@ For example::
     kaa.signals['shutdown'].connect(shutdown_handler)
 
 
-Importing other Kaa modules (such as those in ``kaa.input``) may add specialized
+Importing other Kaa modules (such as those in :mod:`kaa.input`) may add specialized
 signals, however by default ``kaa.signals`` contains:
 
 .. attribute:: shutdown

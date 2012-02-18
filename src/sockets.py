@@ -173,7 +173,9 @@ class Socket(IOChannel):
     @property
     def local(self):
         """
-        Returns either the tuple ``(host, port, flowinfo, scopeid, scope)``
+        Information about the local side of the socket.
+
+        This is either the tuple ``(host, port, flowinfo, scopeid, scope)``
         representing the local end of a TCP socket, or the string containing
         the name of a Unix socket.
         
@@ -188,7 +190,9 @@ class Socket(IOChannel):
     @property
     def peer(self):
         """
-        Returns the tuple ``(host, port, flowinfo, scopeid, scope, reqhost)``
+        Information about the remote side of the socket.
+
+        This is a tuple ``(host, port, flowinfo, scopeid, scope, reqhost)``
         representing the remote end of the socket.
         
         *scope* is the interface name represented by *scopeid*, and is None if
@@ -216,7 +220,7 @@ class Socket(IOChannel):
         but is not yet connected.
         
         Once the socket is connected, the connecting property will be False,
-        but the connected property will be True.
+        but the :attr:`connected` property will be True.
         """
         return self._connecting
 
@@ -224,38 +228,61 @@ class Socket(IOChannel):
     @property
     def connected(self):
         """
-        Boolean representing the connected state of the socket.
+        True when the socket is currently connected to a peer.
+
+        When a socket is in the process of :attr:`connecting`, it is not
+        considered connected, although it is considered :attr:`alive`.
+
+        .. note::
+           This property will not change until a :meth:`read` or :meth:`write`
+           is attempted on the socket.  Only then can it be determined if
+           the socket has disconnected.
+
+        .. warning::
+           When you want to read all data from the socket until it closes,
+           you should use the :attr:`readable` property instead.
         """
-        try:
-            # Will raise exception if socket is not connected.
-            self._channel.getpeername()
-            return True
-        except (AttributeError, socket.error):
-            # AttributeError is raised if _channel is None, socket.error is
-            # raised if the socket is disconnected
-            return False
+        return self._channel != None and not self._closing and not self._listening
 
 
     @property
     def alive(self):
         """
-        True if the socket is alive, and False otherwise.
-
-        A socket is considered alive when it is connected or in the process of
-        connecting.
+        True if the socket is :attr:`connected`, :attr:`listening`, or
+        :attr:`connecting`.
         """
-        return self.connected or self.connecting
+        # Unroll these properties: connected or connecting
+        return (self._channel != None and not self._closing) or self._connecting
 
 
     @IOChannel.readable.getter
     def readable(self):
         """
-        True if the socket is readable, and False otherwise.
+        True if :meth:`read` may be called.
         
-        A socket is considered readable when it is listening or alive.
+        A socket is considered readable when it is :attr:`alive`, or if it's
+        closed but there is buffered data to be read.
+
+        Because of the presence of a read buffer, you should test this property
+        to determine if you should :meth:`read`, not the :attr:`connected`
+        property::
+
+            while socket.readable:
+                data = yield socket.read()
+                [...]
+
+        .. note::
+           A value of True does not mean there **is** data available, but
+           rather that there could be and that a :meth:`read` call is possible
+           (however that :meth:`read` call may return None, in which case the
+           readable property will subsequently be False because the socket is
+           disconnected).
+
         """
         # Note: this property is used in superclass's _update_read_monitor()
-        return self._listening or self.alive
+        # Unroll these properties: alive or super(readable)
+        return (self._channel != None and not self._closing) or self._connecting or \
+               self._read_queue.tell() > 0
 
 
     @property
@@ -534,10 +561,9 @@ class Socket(IOChannel):
             else:
                 self._reqhost = addr[0]
                 self._resolve_hostname_with_action(addr, sock.connect, ipv6)
+            self.wrap(sock, IO_READ | IO_WRITE)
         finally:
             self._connecting = False
-
-        self.wrap(sock, IO_READ | IO_WRITE)
 
 
     def connect(self, addr, ipv6=True):
@@ -586,6 +612,10 @@ class Socket(IOChannel):
         is finished with no arguments.  If the connection cannot be established,
         an exception is thrown to the InProgress.
         """
+        if self._connecting:
+            raise SocketError('connection already in progress')
+        elif self.connected:
+            raise SocketError('socket already connected')
         self._connecting = True
         return self._connect(addr, ipv6)
 

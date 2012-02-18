@@ -1,3 +1,6 @@
+.. module:: kaa.inotify
+   :synopsis: Monitor filesystem changes on Linux
+
 INotify
 =======
 

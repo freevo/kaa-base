@@ -61,6 +61,7 @@ log = logging.getLogger('base')
 _running = None
 # Set if currently in shutdown() (to prevent reentrancy)
 _shutting_down = False
+_shutdown_event = threading.Event()
 # Lock preventing multiple threads from executing loop().
 _loop_lock = threading.Lock()
 # True if init() has been called
@@ -91,12 +92,13 @@ def init(module=None, reset=False, **options):
     Initialize the Kaa main loop facilities.
 
     :param module: the main loop implementation to use.
-                   ``generic``: Native python-based main loop (default),
-                   ``gtk``: use pygtk's main loop (automatically selected if
-                            the gtk module is imported);
-                   ``twisted``: Twisted main loop;
-                   ``thread``: Native python-based main loop in a separate thread
-                               with custom hooks (needs ``handler`` kwarg)
+
+                   * ``generic``: Native python-based main loop (default),
+                   * ``gtk``: use pygtk's main loop (automatically selected if
+                     the gtk module is imported);
+                   * ``twisted``: Twisted main loop;
+                   * ``thread``: Native python-based main loop in a separate thread
+                     with custom hooks (needs ``handler`` kwarg)
     :type module: str
     :param reset: discards any jobs queued by other threads; this is useful
                   following a fork.
@@ -104,10 +106,11 @@ def init(module=None, reset=False, **options):
 
     This function must be called from the Python main thread.
 
-    Normally it's not necessary to expliticly invoke this function; calling
-    loop() or run() will do it for you.  However if you want to use a different
-    main loop module than the default, or you begin using the Kaa API in a thread
-    before the main loop is started, you will need to invoke init() first.
+    .. note::
+       Normally it's not necessary to expliticly invoke this function; calling
+       loop() or run() will do it for you.  However if you want to use a different
+       main loop module than the default, or you begin using the Kaa API in a thread
+       before the main loop is started, you will need to invoke init() first.
     """
     global _initialized
     if threading.enumerate()[0] != threading.currentThread():
@@ -219,7 +222,7 @@ def loop(condition, timeout=None):
             _set_running(False)
 
 
-def run(threaded=False):
+def run(threaded=False, daemon=True):
     """
     Start the main loop.
 
@@ -230,6 +233,10 @@ def run(threaded=False):
 
     :param threaded: if True, the Kaa mainloop will start in a new thread.
     :type threaded: bool
+    :param daemon: applies when ``threaded=True``, and indicates if the thread
+                   running the main loop is a daemon thread.  Daemon threads will
+                   not block the program from exiting when the main Python thread
+                   terminates.
 
     Specifying ``threaded=True`` is useful if the main Python thread has been
     co-opted by another mainloop framework and you want to use Kaa in parallel.
@@ -264,18 +271,13 @@ def run(threaded=False):
         event = threading.Event()
         timer.OneShotTimer(event.set).start(0)
         t = threading.Thread(target=run, name='kaa mainloop')
-        if 'readline' in sys.modules:
-            # If the readline module is loaded, this almost certainly means
-            # that we're running interactively.  If so, and the main loop is
-            # being run in a separate thread, make that thread a daemon thread
-            # so when the user exits the interactive interpreter it doesn't
-            # block.
-            t.setDaemon(True)
+        t.setDaemon(daemon)
         t.start()
         return event.wait()
 
     global _shutting_down
     _shutting_down = False
+    _shutdown_event.clear()
 
     try:
         loop(True)
@@ -292,16 +294,22 @@ def run(threaded=False):
         except:
             pass
     finally:
-        # stop might be None if mainloop was run in a thread at interactive prompt
-        # (and therefore is a daemon thread).  In that case, we get here when
-        # the interpreter is shutting down, and we've shutdown enough that stop
-        # no longer exists.  It doesn't matter, because the atexit handler will
-        # have called stop already.
-        if stop:
-            stop()
+        # _stop might be None if mainloop was run in a daemon thread.  In that
+        # case, we get here when the interpreter is shutting down, and we've
+        # shutdown enough that stop no longer exists.  It doesn't matter,
+        # because the atexit handler will have called stop already.
+        if _stop:
+            _stop()
 
 
-@thread.threaded(thread.MAINTHREAD)
+
+# Put the public stop() in a timer to ensure we unravel the stack before
+# shutting down the notifier.
+#
+# notifier.shutdown() raises SystemExit which could get caught and handled in
+# undesirable ways by something else and the notifier loop may never even see
+# it.
+@timer.timed(0, policy=timer.POLICY_ONCE)
 def stop():
     """
     Stop the main loop and terminate all child processes and thread
@@ -309,6 +317,28 @@ def stop():
 
     Any notifier callback can also cause the main loop to terminate
     by raising SystemExit.
+    """
+    _stop()
+
+
+def _stop():
+    """
+    Internal function to shutdown the main loop.  This is called by stop()
+    (via a timer) and by run() when the notifier loop actually stops.  The
+    flow looks like:
+        1. user calls stop()
+        2. a one-shot timer is scheduled for _stop()
+        3. bext iteration of main loop, _stop() is called.
+        4. _shutting_down == False and is_running() == True, so
+           notifier.shutdown() is invoked.
+        5. notifier.shutdown() raises SystemExit which aborts _stop() and
+           is caught by the notifier loop.
+        6. notifier loop() returns
+        7. 'finally' block in run() invokes _stop()
+        8. _shutting_down == False and is_running() == False, so we set
+           _shutting_down = True and proceed with cleanup.
+        9. set the _shutdown_event so anyway threads waiting in
+           _shutdown_check() can resume.
     """
     global _shutting_down
 
@@ -337,14 +367,17 @@ def stop():
         os.waitpid(-1, os.WNOHANG)
     except OSError:
         pass
+    _shutdown_event.set()
 
 
 def step(*args, **kwargs):
     """
     Performs a single iteration of the main loop.
 
-    This function should almost certainly never be called directly.  Use it
-    at your own peril.  (If you do use it, you must call init() first.)
+    .. warning::
+       This function should almost certainly never be called directly.  Use it
+       at your own peril.  (If you do use it, you must call
+       :func:`~kaa.main.init` first.)
     """
     if not CoreThreading.is_mainthread():
         # If step is being called from a thread, wake up the mainthread
@@ -418,12 +451,11 @@ def _shutdown_check(*args):
         # SystemExit and things will exit normally.
         if CoreThreading.is_mainthread():
             _set_running(False)
-        r = stop()
-        if r:
-            # If stop() returns non-None, it's an InProgress, which means the
-            # main loop was running in a separate thread.  Wait for it to
-            # finish.
-            r.wait()
+        _stop()
+        if not CoreThreading.is_mainthread():
+            # Main loop is running in another thread, so we need to wait for it
+            # to finish.
+            _shutdown_event.wait()
 
 
 # check to make sure we really call our shutdown function

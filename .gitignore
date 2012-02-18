@@ -1,0 +1,7 @@
+*.pyc
+build/
+dist/
+doc/.build/
+doc/html/
+kaa_base.egg-info/
+src/version.py

@@ -1,7 +1,9 @@
+.. module:: kaa.timer
+   :synopsis: Invoke callbacks at specified intervals or times of day
 .. _timer:
 
-Timer
-=====
+Timers
+======
 
 The timed decorator
 -------------------

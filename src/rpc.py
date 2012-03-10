@@ -144,6 +144,12 @@ class RemoteException(AsyncExceptionBase):
     def _kaa_get_header(self):
         return "Exception during RPC call '%s'; remote traceback follows:" % self._kaa_exc_args[0]
 
+class NotConnectedException(Exception):
+    """
+    Raised when an attempt is made to call a method on a channel that is not connected.
+    """
+    pass
+
 
 class Server(Object):
     """
@@ -259,6 +265,10 @@ class Channel(Object):
         self._rpc_in_progress = {}
         self._auth_secret = py3_b(auth_secret)
         self._pending_challenge = None
+
+        # Some syntactic sugar to make calling RPC functions more like calling normal python functions
+        self.async = RPCCallable(self, True)
+        self.sync = RPCCallable(self, False)
 
         # Creates a circular reference so that RPC channels survive even when
         # there is no reference to them.  (Servers may not hold references to
@@ -762,6 +772,47 @@ class Channel(Object):
             return '<kaa.rpc.Channel (%s) - disconnected>' % tp
         return '<kaa.rpc.Channel (%s) %s>' % (tp, self._socket.fileno)
 
+    def __getattr__(self, item):
+        # By default accessing a member on the channel will return an asynchronous callable.
+        return getattr(self.async, item)
+
+
+class RPCCallable(object):
+    """
+    Class to add syntactic sugar to the RPC channel.
+    This class allows access to RPC functions in a python like manner, via normal attribute access.
+    """
+
+    def __init__(self, channel, async):
+        self.__channel = channel
+        self.__async = async
+
+    def __rpc_call(self, name, args, kwargs):
+        if self.__channel.status == DISCONNECTED:
+            raise NotConnectedException()
+        in_progress = self.__rpc(name, *args, **kwargs)
+        if self.__async:
+            return in_progress
+        in_progress.wait()
+        return in_progress.result
+
+    def __getattr__(self, item):
+
+        class RPCPathElement(object):
+            def __init__(self, name, rpc_call):
+                self.__name = name
+                self.__parent_rpc_call = rpc_call
+
+            def __rpc_call(self, name, args, kwargs):
+                return self.__parent_rpc_call('%s.%s' % (self.__name, name), args, kwargs)
+
+            def __call__(self, *args, **kwargs):
+                return self.__parent_rpc_call(self.__name, args, kwargs)
+
+            def __getattr__(self, item):
+                return RPCPathElement(item, self.__rpc_call)
+
+        return RPCPathElement(item, self.__rpc_call)
 
 
 DISCONNECTED = 'DISCONNECTED'

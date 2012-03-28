@@ -619,7 +619,6 @@ class Database(object):
         for cursor in self._cursor, self._qcursor:
             cursor.execute("PRAGMA synchronous=OFF")
             cursor.execute("PRAGMA temp_store=MEMORY")
-            cursor.execute("PRAGMA count_changes=OFF")
             cursor.execute("PRAGMA cache_size=50000")
             cursor.execute("PRAGMA page_size=8192")
 

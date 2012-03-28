@@ -114,7 +114,7 @@ import kaa
 from .utils import property
 from .strutils import py3_b, bl
 from .core import Object, CoreThreading
-from .async import make_exception_class, AsyncExceptionBase
+from .errors import make_exception_class, AsyncExceptionBase
 from .main import is_shutting_down
 
 # get logging object

@@ -27,7 +27,7 @@
 # -----------------------------------------------------------------------------
 from __future__ import absolute_import
 
-__all__ = [ 'Callable', 'WeakCallable', 'CallableError' ]
+__all__ = [ 'Callable', 'WeakCallable' ]
 
 # Python imports
 import _weakref
@@ -36,6 +36,7 @@ import logging
 import atexit
 
 # Kaa imports
+from .errors import CallableError
 from .utils import property
 
 # get logging object
@@ -104,10 +105,6 @@ def unweakref_data(data):
         return d
     else:
         return data
-
-
-class CallableError(Exception):
-    pass
 
 
 class Callable(object):

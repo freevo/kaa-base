@@ -38,6 +38,7 @@ import logging
 import ctypes.util
 import collections
 
+from .errors import SocketError
 from .utils import property, tempfile
 from .thread import threaded
 from .io import IO_READ, IO_WRITE, IOChannel
@@ -115,9 +116,6 @@ def if_indextoname(idx):
     return name.value
 
 
-
-class SocketError(Exception):
-    pass
 
 class Socket(IOChannel):
     """

@@ -30,6 +30,8 @@
 #
 # -----------------------------------------------------------------------------
 
+import traceback
+
 __all__ = [
     'make_exception_class', 'CallableError', 'AsyncExceptionBase', 'AsyncException',
     'TimeoutException', 'InProgressAborted', 'SocketError'

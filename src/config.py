@@ -1093,6 +1093,9 @@ class Config(Group, Object):
             if not self.filename:
                 raise ValueError, "Filename not specified and no default filename set."
             filename = self.filename
+        elif not self.filename:
+            # Set stored filename for future watch() and save()
+            self.filename = filename
 
         # If this callback was added due to autosave, remove it now.
         main.signals['exit'].disconnect(self.save)

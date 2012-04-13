@@ -252,7 +252,14 @@ class VarProxy(Base):
         return super(VarProxy, self).__getattribute__(attr)
 
     def __str__(self):
-        return self._class.__str__(self)
+        if self._class == bool:
+            # In Python 2.7, bool.__str__(VarProxy object) no longer works, so we
+            # treat it as a special case and call str() directly on it.  We don't
+            # do this for all cases since with actual strings, the string would
+            # be wrapped in literal quotes.
+            return str(self._item)
+        else:
+            return self._class.__str__(self)
 
     def __repr__(self):
         return self._class.__repr__(self)

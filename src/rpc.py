@@ -144,6 +144,12 @@ class RemoteException(AsyncExceptionBase):
     def _kaa_get_header(self):
         return "Exception during RPC call '%s'; remote traceback follows:" % self._kaa_exc_args[0]
 
+class NotConnectedError(Exception):
+    """
+    Raised when an attempt is made to call a method on a channel that is not connected.
+    """
+    pass
+
 
 class Server(Object):
     """
@@ -304,6 +310,10 @@ class Channel(Object):
             kwargs['_kaa_rpc_callback'] = callback
             kaa.MainThreadCallable(self.rpc)(cmd, *args, **kwargs)
             return callback
+
+        if self.status == DISCONNECTED:
+            raise NotConnectedError()
+
         seq = self._next_seq
         self._next_seq += 1
         # create InProgress object
@@ -761,7 +771,6 @@ class Channel(Object):
         if not self._socket:
             return '<kaa.rpc.Channel (%s) - disconnected>' % tp
         return '<kaa.rpc.Channel (%s) %s>' % (tp, self._socket.fileno)
-
 
 
 DISCONNECTED = 'DISCONNECTED'

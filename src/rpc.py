@@ -311,7 +311,7 @@ class Channel(Object):
             kaa.MainThreadCallable(self.rpc)(cmd, *args, **kwargs)
             return callback
 
-        if self.status == DISCONNECTED:
+        if not self.connected:
             raise NotConnectedError()
 
         seq = self._next_seq

@@ -1053,6 +1053,9 @@ class Config(Group, Object):
         self._watch_mtime = 0
         self._watch_timer = WeakTimer(self._check_file_changed)
         self._inotify = None
+        # If True, watcher will ignore the next detected change, which is used
+        # when we save() but don't need to detect that the file has changed.
+        self._ignore_next_change = False
 
 
     def _hash(self, values=True):
@@ -1150,6 +1153,8 @@ class Config(Group, Object):
                 f.write('# %s\n%s\n\n' % (error, line))
         os.fdatasync(f.fileno())
         f.close()
+        if self._watching:
+            self._ignore_next_change = True
         os.rename(filename + '~', filename)
 
 
@@ -1402,6 +1407,11 @@ class Config(Group, Object):
 
     def _file_changed(self, mask, path, target):
         if mask & INotify.MODIFY:
+            if self._ignore_next_change:
+                # We're here because we save()ed which updated the file.  We can
+                # ignore.
+                self._ignore_next_change = False
+                return
             # Config file changed.  Attach a monitor so we can keep track of
             # any values that actually changed.
             changed_names = []

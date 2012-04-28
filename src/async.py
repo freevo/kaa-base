@@ -90,9 +90,10 @@ class InProgressStatus(Signal):
         self.start_time = time.time()
         self.pos = 0
         self.max = max
+        self._speed = None
 
 
-    def set(self, pos=None, max=None):
+    def set(self, pos=None, max=None, speed=None):
         """
         Set new status. The new status is pos of max.
         """
@@ -102,14 +103,15 @@ class InProgressStatus(Signal):
             self.pos = pos
         if pos > self.max:
             self.max = pos
+        self._speed = speed
         self.emit(self)
 
 
-    def update(self, diff=1):
+    def update(self, diff=1, speed=None):
         """
         Update position by the given difference.
         """
-        self.set(self.pos + diff)
+        self.set(self.pos + diff, speed=speed)
 
 
     def get_progressbar(self, width=70):
@@ -149,6 +151,17 @@ class InProgressStatus(Signal):
         if self.max:
             return (self.pos * 100) / self.max
         return 0
+
+    @property
+    def speed(self):
+        """
+        The current speed of the operation as set by :meth:`set` or
+        :meth:`update`.
+
+        This value has no predefined meaning.  It is up to the API to define
+        what units this value indicates.
+        """
+        return self._speed
 
 
 class InProgress(Signal, Object):

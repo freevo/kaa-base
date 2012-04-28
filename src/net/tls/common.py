@@ -37,7 +37,7 @@ import os
 import kaa
 
 # get logging object
-log = logging.getLogger('tls')
+log = logging.getLogger('kaa.base.net.tls')
 
 # Search these standard system locations for the CA bundle.
 CA_SEARCH_PATH = (

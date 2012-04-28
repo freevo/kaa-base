@@ -62,7 +62,7 @@ if sqlite.sqlite_version < '3.3.1':
     raise ImportError('sqlite 3.3.1 or higher required')
 
 # get logging object
-log = logging.getLogger('db')
+log = logging.getLogger('kaa.base.db')
 
 SCHEMA_VERSION = 0.2
 SCHEMA_VERSION_COMPATIBLE = 0.2

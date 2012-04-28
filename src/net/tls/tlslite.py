@@ -45,7 +45,7 @@ import kaa
 from .common import TLSError, TLSProtocolError, TLSVerificationError, TLSSocketBase
 
 # get logging object
-log = logging.getLogger('tls')
+log = logging.getLogger('kaa.base.net.tls.tlslite')
 
 
 class TLSKey(object):

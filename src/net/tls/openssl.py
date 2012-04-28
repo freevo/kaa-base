@@ -62,7 +62,7 @@ from kaa.dateutils import utc
 
 
 # get logging object
-log = logging.getLogger('tls.openssl')
+log = logging.getLogger('kaa.base.net.tls.openssl')
 
 # OpenSSL constants (the ones we use)
 SSL_MODE_ENABLE_PARTIAL_WRITE = 0x00000001

@@ -44,7 +44,7 @@ from .thread import threaded
 from .io import IO_READ, IO_WRITE, IOChannel
 
 # get logging object
-log = logging.getLogger('base')
+log = logging.getLogger('kaa.base.sockets')
 
 
 

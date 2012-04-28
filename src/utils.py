@@ -48,7 +48,7 @@ from tempfile import mktemp
 from .weakref import weakref
 
 # get logging object
-log = logging.getLogger('base')
+log = logging.getLogger('kaa.base.utils')
 
 # create tmp directory for the user
 TEMP = '/tmp/kaa-%s' % os.getuid()

@@ -64,7 +64,7 @@ from .async import InProgress, InProgressAborted, InProgressStatus
 from .generator import generator
 
 # get logging object
-log = logging.getLogger('base')
+log = logging.getLogger('kaa.base.core.async')
 
 # object to signal that the function whats to continue
 NotFinished = object()

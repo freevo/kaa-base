@@ -52,7 +52,7 @@ from .core import CoreThreading, Object
 from .async import InProgress, InProgressAborted, InProgressStatus
 
 # get logging object
-log = logging.getLogger('base')
+log = logging.getLogger('kaa.base.core.thread')
 
 # Thread pool name -> ThreadPool object
 _thread_pools = {}

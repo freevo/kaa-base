@@ -46,7 +46,7 @@ from .strutils import bl
 from . import nf_wrapper as notifier
 
 # get logging object
-log = logging.getLogger('base')
+log = logging.getLogger('kaa.base.core')
 
 
 class CoreThreading:

@@ -48,7 +48,7 @@ from .callable import Callable
 from .core import Object, Signal, Signals, CoreThreading
 
 # get logging object
-log = logging.getLogger('base.async')
+log = logging.getLogger('kaa.base.core.async')
 
 
 def inprogress(obj):

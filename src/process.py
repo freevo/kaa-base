@@ -52,7 +52,7 @@ from .io import IOChannel, IO_WRITE, IO_READ
 from . import main
 
 # get logging object
-log = logging.getLogger('base.process')
+log = logging.getLogger('kaa.base.process')
 
 class _Supervisor(object):
     """

@@ -52,7 +52,7 @@ from . import timer
 from . import thread
 
 # get logging object
-log = logging.getLogger('base')
+log = logging.getLogger('kaa.base.core.main')
 
 # Running state of the main loop.  Possible values are:
 #  True: running

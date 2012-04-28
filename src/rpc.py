@@ -118,7 +118,7 @@ from .errors import make_exception_class, AsyncExceptionBase
 from .main import is_shutting_down
 
 # get logging object
-log = logging.getLogger('rpc')
+log = logging.getLogger('kaa.base.rpc')
 
 # Global constants
 RPC_PACKET_HEADER_SIZE = struct.calcsize("I4sI")

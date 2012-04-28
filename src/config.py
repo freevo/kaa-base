@@ -49,7 +49,7 @@ from .utils import property
 from . import main
 
 # get logging object
-log = logging.getLogger('config')
+log = logging.getLogger('kaa.base.config')
 
 # align regexp
 align = re.compile(u'\n( *)[^\n]', re.MULTILINE)

@@ -46,7 +46,7 @@ import kaa
 from kaa.utils import property
 
 # get logging object
-log = logging.getLogger('mdns')
+log = logging.getLogger('kaa.base.net.mdns')
 
 class Service(object):
     """

@@ -40,7 +40,7 @@ from .errors import CallableError
 from .utils import property
 
 # get logging object
-log = logging.getLogger('base')
+log = logging.getLogger('kaa.base.core.callable')
 
 # Variable that is set to True (via atexit callback) when python interpreter
 # is in the process of shutting down.  If we're interested if the interpreter

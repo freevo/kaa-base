@@ -42,7 +42,7 @@ import kaa
 from kaa.strutils import py3_b, bl, fsname
 
 # get logging object
-log = logging.getLogger('inotify')
+log = logging.getLogger('kaa.base.inotify')
 
 
 class INotify(kaa.Object):

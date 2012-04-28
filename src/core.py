@@ -141,17 +141,33 @@ class CoreThreading:
                 # Stop monitoring old signal wake pipe.
                 notifier.socket_remove(CoreThreading._signal_wake_pipe[0])
             pipe = CoreThreading._create_nonblocking_pipe()
-            notifier.socket_add(pipe[0], lambda fd: CoreThreading._purge_pipe(fd) and signals['unix-signal'].emit())
             CoreThreading._signal_wake_pipe = pipe
-            signal.signal(signal.SIGCHLD, lambda sig, frame: None)
+            # _purge_pipe() returns None, which will not unregister the socket
+            # handler.
+            notifier.socket_add(pipe[0], lambda fd: CoreThreading._purge_pipe(fd))
             signal.set_wakeup_fd(pipe[1])
-        else:
-            # With Python 2.5-, we can't wakeup the main loop.  Use emit()
-            # directly as the handler.
-            signal.signal(signal.SIGCHLD, signals['unix-signal'].emit)
-        # Emit now to reap processes that may have terminated before we set the
-        # handler.  process.py connects to this signal.
-        signals['unix-signal'].emit()
+
+        signal.signal(signal.SIGCHLD, Callable(CoreThreading._handle_generic_unix_signal, signals))
+        # Emit 'sigchld' now to reap processes that may have terminated
+        # before we set the handler.  process.py connects to this signal.
+        signals['sigchld'].emit()
+
+
+    @staticmethod
+    def _handle_generic_unix_signal(signum, frame, signals):
+        log.debug('received signal %d at %s:%d', signum, frame.f_code.co_filename, frame.f_lineno)
+        timer_id = None
+        # Create a new closure to be registered with the notifier for
+        # invocation to emit the appropriate signal.  We can't use the
+        # OneShotTimer goodness from kaa.timer since CoreThreading is lower
+        # level than that.
+        def notifier_handler_cb():
+            # Explicitly unregister the timer now in case something raises
+            # below and we don't get a chance to return False.
+            notifier.timer_remove(timer_id)
+            if signum == signal.SIGCHLD:
+                signals['sigchld'].emit()
+        timer_id = notifier.timer_add(0, notifier_handler_cb)
 
 
     @staticmethod

@@ -144,7 +144,7 @@ class CoreThreading:
             CoreThreading._signal_wake_pipe = pipe
             # _purge_pipe() returns None, which will not unregister the socket
             # handler.
-            notifier.socket_add(pipe[0], lambda fd: CoreThreading._purge_pipe(fd))
+            notifier.socket_add(pipe[0], CoreThreading._purge_pipe)
             signal.set_wakeup_fd(pipe[1])
 
         signal.signal(signal.SIGCHLD, Callable(CoreThreading._handle_generic_unix_signal, signals))

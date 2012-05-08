@@ -149,7 +149,7 @@ class InProgressStatus(Signal):
         Return percentage of steps done.
         """
         if self.max:
-            return (self.pos * 100) / self.max
+            return (self.pos * 100.0) / self.max
         return 0
 
     @property

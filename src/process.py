@@ -828,6 +828,9 @@ class Process(Object):
         :return: an :class:`~kaa.InProgress`, which will be finished with a
                  2-tuple (stdoutdata, stderrdata)
 
+        If the process has not yet been started, :meth:`start` will be
+        called implicitly.
+
         Any data previously written to the child with :meth:`write` will be
         flushed and the pipe to the child's stdin will be closed.  All
         subsequent data from the child's stdout and stderr will be read until
@@ -836,6 +839,9 @@ class Process(Object):
         This method is modeled after Python's standard library call
         ``subprocess.Popen.communicate()``.
         """
+        if self._state == Process.STATE_STOPPED:
+            self.start()
+
         if input:
             yield self.write(input)
         self.stdin.close()

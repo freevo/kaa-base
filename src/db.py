@@ -1959,8 +1959,8 @@ class Database(object):
         """
         Like :meth:`~kaa.db.Database.query` but returns a single object only.
 
-        This is a convenience method, and query_one(...) is equivalent
-        to::
+        This is a convenience method, and query_one(...) is equivalent to::
+
             results = db.query(...)
             if results:
                 obj = results[0]

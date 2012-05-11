@@ -52,7 +52,7 @@ from . import timer
 from . import thread
 
 # get logging object
-log = logging.getLogger('base')
+log = logging.getLogger('kaa.base.core.main')
 
 # Running state of the main loop.  Possible values are:
 #  True: running
@@ -74,11 +74,11 @@ _initialized = False
 #:  - step: emitted on each step of the mainloop
 #:  - shutdown: emitted on kaa mainloop termination
 #:  - shutdown-after: emitted after shutdown signals.
-#:  - unix-signal: emitted when some unix signal was received
+#:  - sigchld: emitted (from notifier loop) when SIGCHLD was received
 #:  - exit: emitted when process exits
 signals = Signals(
-    'init', 'exception', 'shutdown', 'shutdown-after', 'step', 'unix-signal',
-    'exit'
+    'init', 'exception', 'shutdown', 'shutdown-after', 'step', 'exit',
+    'sigchld'
 )
 
 
@@ -143,8 +143,7 @@ def init(module=None, reset=False, **options):
         # it there.
         if module and module.startswith('twisted'):
             from twisted.internet.process import reapAllProcesses
-            cb = signals['unix-signal'].connect(reapAllProcesses)
-            cb.ignore_caller_args = True
+            signals['sigchld'].connect(reapAllProcesses)
 
     CoreThreading.init(signals, reset)
     signals['init'].emit()

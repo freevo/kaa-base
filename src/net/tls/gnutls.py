@@ -50,7 +50,7 @@ import gnutls.connection
 from gnutls.connection import X509Certificate, X509PrivateKey, X509Certificate, X509CRL, X509Credentials
 
 # get logging object
-log = logging.getLogger('tls')
+log = logging.getLogger('kaa.base.net.tls.gnutls')
 
 # Search these standard system locations for the CA bundle.
 CA_SEARCH_PATH = (

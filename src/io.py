@@ -51,7 +51,7 @@ from .async import InProgress, inprogress
 from . import main
 
 # get logging object
-log = logging.getLogger('base.io')
+log = logging.getLogger('kaa.base.core.io')
 
 IO_READ   = 1
 IO_WRITE  = 2

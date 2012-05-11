@@ -92,7 +92,7 @@ from kaa.distribution.core import Extension, setup
 extensions = []
 
 objectrow_ext = Extension('kaa.base._objectrow', ['src/extensions/objectrow.c'])
-if not objectrow_ext.has_python_h():
+if objectrow_ext.has_python_h():
     extensions.append(objectrow_ext)
 
 if sys.hexversion < 0x02060000:

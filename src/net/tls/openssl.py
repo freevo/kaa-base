@@ -62,7 +62,7 @@ from kaa.dateutils import utc
 
 
 # get logging object
-log = logging.getLogger('tls.openssl')
+log = logging.getLogger('kaa.base.net.tls.openssl')
 
 # OpenSSL constants (the ones we use)
 SSL_MODE_ENABLE_PARTIAL_WRITE = 0x00000001
@@ -88,6 +88,7 @@ SSL_CTRL_MODE = 33
 SSL_CTRL_SET_SESS_CACHE_SIZE = 42
 SSL_CTRL_SET_SESS_CACHE_MODE = 44
 SSL_CTRL_SET_TLSEXT_TICKET_KEYS = 59
+SSL_CTRL_GET_RI_SUPPORT = 76
 
 SSL_SESS_CACHE_OFF = 0x0000
 SSL_SESS_CACHE_CLIENT = 0x0001
@@ -1885,6 +1886,14 @@ class TLSSocket(kaa.Socket):
         self._reuse_sessions = value
 
 
+    @property
+    def secure_renegotiation_support(self):
+        """
+        Indicates if the peer supports RFC5746 Secure Renegotiation.
+        """
+        return bool(libssl.SSL_ctrl(self._membio.ssl, SSL_CTRL_GET_RI_SUPPORT, 0, None))
+
+
     def verify(self, cert, depth, err, errmsg):
         """
         Verify one certificate in the peer's certificate chain.
@@ -2053,3 +2062,5 @@ class TLSSocket(kaa.Socket):
         """
         return self._starttls(client=False, cert=cert, key=key, password=password, 
                               verify=verify, dh=dh, ticket_key=ticket_key)
+
+# TODO: support SSL_CTX_set_tlsext_ticket_key_cb for key rotation

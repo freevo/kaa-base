@@ -64,7 +64,7 @@ from .async import InProgress, InProgressAborted, InProgressStatus
 from .generator import generator
 
 # get logging object
-log = logging.getLogger('base')
+log = logging.getLogger('kaa.base.core.async')
 
 # object to signal that the function whats to continue
 NotFinished = object()
@@ -109,11 +109,12 @@ def coroutine(interval=0, policy=None, progress=False, group=None):
                      possible (but not sooner than the next mainloop iteration).
     :param policy: None, or one of ``POLICY_SYNCHRONIZED``, ``POLICY_SINGLETON``, or
                    ``POLICY_PASS_LAST`` (described below).
-    :param progress: if True, a Progress object is passed as the first argument to
-                     the decorated function, allowing the coroutine to report progress
-                     to the caller.  (The progress parameter corresponds to the
-                     ``progress`` attribute of the InProgress object returned to
-                     the caller.)
+    :param progress: if True, an :class:`~kaa.InProgressStatus` object is
+                     passed as the first argument to the decorated function,
+                     allowing the coroutine to report progress to the caller.
+                     (The progress parameter corresponds to the ``progress``
+                     attribute of the InProgress object returned to the
+                     caller.)
     :param group: Name of the group this coroutine shares its policy with.  For
                   example, multiple coroutines with POLICY_SYNCHRONIZED and the
                   same group name will all be synchronized against each other.

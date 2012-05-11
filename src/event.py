@@ -41,7 +41,7 @@ from .timer import OneShotTimer
 from .utils import property
 
 # get logging object
-log = logging.getLogger('base')
+log = logging.getLogger('kaa.base.core')
 
 # manager object for eveny handling
 manager = None

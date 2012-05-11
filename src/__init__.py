@@ -35,6 +35,12 @@ import zipimport
 # available immediately after importing kaa.
 from . import logger
 
+# Exceptions can't be lazy proxied either, because there seems to be no magic
+# method to detect when a class is being used in an except clause.  So all
+# exceptions defined by core modules are put into a separate module which is
+# imported explicitly.
+from .errors import *
+
 _object = object
 
 # Enable on-demand importing of all modules.  Improves speed of importing kaa
@@ -110,8 +116,6 @@ def _lazy_import(mod, names=None):
             globals()[mod] = omod
 
 
-# FIXME: can't LazyProxy exceptions because there's no way to implicitly import
-# during an except clause.  Need to move exceptions into a separate module.
 class _LazyProxy(type):
     """
     Metaclass used to construct individual proxy classes for all names within
@@ -324,15 +328,15 @@ _lazy_import('version', ['__version__'])
 _lazy_import('core', ['Object', 'Signal', 'Signals'])
 
 # Callable classes
-_lazy_import('callable', ['Callable', 'WeakCallable', 'CallableError'])
+_lazy_import('callable', ['Callable', 'WeakCallable'])
 
 # Notifier-aware callbacks do not need to be exported outside kaa.base
 # _lazy_import('nf_wrapper', ['NotifierCallback', 'WeakNotifierCallback'])
 
 # Async programming classes, namely InProgress
 _lazy_import('async', [
-    'TimeoutException', 'InProgress', 'InProgressCallable', 'InProgressAny',
-    'InProgressAll', 'InProgressAborted', 'InProgressStatus', 'inprogress'
+    'InProgress', 'InProgressCallable', 'InProgressAny', 'InProgressAll',
+    'InProgressStatus', 'inprogress'
 ])
 
 # Thread callables, helper functions and decorators
@@ -351,7 +355,7 @@ _lazy_import('timer', [
 
 # IO/Socket handling
 _lazy_import('io', ['IOMonitor', 'WeakIOMonitor', 'IO_READ', 'IO_WRITE', 'IOChannel'])
-_lazy_import('sockets', ['Socket', 'SocketError'])
+_lazy_import('sockets', ['Socket'])
 
 # Event and event handler classes
 _lazy_import('event', ['Event', 'EventHandler', 'WeakEventHandler'])
@@ -506,9 +510,10 @@ def rename(oldcls, newcls):
             import logging
             import traceback
             fname, line, c, content = traceback.extract_stack(limit=2)[0]
-            logging.getLogger('base').warning('kaa.%s has been renamed to kaa.%s and will not be '
-                                              'available in kaa.base 1.0:\n%s (%s): %s', 
-                                              oldcls, newcls.__name__, fname, line, content)
+            log = logging.getLogger('kaa.base.core')
+            log.warning('kaa.%s has been renamed to kaa.%s and will not be '
+                        'available in kaa.base 1.0:\n%s (%s): %s', 
+                        oldcls, newcls.__name__, fname, line, content)
             # Replace old class with new class object, so we only warn once.
             globals()[oldcls] = newcls
             return newcls(*args, **kwargs)

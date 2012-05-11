@@ -40,7 +40,7 @@ M2Crypto.threading.init()
 kaa.signals['shutdown'].connect(M2Crypto.threading.cleanup)
 
 # get logging object
-log = logging.getLogger('tls')
+log = logging.getLogger('kaa.base.net.tls.m2')
 
 
 class _SSLWrapper:

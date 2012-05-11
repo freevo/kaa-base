@@ -27,10 +27,10 @@
 # -----------------------------------------------------------------------------
 from __future__ import absolute_import
 
-__all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallable',
-            'AsyncException', 'InProgressAny', 'InProgressAll', 'InProgressAborted',
-            'AsyncExceptionBase', 'make_exception_class', 'inprogress',
-            'delay', 'InProgressStatus' ]
+__all__ = [
+    'InProgress', 'InProgressCallable', 'InProgressAny', 'InProgressAll', 'inprogress',
+    'delay', 'InProgressStatus'
+]
 
 # python imports
 import sys
@@ -42,22 +42,13 @@ import threading
 import types
 
 # kaa.base imports
+from .errors import AsyncException, AsyncExceptionBase, InProgressAborted, TimeoutException
 from .utils import property
 from .callable import Callable
 from .core import Object, Signal, Signals, CoreThreading
 
 # get logging object
-log = logging.getLogger('base.async')
-
-
-def make_exception_class(name, bases, dict):
-    """
-    Class generator for AsyncException.  Creates AsyncException class
-    which derives the class of a particular Exception instance.
-    """
-    def create(exc, stack, *args):
-        return type(name, bases + (exc.__class__,), {})(exc, stack, *args)
-    return create
+log = logging.getLogger('kaa.base.core.async')
 
 
 def inprogress(obj):
@@ -88,88 +79,6 @@ def inprogress(obj):
 
 
 
-class AsyncExceptionBase(Exception):
-    """
-    Base class for asynchronous exceptions.  This class can be used to raise
-    exceptions where the traceback object is not available.  The stack is
-    stored (which is safe to reference and can be pickled) instead, and when
-    AsyncExceptionBase instances are printed, the original traceback will
-    be printed.
-
-    This class will proxy the given exception object.
-    """
-    def __init__(self, exc, stack, *args):
-        self._kaa_exc = exc
-        self._kaa_exc_stack = stack
-        self._kaa_exc_args = args
-
-    def __getattribute__(self, attr):
-        # Used by python 2.5, where exceptions are new-style classes.
-        if attr.startswith('_kaa'):
-            return super(AsyncExceptionBase, self).__getattribute__(attr)
-        return getattr(self._kaa_exc, attr)
-
-    def __getattr__(self, attr):
-        # Used by python 2.4, where exceptions are old-style classes.
-        exc = self._kaa_exc
-        if attr == '__members__':
-            return [ x for x in dir(exc) if not callable(getattr(exc, x)) ]
-        elif attr == '__methods__':
-            return [ x for x in dir(exc) if callable(getattr(exc, x)) ]
-        return self.__getattribute__(attr)
-
-    def _kaa_get_header(self):
-        return 'Exception raised asynchronously; traceback follows:'
-
-    def __str__(self):
-        dump = ''.join(traceback.format_list(self._kaa_exc_stack))
-        info = '%s: %s' % (self._kaa_exc.__class__.__name__, str(self._kaa_exc))
-        return self._kaa_get_header() + '\n' + dump + info
-
-
-class AsyncException(AsyncExceptionBase):
-    __metaclass__ = make_exception_class
-
-
-class TimeoutException(Exception):
-    """
-    This exception is raised by an :class:`~kaa.InProgress` returned by
-    :meth:`~kaa.InProgress.timeout` when the timeout occurs.
-
-    For example::
-
-        sock = kaa.Socket()
-        try:
-            yield sock.connect('deadhost.com:80').timeout(10)
-        except kaa.TimeoutException:
-            print 'Connection timed out after 10 seconds'
-
-    """
-    def __init__(self, msg, inprogress):
-        super(TimeoutException, self).__init__(msg)
-        self.args = (msg, inprogress)
-        self.inprogress = inprogress
-
-    def __getitem__(self, idx):
-        return self.args[idx]
-
-
-class InProgressAborted(BaseException):
-    """
-    This exception is thrown into an InProgress object when 
-    :meth:`~kaa.InProgress.abort` is called.
-
-    For :class:`~kaa.ThreadCallable` and  :class:`~kaa.ThreadPoolCallable`
-    this exception is raised inside the threaded callable.  This makes it
-    potentially an asynchronous exception (when used this way), and therefore
-    it subclasses BaseException, similar in rationale to KeyboardInterrupt
-    and SystemExit, and also (for slightly different reasons) GeneratorExit,
-    which as of Python 2.6 also subclasses BaseException.
-    """
-    pass
-
-
-
 class InProgressStatus(Signal):
     """
     Generic progress status object for InProgress. This object can be
@@ -181,9 +90,10 @@ class InProgressStatus(Signal):
         self.start_time = time.time()
         self.pos = 0
         self.max = max
+        self._speed = None
 
 
-    def set(self, pos=None, max=None):
+    def set(self, pos=None, max=None, speed=None):
         """
         Set new status. The new status is pos of max.
         """
@@ -193,14 +103,15 @@ class InProgressStatus(Signal):
             self.pos = pos
         if pos > self.max:
             self.max = pos
+        self._speed = speed
         self.emit(self)
 
 
-    def update(self, diff=1):
+    def update(self, diff=1, speed=None):
         """
         Update position by the given difference.
         """
-        self.set(self.pos + diff)
+        self.set(self.pos + diff, speed=speed)
 
 
     def get_progressbar(self, width=70):
@@ -240,6 +151,17 @@ class InProgressStatus(Signal):
         if self.max:
             return (self.pos * 100) / self.max
         return 0
+
+    @property
+    def speed(self):
+        """
+        The current speed of the operation as set by :meth:`set` or
+        :meth:`update`.
+
+        This value has no predefined meaning.  It is up to the API to define
+        what units this value indicates.
+        """
+        return self._speed
 
 
 class InProgress(Signal, Object):

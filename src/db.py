@@ -62,7 +62,7 @@ if sqlite.sqlite_version < '3.3.1':
     raise ImportError('sqlite 3.3.1 or higher required')
 
 # get logging object
-log = logging.getLogger('db')
+log = logging.getLogger('kaa.base.db')
 
 SCHEMA_VERSION = 0.2
 SCHEMA_VERSION_COMPATIBLE = 0.2
@@ -619,7 +619,6 @@ class Database(object):
         for cursor in self._cursor, self._qcursor:
             cursor.execute("PRAGMA synchronous=OFF")
             cursor.execute("PRAGMA temp_store=MEMORY")
-            cursor.execute("PRAGMA count_changes=OFF")
             cursor.execute("PRAGMA cache_size=50000")
             cursor.execute("PRAGMA page_size=8192")
 

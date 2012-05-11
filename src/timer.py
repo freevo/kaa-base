@@ -48,7 +48,7 @@ POLICY_MANY = 'many'
 POLICY_RESTART = 'restart'
 
 # get logging object
-log = logging.getLogger('base')
+log = logging.getLogger('kaa.base.core.timer')
 
 
 def timed(interval, timer=None, policy=POLICY_MANY):

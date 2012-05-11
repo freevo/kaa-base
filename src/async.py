@@ -365,7 +365,7 @@ class InProgress(Signal, Object):
         result passed to this method.
 
         If *result* is an unfinished InProgress, then instead of finishing, we
-        wait for the result to finish.
+        wait for the result to finish via :meth:`waitfor`.
 
         :param result: the result of the completed asynchronous task.  (This can
                        be thought of as the return value of the task if it had
@@ -780,9 +780,8 @@ class InProgressCallable(InProgress):
 
 class InProgressAny(InProgress):
     """
-    InProgress object that finishes when ANY of the supplied InProgress
-    objects (in constructor) finish.  This functionality is useful when
-    building state machines using coroutines.
+    InProgress object that finishes when *any* of the supplied InProgress
+    objects (in constructor) finish.
 
     Sequences or generators passed as arguments will be flattened, allowing
     for this idiom::
@@ -935,14 +934,15 @@ class InProgressAny(InProgress):
 
 class InProgressAll(InProgressAny):
     """
-    InProgress object that finishes only when ALL of the supplied InProgress
-    objects (in constructor) finish.  This functionality is useful when
-    building state machines using coroutines.
+    InProgress object that finishes only when *all* of the supplied InProgress
+    objects (in constructor) finish.
 
-    The InProgressAll object then finishes with itself (which is really only
-    useful when using the Python 2.5 feature of yield return values).  The
-    finished InProgressAll is useful to fetch the results of the individual
-    InProgress objects.  It can be treated as an iterator, and can be indexed.
+    The InProgressAll object then finishes with itself. The finished
+    InProgressAll is useful to fetch the results of the individual InProgress
+    objects.  It can be treated as an iterator, and can be indexed::
+
+        for ip in (yield kaa.InProgressAll(sock1.read(), sock2.read())):
+            print(ip.result)
     """
     def __init__(self, *objects):
         super(InProgressAll, self).__init__(*objects)

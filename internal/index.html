@@ -1,25 +1,31 @@
+
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Kaa Internals &mdash; kaa.base v0.99.2 documentation</title>
+    <title>Kaa Internals &mdash; kaa.base 0.99.2 documentation</title>
+    
     <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
         VERSION:     '0.99.2',
-        COLLAPSE_MODINDEX: false,
+        COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
       };
     </script>
     <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="kaa.base v0.99.2 documentation" href="../index.html" />
+    <link rel="top" title="kaa.base 0.99.2 documentation" href="../index.html" />
     <link rel="prev" title="Distribution Helpers" href="../distribution.html" />
     <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
 
@@ -32,12 +38,12 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="../modindex.html" title="Global Module Index"
-             accesskey="M">modules</a> |</li>
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="../distribution.html" title="Distribution Helpers"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -52,10 +58,10 @@
 <h2>Module Importing<a class="headerlink" href="#module-importing" title="Permalink to this headline">¶</a></h2>
 <p>In large and complex Python libraries, it is often difficult to avoid circular
 importing.  For example, <em>main</em>, which provides functions to manage the
-kaa mainloop, requires <em>thread</em> to ensure that <a title="kaa.main.stop" class="reference external" href="../core/mainloop.html#kaa.main.stop"><tt class="xref docutils literal"><span class="pre">kaa.main.stop()</span></tt></a> runs
-in the main thread.  <em>thread</em> requires <em>async</em> so that <a title="kaa.ThreadInProgress" class="reference external" href="../async/threads.html#kaa.ThreadInProgress"><tt class="xref docutils literal"><span class="pre">ThreadInProgress</span></tt></a>
-can subclass <a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a>.  <em>async</em> in turn requires <em>main</em>
-in order to run the main loop for <a title="kaa.InProgress.wait" class="reference external" href="../async/inprogress.html#kaa.InProgress.wait"><tt class="xref docutils literal"><span class="pre">kaa.InProgress.wait()</span></tt></a>.</p>
+kaa mainloop, requires <em>thread</em> to ensure that <a class="reference internal" href="../core/mainloop.html#kaa.main.stop" title="kaa.main.stop"><tt class="xref py py-func docutils literal"><span class="pre">kaa.main.stop()</span></tt></a> runs
+in the main thread.  <em>thread</em> requires <em>async</em> so that <a class="reference internal" href="../async/threads.html#kaa.ThreadInProgress" title="kaa.ThreadInProgress"><tt class="xref py py-class docutils literal"><span class="pre">ThreadInProgress</span></tt></a>
+can subclass <a class="reference internal" href="../async/inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a>.  <em>async</em> in turn requires <em>main</em>
+in order to run the main loop for <a class="reference internal" href="../async/inprogress.html#kaa.InProgress.wait" title="kaa.InProgress.wait"><tt class="xref py py-meth docutils literal"><span class="pre">kaa.InProgress.wait()</span></tt></a>.</p>
 <dl class="docutils">
 <dt>Import cycles can generally be handled in several different ways:</dt>
 <dd><ol class="first last arabic simple">
@@ -92,7 +98,7 @@ it is safe to import it from a thread.</p>
 <p>The solution chosen for Kaa is a combination of the first and third options.
 Namely:</p>
 <blockquote>
-<ul class="simple">
+<div><ul class="simple">
 <li>most of the nastier circular dependencies have been avoided by moving
 the Object, Signal, Signals classes, and the code used to manage the
 thread notifier pipe and callback queuing for mainthread invocation
@@ -102,11 +108,11 @@ run-time imports; the lazy importing code has been modified to load
 the required modules up-front to prevent (or at least mitigate) these
 modules from being imported for the first time inside a thread.</li>
 </ul>
-</blockquote>
+</div></blockquote>
 <p>The current circular dependencies (which are being handled by importing
 at function invocation time) are:</p>
 <blockquote>
-<ul class="simple">
+<div><ul class="simple">
 <li><em>core</em> requires <em>async</em> (for Signal.__inprogress__() and Signals.any() and
 .all()); <em>async</em> requires <em>core</em> (for everything).</li>
 <li><em>async</em> requires <em>timer</em> (for InProgress.timeout()); <em>timer</em> requires
@@ -116,7 +122,7 @@ ThreadInProgress can subclass InProgress).</li>
 requires <em>thread</em> (for threaded decorator, and thread.killall());
 <em>thread</em> requires <em>async</em> (for the reason explained above).</li>
 </ul>
-</blockquote>
+</div></blockquote>
 <p>There are a number of &#8220;core&#8221; modules that must be imported as a group to ensure
 that none of the modules imported at function invocation time are imported
 for the first time in a thread.  These are <em>core</em>, <em>nf_wrapper</em>, <em>async</em>,
@@ -167,35 +173,35 @@ referenced, which should make it extremely unlikely that either <em>async</em> o
       </div>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
-            <h3><a href="../index.html">Table Of Contents</a></h3>
-            <ul>
-<li><a class="reference external" href="#">Kaa Internals</a><ul>
-<li><a class="reference external" href="#module-importing">Module Importing</a></li>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Kaa Internals</a><ul>
+<li><a class="reference internal" href="#module-importing">Module Importing</a></li>
 </ul>
 </li>
 </ul>
 
-            <h4>Previous topic</h4>
-            <p class="topless"><a href="../distribution.html"
-                                  title="previous chapter">Distribution Helpers</a></p>
-            <h3>This Page</h3>
-            <ul class="this-page-menu">
-              <li><a href="../_sources/internal/index.txt"
-                     rel="nofollow">Show Source</a></li>
-            </ul>
-          <div id="searchbox" style="display: none">
-            <h3>Quick search</h3>
-              <form class="search" action="../search.html" method="get">
-                <input type="text" name="q" size="18" />
-                <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
-              </form>
-              <p class="searchtip" style="font-size: 90%">
-              Enter search terms or a module, class or function name.
-              </p>
-          </div>
-          <script type="text/javascript">$('#searchbox').show(0);</script>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../distribution.html"
+                        title="previous chapter">Distribution Helpers</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/internal/index.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -207,18 +213,18 @@ referenced, which should make it extremely unlikely that either <em>async</em> o
           <a href="../genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="../modindex.html" title="Global Module Index"
+          <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
           <a href="../distribution.html" title="Distribution Helpers"
              >previous</a> |</li>
-        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jan 24, 2012.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+        &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on May 11, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

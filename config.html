@@ -1,25 +1,31 @@
+
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Configuration Files &mdash; kaa.base v0.99.2 documentation</title>
+    <title>Configuration Files &mdash; kaa.base 0.99.2 documentation</title>
+    
     <link rel="stylesheet" href="_static/kaa.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '#',
+        URL_ROOT:    '',
         VERSION:     '0.99.2',
-        COLLAPSE_MODINDEX: false,
+        COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
       };
     </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="kaa.base v0.99.2 documentation" href="index.html" />
+    <link rel="top" title="kaa.base 0.99.2 documentation" href="index.html" />
     <link rel="next" title="Object Database" href="db.html" />
     <link rel="prev" title="Remote Procedure Calls with kaa.rpc" href="rpc.html" />
     <!-- link rel="stylesheet" href="_static/kaa.css" type="text/css" /-->
@@ -33,15 +39,15 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="modindex.html" title="Global Module Index"
-             accesskey="M">modules</a> |</li>
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="db.html" title="Object Database"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="rpc.html" title="Remote Procedure Calls with kaa.rpc"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+        <li><a href="index.html">kaa.base 0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -50,25 +56,28 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="configuration-files">
-<span id="module-kaa.config"></span><h1>Configuration Files<a class="headerlink" href="#configuration-files" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="module-kaa.config"></span><div class="section" id="configuration-files">
+<h1>Configuration Files<a class="headerlink" href="#configuration-files" title="Permalink to this headline">¶</a></h1>
 <p>Write me.</p>
 <div class="section" id="module-functions">
 <h2>Module Functions<a class="headerlink" href="#module-functions" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt id="kaa.config.set_default">
 <tt class="descclassname">kaa.config.</tt><tt class="descname">set_default</tt><big>(</big><em>var</em>, <em>value</em><big>)</big><a class="headerlink" href="#kaa.config.set_default" title="Permalink to this definition">¶</a></dt>
-<dd>Set default value for the given scalar config variable.</dd></dl>
+<dd><p>Set default value for the given scalar config variable.</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="kaa.config.get_default">
 <tt class="descclassname">kaa.config.</tt><tt class="descname">get_default</tt><big>(</big><em>var</em><big>)</big><a class="headerlink" href="#kaa.config.get_default" title="Permalink to this definition">¶</a></dt>
-<dd>Returns the default value for the given scalar config variable.</dd></dl>
+<dd><p>Returns the default value for the given scalar config variable.</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="kaa.config.get_description">
 <tt class="descclassname">kaa.config.</tt><tt class="descname">get_description</tt><big>(</big><em>var</em><big>)</big><a class="headerlink" href="#kaa.config.get_description" title="Permalink to this definition">¶</a></dt>
-<dd>Get the description for the given config variable or group.</dd></dl>
+<dd><p>Get the description for the given config variable or group.</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="kaa.config.get_type">
@@ -78,8 +87,8 @@
 value will be the corresponding python type (int, str, unicode, float, etc.)</p>
 <p>If the variable is a scalar enumerated type, the return value will be a
 tuple of possible values for that variable.</p>
-<p>For non-scalar types, the return value will be one of <a title="kaa.config.List" class="reference internal" href="#kaa.config.List"><tt class="xref docutils literal"><span class="pre">List</span></tt></a>,
-<a title="kaa.config.Dict" class="reference internal" href="#kaa.config.Dict"><tt class="xref docutils literal"><span class="pre">Dict</span></tt></a>, or <a title="kaa.config.Group" class="reference internal" href="#kaa.config.Group"><tt class="xref docutils literal"><span class="pre">Group</span></tt></a>.</p>
+<p>For non-scalar types, the return value will be one of <a class="reference internal" href="#kaa.config.List" title="kaa.config.List"><tt class="xref py py-class docutils literal"><span class="pre">List</span></tt></a>,
+<a class="reference internal" href="#kaa.config.Dict" title="kaa.config.Dict"><tt class="xref py py-class docutils literal"><span class="pre">Dict</span></tt></a>, or <a class="reference internal" href="#kaa.config.Group" title="kaa.config.Group"><tt class="xref py py-class docutils literal"><span class="pre">Group</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="function">
@@ -87,9 +96,9 @@ tuple of possible values for that variable.</p>
 <tt class="descclassname">kaa.config.</tt><tt class="descname">get_schema</tt><big>(</big><em>var</em><big>)</big><a class="headerlink" href="#kaa.config.get_schema" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the schema for a container variable (List or Dict), or None for
 scalar variables.</p>
-<p>The schema is another config object (<a title="kaa.config.Var" class="reference internal" href="#kaa.config.Var"><tt class="xref docutils literal"><span class="pre">Var</span></tt></a>,
-<a title="kaa.config.List" class="reference internal" href="#kaa.config.List"><tt class="xref docutils literal"><span class="pre">List</span></tt></a>, <a title="kaa.config.Dict" class="reference internal" href="#kaa.config.Dict"><tt class="xref docutils literal"><span class="pre">Dict</span></tt></a>, or
-<a title="kaa.config.Group" class="reference internal" href="#kaa.config.Group"><tt class="xref docutils literal"><span class="pre">Group</span></tt></a>).</p>
+<p>The schema is another config object (<a class="reference internal" href="#kaa.config.Var" title="kaa.config.Var"><tt class="xref py py-class docutils literal"><span class="pre">Var</span></tt></a>,
+<a class="reference internal" href="#kaa.config.List" title="kaa.config.List"><tt class="xref py py-class docutils literal"><span class="pre">List</span></tt></a>, <a class="reference internal" href="#kaa.config.Dict" title="kaa.config.Dict"><tt class="xref py py-class docutils literal"><span class="pre">Dict</span></tt></a>, or
+<a class="reference internal" href="#kaa.config.Group" title="kaa.config.Group"><tt class="xref py py-class docutils literal"><span class="pre">Group</span></tt></a>).</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">kaa</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_description</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">movies</span><span class="p">)</span>
 <span class="go">u&#39;Your favorite movies.&#39;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">schema</span> <span class="o">=</span> <span class="n">kaa</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_schema</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">movies</span><span class="p">)</span>
@@ -124,13 +133,13 @@ Otherwise will return the Config object.</p>
 <div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal current">kaa.config.Base</tt><br /></p>
 <div class="heading">Methods</div>
 <table>
-<tr><th><a title="kaa.config.Base.add_monitor" class="reference internal" href="#kaa.config.Base.add_monitor"><tt class="xref docutils literal"><span class="pre">add_monitor()</span></tt></a></th><td class="desc"></td></tr>
-<tr><th><a title="kaa.config.Base.copy" class="reference internal" href="#kaa.config.Base.copy"><tt class="xref docutils literal"><span class="pre">copy()</span></tt></a></th><td class="desc">Returns a deep-copy of the object.  Monitor callbacks are not copied.</td></tr>
-<tr><th><a title="kaa.config.Base.remove_monitor" class="reference internal" href="#kaa.config.Base.remove_monitor"><tt class="xref docutils literal"><span class="pre">remove_monitor()</span></tt></a></th><td class="desc"></td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.config.Base.add_monitor" title="kaa.config.Base.add_monitor"><tt class="xref py py-meth docutils literal"><span class="pre">add_monitor()</span></tt></a></th><td class="desc"></td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.config.Base.copy" title="kaa.config.Base.copy"><tt class="xref py py-meth docutils literal"><span class="pre">copy()</span></tt></a></th><td class="desc">Returns a deep-copy of the object.  Monitor callbacks are not copied.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.config.Base.remove_monitor" title="kaa.config.Base.remove_monitor"><tt class="xref py py-meth docutils literal"><span class="pre">remove_monitor()</span></tt></a></th><td class="desc"></td></tr>
 </table>
 <div class="heading">Properties</div>
 <table>
-<tr><th><a title="kaa.config.Base.parent" class="reference internal" href="#kaa.config.Base.parent"><tt class="xref docutils literal"><span class="pre">parent</span></tt></a></th><td>read-only</td><td class="desc"></td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.config.Base.parent" title="kaa.config.Base.parent"><tt class="xref py py-attr docutils literal"><span class="pre">parent</span></tt></a></th><td>read-only</td><td class="desc"></td></tr>
 </table>
 <div class="heading">Signals</div><div class="nomembers">This class has no signals.</div>
 </div>
@@ -147,13 +156,13 @@ Otherwise will return the Config object.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>copy_on_write</em> (bool) &#8211; if False, values are copied as well, so that if the
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>copy_on_write</strong> (<em>bool</em>) &#8211; if False, values are copied as well, so that if the
 original is modified, the copy will retain the old
 value.  If True, fetching values in the copy will
 fetch the original&#8217;s current value, until and unless
 the copy&#8217;s value has been modified.</td>
 </tr>
-<tr class="field"><th class="field-name">Returns:</th><td class="field-body">a new cloned instance of the same type.</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">a new cloned instance of the same type.</td>
 </tr>
 </tbody>
 </table>
@@ -182,10 +191,10 @@ the copy.</p>
 <dd><p>A config variable that represents some scalar value such as int, str,
 unicode, or bool.</p>
 <p><h4>Synopsis</h4><div class="kaa synopsis">
-<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.config.Base" class="reference internal" href="#kaa.config.Base"><tt class="xref docutils literal"><span class="pre">kaa.config.Base</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal current">kaa.config.Var</tt><br /></p>
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a class="reference internal" href="#kaa.config.Base" title="kaa.config.Base"><tt class="xref py py-class docutils literal"><span class="pre">kaa.config.Base</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal current">kaa.config.Var</tt><br /></p>
 <div class="heading">Methods</div>
 <table>
-<tr><th><a title="kaa.config.Var.copy" class="reference internal" href="#kaa.config.Var.copy"><tt class="xref docutils literal"><span class="pre">copy()</span></tt></a></th><td class="desc"></td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.config.Var.copy" title="kaa.config.Var.copy"><tt class="xref py py-meth docutils literal"><span class="pre">copy()</span></tt></a></th><td class="desc"></td></tr>
 </table>
 <div class="heading">Properties</div><div class="nomembers">This class has no properties.</div><div class="heading">Signals</div><div class="nomembers">This class has no signals.</div>
 </div>
@@ -203,14 +212,14 @@ unicode, or bool.</p>
 <em class="property">class </em><tt class="descclassname">kaa.config.</tt><tt class="descname">List</tt><big>(</big><em>schema</em>, <em>desc=u''</em>, <em>name=''</em>, <em>defaults=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#kaa.config.List" title="Permalink to this definition">¶</a></dt>
 <dd><p>A config list.</p>
 <p><h4>Synopsis</h4><div class="kaa synopsis">
-<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.config.Base" class="reference internal" href="#kaa.config.Base"><tt class="xref docutils literal"><span class="pre">kaa.config.Base</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.config.Container</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.config.List</tt><br /></p>
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a class="reference internal" href="#kaa.config.Base" title="kaa.config.Base"><tt class="xref py py-class docutils literal"><span class="pre">kaa.config.Base</span></tt></a><br />&#9492;&#9472; <tt class="xref py py-class docutils literal"><span class="pre">kaa.config.Container</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.config.List</tt><br /></p>
 <div class="heading">Methods</div>
 <table>
-<tr><th><a title="kaa.config.List.append" class="reference internal" href="#kaa.config.List.append"><tt class="xref docutils literal"><span class="pre">append()</span></tt></a></th><td class="desc"></td></tr>
-<tr><th><a title="kaa.config.List.extend" class="reference internal" href="#kaa.config.List.extend"><tt class="xref docutils literal"><span class="pre">extend()</span></tt></a></th><td class="desc"></td></tr>
-<tr><th><a title="kaa.config.List.insert" class="reference internal" href="#kaa.config.List.insert"><tt class="xref docutils literal"><span class="pre">insert()</span></tt></a></th><td class="desc"></td></tr>
-<tr><th><a title="kaa.config.List.pop" class="reference internal" href="#kaa.config.List.pop"><tt class="xref docutils literal"><span class="pre">pop()</span></tt></a></th><td class="desc"></td></tr>
-<tr><th><a title="kaa.config.List.remove" class="reference internal" href="#kaa.config.List.remove"><tt class="xref docutils literal"><span class="pre">remove()</span></tt></a></th><td class="desc"></td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.config.List.append" title="kaa.config.List.append"><tt class="xref py py-meth docutils literal"><span class="pre">append()</span></tt></a></th><td class="desc"></td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.config.List.extend" title="kaa.config.List.extend"><tt class="xref py py-meth docutils literal"><span class="pre">extend()</span></tt></a></th><td class="desc"></td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.config.List.insert" title="kaa.config.List.insert"><tt class="xref py py-meth docutils literal"><span class="pre">insert()</span></tt></a></th><td class="desc"></td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.config.List.pop" title="kaa.config.List.pop"><tt class="xref py py-meth docutils literal"><span class="pre">pop()</span></tt></a></th><td class="desc"></td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.config.List.remove" title="kaa.config.List.remove"><tt class="xref py py-meth docutils literal"><span class="pre">remove()</span></tt></a></th><td class="desc"></td></tr>
 </table>
 <div class="heading">Properties</div><div class="nomembers">This class has no properties.</div><div class="heading">Signals</div><div class="nomembers">This class has no signals.</div>
 </div>
@@ -248,37 +257,41 @@ unicode, or bool.</p>
 <em class="property">class </em><tt class="descclassname">kaa.config.</tt><tt class="descname">Dict</tt><big>(</big><em>schema</em>, <em>desc=u''</em>, <em>name=''</em>, <em>type=&lt;type 'unicode'&gt;</em>, <em>defaults={}</em><big>)</big><a class="headerlink" href="#kaa.config.Dict" title="Permalink to this definition">¶</a></dt>
 <dd><p>A config dict.</p>
 <p><h4>Synopsis</h4><div class="kaa synopsis">
-<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.config.Base" class="reference internal" href="#kaa.config.Base"><tt class="xref docutils literal"><span class="pre">kaa.config.Base</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.config.Container</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.config.Dict</tt><br /></p>
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a class="reference internal" href="#kaa.config.Base" title="kaa.config.Base"><tt class="xref py py-class docutils literal"><span class="pre">kaa.config.Base</span></tt></a><br />&#9492;&#9472; <tt class="xref py py-class docutils literal"><span class="pre">kaa.config.Container</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.config.Dict</tt><br /></p>
 <div class="heading">Methods</div>
 <table>
-<tr><th><a title="kaa.config.Dict.get" class="reference internal" href="#kaa.config.Dict.get"><tt class="xref docutils literal"><span class="pre">get()</span></tt></a></th><td class="desc">Get group or variable with the given index. Return None if it does
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.config.Dict.get" title="kaa.config.Dict.get"><tt class="xref py py-meth docutils literal"><span class="pre">get()</span></tt></a></th><td class="desc">Get group or variable with the given index. Return None if it does
 not exist.</td></tr>
-<tr><th><a title="kaa.config.Dict.items" class="reference internal" href="#kaa.config.Dict.items"><tt class="xref docutils literal"><span class="pre">items()</span></tt></a></th><td class="desc">Return key,value list (sorted by key name)</td></tr>
-<tr><th><a title="kaa.config.Dict.keys" class="reference internal" href="#kaa.config.Dict.keys"><tt class="xref docutils literal"><span class="pre">keys()</span></tt></a></th><td class="desc">Return the keys (sorted by name)</td></tr>
-<tr><th><a title="kaa.config.Dict.values" class="reference internal" href="#kaa.config.Dict.values"><tt class="xref docutils literal"><span class="pre">values()</span></tt></a></th><td class="desc">Return value list (sorted by key name)</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.config.Dict.items" title="kaa.config.Dict.items"><tt class="xref py py-meth docutils literal"><span class="pre">items()</span></tt></a></th><td class="desc">Return key,value list (sorted by key name)</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.config.Dict.keys" title="kaa.config.Dict.keys"><tt class="xref py py-meth docutils literal"><span class="pre">keys()</span></tt></a></th><td class="desc">Return the keys (sorted by name)</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.config.Dict.values" title="kaa.config.Dict.values"><tt class="xref py py-meth docutils literal"><span class="pre">values()</span></tt></a></th><td class="desc">Return value list (sorted by key name)</td></tr>
 </table>
 <div class="heading">Properties</div><div class="nomembers">This class has no properties.</div><div class="heading">Signals</div><div class="nomembers">This class has no signals.</div>
 </div>
 <h4>Methods</h4><dl class="method">
 <dt id="kaa.config.Dict.get">
 <tt class="descname">get</tt><big>(</big><em>index</em>, <em>default=None</em><big>)</big><a class="headerlink" href="#kaa.config.Dict.get" title="Permalink to this definition">¶</a></dt>
-<dd>Get group or variable with the given index. Return None if it does
-not exist.</dd></dl>
+<dd><p>Get group or variable with the given index. Return None if it does
+not exist.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kaa.config.Dict.items">
 <tt class="descname">items</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.config.Dict.items" title="Permalink to this definition">¶</a></dt>
-<dd>Return key,value list (sorted by key name)</dd></dl>
+<dd><p>Return key,value list (sorted by key name)</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kaa.config.Dict.keys">
 <tt class="descname">keys</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.config.Dict.keys" title="Permalink to this definition">¶</a></dt>
-<dd>Return the keys (sorted by name)</dd></dl>
+<dd><p>Return the keys (sorted by name)</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kaa.config.Dict.values">
 <tt class="descname">values</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.config.Dict.values" title="Permalink to this definition">¶</a></dt>
-<dd>Return value list (sorted by key name)</dd></dl>
+<dd><p>Return value list (sorted by key name)</p>
+</dd></dl>
 
 </p>
 </dd></dl>
@@ -289,24 +302,25 @@ not exist.</dd></dl>
 <em class="property">class </em><tt class="descclassname">kaa.config.</tt><tt class="descname">Group</tt><big>(</big><em>schema</em>, <em>desc=u''</em>, <em>name=''</em>, <em>desc_type='default'</em><big>)</big><a class="headerlink" href="#kaa.config.Group" title="Permalink to this definition">¶</a></dt>
 <dd><p>A config group.</p>
 <p><h4>Synopsis</h4><div class="kaa synopsis">
-<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.config.Base" class="reference internal" href="#kaa.config.Base"><tt class="xref docutils literal"><span class="pre">kaa.config.Base</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal current">kaa.config.Group</tt><br /></p>
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a class="reference internal" href="#kaa.config.Base" title="kaa.config.Base"><tt class="xref py py-class docutils literal"><span class="pre">kaa.config.Base</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal current">kaa.config.Group</tt><br /></p>
 <div class="heading">Methods</div>
 <table>
-<tr><th><a title="kaa.config.Group.add_variable" class="reference internal" href="#kaa.config.Group.add_variable"><tt class="xref docutils literal"><span class="pre">add_variable()</span></tt></a></th><td class="desc">Add a variable to the group. The name will be set into the
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.config.Group.add_variable" title="kaa.config.Group.add_variable"><tt class="xref py py-meth docutils literal"><span class="pre">add_variable()</span></tt></a></th><td class="desc">Add a variable to the group. The name will be set into the
 given value. The object will _not_ be copied.</td></tr>
-<tr><th><a title="kaa.config.Group.copy" class="reference internal" href="#kaa.config.Group.copy"><tt class="xref docutils literal"><span class="pre">copy()</span></tt></a></th><td class="desc"></td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.config.Group.copy" title="kaa.config.Group.copy"><tt class="xref py py-meth docutils literal"><span class="pre">copy()</span></tt></a></th><td class="desc"></td></tr>
 </table>
 <div class="heading">Properties</div>
 <table>
-<tr><th><a title="kaa.config.Group.variables" class="reference internal" href="#kaa.config.Group.variables"><tt class="xref docutils literal"><span class="pre">variables</span></tt></a></th><td>read-only</td><td class="desc">List of variables for this group.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.config.Group.variables" title="kaa.config.Group.variables"><tt class="xref py py-attr docutils literal"><span class="pre">variables</span></tt></a></th><td>read-only</td><td class="desc">List of variables for this group.</td></tr>
 </table>
 <div class="heading">Signals</div><div class="nomembers">This class has no signals.</div>
 </div>
 <h4>Methods</h4><dl class="method">
 <dt id="kaa.config.Group.add_variable">
 <tt class="descname">add_variable</tt><big>(</big><em>name</em>, <em>value</em><big>)</big><a class="headerlink" href="#kaa.config.Group.add_variable" title="Permalink to this definition">¶</a></dt>
-<dd>Add a variable to the group. The name will be set into the
-given value. The object will _not_ be copied.</dd></dl>
+<dd><p>Add a variable to the group. The name will be set into the
+given value. The object will _not_ be copied.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kaa.config.Group.copy">
@@ -316,7 +330,8 @@ given value. The object will _not_ be copied.</dd></dl>
 <h4>Properties</h4><dl class="attribute">
 <dt id="kaa.config.Group.variables">
 <tt class="descname">variables</tt><a class="headerlink" href="#kaa.config.Group.variables" title="Permalink to this definition">¶</a></dt>
-<dd>List of variables for this group.</dd></dl>
+<dd><p>List of variables for this group.</p>
+</dd></dl>
 
 </p>
 </dd></dl>
@@ -327,23 +342,23 @@ given value. The object will _not_ be copied.</dd></dl>
 <em class="property">class </em><tt class="descclassname">kaa.config.</tt><tt class="descname">Config</tt><big>(</big><em>schema</em>, <em>desc=u''</em>, <em>name=''</em>, <em>module=None</em><big>)</big><a class="headerlink" href="#kaa.config.Config" title="Permalink to this definition">¶</a></dt>
 <dd><p>A config object. This is a group with functions to load and save a file.</p>
 <p><h4>Synopsis</h4><div class="kaa synopsis">
-<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.config.Base" class="reference internal" href="#kaa.config.Base"><tt class="xref docutils literal"><span class="pre">kaa.config.Base</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <a title="kaa.config.Group" class="reference internal" href="#kaa.config.Group"><tt class="xref docutils literal"><span class="pre">kaa.config.Group</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.config.Config</tt><br /></p>
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a class="reference internal" href="#kaa.config.Base" title="kaa.config.Base"><tt class="xref py py-class docutils literal"><span class="pre">kaa.config.Base</span></tt></a><br />&#9492;&#9472; <tt class="xref py py-class docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <a class="reference internal" href="#kaa.config.Group" title="kaa.config.Group"><tt class="xref py py-class docutils literal"><span class="pre">kaa.config.Group</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.config.Config</tt><br /></p>
 <div class="heading">Methods</div>
 <table>
-<tr><th><a title="kaa.config.Config.copy" class="reference internal" href="#kaa.config.Config.copy"><tt class="xref docutils literal"><span class="pre">copy()</span></tt></a></th><td class="desc"></td></tr>
-<tr><th><a title="kaa.config.Config.load" class="reference internal" href="#kaa.config.Config.load"><tt class="xref docutils literal"><span class="pre">load()</span></tt></a></th><td class="desc">Load values from a config file previously saved for this schema.</td></tr>
-<tr><th><a title="kaa.config.Config.save" class="reference internal" href="#kaa.config.Config.save"><tt class="xref docutils literal"><span class="pre">save()</span></tt></a></th><td class="desc">Save configuration file.</td></tr>
-<tr><th><a title="kaa.config.Config.watch" class="reference internal" href="#kaa.config.Config.watch"><tt class="xref docutils literal"><span class="pre">watch()</span></tt></a></th><td class="desc">If argument is True (default), adds a watch to the config file and will
+<tr class="row-even"><th><a class="reference internal" href="#kaa.config.Config.copy" title="kaa.config.Config.copy"><tt class="xref py py-meth docutils literal"><span class="pre">copy()</span></tt></a></th><td class="desc"></td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.config.Config.load" title="kaa.config.Config.load"><tt class="xref py py-meth docutils literal"><span class="pre">load()</span></tt></a></th><td class="desc">Load values from a config file previously saved for this schema.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.config.Config.save" title="kaa.config.Config.save"><tt class="xref py py-meth docutils literal"><span class="pre">save()</span></tt></a></th><td class="desc">Save configuration file.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.config.Config.watch" title="kaa.config.Config.watch"><tt class="xref py py-meth docutils literal"><span class="pre">watch()</span></tt></a></th><td class="desc">If argument is True (default), adds a watch to the config file and will
 reload the config if it changes.  If INotify is available, use that,
 otherwise stat the file every 3 seconds.</td></tr>
 </table>
 <div class="heading">Properties</div>
 <table>
-<tr><th><a title="kaa.config.Config.autosave" class="reference internal" href="#kaa.config.Config.autosave"><tt class="xref docutils literal"><span class="pre">autosave</span></tt></a></th><td>read/write</td><td class="desc">Whether or not changes are automatically save.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.config.Config.autosave" title="kaa.config.Config.autosave"><tt class="xref py py-attr docutils literal"><span class="pre">autosave</span></tt></a></th><td>read/write</td><td class="desc">Whether or not changes are automatically save.</td></tr>
 </table>
 <div class="heading">Signals</div>
 <table>
-<tr><th><a title="kaa.config.Config.signals.reloaded" class="reference internal" href="#kaa.config.Config.signals.reloaded"><tt class="xref docutils literal"><span class="pre">reloaded</span></tt></a></th><td class="desc">Emitted when the configuration file is automatically reloaded
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.config.Config.signals.reloaded" title="kaa.config.Config.signals.reloaded"><tt class="xref py py-attr docutils literal"><span class="pre">reloaded</span></tt></a></th><td class="desc">Emitted when the configuration file is automatically reloaded
 from disk due to watch().</td></tr>
 </table>
 
@@ -361,10 +376,10 @@ from disk due to watch().</td></tr>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><em>filename</em> (str) &#8211; filename to load values from; if None, will use the
-<tt class="xref docutils literal"><span class="pre">filename</span></tt> property.</li>
-<li><em>sync</em> (bool) &#8211; if True, will overwrite the current file (retaining previous
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>filename</strong> (<em>str</em>) &#8211; filename to load values from; if None, will use the
+<tt class="xref py py-attr docutils literal"><span class="pre">filename</span></tt> property.</li>
+<li><strong>sync</strong> (<em>bool</em>) &#8211; if True, will overwrite the current file (retaining previous
 values, of course) if the schema has changed, or create the
 config file if it does not exist.  (Default: False)</li>
 </ul>
@@ -372,7 +387,7 @@ config file if it does not exist.  (Default: False)</li>
 </tr>
 </tbody>
 </table>
-<p>If no filename has been previously set with the <tt class="xref docutils literal"><span class="pre">filename</span></tt>
+<p>If no filename has been previously set with the <tt class="xref py py-attr docutils literal"><span class="pre">filename</span></tt>
 property then the <tt class="docutils literal"><span class="pre">filename</span></tt> argument is required, and in that case the
 filename property will be set to this value.</p>
 </dd></dl>
@@ -385,11 +400,11 @@ filename property will be set to this value.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><em>filename</em> &#8211; the name of the file to save; if None specified, will
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>filename</strong> &#8211; the name of the file to save; if None specified, will
 use the name of the previously loaded file, or the
 value assigned to the filename property.</li>
-<li><em>force</em> (bool) &#8211; if False (default), will only write the file if there were
+<li><strong>force</strong> (<em>bool</em>) &#8211; if False (default), will only write the file if there were
 any changes (to either values or the schema).</li>
 </ul>
 </td>
@@ -412,8 +427,8 @@ otherwise stat the file every 3 seconds.</p>
 <tt class="descname">autosave</tt><a class="headerlink" href="#kaa.config.Config.autosave" title="Permalink to this definition">¶</a></dt>
 <dd><p>Whether or not changes are automatically save.</p>
 <p>If True, will write the config filename (either previously passed to
-<a title="kaa.config.Config.load" class="reference internal" href="#kaa.config.Config.load"><tt class="xref docutils literal"><span class="pre">load()</span></tt></a> or defined by the
-<tt class="xref docutils literal"><span class="pre">filename</span></tt> property) 5 seconds after the last
+<a class="reference internal" href="#kaa.config.Config.load" title="kaa.config.Config.load"><tt class="xref py py-meth docutils literal"><span class="pre">load()</span></tt></a> or defined by the
+<tt class="xref py py-attr docutils literal"><span class="pre">filename</span></tt> property) 5 seconds after the last
 config value update (or program exit, whichever comes first).</p>
 <p>Default is False.</p>
 </dd></dl>
@@ -430,7 +445,11 @@ from disk due to watch().</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>changed_names</em> (list) &#8211; the names of the variables that changed</td>
+<tr class="field-odd field"><th class="field-name" colspan="2">Param changed_names:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">the names of the variables that changed</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Type changed_names:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body">list</td>
 </tr>
 </tbody>
 </table>
@@ -451,39 +470,39 @@ from disk due to watch().</p>
       </div>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
-            <h3><a href="index.html">Table Of Contents</a></h3>
-            <ul>
-<li><a class="reference external" href="#">Configuration Files</a><ul>
-<li><a class="reference external" href="#module-functions">Module Functions</a></li>
-<li><a class="reference external" href="#config-objects">Config Objects</a></li>
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Configuration Files</a><ul>
+<li><a class="reference internal" href="#module-functions">Module Functions</a></li>
+<li><a class="reference internal" href="#config-objects">Config Objects</a></li>
 </ul>
 </li>
 </ul>
 
-            <h4>Previous topic</h4>
-            <p class="topless"><a href="rpc.html"
-                                  title="previous chapter">Remote Procedure Calls with kaa.rpc</a></p>
-            <h4>Next topic</h4>
-            <p class="topless"><a href="db.html"
-                                  title="next chapter">Object Database</a></p>
-            <h3>This Page</h3>
-            <ul class="this-page-menu">
-              <li><a href="_sources/config.txt"
-                     rel="nofollow">Show Source</a></li>
-            </ul>
-          <div id="searchbox" style="display: none">
-            <h3>Quick search</h3>
-              <form class="search" action="search.html" method="get">
-                <input type="text" name="q" size="18" />
-                <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
-              </form>
-              <p class="searchtip" style="font-size: 90%">
-              Enter search terms or a module, class or function name.
-              </p>
-          </div>
-          <script type="text/javascript">$('#searchbox').show(0);</script>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="rpc.html"
+                        title="previous chapter">Remote Procedure Calls with kaa.rpc</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="db.html"
+                        title="next chapter">Object Database</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/config.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -495,7 +514,7 @@ from disk due to watch().</p>
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="modindex.html" title="Global Module Index"
+          <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
           <a href="db.html" title="Object Database"
@@ -503,13 +522,13 @@ from disk due to watch().</p>
         <li class="right" >
           <a href="rpc.html" title="Remote Procedure Calls with kaa.rpc"
              >previous</a> |</li>
-        <li><a href="index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+        <li><a href="index.html">kaa.base 0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jan 24, 2012.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+        &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on May 11, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

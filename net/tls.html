@@ -1,25 +1,31 @@
+
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>TLS &mdash; kaa.base v0.99.2 documentation</title>
+    <title>TLS &mdash; kaa.base 0.99.2 documentation</title>
+    
     <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
         VERSION:     '0.99.2',
-        COLLAPSE_MODINDEX: false,
+        COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
       };
     </script>
     <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="kaa.base v0.99.2 documentation" href="../index.html" />
+    <link rel="top" title="kaa.base 0.99.2 documentation" href="../index.html" />
     <link rel="next" title="Multicast DNS" href="mdns.html" />
     <link rel="prev" title="Input Plugins" href="../input.html" />
     <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
@@ -33,15 +39,15 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="../modindex.html" title="Global Module Index"
-             accesskey="M">modules</a> |</li>
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="mdns.html" title="Multicast DNS"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="../input.html" title="Input Plugins"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -50,42 +56,47 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="tls">
-<span id="module-kaa.net.tls"></span><span id="id1"></span><h1>TLS<a class="headerlink" href="#tls" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="module-kaa.net.tls"></span><div class="section" id="tls">
+<span id="id1"></span><h1>TLS<a class="headerlink" href="#tls" title="Permalink to this headline">¶</a></h1>
 <p><dl class="class">
 <dt id="kaa.net.tls.TLSSocket">
-<em class="property">class </em><tt class="descclassname">kaa.net.tls.</tt><tt class="descname">TLSSocket</tt><big>(</big><em>ctx=None</em><big>)</big><a class="headerlink" href="#kaa.net.tls.TLSSocket" title="Permalink to this definition">¶</a></dt>
-<dd><p>TLSSocket extends <a title="kaa.Socket" class="reference external" href="../core/socket.html#kaa.Socket"><tt class="xref docutils literal"><span class="pre">Socket</span></tt></a> by adding SSL/TLS support.</p>
-<p>Until <a title="kaa.net.tls.TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">starttls_client()</span></tt></a> or
-<a title="kaa.net.tls.TLSSocket.starttls_server" class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_server"><tt class="xref docutils literal"><span class="pre">starttls_server()</span></tt></a> is called, a TLSSocket operates like a
-standard <a title="kaa.Socket" class="reference external" href="../core/socket.html#kaa.Socket"><tt class="xref docutils literal"><span class="pre">Socket</span></tt></a>.  After TLS handshaking is initiated, data
+<em class="property">class </em><tt class="descclassname">kaa.net.tls.</tt><tt class="descname">TLSSocket</tt><big>(</big><em>ctx=None</em>, <em>reuse_sessions=False</em><big>)</big><a class="headerlink" href="#kaa.net.tls.TLSSocket" title="Permalink to this definition">¶</a></dt>
+<dd><p>TLSSocket extends <a class="reference internal" href="../core/socket.html#kaa.Socket" title="kaa.Socket"><tt class="xref py py-class docutils literal"><span class="pre">Socket</span></tt></a> by adding SSL/TLS support.</p>
+<p>Until <a class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client" title="kaa.net.tls.TLSSocket.starttls_client"><tt class="xref py py-meth docutils literal"><span class="pre">starttls_client()</span></tt></a> or
+<a class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_server" title="kaa.net.tls.TLSSocket.starttls_server"><tt class="xref py py-meth docutils literal"><span class="pre">starttls_server()</span></tt></a> is called, a TLSSocket operates like a
+standard <a class="reference internal" href="../core/socket.html#kaa.Socket" title="kaa.Socket"><tt class="xref py py-class docutils literal"><span class="pre">Socket</span></tt></a>.  After TLS handshaking is initiated, data
 passed to/from the socket is transparently encrypted.</p>
-<p>TLSSockets that <a title="kaa.Socket.listen" class="reference external" href="../core/socket.html#kaa.Socket.listen"><tt class="xref docutils literal"><span class="pre">listen()</span></tt></a> will emit 
-<a title="kaa.Socket.signals.new-client" class="reference external" href="../core/socket.html#kaa.Socket.signals.new-client"><tt class="xref docutils literal"><span class="pre">new-client</span></tt></a> with a TLSSocket object as the
-client.  This TLSSocket will share the same <a title="kaa.net.tls.TLSContext" class="reference internal" href="#kaa.net.tls.TLSContext"><tt class="xref docutils literal"><span class="pre">TLSContext</span></tt></a> as the
+<p>TLSSockets that <a class="reference internal" href="../core/socket.html#kaa.Socket.listen" title="kaa.Socket.listen"><tt class="xref py py-meth docutils literal"><span class="pre">listen()</span></tt></a> will emit 
+<a class="reference internal" href="../core/socket.html#kaa.Socket.signals.new-client" title="kaa.Socket.signals.new-client"><tt class="xref py py-attr docutils literal"><span class="pre">new-client</span></tt></a> with a TLSSocket object as the
+client.  This TLSSocket will share the same <a class="reference internal" href="#kaa.net.tls.TLSContext" title="kaa.net.tls.TLSContext"><tt class="xref py py-class docutils literal"><span class="pre">TLSContext</span></tt></a> as the
 listening TLSSocket.</p>
 <p><h4>Synopsis</h4><div class="kaa synopsis">
-<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <a title="kaa.IOChannel" class="reference external" href="../core/io.html#kaa.IOChannel"><tt class="xref docutils literal"><span class="pre">kaa.IOChannel</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a title="kaa.Socket" class="reference external" href="../core/socket.html#kaa.Socket"><tt class="xref docutils literal"><span class="pre">kaa.Socket</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.net.tls.TLSSocket</tt><br /></p>
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref py py-class docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <a class="reference internal" href="../core/io.html#kaa.IOChannel" title="kaa.IOChannel"><tt class="xref py py-class docutils literal"><span class="pre">kaa.IOChannel</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a class="reference internal" href="../core/socket.html#kaa.Socket" title="kaa.Socket"><tt class="xref py py-class docutils literal"><span class="pre">kaa.Socket</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.net.tls.TLSSocket</tt><br /></p>
 <div class="heading">Methods</div>
 <table>
-<tr><th><a title="kaa.net.tls.TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">starttls_client()</span></tt></a></th><td class="desc">Send a ClientHello to initiate SSL session negotiation.</td></tr>
-<tr><th><a title="kaa.net.tls.TLSSocket.starttls_server" class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_server"><tt class="xref docutils literal"><span class="pre">starttls_server()</span></tt></a></th><td class="desc">Wait for a ClientHello before continuing communication.</td></tr>
-<tr><th><a title="kaa.net.tls.TLSSocket.verify" class="reference internal" href="#kaa.net.tls.TLSSocket.verify"><tt class="xref docutils literal"><span class="pre">verify()</span></tt></a></th><td class="desc">Verify one certificate in the peer&#8217;s certificate chain.</td></tr>
-<tr><th><a title="kaa.net.tls.TLSSocket.write" class="reference internal" href="#kaa.net.tls.TLSSocket.write"><tt class="xref docutils literal"><span class="pre">write()</span></tt></a></th><td class="desc">Write data to the socket, encrypting if necessary.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client" title="kaa.net.tls.TLSSocket.starttls_client"><tt class="xref py py-meth docutils literal"><span class="pre">starttls_client()</span></tt></a></th><td class="desc">Send a ClientHello to initiate SSL session negotiation.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_server" title="kaa.net.tls.TLSSocket.starttls_server"><tt class="xref py py-meth docutils literal"><span class="pre">starttls_server()</span></tt></a></th><td class="desc">Wait for a ClientHello before continuing communication.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.net.tls.TLSSocket.verify" title="kaa.net.tls.TLSSocket.verify"><tt class="xref py py-meth docutils literal"><span class="pre">verify()</span></tt></a></th><td class="desc">Verify one certificate in the peer&#8217;s certificate chain.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.net.tls.TLSSocket.write" title="kaa.net.tls.TLSSocket.write"><tt class="xref py py-meth docutils literal"><span class="pre">write()</span></tt></a></th><td class="desc">Write data to the socket, encrypting if necessary.</td></tr>
 </table>
 <div class="heading">Properties</div>
 <table>
-<tr><th><a title="kaa.net.tls.TLSSocket.cipher" class="reference internal" href="#kaa.net.tls.TLSSocket.cipher"><tt class="xref docutils literal"><span class="pre">cipher</span></tt></a></th><td>read-only</td><td class="desc">The cipher negotiated with the peer.</td></tr>
-<tr><th><a title="kaa.net.tls.TLSSocket.ctx" class="reference internal" href="#kaa.net.tls.TLSSocket.ctx"><tt class="xref docutils literal"><span class="pre">ctx</span></tt></a></th><td>read/write</td><td class="desc">The <a title="kaa.net.tls.TLSContext" class="reference internal" href="#kaa.net.tls.TLSContext"><tt class="xref docutils literal"><span class="pre">TLSContext</span></tt></a> object associated with this TLSSocket.</td></tr>
-<tr><th><a title="kaa.net.tls.TLSSocket.handshaked" class="reference internal" href="#kaa.net.tls.TLSSocket.handshaked"><tt class="xref docutils literal"><span class="pre">handshaked</span></tt></a></th><td>read-only</td><td class="desc">True when the SSL handshake has completed.</td></tr>
-<tr><th><a title="kaa.net.tls.TLSSocket.peer_cert_chain" class="reference internal" href="#kaa.net.tls.TLSSocket.peer_cert_chain"><tt class="xref docutils literal"><span class="pre">peer_cert_chain</span></tt></a></th><td>read-only</td><td class="desc">A list of <a title="kaa.net.tls.Certificate" class="reference internal" href="#kaa.net.tls.Certificate"><tt class="xref docutils literal"><span class="pre">Certificate</span></tt></a> objects representing the certificate chain for
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.net.tls.TLSSocket.cipher" title="kaa.net.tls.TLSSocket.cipher"><tt class="xref py py-attr docutils literal"><span class="pre">cipher</span></tt></a></th><td>read-only</td><td class="desc">The cipher negotiated with the peer.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.net.tls.TLSSocket.ctx" title="kaa.net.tls.TLSSocket.ctx"><tt class="xref py py-attr docutils literal"><span class="pre">ctx</span></tt></a></th><td>read/write</td><td class="desc">The <a class="reference internal" href="#kaa.net.tls.TLSContext" title="kaa.net.tls.TLSContext"><tt class="xref py py-class docutils literal"><span class="pre">TLSContext</span></tt></a> object associated with this TLSSocket.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.net.tls.TLSSocket.handshaked" title="kaa.net.tls.TLSSocket.handshaked"><tt class="xref py py-attr docutils literal"><span class="pre">handshaked</span></tt></a></th><td>read-only</td><td class="desc">True when the SSL handshake has completed.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.net.tls.TLSSocket.peer_cert_chain" title="kaa.net.tls.TLSSocket.peer_cert_chain"><tt class="xref py py-attr docutils literal"><span class="pre">peer_cert_chain</span></tt></a></th><td>read-only</td><td class="desc">A list of <a class="reference internal" href="#kaa.net.tls.Certificate" title="kaa.net.tls.Certificate"><tt class="xref py py-class docutils literal"><span class="pre">Certificate</span></tt></a> objects representing the certificate chain for
 the connected peer.</td></tr>
-<tr><th><a title="kaa.net.tls.TLSSocket.verified" class="reference internal" href="#kaa.net.tls.TLSSocket.verified"><tt class="xref docutils literal"><span class="pre">verified</span></tt></a></th><td>read-only</td><td class="desc">The status of the peer&#8217;s certificate chain verification.</td></tr>
-<tr><th><a title="kaa.net.tls.TLSSocket.verify_cb" class="reference internal" href="#kaa.net.tls.TLSSocket.verify_cb"><tt class="xref docutils literal"><span class="pre">verify_cb</span></tt></a></th><td>read/write</td><td class="desc">User-installable callback for peer certificate verification.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.net.tls.TLSSocket.reuse_sessions" title="kaa.net.tls.TLSSocket.reuse_sessions"><tt class="xref py py-attr docutils literal"><span class="pre">reuse_sessions</span></tt></a></th><td>read/write</td><td class="desc">True if session state will be preserved between connections.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.net.tls.TLSSocket.secure_renegotiation_support" title="kaa.net.tls.TLSSocket.secure_renegotiation_support"><tt class="xref py py-attr docutils literal"><span class="pre">secure_renegotiation_support</span></tt></a></th><td>read-only</td><td class="desc">Indicates if the peer supports RFC5746 Secure Renegotiation.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.net.tls.TLSSocket.session" title="kaa.net.tls.TLSSocket.session"><tt class="xref py py-attr docutils literal"><span class="pre">session</span></tt></a></th><td>read/write</td><td class="desc">A <tt class="xref py py-class docutils literal"><span class="pre">TLSSession</span></tt> object representing the session state for the
+current connection.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.net.tls.TLSSocket.session_reused" title="kaa.net.tls.TLSSocket.session_reused"><tt class="xref py py-attr docutils literal"><span class="pre">session_reused</span></tt></a></th><td>read-only</td><td class="desc">True if the SSL session was able to be reused for this connection.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.net.tls.TLSSocket.verified" title="kaa.net.tls.TLSSocket.verified"><tt class="xref py py-attr docutils literal"><span class="pre">verified</span></tt></a></th><td>read-only</td><td class="desc">The status of the peer&#8217;s certificate chain verification.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.net.tls.TLSSocket.verify_cb" title="kaa.net.tls.TLSSocket.verify_cb"><tt class="xref py py-attr docutils literal"><span class="pre">verify_cb</span></tt></a></th><td>read/write</td><td class="desc">User-installable callback for peer certificate verification.</td></tr>
 </table>
 <div class="heading">Signals</div>
 <table>
-<tr><th><a title="kaa.net.tls.TLSSocket.signals.tls" class="reference internal" href="#kaa.net.tls.TLSSocket.signals.tls"><tt class="xref docutils literal"><span class="pre">tls</span></tt></a></th><td class="desc">Emitted when a TLS handshake has been successfully completed.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.net.tls.TLSSocket.signals.tls" title="kaa.net.tls.TLSSocket.signals.tls"><tt class="xref py py-attr docutils literal"><span class="pre">tls</span></tt></a></th><td class="desc">Emitted when a TLS handshake has been successfully completed.</td></tr>
 </table>
 
 </div>
@@ -97,60 +108,61 @@ the connected peer.</td></tr>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><em>cert, key, password</em> &#8211; corresponds to <a title="kaa.net.tls.TLSContext.load_cert_chain" class="reference internal" href="#kaa.net.tls.TLSContext.load_cert_chain"><tt class="xref docutils literal"><span class="pre">TLSContext.load_cert_chain()</span></tt></a></li>
-<li><em>verify</em> (bool) &#8211; if True, the server must present a certificate and
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>key, password</strong> (<em>cert,</em>) &#8211; corresponds to <a class="reference internal" href="#kaa.net.tls.TLSContext.load_cert_chain" title="kaa.net.tls.TLSContext.load_cert_chain"><tt class="xref py py-meth docutils literal"><span class="pre">TLSContext.load_cert_chain()</span></tt></a></li>
+<li><strong>verify</strong> (<em>bool</em>) &#8211; if True, the server must present a certificate and
 must verify successfully until further communication is
 allowed; if False, no server certificate verification
 is done.</li>
-<li><em>cn</em> (str) &#8211; the default verification function will verify that the server
+<li><strong>cn</strong> (<em>str</em>) &#8211; the default verification function will verify that the server
 presents a certificate with a commonName or subjectAltName
 matching this value; if None, the hostname passed to connect()
 is used instead.</li>
-<li><em>fingerprint</em> (str) &#8211; require the server&#8217;s certificate to match the given
+<li><strong>fingerprint</strong> (<em>str</em>) &#8211; require the server&#8217;s certificate to match the given
 SHA1 hex digest</li>
 </ul>
 </td>
 </tr>
-<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> that finishes when TLS handshaking
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><a class="reference internal" href="../async/inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> that finishes when TLS handshaking
 succeeds or fails.  If the handshake fails, an exception is
 thrown to the InProgress</p>
 </td>
 </tr>
 </tbody>
 </table>
-<p>Before this method (or <a title="kaa.net.tls.TLSSocket.starttls_server" class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_server"><tt class="xref docutils literal"><span class="pre">starttls_server()</span></tt></a>) is invoked,
-a TLSSocket behaves like a standard <a title="kaa.Socket" class="reference external" href="../core/socket.html#kaa.Socket"><tt class="xref docutils literal"><span class="pre">Socket</span></tt></a>.</p>
+<p>Before this method (or <a class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_server" title="kaa.net.tls.TLSSocket.starttls_server"><tt class="xref py py-meth docutils literal"><span class="pre">starttls_server()</span></tt></a>) is invoked,
+a TLSSocket behaves like a standard <a class="reference internal" href="../core/socket.html#kaa.Socket" title="kaa.Socket"><tt class="xref py py-class docutils literal"><span class="pre">Socket</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="kaa.net.tls.TLSSocket.starttls_server">
-<tt class="descname">starttls_server</tt><big>(</big><em>cert=None</em>, <em>key=None</em>, <em>password=None</em>, <em>verify=False</em>, <em>dh=None</em><big>)</big><a class="headerlink" href="#kaa.net.tls.TLSSocket.starttls_server" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">starttls_server</tt><big>(</big><em>cert=None</em>, <em>key=None</em>, <em>password=None</em>, <em>verify=False</em>, <em>dh=None</em>, <em>ticket_key=None</em><big>)</big><a class="headerlink" href="#kaa.net.tls.TLSSocket.starttls_server" title="Permalink to this definition">¶</a></dt>
 <dd><p>Wait for a ClientHello before continuing communication.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><em>cert, key, password</em> &#8211; corresponds to <a title="kaa.net.tls.TLSContext.load_cert_chain" class="reference internal" href="#kaa.net.tls.TLSContext.load_cert_chain"><tt class="xref docutils literal"><span class="pre">TLSContext.load_cert_chain()</span></tt></a></li>
-<li><em>verify</em> (bool) &#8211; if True, the client must present a certificate and
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>key, password</strong> (<em>cert,</em>) &#8211; corresponds to <a class="reference internal" href="#kaa.net.tls.TLSContext.load_cert_chain" title="kaa.net.tls.TLSContext.load_cert_chain"><tt class="xref py py-meth docutils literal"><span class="pre">TLSContext.load_cert_chain()</span></tt></a></li>
+<li><strong>verify</strong> (<em>bool</em>) &#8211; if True, the client must present a certificate and
 must verify successfully until further communication is
 allowed; if False, no client certificate verification
 is done.</li>
-<li><em>dh</em> (str) &#8211; filename for Diffie-Hellman parameters in PEM format, needed
+<li><strong>dh</strong> (<em>str</em>) &#8211; filename for Diffie-Hellman parameters in PEM format, needed
 for EDH ciphers.  If None, temporary DH params will be used.</li>
+<li><strong>ticket_key</strong> (<em>str</em>) &#8211; corresponds to <a class="reference internal" href="#kaa.net.tls.TLSContext.ticket_key" title="kaa.net.tls.TLSContext.ticket_key"><tt class="xref py py-attr docutils literal"><span class="pre">TLSContext.ticket_key</span></tt></a></li>
 </ul>
 </td>
 </tr>
-<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> that finishes when TLS handshaking
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><a class="reference internal" href="../async/inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> that finishes when TLS handshaking
 succeeds or fails.  If the handshake fails, an exception is
 thrown to the InProgress</p>
 </td>
 </tr>
 </tbody>
 </table>
-<p>Before this method (or <a title="kaa.net.tls.TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">starttls_client()</span></tt></a>) is invoked,
-a TLSSocket behaves like a standard <a title="kaa.Socket" class="reference external" href="../core/socket.html#kaa.Socket"><tt class="xref docutils literal"><span class="pre">Socket</span></tt></a>.</p>
+<p>Before this method (or <a class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client" title="kaa.net.tls.TLSSocket.starttls_client"><tt class="xref py py-meth docutils literal"><span class="pre">starttls_client()</span></tt></a>) is invoked,
+a TLSSocket behaves like a standard <a class="reference internal" href="../core/socket.html#kaa.Socket" title="kaa.Socket"><tt class="xref py py-class docutils literal"><span class="pre">Socket</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="method">
@@ -161,47 +173,47 @@ a TLSSocket behaves like a standard <a title="kaa.Socket" class="reference exter
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><em>cert</em> (<a title="kaa.net.tls.Certificate" class="reference internal" href="#kaa.net.tls.Certificate"><tt class="xref docutils literal"><span class="pre">Certificate</span></tt></a>) &#8211; the certificate in the chain currently being verified</li>
-<li><em>depth</em> (int) &#8211; the depth within the peer&#8217;s certificate chain for the
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cert</strong> (<a class="reference internal" href="#kaa.net.tls.Certificate" title="kaa.net.tls.Certificate"><tt class="xref py py-class docutils literal"><span class="pre">Certificate</span></tt></a>) &#8211; the certificate in the chain currently being verified</li>
+<li><strong>depth</strong> (<em>int</em>) &#8211; the depth within the peer&#8217;s certificate chain for the
 certificate; the values are inverted such that 0 is the
 peer&#8217;s certificate, and increasing values walk up the
 issuer chain.</li>
-<li><em>err</em> (int or None) &#8211; an error code indicating any pre-validation failures detected
+<li><strong>err</strong> (<em>int or None</em>) &#8211; an error code indicating any pre-validation failures detected
 by OpenSSL, or None if no errors were found.</li>
-<li><em>errmsg</em> (str or None) &#8211; a human-readable string of <em>err</em>, or None if no errors
+<li><strong>errmsg</strong> (<em>str or None</em>) &#8211; a human-readable string of <em>err</em>, or None if no errors
 were found.</li>
 </ul>
 </td>
 </tr>
-<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">anything if the certificate should be accepted, otherwise
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">anything if the certificate should be accepted, otherwise
 it will raise an exception to reject it</p>
 </td>
 </tr>
-<tr class="field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><tt class="xref docutils literal"><span class="pre">TLSVerificationError</span></tt></p>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last"><tt class="xref py py-class docutils literal"><span class="pre">TLSVerificationError</span></tt></p>
 </td>
 </tr>
 </tbody>
 </table>
-<p>If <tt class="docutils literal"><span class="pre">verify=True</span></tt> was passed to either <a title="kaa.net.tls.TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">starttls_client()</span></tt></a> or
-<a title="kaa.net.tls.TLSSocket.starttls_server" class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_server"><tt class="xref docutils literal"><span class="pre">starttls_server()</span></tt></a>, this method is invoked for each certificate in
+<p>If <tt class="docutils literal"><span class="pre">verify=True</span></tt> was passed to either <a class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client" title="kaa.net.tls.TLSSocket.starttls_client"><tt class="xref py py-meth docutils literal"><span class="pre">starttls_client()</span></tt></a> or
+<a class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_server" title="kaa.net.tls.TLSSocket.starttls_server"><tt class="xref py py-meth docutils literal"><span class="pre">starttls_server()</span></tt></a>, this method is invoked for each certificate in
 the peer&#8217;s chain to give it an opportunity to accept or reject it by
-raising <tt class="xref docutils literal"><span class="pre">TLSVerificationError</span></tt>.</p>
+raising <tt class="xref py py-class docutils literal"><span class="pre">TLSVerificationError</span></tt>.</p>
 <p>Raising an exception will cause the exception to be thrown to the
-<a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> of a pending <a title="kaa.net.tls.TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">starttls_client()</span></tt></a> or
-<a title="kaa.net.tls.TLSSocket.starttls_server" class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_server"><tt class="xref docutils literal"><span class="pre">starttls_server()</span></tt></a>.  The <a title="kaa.net.tls.TLSSocket.verified" class="reference internal" href="#kaa.net.tls.TLSSocket.verified"><tt class="xref docutils literal"><span class="pre">verified</span></tt></a> property will be False,
+<a class="reference internal" href="../async/inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> of a pending <a class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client" title="kaa.net.tls.TLSSocket.starttls_client"><tt class="xref py py-meth docutils literal"><span class="pre">starttls_client()</span></tt></a> or
+<a class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_server" title="kaa.net.tls.TLSSocket.starttls_server"><tt class="xref py py-meth docutils literal"><span class="pre">starttls_server()</span></tt></a>.  The <a class="reference internal" href="#kaa.net.tls.TLSSocket.verified" title="kaa.net.tls.TLSSocket.verified"><tt class="xref py py-attr docutils literal"><span class="pre">verified</span></tt></a> property will be False,
 and the socket will be immediately closed.</p>
 <p>The default behaviour requires the certificate is issued by a
-recognized CA (see <a title="kaa.net.tls.TLSContext.load_verify_locations" class="reference internal" href="#kaa.net.tls.TLSContext.load_verify_locations"><tt class="xref docutils literal"><span class="pre">TLSContext.load_verify_locations()</span></tt></a>), the
+recognized CA (see <a class="reference internal" href="#kaa.net.tls.TLSContext.load_verify_locations" title="kaa.net.tls.TLSContext.load_verify_locations"><tt class="xref py py-meth docutils literal"><span class="pre">TLSContext.load_verify_locations()</span></tt></a>), the
 current time is within the certificate&#8217;s validity period, and
-<a title="kaa.net.tls.Certificate.match_subject_name" class="reference internal" href="#kaa.net.tls.Certificate.match_subject_name"><tt class="xref docutils literal"><span class="pre">Certificate.match_subject_name()</span></tt></a> succeeds given the hostname
-given to <a title="kaa.Socket.connect" class="reference external" href="../core/socket.html#kaa.Socket.connect"><tt class="xref docutils literal"><span class="pre">connect()</span></tt></a> (or <tt class="docutils literal"><span class="pre">cn</span></tt> kwarg passed to
-<a title="kaa.net.tls.TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">starttls_client()</span></tt></a>)</p>
+<a class="reference internal" href="#kaa.net.tls.Certificate.match_subject_name" title="kaa.net.tls.Certificate.match_subject_name"><tt class="xref py py-meth docutils literal"><span class="pre">Certificate.match_subject_name()</span></tt></a> succeeds given the hostname
+given to <a class="reference internal" href="../core/socket.html#kaa.Socket.connect" title="kaa.Socket.connect"><tt class="xref py py-meth docutils literal"><span class="pre">connect()</span></tt></a> (or <tt class="docutils literal"><span class="pre">cn</span></tt> kwarg passed to
+<a class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client" title="kaa.net.tls.TLSSocket.starttls_client"><tt class="xref py py-meth docutils literal"><span class="pre">starttls_client()</span></tt></a>)</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">Subclasses may override this method to implement custom verification
 behaviour, but it may be more convenient to set the
-<a title="kaa.net.tls.TLSSocket.verify_cb" class="reference internal" href="#kaa.net.tls.TLSSocket.verify_cb"><tt class="xref docutils literal"><span class="pre">verify_cb</span></tt></a> property with a callback.</p>
+<a class="reference internal" href="#kaa.net.tls.TLSSocket.verify_cb" title="kaa.net.tls.TLSSocket.verify_cb"><tt class="xref py py-attr docutils literal"><span class="pre">verify_cb</span></tt></a> property with a callback.</p>
 </div>
 </dd></dl>
 
@@ -213,15 +225,15 @@ behaviour, but it may be more convenient to set the
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>data</em> (str) &#8211; the plaintext data to be sent to the peer</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> (<em>str</em>) &#8211; the plaintext data to be sent to the peer</td>
 </tr>
-<tr class="field"><th class="field-name">Returns:</th><td class="field-body">an <a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> as described in <a title="kaa.IOChannel.write" class="reference external" href="../core/io.html#kaa.IOChannel.write"><tt class="xref docutils literal"><span class="pre">kaa.IOChannel.write()</span></tt></a></td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">an <a class="reference internal" href="../async/inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> as described in <a class="reference internal" href="../core/io.html#kaa.IOChannel.write" title="kaa.IOChannel.write"><tt class="xref py py-meth docutils literal"><span class="pre">kaa.IOChannel.write()</span></tt></a></td>
 </tr>
 </tbody>
 </table>
-<p>Until <a title="kaa.net.tls.TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">starttls_client()</span></tt></a> or <a title="kaa.net.tls.TLSSocket.starttls_server" class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_server"><tt class="xref docutils literal"><span class="pre">starttls_server()</span></tt></a> is called, the
+<p>Until <a class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client" title="kaa.net.tls.TLSSocket.starttls_client"><tt class="xref py py-meth docutils literal"><span class="pre">starttls_client()</span></tt></a> or <a class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_server" title="kaa.net.tls.TLSSocket.starttls_server"><tt class="xref py py-meth docutils literal"><span class="pre">starttls_server()</span></tt></a> is called, the
 data passed is sent plaintext, just as it is with a standard
-<a title="kaa.Socket" class="reference external" href="../core/socket.html#kaa.Socket"><tt class="xref docutils literal"><span class="pre">Socket</span></tt></a>.  After either is called, TLS handshaking must be
+<a class="reference internal" href="../core/socket.html#kaa.Socket" title="kaa.Socket"><tt class="xref py py-class docutils literal"><span class="pre">Socket</span></tt></a>.  After either is called, TLS handshaking must be
 completed and verification passed (if enabled) before writing is allowed,
 after which the supplied data is encrypted before being sent to the peer.</p>
 </dd></dl>
@@ -236,30 +248,73 @@ after which the supplied data is encrypted before being sent to the peer.</p>
 <dl class="attribute">
 <dt id="kaa.net.tls.TLSSocket.ctx">
 <tt class="descname">ctx</tt><a class="headerlink" href="#kaa.net.tls.TLSSocket.ctx" title="Permalink to this definition">¶</a></dt>
-<dd><p>The <a title="kaa.net.tls.TLSContext" class="reference internal" href="#kaa.net.tls.TLSContext"><tt class="xref docutils literal"><span class="pre">TLSContext</span></tt></a> object associated with this TLSSocket.</p>
+<dd><p>The <a class="reference internal" href="#kaa.net.tls.TLSContext" title="kaa.net.tls.TLSContext"><tt class="xref py py-class docutils literal"><span class="pre">TLSContext</span></tt></a> object associated with this TLSSocket.</p>
 <p>By default, a new context is created for each TLSSocket.  You can set
-this property or pass a <a title="kaa.net.tls.TLSContext" class="reference internal" href="#kaa.net.tls.TLSContext"><tt class="xref docutils literal"><span class="pre">TLSContext</span></tt></a> object when creating the
+this property or pass a <a class="reference internal" href="#kaa.net.tls.TLSContext" title="kaa.net.tls.TLSContext"><tt class="xref py py-class docutils literal"><span class="pre">TLSContext</span></tt></a> object when creating the
 TLSSocket to share contexts between connections.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">For active connections that have completed handshaking, setting this
-property will have no effect until the next time <a title="kaa.net.tls.TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">starttls_client()</span></tt></a>
-or <a title="kaa.net.tls.TLSSocket.starttls_server" class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_server"><tt class="xref docutils literal"><span class="pre">starttls_server()</span></tt></a> is called.</p>
+property will have no effect until the next time <a class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client" title="kaa.net.tls.TLSSocket.starttls_client"><tt class="xref py py-meth docutils literal"><span class="pre">starttls_client()</span></tt></a>
+or <a class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_server" title="kaa.net.tls.TLSSocket.starttls_server"><tt class="xref py py-meth docutils literal"><span class="pre">starttls_server()</span></tt></a> is called.</p>
 </div>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kaa.net.tls.TLSSocket.handshaked">
 <tt class="descname">handshaked</tt><a class="headerlink" href="#kaa.net.tls.TLSSocket.handshaked" title="Permalink to this definition">¶</a></dt>
-<dd>True when the SSL handshake has completed.</dd></dl>
+<dd><p>True when the SSL handshake has completed.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="kaa.net.tls.TLSSocket.peer_cert_chain">
 <tt class="descname">peer_cert_chain</tt><a class="headerlink" href="#kaa.net.tls.TLSSocket.peer_cert_chain" title="Permalink to this definition">¶</a></dt>
-<dd><p>A list of <a title="kaa.net.tls.Certificate" class="reference internal" href="#kaa.net.tls.Certificate"><tt class="xref docutils literal"><span class="pre">Certificate</span></tt></a> objects representing the certificate chain for
+<dd><p>A list of <a class="reference internal" href="#kaa.net.tls.Certificate" title="kaa.net.tls.Certificate"><tt class="xref py py-class docutils literal"><span class="pre">Certificate</span></tt></a> objects representing the certificate chain for
 the connected peer.</p>
 <p>The list is ordered such that the first element is the peer&#8217;s certificate,
 and the last element is the top-level certificate authority.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.net.tls.TLSSocket.reuse_sessions">
+<tt class="descname">reuse_sessions</tt><a class="headerlink" href="#kaa.net.tls.TLSSocket.reuse_sessions" title="Permalink to this definition">¶</a></dt>
+<dd><p>True if session state will be preserved between connections.</p>
+<p>SSL session resumption performs an abbreviated handshake if the server
+side recognizes the session id, or if the client presents a valid
+session ticket the server can decrypt.  This is allows substantially
+more efficient reconnections.</p>
+<p>This value is False by default.  If True, for clients, the session
+state will be perserved between subsequent <tt class="xref py py-meth docutils literal"><span class="pre">connect()</span></tt> and
+<a class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client" title="kaa.net.tls.TLSSocket.starttls_client"><tt class="xref py py-meth docutils literal"><span class="pre">starttls_client()</span></tt></a> calls.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Currently, servers will always maintain a session cache and allow
+clients to attempt session resumption.</p>
+</div>
+<p>It is possible to explicitly reuse sessions by saving and restoring
+the <a class="reference internal" href="#kaa.net.tls.TLSSocket.session" title="kaa.net.tls.TLSSocket.session"><tt class="xref py py-attr docutils literal"><span class="pre">session</span></tt></a> property between connections (which also works
+across different TLSSocket instances, and across TLSContexts).</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.net.tls.TLSSocket.secure_renegotiation_support">
+<tt class="descname">secure_renegotiation_support</tt><a class="headerlink" href="#kaa.net.tls.TLSSocket.secure_renegotiation_support" title="Permalink to this definition">¶</a></dt>
+<dd><p>Indicates if the peer supports RFC5746 Secure Renegotiation.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.net.tls.TLSSocket.session">
+<tt class="descname">session</tt><a class="headerlink" href="#kaa.net.tls.TLSSocket.session" title="Permalink to this definition">¶</a></dt>
+<dd><p>A <tt class="xref py py-class docutils literal"><span class="pre">TLSSession</span></tt> object representing the session state for the
+current connection.</p>
+<p>This value can be set with an existing <tt class="xref py py-class docutils literal"><span class="pre">TLSSession</span></tt> and later calls
+to <a class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client" title="kaa.net.tls.TLSSocket.starttls_client"><tt class="xref py py-meth docutils literal"><span class="pre">starttls_client()</span></tt></a> will attempt to reuse the session.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.net.tls.TLSSocket.session_reused">
+<tt class="descname">session_reused</tt><a class="headerlink" href="#kaa.net.tls.TLSSocket.session_reused" title="Permalink to this definition">¶</a></dt>
+<dd><p>True if the SSL session was able to be reused for this connection.</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -285,10 +340,11 @@ has not yet occurred)</li>
 <dl class="describe">
 <dt>
 <tt class="descname">def callback(cert, depth, err, errmsg)</tt></dt>
-<dd>See <a title="kaa.net.tls.TLSSocket.verify" class="reference internal" href="#kaa.net.tls.TLSSocket.verify"><tt class="xref docutils literal"><span class="pre">verify()</span></tt></a> for argument details.</dd></dl>
+<dd><p>See <a class="reference internal" href="#kaa.net.tls.TLSSocket.verify" title="kaa.net.tls.TLSSocket.verify"><tt class="xref py py-meth docutils literal"><span class="pre">verify()</span></tt></a> for argument details.</p>
+</dd></dl>
 
 <p>If a callback is set, it will be invoked for each certificate in the peer&#8217;s
-chain <em>instead</em> of the <a title="kaa.net.tls.TLSSocket.verify" class="reference internal" href="#kaa.net.tls.TLSSocket.verify"><tt class="xref docutils literal"><span class="pre">verify()</span></tt></a> method.</p>
+chain <em>instead</em> of the <a class="reference internal" href="#kaa.net.tls.TLSSocket.verify" title="kaa.net.tls.TLSSocket.verify"><tt class="xref py py-meth docutils literal"><span class="pre">verify()</span></tt></a> method.</p>
 </dd></dl>
 
 <h4>Signals</h4><dl class="attribute">
@@ -309,7 +365,7 @@ chain <em>instead</em> of the <a title="kaa.net.tls.TLSSocket.verify" class="ref
 <p><dl class="class">
 <dt id="kaa.net.tls.TLSContext">
 <em class="property">class </em><tt class="descclassname">kaa.net.tls.</tt><tt class="descname">TLSContext</tt><big>(</big><em>protocol=None</em><big>)</big><a class="headerlink" href="#kaa.net.tls.TLSContext" title="Permalink to this definition">¶</a></dt>
-<dd><p>Encapsulates one or more <a title="kaa.net.tls.TLSSocket" class="reference internal" href="#kaa.net.tls.TLSSocket"><tt class="xref docutils literal"><span class="pre">TLSSocket</span></tt></a> objects with common
+<dd><p>Encapsulates one or more <a class="reference internal" href="#kaa.net.tls.TLSSocket" title="kaa.net.tls.TLSSocket"><tt class="xref py py-class docutils literal"><span class="pre">TLSSocket</span></tt></a> objects with common
 configuration (like certificates) and shared data (like sessions).</p>
 <p>By default, TLSSockets will each create their own TLSContext.  Sharing the
 same context allows things like SSL session resumption between multiple
@@ -318,17 +374,18 @@ sockets.</p>
 <div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal current">kaa.net.tls.TLSContext</tt><br /></p>
 <div class="heading">Methods</div>
 <table>
-<tr><th><a title="kaa.net.tls.TLSContext.load_cert_chain" class="reference internal" href="#kaa.net.tls.TLSContext.load_cert_chain"><tt class="xref docutils literal"><span class="pre">load_cert_chain()</span></tt></a></th><td class="desc">Load a certificate chain and keys into the context.</td></tr>
-<tr><th><a title="kaa.net.tls.TLSContext.load_dh_params" class="reference internal" href="#kaa.net.tls.TLSContext.load_dh_params"><tt class="xref docutils literal"><span class="pre">load_dh_params()</span></tt></a></th><td class="desc">Load parameters for Ephemeral Diffie-Hellman.</td></tr>
-<tr><th><a title="kaa.net.tls.TLSContext.load_verify_locations" class="reference internal" href="#kaa.net.tls.TLSContext.load_verify_locations"><tt class="xref docutils literal"><span class="pre">load_verify_locations()</span></tt></a></th><td class="desc">Set the location of trusted certificates for certificate verification.</td></tr>
-<tr><th><a title="kaa.net.tls.TLSContext.set_ciphers" class="reference internal" href="#kaa.net.tls.TLSContext.set_ciphers"><tt class="xref docutils literal"><span class="pre">set_ciphers()</span></tt></a></th><td class="desc">Set the available ciphers for sockets created with this context.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.net.tls.TLSContext.load_cert_chain" title="kaa.net.tls.TLSContext.load_cert_chain"><tt class="xref py py-meth docutils literal"><span class="pre">load_cert_chain()</span></tt></a></th><td class="desc">Load a certificate chain and keys into the context.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.net.tls.TLSContext.load_dh_params" title="kaa.net.tls.TLSContext.load_dh_params"><tt class="xref py py-meth docutils literal"><span class="pre">load_dh_params()</span></tt></a></th><td class="desc">Load parameters for Ephemeral Diffie-Hellman.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.net.tls.TLSContext.load_verify_locations" title="kaa.net.tls.TLSContext.load_verify_locations"><tt class="xref py py-meth docutils literal"><span class="pre">load_verify_locations()</span></tt></a></th><td class="desc">Set the location of trusted certificates for certificate verification.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.net.tls.TLSContext.set_ciphers" title="kaa.net.tls.TLSContext.set_ciphers"><tt class="xref py py-meth docutils literal"><span class="pre">set_ciphers()</span></tt></a></th><td class="desc">Set the available ciphers for sockets created with this context.</td></tr>
 </table>
 <div class="heading">Properties</div>
 <table>
-<tr><th><a title="kaa.net.tls.TLSContext.dh_size" class="reference internal" href="#kaa.net.tls.TLSContext.dh_size"><tt class="xref docutils literal"><span class="pre">dh_size</span></tt></a></th><td>read-only</td><td class="desc">The size of the currently loaded DH parameters in bits.</td></tr>
-<tr><th><a title="kaa.net.tls.TLSContext.local_cert" class="reference internal" href="#kaa.net.tls.TLSContext.local_cert"><tt class="xref docutils literal"><span class="pre">local_cert</span></tt></a></th><td>read-only</td><td class="desc">A <a title="kaa.net.tls.Certificate" class="reference internal" href="#kaa.net.tls.Certificate"><tt class="xref docutils literal"><span class="pre">Certificate</span></tt></a> object of the local certificate loaded by
-<a title="kaa.net.tls.TLSContext.load_cert_chain" class="reference internal" href="#kaa.net.tls.TLSContext.load_cert_chain"><tt class="xref docutils literal"><span class="pre">load_cert_chain()</span></tt></a>.</td></tr>
-<tr><th><a title="kaa.net.tls.TLSContext.verify_location" class="reference internal" href="#kaa.net.tls.TLSContext.verify_location"><tt class="xref docutils literal"><span class="pre">verify_location</span></tt></a></th><td>read-only</td><td class="desc">The location set (or discovered) by <a title="kaa.net.tls.TLSContext.load_verify_locations" class="reference internal" href="#kaa.net.tls.TLSContext.load_verify_locations"><tt class="xref docutils literal"><span class="pre">load_verify_locations()</span></tt></a></td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.net.tls.TLSContext.dh_size" title="kaa.net.tls.TLSContext.dh_size"><tt class="xref py py-attr docutils literal"><span class="pre">dh_size</span></tt></a></th><td>read-only</td><td class="desc">The size of the currently loaded DH parameters in bits.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.net.tls.TLSContext.local_cert" title="kaa.net.tls.TLSContext.local_cert"><tt class="xref py py-attr docutils literal"><span class="pre">local_cert</span></tt></a></th><td>read-only</td><td class="desc">A <a class="reference internal" href="#kaa.net.tls.Certificate" title="kaa.net.tls.Certificate"><tt class="xref py py-class docutils literal"><span class="pre">Certificate</span></tt></a> object of the local certificate loaded by
+<a class="reference internal" href="#kaa.net.tls.TLSContext.load_cert_chain" title="kaa.net.tls.TLSContext.load_cert_chain"><tt class="xref py py-meth docutils literal"><span class="pre">load_cert_chain()</span></tt></a>.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.net.tls.TLSContext.ticket_key" title="kaa.net.tls.TLSContext.ticket_key"><tt class="xref py py-attr docutils literal"><span class="pre">ticket_key</span></tt></a></th><td>read/write</td><td class="desc">A 48 byte string used to encrypt session tickets.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.net.tls.TLSContext.verify_location" title="kaa.net.tls.TLSContext.verify_location"><tt class="xref py py-attr docutils literal"><span class="pre">verify_location</span></tt></a></th><td>read-only</td><td class="desc">The location set (or discovered) by <a class="reference internal" href="#kaa.net.tls.TLSContext.load_verify_locations" title="kaa.net.tls.TLSContext.load_verify_locations"><tt class="xref py py-meth docutils literal"><span class="pre">load_verify_locations()</span></tt></a></td></tr>
 </table>
 
 </div>
@@ -340,12 +397,12 @@ sockets.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><em>cert</em> (str) &#8211; filename for side certificate in PEM format</li>
-<li><em>key</em> (str) &#8211; filename for the private key for the given <em>cert</em> in PEM
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>cert</strong> (<em>str</em>) &#8211; filename for side certificate in PEM format</li>
+<li><strong>key</strong> (<em>str</em>) &#8211; filename for the private key for the given <em>cert</em> in PEM
 format; if None and cert is not None, then it assumes the
 key is contained in the cert file.</li>
-<li><em>password</em> &#8211; password to unlock the private key; if None and
+<li><strong>password</strong> &#8211; password to unlock the private key; if None and
 cert is not None, then it assumes the key is not
 protected by a password.  If arg is a callable,
 it is passed no arguments and must return a string.</li>
@@ -355,12 +412,12 @@ it is passed no arguments and must return a string.</li>
 </tbody>
 </table>
 <p>For clients, a loaded certificate will be presented to the server
-when <a title="kaa.net.tls.TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">TLSSocket.starttls_client()</span></tt></a> is called.  For servers, it is
+when <a class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client" title="kaa.net.tls.TLSSocket.starttls_client"><tt class="xref py py-meth docutils literal"><span class="pre">TLSSocket.starttls_client()</span></tt></a> is called.  For servers, it is
 mandatory that a certificate is loaded.</p>
 <p>In either case, the certificate chain can be loaded by explicitly
 calling this method, or passing the <tt class="docutils literal"><span class="pre">cert</span></tt>, <tt class="docutils literal"><span class="pre">key</span></tt>, and <tt class="docutils literal"><span class="pre">password</span></tt>
-kwargs in <a title="kaa.net.tls.TLSSocket.starttls_client" class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client"><tt class="xref docutils literal"><span class="pre">TLSSocket.starttls_client()</span></tt></a> and
-<a title="kaa.net.tls.TLSSocket.starttls_server" class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_server"><tt class="xref docutils literal"><span class="pre">TLSSocket.starttls_server()</span></tt></a>.</p>
+kwargs in <a class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_client" title="kaa.net.tls.TLSSocket.starttls_client"><tt class="xref py py-meth docutils literal"><span class="pre">TLSSocket.starttls_client()</span></tt></a> and
+<a class="reference internal" href="#kaa.net.tls.TLSSocket.starttls_server" title="kaa.net.tls.TLSSocket.starttls_server"><tt class="xref py py-meth docutils literal"><span class="pre">TLSSocket.starttls_server()</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="method">
@@ -371,7 +428,7 @@ kwargs in <a title="kaa.net.tls.TLSSocket.starttls_client" class="reference inte
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>file</em> (str) &#8211; filename containing DH parameters in PEM format; if None,
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>file</strong> (<em>str</em>) &#8211; filename containing DH parameters in PEM format; if None,
 hardcoded defaults are used</td>
 </tr>
 </tbody>
@@ -379,7 +436,7 @@ hardcoded defaults are used</td>
 <p>DH parameters are required to be loaded in order for EDH ciphers to be
 available.</p>
 <p>The size of the loaded DH parameters can be gotten from the
-<a title="kaa.net.tls.TLSContext.dh_size" class="reference internal" href="#kaa.net.tls.TLSContext.dh_size"><tt class="xref docutils literal"><span class="pre">dh_size</span></tt></a> property.</p>
+<a class="reference internal" href="#kaa.net.tls.TLSContext.dh_size" title="kaa.net.tls.TLSContext.dh_size"><tt class="xref py py-attr docutils literal"><span class="pre">dh_size</span></tt></a> property.</p>
 </dd></dl>
 
 <dl class="method">
@@ -390,7 +447,7 @@ available.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>location</em> (str) &#8211; path to a file containing concatenated certificates in
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>location</strong> (<em>str</em>) &#8211; path to a file containing concatenated certificates in
 PEM format, or directory containing individual certificates
 as files; if None, a location is auto-discovered based on
 OpenSSL system configuration.</td>
@@ -407,34 +464,53 @@ OpenSSL system configuration.</td>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>ciphers</em> (str) &#8211; a string in the <a class="reference external" href="http://www.openssl.org/docs/apps/ciphers.html#CIPHER_LIST_FORMAT">OpenSSL cipher list format</a>.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>ciphers</strong> (<em>str</em>) &#8211; a string in the <a class="reference external" href="http://www.openssl.org/docs/apps/ciphers.html#CIPHER_LIST_FORMAT">OpenSSL cipher list format</a>.</td>
 </tr>
-<tr class="field"><th class="field-name">Raises:</th><td class="field-body">TLSError if no ciphers could be selected</td>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body">TLSError if no ciphers could be selected</td>
 </tr>
 </tbody>
 </table>
-<p>Once a <a title="kaa.net.tls.TLSSocket" class="reference internal" href="#kaa.net.tls.TLSSocket"><tt class="xref docutils literal"><span class="pre">TLSSocket</span></tt></a> is connected, the <a title="kaa.net.tls.TLSSocket.cipher" class="reference internal" href="#kaa.net.tls.TLSSocket.cipher"><tt class="xref docutils literal"><span class="pre">cipher</span></tt></a>
+<p>Once a <a class="reference internal" href="#kaa.net.tls.TLSSocket" title="kaa.net.tls.TLSSocket"><tt class="xref py py-class docutils literal"><span class="pre">TLSSocket</span></tt></a> is connected, the <a class="reference internal" href="#kaa.net.tls.TLSSocket.cipher" title="kaa.net.tls.TLSSocket.cipher"><tt class="xref py py-attr docutils literal"><span class="pre">cipher</span></tt></a>
 property can be checked to see which cipher was selected.</p>
 </dd></dl>
 
 <h4>Properties</h4><dl class="attribute">
 <dt id="kaa.net.tls.TLSContext.dh_size">
 <tt class="descname">dh_size</tt><a class="headerlink" href="#kaa.net.tls.TLSContext.dh_size" title="Permalink to this definition">¶</a></dt>
-<dd>The size of the currently loaded DH parameters in bits.</dd></dl>
+<dd><p>The size of the currently loaded DH parameters in bits.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="kaa.net.tls.TLSContext.local_cert">
 <tt class="descname">local_cert</tt><a class="headerlink" href="#kaa.net.tls.TLSContext.local_cert" title="Permalink to this definition">¶</a></dt>
-<dd><p>A <a title="kaa.net.tls.Certificate" class="reference internal" href="#kaa.net.tls.Certificate"><tt class="xref docutils literal"><span class="pre">Certificate</span></tt></a> object of the local certificate loaded by
-<a title="kaa.net.tls.TLSContext.load_cert_chain" class="reference internal" href="#kaa.net.tls.TLSContext.load_cert_chain"><tt class="xref docutils literal"><span class="pre">load_cert_chain()</span></tt></a>.</p>
-<p>If None, <a title="kaa.net.tls.TLSContext.load_cert_chain" class="reference internal" href="#kaa.net.tls.TLSContext.load_cert_chain"><tt class="xref docutils literal"><span class="pre">load_cert_chain()</span></tt></a> was never called (or had failed).</p>
+<dd><p>A <a class="reference internal" href="#kaa.net.tls.Certificate" title="kaa.net.tls.Certificate"><tt class="xref py py-class docutils literal"><span class="pre">Certificate</span></tt></a> object of the local certificate loaded by
+<a class="reference internal" href="#kaa.net.tls.TLSContext.load_cert_chain" title="kaa.net.tls.TLSContext.load_cert_chain"><tt class="xref py py-meth docutils literal"><span class="pre">load_cert_chain()</span></tt></a>.</p>
+<p>If None, <a class="reference internal" href="#kaa.net.tls.TLSContext.load_cert_chain" title="kaa.net.tls.TLSContext.load_cert_chain"><tt class="xref py py-meth docutils literal"><span class="pre">load_cert_chain()</span></tt></a> was never called (or had failed).</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.net.tls.TLSContext.ticket_key">
+<tt class="descname">ticket_key</tt><a class="headerlink" href="#kaa.net.tls.TLSContext.ticket_key" title="Permalink to this definition">¶</a></dt>
+<dd><p>A 48 byte string used to encrypt session tickets.</p>
+<p>Setting this value enables the session ticket extension, and clients
+will receive session tickets during handshake.  Clients that present
+tickets encrypted using this key can resume SSL sessions without the
+need for server-side session cache.</p>
+<p>Clients don&#8217;t need to do anything special to use the tickets except
+to set <a class="reference internal" href="#kaa.net.tls.TLSSocket.reuse_sessions" title="kaa.net.tls.TLSSocket.reuse_sessions"><tt class="xref py py-attr docutils literal"><span class="pre">reuse_sessions</span></tt></a>.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The actual key used to encrypt the tickets is derived from an
+HMAC of the local certificate using the given key.  This means it
+is necessary to first call <a class="reference internal" href="#kaa.net.tls.TLSContext.load_cert_chain" title="kaa.net.tls.TLSContext.load_cert_chain"><tt class="xref py py-meth docutils literal"><span class="pre">load_cert_chain()</span></tt></a>.</p>
+</div>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kaa.net.tls.TLSContext.verify_location">
 <tt class="descname">verify_location</tt><a class="headerlink" href="#kaa.net.tls.TLSContext.verify_location" title="Permalink to this definition">¶</a></dt>
-<dd><p>The location set (or discovered) by <a title="kaa.net.tls.TLSContext.load_verify_locations" class="reference internal" href="#kaa.net.tls.TLSContext.load_verify_locations"><tt class="xref docutils literal"><span class="pre">load_verify_locations()</span></tt></a></p>
-<p>If None, <a title="kaa.net.tls.TLSContext.load_verify_locations" class="reference internal" href="#kaa.net.tls.TLSContext.load_verify_locations"><tt class="xref docutils literal"><span class="pre">load_verify_locations()</span></tt></a> was either never called or no
+<dd><p>The location set (or discovered) by <a class="reference internal" href="#kaa.net.tls.TLSContext.load_verify_locations" title="kaa.net.tls.TLSContext.load_verify_locations"><tt class="xref py py-meth docutils literal"><span class="pre">load_verify_locations()</span></tt></a></p>
+<p>If None, <a class="reference internal" href="#kaa.net.tls.TLSContext.load_verify_locations" title="kaa.net.tls.TLSContext.load_verify_locations"><tt class="xref py py-meth docutils literal"><span class="pre">load_verify_locations()</span></tt></a> was either never called or no
 location was auto-discovered.</p>
 </dd></dl>
 
@@ -447,7 +523,7 @@ location was auto-discovered.</p>
 <em class="property">class </em><tt class="descclassname">kaa.net.tls.</tt><tt class="descname">Certificate</tt><big>(</big><em>x509</em>, <em>copy=False</em><big>)</big><a class="headerlink" href="#kaa.net.tls.Certificate" title="Permalink to this definition">¶</a></dt>
 <dd><p>An X.509 certificate.</p>
 <p>You will not instantiate these objects directly, but they will be returned
-from various <a title="kaa.net.tls.TLSSocket" class="reference internal" href="#kaa.net.tls.TLSSocket"><tt class="xref docutils literal"><span class="pre">TLSSocket</span></tt></a> methods and properties.</p>
+from various <a class="reference internal" href="#kaa.net.tls.TLSSocket" title="kaa.net.tls.TLSSocket"><tt class="xref py py-class docutils literal"><span class="pre">TLSSocket</span></tt></a> methods and properties.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">Certificate objects are presently read-only.</p>
@@ -456,23 +532,23 @@ from various <a title="kaa.net.tls.TLSSocket" class="reference internal" href="#
 <div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal current">kaa.net.tls.Certificate</tt><br /></p>
 <div class="heading">Methods</div>
 <table>
-<tr><th><a title="kaa.net.tls.Certificate.digest" class="reference internal" href="#kaa.net.tls.Certificate.digest"><tt class="xref docutils literal"><span class="pre">digest()</span></tt></a></th><td class="desc">Generate a binary digest for the certificate.</td></tr>
-<tr><th><a title="kaa.net.tls.Certificate.hexdigest" class="reference internal" href="#kaa.net.tls.Certificate.hexdigest"><tt class="xref docutils literal"><span class="pre">hexdigest()</span></tt></a></th><td class="desc">Generate a hex string digest for the certificate.</td></tr>
-<tr><th><a title="kaa.net.tls.Certificate.match_subject_name" class="reference internal" href="#kaa.net.tls.Certificate.match_subject_name"><tt class="xref docutils literal"><span class="pre">match_subject_name()</span></tt></a></th><td class="desc">Match the given name with either the subject&#8217;s commonName or one of
+<tr class="row-even"><th><a class="reference internal" href="#kaa.net.tls.Certificate.digest" title="kaa.net.tls.Certificate.digest"><tt class="xref py py-meth docutils literal"><span class="pre">digest()</span></tt></a></th><td class="desc">Generate a binary digest for the certificate.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.net.tls.Certificate.hexdigest" title="kaa.net.tls.Certificate.hexdigest"><tt class="xref py py-meth docutils literal"><span class="pre">hexdigest()</span></tt></a></th><td class="desc">Generate a hex string digest for the certificate.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.net.tls.Certificate.match_subject_name" title="kaa.net.tls.Certificate.match_subject_name"><tt class="xref py py-meth docutils literal"><span class="pre">match_subject_name()</span></tt></a></th><td class="desc">Match the given name with either the subject&#8217;s commonName or one of
 the subjectAltNames.</td></tr>
 </table>
 <div class="heading">Properties</div>
 <table>
-<tr><th><a title="kaa.net.tls.Certificate.expired" class="reference internal" href="#kaa.net.tls.Certificate.expired"><tt class="xref docutils literal"><span class="pre">expired</span></tt></a></th><td>read-only</td><td class="desc">True if the current time is outside the certificate&#8217;s validity period.</td></tr>
-<tr><th><a title="kaa.net.tls.Certificate.extensions" class="reference internal" href="#kaa.net.tls.Certificate.extensions"><tt class="xref docutils literal"><span class="pre">extensions</span></tt></a></th><td>read-only</td><td class="desc">A dictionary of X509 v3 extensions present in the certificate.</td></tr>
-<tr><th><a title="kaa.net.tls.Certificate.issuer" class="reference internal" href="#kaa.net.tls.Certificate.issuer"><tt class="xref docutils literal"><span class="pre">issuer</span></tt></a></th><td>read-only</td><td class="desc">An <a title="kaa.net.tls.X509Name" class="reference internal" href="#kaa.net.tls.X509Name"><tt class="xref docutils literal"><span class="pre">X509Name</span></tt></a> for the entity that signed and issued the
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.net.tls.Certificate.expired" title="kaa.net.tls.Certificate.expired"><tt class="xref py py-attr docutils literal"><span class="pre">expired</span></tt></a></th><td>read-only</td><td class="desc">True if the current time is outside the certificate&#8217;s validity period.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.net.tls.Certificate.extensions" title="kaa.net.tls.Certificate.extensions"><tt class="xref py py-attr docutils literal"><span class="pre">extensions</span></tt></a></th><td>read-only</td><td class="desc">A dictionary of X509 v3 extensions present in the certificate.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.net.tls.Certificate.issuer" title="kaa.net.tls.Certificate.issuer"><tt class="xref py py-attr docutils literal"><span class="pre">issuer</span></tt></a></th><td>read-only</td><td class="desc">An <a class="reference internal" href="#kaa.net.tls.X509Name" title="kaa.net.tls.X509Name"><tt class="xref py py-class docutils literal"><span class="pre">X509Name</span></tt></a> for the entity that signed and issued the
 certificate.</td></tr>
-<tr><th><a title="kaa.net.tls.Certificate.not_after" class="reference internal" href="#kaa.net.tls.Certificate.not_after"><tt class="xref docutils literal"><span class="pre">not_after</span></tt></a></th><td>read-only</td><td class="desc">A datetime object representing the expiry date of the certificate.</td></tr>
-<tr><th><a title="kaa.net.tls.Certificate.not_before" class="reference internal" href="#kaa.net.tls.Certificate.not_before"><tt class="xref docutils literal"><span class="pre">not_before</span></tt></a></th><td>read-only</td><td class="desc">A datetime object representing the date the certificate becomes valid.</td></tr>
-<tr><th><a title="kaa.net.tls.Certificate.serial_number" class="reference internal" href="#kaa.net.tls.Certificate.serial_number"><tt class="xref docutils literal"><span class="pre">serial_number</span></tt></a></th><td>read-only</td><td class="desc">The serial number assigned to the certificate by the issuer (which must
+<tr class="row-even"><th><a class="reference internal" href="#kaa.net.tls.Certificate.not_after" title="kaa.net.tls.Certificate.not_after"><tt class="xref py py-attr docutils literal"><span class="pre">not_after</span></tt></a></th><td>read-only</td><td class="desc">A datetime object representing the expiry date of the certificate.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.net.tls.Certificate.not_before" title="kaa.net.tls.Certificate.not_before"><tt class="xref py py-attr docutils literal"><span class="pre">not_before</span></tt></a></th><td>read-only</td><td class="desc">A datetime object representing the date the certificate becomes valid.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.net.tls.Certificate.serial_number" title="kaa.net.tls.Certificate.serial_number"><tt class="xref py py-attr docutils literal"><span class="pre">serial_number</span></tt></a></th><td>read-only</td><td class="desc">The serial number assigned to the certificate by the issuer (which must
 be unique per CA).</td></tr>
-<tr><th><a title="kaa.net.tls.Certificate.subject" class="reference internal" href="#kaa.net.tls.Certificate.subject"><tt class="xref docutils literal"><span class="pre">subject</span></tt></a></th><td>read-only</td><td class="desc">An <a title="kaa.net.tls.X509Name" class="reference internal" href="#kaa.net.tls.X509Name"><tt class="xref docutils literal"><span class="pre">X509Name</span></tt></a> for the entity the certificate belongs to.</td></tr>
-<tr><th><a title="kaa.net.tls.Certificate.version" class="reference internal" href="#kaa.net.tls.Certificate.version"><tt class="xref docutils literal"><span class="pre">version</span></tt></a></th><td>read-only</td><td class="desc">The version of the certificate (usually 2).</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.net.tls.Certificate.subject" title="kaa.net.tls.Certificate.subject"><tt class="xref py py-attr docutils literal"><span class="pre">subject</span></tt></a></th><td>read-only</td><td class="desc">An <a class="reference internal" href="#kaa.net.tls.X509Name" title="kaa.net.tls.X509Name"><tt class="xref py py-class docutils literal"><span class="pre">X509Name</span></tt></a> for the entity the certificate belongs to.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.net.tls.Certificate.version" title="kaa.net.tls.Certificate.version"><tt class="xref py py-attr docutils literal"><span class="pre">version</span></tt></a></th><td>read-only</td><td class="desc">The version of the certificate (usually 2).</td></tr>
 </table>
 
 </div>
@@ -484,10 +560,10 @@ be unique per CA).</td></tr>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>name</em> (str) &#8211; the name of the digest algorithm to use (e.g. <tt class="docutils literal"><span class="pre">md5</span></tt>, <tt class="docutils literal"><span class="pre">sha1</span></tt>,
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> (<em>str</em>) &#8211; the name of the digest algorithm to use (e.g. <tt class="docutils literal"><span class="pre">md5</span></tt>, <tt class="docutils literal"><span class="pre">sha1</span></tt>,
 <tt class="docutils literal"><span class="pre">sha256</span></tt>, <tt class="docutils literal"><span class="pre">sha512</span></tt>)</td>
 </tr>
-<tr class="field"><th class="field-name">Returns:</th><td class="field-body">a byte string containing the binary digest</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">a byte string containing the binary digest</td>
 </tr>
 </tbody>
 </table>
@@ -501,9 +577,9 @@ be unique per CA).</td></tr>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>name</em> (str) &#8211; see <a title="kaa.net.tls.Certificate.digest" class="reference internal" href="#kaa.net.tls.Certificate.digest"><tt class="xref docutils literal"><span class="pre">digest()</span></tt></a></td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> (<em>str</em>) &#8211; see <a class="reference internal" href="#kaa.net.tls.Certificate.digest" title="kaa.net.tls.Certificate.digest"><tt class="xref py py-meth docutils literal"><span class="pre">digest()</span></tt></a></td>
 </tr>
-<tr class="field"><th class="field-name">Returns:</th><td class="field-body">a hex string of the digest</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">a hex string of the digest</td>
 </tr>
 </tbody>
 </table>
@@ -518,13 +594,13 @@ the subjectAltNames.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><em>name</em> &#8211; the hostname to match</li>
-<li><em>wildcards</em> &#8211; allow wildcards in the subject names</li>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> &#8211; the hostname to match</li>
+<li><strong>wildcards</strong> &#8211; allow wildcards in the subject names</li>
 </ul>
 </td>
 </tr>
-<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">the name that matched the supplied name, or None if no matches
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">the name that matched the supplied name, or None if no matches
 were found.</p>
 </td>
 </tr>
@@ -537,7 +613,7 @@ were found.</p>
 <tt class="descname">expired</tt><a class="headerlink" href="#kaa.net.tls.Certificate.expired" title="Permalink to this definition">¶</a></dt>
 <dd><p>True if the current time is outside the certificate&#8217;s validity period.</p>
 <p>For convenience, if a certificate is not yet valid (because the current
-time is before <a title="kaa.net.tls.Certificate.not_before" class="reference internal" href="#kaa.net.tls.Certificate.not_before"><tt class="xref docutils literal"><span class="pre">not_before</span></tt></a>), this property will be True.</p>
+time is before <a class="reference internal" href="#kaa.net.tls.Certificate.not_before" title="kaa.net.tls.Certificate.not_before"><tt class="xref py py-attr docutils literal"><span class="pre">not_before</span></tt></a>), this property will be True.</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -557,8 +633,9 @@ will be None.</p>
 <dl class="attribute">
 <dt id="kaa.net.tls.Certificate.issuer">
 <tt class="descname">issuer</tt><a class="headerlink" href="#kaa.net.tls.Certificate.issuer" title="Permalink to this definition">¶</a></dt>
-<dd>An <a title="kaa.net.tls.X509Name" class="reference internal" href="#kaa.net.tls.X509Name"><tt class="xref docutils literal"><span class="pre">X509Name</span></tt></a> for the entity that signed and issued the
-certificate.</dd></dl>
+<dd><p>An <a class="reference internal" href="#kaa.net.tls.X509Name" title="kaa.net.tls.X509Name"><tt class="xref py py-class docutils literal"><span class="pre">X509Name</span></tt></a> for the entity that signed and issued the
+certificate.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="kaa.net.tls.Certificate.not_after">
@@ -577,18 +654,21 @@ certificate.</dd></dl>
 <dl class="attribute">
 <dt id="kaa.net.tls.Certificate.serial_number">
 <tt class="descname">serial_number</tt><a class="headerlink" href="#kaa.net.tls.Certificate.serial_number" title="Permalink to this definition">¶</a></dt>
-<dd>The serial number assigned to the certificate by the issuer (which must
-be unique per CA).</dd></dl>
+<dd><p>The serial number assigned to the certificate by the issuer (which must
+be unique per CA).</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="kaa.net.tls.Certificate.subject">
 <tt class="descname">subject</tt><a class="headerlink" href="#kaa.net.tls.Certificate.subject" title="Permalink to this definition">¶</a></dt>
-<dd>An <a title="kaa.net.tls.X509Name" class="reference internal" href="#kaa.net.tls.X509Name"><tt class="xref docutils literal"><span class="pre">X509Name</span></tt></a> for the entity the certificate belongs to.</dd></dl>
+<dd><p>An <a class="reference internal" href="#kaa.net.tls.X509Name" title="kaa.net.tls.X509Name"><tt class="xref py py-class docutils literal"><span class="pre">X509Name</span></tt></a> for the entity the certificate belongs to.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="kaa.net.tls.Certificate.version">
 <tt class="descname">version</tt><a class="headerlink" href="#kaa.net.tls.Certificate.version" title="Permalink to this definition">¶</a></dt>
-<dd>The version of the certificate (usually 2).</dd></dl>
+<dd><p>The version of the certificate (usually 2).</p>
+</dd></dl>
 
 </p>
 </dd></dl>
@@ -617,7 +697,7 @@ X509Name in an OpenSSL-specific format.</p>
 <p class="last">X509Name objects are presently read-only.</p>
 </div>
 <p><h4>Synopsis</h4><div class="kaa synopsis">
-<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal"><span class="pre">__builtin__.dict</span></tt><br />&#9492;&#9472; <tt class="xref docutils literal current">kaa.net.tls.X509Name</tt><br /></p>
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref py py-class docutils literal"><span class="pre">__builtin__.dict</span></tt><br />&#9492;&#9472; <tt class="xref docutils literal current">kaa.net.tls.X509Name</tt><br /></p>
 
 </div>
 </p>
@@ -632,30 +712,30 @@ X509Name in an OpenSSL-specific format.</p>
       </div>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
-            <h4>Previous topic</h4>
-            <p class="topless"><a href="../input.html"
-                                  title="previous chapter">Input Plugins</a></p>
-            <h4>Next topic</h4>
-            <p class="topless"><a href="mdns.html"
-                                  title="next chapter">Multicast DNS</a></p>
-            <h3>This Page</h3>
-            <ul class="this-page-menu">
-              <li><a href="../_sources/net/tls.txt"
-                     rel="nofollow">Show Source</a></li>
-            </ul>
-          <div id="searchbox" style="display: none">
-            <h3>Quick search</h3>
-              <form class="search" action="../search.html" method="get">
-                <input type="text" name="q" size="18" />
-                <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
-              </form>
-              <p class="searchtip" style="font-size: 90%">
-              Enter search terms or a module, class or function name.
-              </p>
-          </div>
-          <script type="text/javascript">$('#searchbox').show(0);</script>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../input.html"
+                        title="previous chapter">Input Plugins</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="mdns.html"
+                        title="next chapter">Multicast DNS</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/net/tls.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -667,7 +747,7 @@ X509Name in an OpenSSL-specific format.</p>
           <a href="../genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="../modindex.html" title="Global Module Index"
+          <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
           <a href="mdns.html" title="Multicast DNS"
@@ -675,13 +755,13 @@ X509Name in an OpenSSL-specific format.</p>
         <li class="right" >
           <a href="../input.html" title="Input Plugins"
              >previous</a> |</li>
-        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jan 24, 2012.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+        &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on May 11, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

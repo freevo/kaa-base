@@ -1,25 +1,31 @@
+
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>The Main Loop &mdash; kaa.base v0.99.2 documentation</title>
+    <title>The Main Loop &mdash; kaa.base 0.99.2 documentation</title>
+    
     <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
         VERSION:     '0.99.2',
-        COLLAPSE_MODINDEX: false,
+        COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
       };
     </script>
     <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="kaa.base v0.99.2 documentation" href="../index.html" />
+    <link rel="top" title="kaa.base 0.99.2 documentation" href="../index.html" />
     <link rel="next" title="Timers" href="timer.html" />
     <link rel="prev" title="Signals and Callables" href="signals.html" />
     <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
@@ -33,15 +39,15 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="../modindex.html" title="Global Module Index"
-             accesskey="M">modules</a> |</li>
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="timer.html" title="Timers"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="signals.html" title="Signals and Callables"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -50,8 +56,8 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="the-main-loop">
-<span id="module-kaa.main"></span><h1>The Main Loop<a class="headerlink" href="#the-main-loop" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="module-kaa.main"></span><div class="section" id="the-main-loop">
+<h1>The Main Loop<a class="headerlink" href="#the-main-loop" title="Permalink to this headline">¶</a></h1>
 <p id="notifier">The plumbing within Kaa that orchestrates the main loop &#8211; dispatching
 callbacks triggered by events (such as activity on a file descriptor or timers)
 &#8211; is collectively referred to as &#8220;<em>the notifier</em>.&#8221;  If you&#8217;re familiar with the
@@ -62,7 +68,7 @@ internal version which supports integration with gtk and Twisted main loops.
 kaa.base fully wraps and enhances stock pyNotifier API with process, thread and
 signal handling and a wide variety of classes suitable for constructing
 callables used as callbacks.</p>
-<p>To start the main loop, import kaa and call <a title="kaa.main.run" class="reference internal" href="#kaa.main.run"><tt class="xref docutils literal"><span class="pre">kaa.main.run()</span></tt></a>.  The main
+<p>To start the main loop, import kaa and call <a class="reference internal" href="#kaa.main.run" title="kaa.main.run"><tt class="xref py py-func docutils literal"><span class="pre">kaa.main.run()</span></tt></a>.  The main
 loop (but <em>not</em> the program) will terminate when SIGTERM or SIGINT (ctrl-c) is
 received.  The simplest Kaa program is therefore:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">kaa</span>
@@ -74,8 +80,8 @@ received.  The simplest Kaa program is therefore:</p>
 the internal pyNotifier implementation; 30 seconds is basically infinity as far
 as a computer is concerned.)</p>
 <p>From the above basic shell, you can begin hooking functionality into the
-program via the rest of the Kaa API: <a class="reference external" href="timer.html#timer"><em>timers</em></a>, <a class="reference external" href="socket.html#socket"><em>sockets</em></a>, <a class="reference external" href="process.html#subprocess"><em>subprocesses</em></a>, <a class="reference external" href="io.html#io"><em>I/O channels</em></a>,
-<a class="reference external" href="../async/coroutines.html#coroutines"><em>coroutines</em></a>, <a class="reference external" href="../async/threads.html#threads"><em>threads</em></a>, etc.</p>
+program via the rest of the Kaa API: <a class="reference internal" href="timer.html#timer"><em>timers</em></a>, <a class="reference internal" href="socket.html#socket"><em>sockets</em></a>, <a class="reference internal" href="process.html#subprocess"><em>subprocesses</em></a>, <a class="reference internal" href="io.html#io"><em>I/O channels</em></a>,
+<a class="reference internal" href="../async/coroutines.html#coroutines"><em>coroutines</em></a>, <a class="reference internal" href="../async/threads.html#threads"><em>threads</em></a>, etc.</p>
 <div class="section" id="main-loop-api">
 <h2>Main Loop API<a class="headerlink" href="#main-loop-api" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
@@ -90,9 +96,9 @@ to terminate, and execution will resume after run() was called.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><em>threaded</em> (bool) &#8211; if True, the Kaa mainloop will start in a new thread.</li>
-<li><em>daemon</em> &#8211; applies when <tt class="docutils literal"><span class="pre">threaded=True</span></tt>, and indicates if the thread
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>threaded</strong> (<em>bool</em>) &#8211; if True, the Kaa mainloop will start in a new thread.</li>
+<li><strong>daemon</strong> &#8211; applies when <tt class="docutils literal"><span class="pre">threaded=True</span></tt>, and indicates if the thread
 running the main loop is a daemon thread.  Daemon threads will
 not block the program from exiting when the main Python thread
 terminates.</li>
@@ -118,9 +124,9 @@ Another use-case would be using kaa from the interactive Python shell:</p>
 </div>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
-<p class="last">Once the main loop has been started, do not fork using <tt class="xref docutils literal"><span class="pre">os.fork()</span></tt>.
+<p class="last">Once the main loop has been started, do not fork using <tt class="xref py py-func docutils literal"><span class="pre">os.fork()</span></tt>.
 Doing so may cause peculiar interactions when using threads.  To safely
-fork, use <a title="kaa.utils.fork" class="reference external" href="../utils.html#kaa.utils.fork"><tt class="xref docutils literal"><span class="pre">kaa.utils.fork()</span></tt></a>, which may be called whether the main
+fork, use <a class="reference internal" href="../utils.html#kaa.utils.fork" title="kaa.utils.fork"><tt class="xref py py-func docutils literal"><span class="pre">kaa.utils.fork()</span></tt></a>, which may be called whether the main
 loop has been started or not.</p>
 </div>
 </dd></dl>
@@ -142,12 +148,12 @@ by raising SystemExit.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><em>condition</em> &#8211; a callable or object that is evaluated after each step
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>condition</strong> &#8211; a callable or object that is evaluated after each step
 of the loop.  If it evaluates False, the loop
-terminates.  (If condition is therefore <tt class="xref docutils literal"><span class="pre">True</span></tt>, the
+terminates.  (If condition is therefore <tt class="docutils literal"><span class="pre">True</span></tt>, the
 loop will run forever.)</li>
-<li><em>timeout</em> &#8211; number of seconds after which the loop will terminate
+<li><strong>timeout</strong> &#8211; number of seconds after which the loop will terminate
 (regardless of the condition).</li>
 </ul>
 </td>
@@ -157,22 +163,24 @@ loop will run forever.)</li>
 <p>This function may be called recursively, however two loops may not
 run in parallel threads.</p>
 <p>Generally it is not necessary to call this function.  You probably want
-to use <a title="kaa.main.run" class="reference internal" href="#kaa.main.run"><tt class="xref docutils literal"><span class="pre">kaa.main.run()</span></tt></a> instead.</p>
+to use <a class="reference internal" href="#kaa.main.run" title="kaa.main.run"><tt class="xref py py-func docutils literal"><span class="pre">kaa.main.run()</span></tt></a> instead.</p>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
-<p class="last">Refer to the warning detailed in <a title="kaa.main.run" class="reference internal" href="#kaa.main.run"><tt class="xref docutils literal"><span class="pre">kaa.main.run()</span></tt></a>.</p>
+<p class="last">Refer to the warning detailed in <a class="reference internal" href="#kaa.main.run" title="kaa.main.run"><tt class="xref py py-func docutils literal"><span class="pre">kaa.main.run()</span></tt></a>.</p>
 </div>
 </dd></dl>
 
 <dl class="function">
 <dt id="kaa.main.is_running">
 <tt class="descclassname">kaa.main.</tt><tt class="descname">is_running</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.main.is_running" title="Permalink to this definition">¶</a></dt>
-<dd>Return True if the main loop is currently running.</dd></dl>
+<dd><p>Return True if the main loop is currently running.</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="kaa.main.is_shutting_down">
 <tt class="descclassname">kaa.main.</tt><tt class="descname">is_shutting_down</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.main.is_shutting_down" title="Permalink to this definition">¶</a></dt>
-<dd>Return True if the main loop is currently inside stop()</dd></dl>
+<dd><p>Return True if the main loop is currently inside stop()</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="kaa.main.is_stopped">
@@ -191,7 +199,7 @@ called.  These threads can loop until kaa.main.is_stopped()</p>
 <p class="first admonition-title">Warning</p>
 <p class="last">This function should almost certainly never be called directly.  Use it
 at your own peril.  (If you do use it, you must call
-<a title="kaa.main.init" class="reference internal" href="#kaa.main.init"><tt class="xref docutils literal"><span class="pre">init()</span></tt></a> first.)</p>
+<a class="reference internal" href="#kaa.main.init" title="kaa.main.init"><tt class="xref py py-func docutils literal"><span class="pre">init()</span></tt></a> first.)</p>
 </div>
 </dd></dl>
 
@@ -203,8 +211,8 @@ at your own peril.  (If you do use it, you must call
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><em>module</em> (str) &#8211; <p>the main loop implementation to use.</p>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>module</strong> (<em>str</em>) &#8211; <p>the main loop implementation to use.</p>
 <ul>
 <li><tt class="docutils literal"><span class="pre">generic</span></tt>: Native python-based main loop (default),</li>
 <li><tt class="docutils literal"><span class="pre">gtk</span></tt>: use pygtk&#8217;s main loop (automatically selected if
@@ -214,9 +222,9 @@ the gtk module is imported);</li>
 with custom hooks (needs <tt class="docutils literal"><span class="pre">handler</span></tt> kwarg)</li>
 </ul>
 </li>
-<li><em>reset</em> &#8211; discards any jobs queued by other threads; this is useful
+<li><strong>reset</strong> &#8211; discards any jobs queued by other threads; this is useful
 following a fork.</li>
-<li><em>options</em> &#8211; module-specific keyword arguments</li>
+<li><strong>options</strong> &#8211; module-specific keyword arguments</li>
 </ul>
 </td>
 </tr>
@@ -235,7 +243,7 @@ before the main loop is started, you will need to invoke init() first.</p>
 </div>
 <div class="section" id="main-loop-signals">
 <h2>Main Loop Signals<a class="headerlink" href="#main-loop-signals" title="Permalink to this headline">¶</a></h2>
-<p id="mainsignals">Global Kaa signals are accessed via the <tt class="docutils literal"><span class="pre">kaa.signals</span></tt> <a title="kaa.Signals" class="reference external" href="signals.html#kaa.Signals"><tt class="xref docutils literal"><span class="pre">Signals</span></tt></a> object.
+<p id="mainsignals">Global Kaa signals are accessed via the <tt class="docutils literal"><span class="pre">kaa.signals</span></tt> <a class="reference internal" href="signals.html#kaa.Signals" title="kaa.Signals"><tt class="xref py py-class docutils literal"><span class="pre">Signals</span></tt></a> object.
 For example:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">shutdown_handler</span><span class="p">():</span>
     <span class="k">print</span> <span class="s">&#39;Shutting down&#39;</span>
@@ -243,7 +251,7 @@ For example:</p>
 <span class="n">kaa</span><span class="o">.</span><span class="n">signals</span><span class="p">[</span><span class="s">&#39;shutdown&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">shutdown_handler</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Importing other Kaa modules (such as those in <a title="Input plugins for stdin and LIRC" class="reference external" href="../input.html#module-kaa.input"><tt class="xref docutils literal"><span class="pre">kaa.input</span></tt></a>) may add specialized
+<p>Importing other Kaa modules (such as those in <a class="reference internal" href="../input.html#module-kaa.input" title="kaa.input: Input plugins for stdin and LIRC"><tt class="xref py py-mod docutils literal"><span class="pre">kaa.input</span></tt></a>) may add specialized
 signals, however by default <tt class="docutils literal"><span class="pre">kaa.signals</span></tt> contains:</p>
 <dl class="attribute">
 <dt id="kaa.main.shutdown">
@@ -253,7 +261,8 @@ subprocesses or threads are terminated.</p>
 <dl class="describe">
 <dt>
 <tt class="descname">def callback()</tt></dt>
-<dd>The callback takes no arguments.</dd></dl>
+<dd><p>The callback takes no arguments.</p>
+</dd></dl>
 
 </dd></dl>
 
@@ -267,7 +276,8 @@ handler.</p>
 <dl class="describe">
 <dt>
 <tt class="descname">def callback()</tt></dt>
-<dd>The callback takes no arguments.</dd></dl>
+<dd><p>The callback takes no arguments.</p>
+</dd></dl>
 
 </dd></dl>
 
@@ -283,7 +293,8 @@ canvas after notifier callbacks have manipulated objects upon it.</p>
 <dl class="describe">
 <dt>
 <tt class="descname">def callback()</tt></dt>
-<dd>The callback takes no arguments.</dd></dl>
+<dd><p>The callback takes no arguments.</p>
+</dd></dl>
 
 </dd></dl>
 
@@ -301,16 +312,15 @@ be aborted.  (This also includes SystemExit and KeyboardInterrupt.)</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><em>tp</em> &#8211; the exception class</li>
-<li><em>exc</em> &#8211; the exception instance</li>
-<li><em>tb</em> &#8211; the traceback for this exception</li>
-</ul>
-</td>
+<tr class="field-odd field"><th class="field-name">Param tp:</th><td class="field-body">the exception class</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Param exc:</th><td class="field-body">the exception instance</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Param tb:</th><td class="field-body">the traceback for this exception</td>
 </tr>
 </tbody>
 </table>
-<p>If the callback returns <tt class="xref docutils literal"><span class="pre">False</span></tt>, the exception will be considered
+<p>If the callback returns <tt class="docutils literal"><span class="pre">False</span></tt>, the exception will be considered
 handled and the main loop will <em>not</em> terminate.  Otherwise, it will.</p>
 </dd></dl>
 
@@ -356,7 +366,7 @@ with the threaded decorator.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>mainloop</em> &#8211; the mainloop object to use a mainloop based on gobject
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>mainloop</strong> &#8211; the mainloop object to use a mainloop based on gobject
 like the gstreamer or clutter mainloop. The object provided here must
 have a start and a stop function.</td>
 </tr>
@@ -367,7 +377,7 @@ have a start and a stop function.</td>
 <p>Note that callbacks from the gobject mainloop are called in that loop
 and not the kaa mainloop. Make sure you decorate the mainloop with the
 threaded decorator if necessary. For details about thread support see
-<a class="reference external" href="../async/threads.html#threads"><em>Thread Support</em></a>. The <cite>threaded</cite> decorator can be used to force
+<a class="reference internal" href="../async/threads.html#threads"><em>Thread Support</em></a>. The <cite>threaded</cite> decorator can be used to force
 execution of a function in the gobject mainloop. Use <cite>kaa.GOBJECT</cite> as
 thread name:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">kaa</span>
@@ -477,45 +487,45 @@ support for that mainloop in the kaa distribution.</p>
       </div>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
-            <h3><a href="../index.html">Table Of Contents</a></h3>
-            <ul>
-<li><a class="reference external" href="#">The Main Loop</a><ul>
-<li><a class="reference external" href="#main-loop-api">Main Loop API</a></li>
-<li><a class="reference external" href="#main-loop-signals">Main Loop Signals</a></li>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">The Main Loop</a><ul>
+<li><a class="reference internal" href="#main-loop-api">Main Loop API</a></li>
+<li><a class="reference internal" href="#main-loop-signals">Main Loop Signals</a></li>
 </ul>
 </li>
-<li><a class="reference external" href="#integration-with-other-frameworks">Integration With Other Frameworks</a><ul>
-<li><a class="reference external" href="#gobject-gtk-integration">GObject / GTK Integration</a></li>
-<li><a class="reference external" href="#twisted-integration">Twisted Integration</a></li>
-<li><a class="reference external" href="#other-mainloops">Other mainloops</a></li>
+<li><a class="reference internal" href="#integration-with-other-frameworks">Integration With Other Frameworks</a><ul>
+<li><a class="reference internal" href="#gobject-gtk-integration">GObject / GTK Integration</a></li>
+<li><a class="reference internal" href="#twisted-integration">Twisted Integration</a></li>
+<li><a class="reference internal" href="#other-mainloops">Other mainloops</a></li>
 </ul>
 </li>
 </ul>
 
-            <h4>Previous topic</h4>
-            <p class="topless"><a href="signals.html"
-                                  title="previous chapter">Signals and Callables</a></p>
-            <h4>Next topic</h4>
-            <p class="topless"><a href="timer.html"
-                                  title="next chapter">Timers</a></p>
-            <h3>This Page</h3>
-            <ul class="this-page-menu">
-              <li><a href="../_sources/core/mainloop.txt"
-                     rel="nofollow">Show Source</a></li>
-            </ul>
-          <div id="searchbox" style="display: none">
-            <h3>Quick search</h3>
-              <form class="search" action="../search.html" method="get">
-                <input type="text" name="q" size="18" />
-                <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
-              </form>
-              <p class="searchtip" style="font-size: 90%">
-              Enter search terms or a module, class or function name.
-              </p>
-          </div>
-          <script type="text/javascript">$('#searchbox').show(0);</script>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="signals.html"
+                        title="previous chapter">Signals and Callables</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="timer.html"
+                        title="next chapter">Timers</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/core/mainloop.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -527,7 +537,7 @@ support for that mainloop in the kaa distribution.</p>
           <a href="../genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="../modindex.html" title="Global Module Index"
+          <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
           <a href="timer.html" title="Timers"
@@ -535,13 +545,13 @@ support for that mainloop in the kaa distribution.</p>
         <li class="right" >
           <a href="signals.html" title="Signals and Callables"
              >previous</a> |</li>
-        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jan 24, 2012.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+        &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on May 11, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

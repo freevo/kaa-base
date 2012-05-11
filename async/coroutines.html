@@ -1,25 +1,31 @@
+
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Coroutines &mdash; kaa.base v0.99.2 documentation</title>
+    <title>Coroutines &mdash; kaa.base 0.99.2 documentation</title>
+    
     <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
         VERSION:     '0.99.2',
-        COLLAPSE_MODINDEX: false,
+        COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
       };
     </script>
     <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="kaa.base v0.99.2 documentation" href="../index.html" />
+    <link rel="top" title="kaa.base 0.99.2 documentation" href="../index.html" />
     <link rel="next" title="Thread Support" href="threads.html" />
     <link rel="prev" title="InProgress Objects" href="inprogress.html" />
     <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
@@ -33,15 +39,15 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="../modindex.html" title="Global Module Index"
-             accesskey="M">modules</a> |</li>
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="threads.html" title="Thread Support"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="inprogress.html" title="InProgress Objects"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -50,51 +56,56 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="coroutines">
-<span id="module-kaa.coroutine"></span><span id="id1"></span><h1>Coroutines<a class="headerlink" href="#coroutines" title="Permalink to this headline">¶</a></h1>
-<p>Coroutines are used to break up large and computationally expensive
-tasks into smaller tasks, where control is relinquished to the main
-loop after each smaller task. Coroutines are also very useful in
-constructing state machines. In the event where blocking is
-unavoidable, and the duration of the block is unknown (for example,
-connecting to a remote host, or scaling a very large image), threads
-can be used. These two different approaches are unified with a very
-similar API.</p>
-<p>A function or method is designated a coroutine by using the &#64;kaa.coroutine
+  <span class="target" id="module-kaa.coroutine"></span><div class="section" id="coroutines">
+<span id="id1"></span><h1>Coroutines<a class="headerlink" href="#coroutines" title="Permalink to this headline">¶</a></h1>
+<p>Coroutines are special functions that have multiple entry points that allow
+suspending and resuming execution at specified locations.  They allow you to:</p>
+<blockquote>
+<div><ul class="simple">
+<li>write sequentially flowing code involving potentially blocking tasks (e.g.
+socket IO) that is actually completely non-blocking</li>
+<li>&#8220;time slice&#8221; large, computationally expensive tasks to avoid blocking</li>
+<li>help solve complex problems involving state <a class="reference external" href="http://eli.thegreenplace.net/2009/08/29/co-routines-as-an-alternative-to-state-machines/">without using explicit state machines</a>
+the main loop for extended periods without the need for multiple functions</li>
+</ul>
+</div></blockquote>
+<p>In the event where blocking is unavoidable, and the duration of the block is
+unknown (for example, connecting to a remote host, or scaling a very large
+image), threads can be used.  These two different approaches are unified with a
+very similar API.</p>
+<p>A function or method is designated a coroutine by using the <tt class="docutils literal"><span class="pre">&#64;kaa.coroutine</span></tt>
 decorator.  A coroutine allows a larger tasks to be broken down into smaller
-ones by yielding control back to the &#8220;scheduler&#8221; (the <a class="reference external" href="../core/mainloop.html#notifier"><em>notifier</em></a>), implementing a kind of cooperative multitasking.  More usefully,
+ones by yielding control back to the &#8220;scheduler&#8221; (the <a class="reference internal" href="../core/mainloop.html#notifier"><em>notifier</em></a>), implementing a kind of cooperative multitasking.  More usefully,
 coroutines can yield at points where they may otherwise block on resources
 (e.g. disk or network), and when the resource becomes available, the coroutine
-resumes where it left off.  With coroutines and <a class="reference external" href="inprogress.html#inprogress"><em>InProgress</em></a>
-objects, it is possible to construct non-trivial state machines, whose state is
-modified by asynchronous events, using a single coroutine.  Without coroutines,
-this is typically implemented as a series of smaller callback functions.  (For
-more information on coroutines, see <a class="reference external" href="http://en.wikipedia.org/wiki/Coroutine">Wikipedia&#8217;s treatment of the subject</a>.)</p>
-<p>Any function decorated with coroutine will return an InProgress object, and the
-caller can connect a callback to the InProgress object in order to be notified
-of its return value or any exception.</p>
-<p>When a coroutine yields kaa.NotFinished, control is returned to the
+resumes where it left off.  Without coroutines, this is typically implemented
+as a series of smaller callback functions.  (For more information on
+coroutines, see <a class="reference external" href="http://en.wikipedia.org/wiki/Coroutine">Wikipedia&#8217;s treatment of the subject</a>.)</p>
+<p>Coroutines return an InProgress object, and the caller can connect a callback
+to the InProgress object in order to be notified of its return value or any
+exception, or it can yield the InProgress object from other coroutines.</p>
+<p>When a coroutine yields <tt class="docutils literal"><span class="pre">kaa.NotFinished</span></tt>, control is returned to the
 main loop, and the coroutine will resume after the yield statement
 at the next main loop iteration, or, if an interval is provided with the
 decorator, after this time interval.  Following the cooperative multitasking
-analogy, yielding kaa.NotFinished can be thought of as the coroutine releasing
+analogy, yielding <tt class="docutils literal"><span class="pre">kaa.NotFinished</span></tt> can be thought of as the coroutine releasing
 a &#8220;time slice&#8221; so that other tasks may run.</p>
-<p>When a coroutine yields any value other than kaa.NotFinished (including None),
+<p>When a coroutine yields any value other than <tt class="docutils literal"><span class="pre">kaa.NotFinished</span></tt> (including None),
 the coroutine is considered finished and the InProgress returned to the caller
-will be <a class="reference external" href="../core/signals.html#emitting"><em>emitted</em></a> (i.e. it is finished). As with return, if no value is
-explicitly yielded and the coroutine terminates, the InProgress is finished
-with None.</p>
+will be <a class="reference internal" href="../core/signals.html#emitting"><em>emitted</em></a> (i.e. it is finished). As with return, if no
+value is explicitly yielded and the coroutine terminates, the InProgress is
+finished with None.</p>
 <p>There is an important exception to the above rule: if the coroutine yields an
-<a title="kaa.InProgress" class="reference external" href="inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> object, the coroutine will be resumed when the
+<a class="reference internal" href="inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> object, the coroutine will be resumed when the
 InProgress object is finished.  This allows a coroutine to be &#8220;chained&#8221; with
 other InProgress tasks, including other coroutines.</p>
 <p>To recap, if a coroutine yields:</p>
 <blockquote>
-<ul class="simple">
-<li><cite>kaa.NotFinished</cite>: control is returned to the main loop so that other tasks
+<div><ul class="simple">
+<li><tt class="docutils literal"><span class="pre">kaa.NotFinished</span></tt>: control is returned to the main loop so that other tasks
 can run (such as other timers, I/O handlers, etc.) and resumed on the next
 main loop iteration.</li>
-<li>an <a title="kaa.InProgress" class="reference external" href="inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> object: control is returned to the main loop and
+<li>an <a class="reference internal" href="inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> object: control is returned to the main loop and
 the coroutine is resumed when the yielded InProgress is finished.  Inside
 the coroutine, the yield call &#8220;returns&#8221; the value that InProgress was finished
 with.</li>
@@ -102,7 +113,7 @@ with.</li>
 returned to the caller is finished with that value (which includes None, if
 no value was explicitly yielded and the coroutine reaches the end naturally).</li>
 </ul>
-</blockquote>
+</div></blockquote>
 <p>Here is a simple example that breaks up a loop into smaller tasks:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">kaa</span>
 
@@ -137,7 +148,7 @@ object the other coroutine returns):</p>
 was introduced in Python 2.5.  kaa.base requires Python 2.5 or later.)</p>
 <p>Classes in kaa make heavy use of coroutines and (to a lesser extent) threads
 when methods would otherwise block on some resource.  Both coroutines and
-<a class="reference external" href="threads.html#threaded"><em>&#64;threaded</em></a>-decorated methods return InProgress objects and behave identically.
+<a class="reference internal" href="threads.html#threaded"><em>&#64;threaded</em></a>-decorated methods return InProgress objects and behave identically.
 These can be therefore yielded from a coroutine in the same way:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="nd">@kaa.coroutine</span><span class="p">()</span>
 <span class="k">def</span> <span class="nf">fetch_page</span><span class="p">(</span><span class="n">host</span><span class="p">):</span>
@@ -153,8 +164,8 @@ These can be therefore yielded from a coroutine in the same way:</p>
 </pre></div>
 </div>
 <p>In the above example, the difference between threaded functions
-(<a title="kaa.Socket.connect" class="reference external" href="../core/socket.html#kaa.Socket.connect"><tt class="xref docutils literal"><span class="pre">kaa.Socket.connect()</span></tt></a>) and coroutines (<a title="kaa.IOChannel.write" class="reference external" href="../core/io.html#kaa.IOChannel.write"><tt class="xref docutils literal"><span class="pre">write()</span></tt></a> and
-<a title="kaa.IOChannel.read" class="reference external" href="../core/io.html#kaa.IOChannel.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a>) is transparent.  Both return InProgress objects. (As
+(<a class="reference internal" href="../core/socket.html#kaa.Socket.connect" title="kaa.Socket.connect"><tt class="xref py py-meth docutils literal"><span class="pre">kaa.Socket.connect()</span></tt></a>) and coroutines (<a class="reference internal" href="../core/io.html#kaa.IOChannel.write" title="kaa.IOChannel.write"><tt class="xref py py-meth docutils literal"><span class="pre">write()</span></tt></a> and
+<a class="reference internal" href="../core/io.html#kaa.IOChannel.read" title="kaa.IOChannel.read"><tt class="xref py py-meth docutils literal"><span class="pre">read()</span></tt></a>) is transparent.  Both return InProgress objects. (As
 an aside, we didn&#8217;t really need to yield socket.write() because writes are
 queued and written to the socket when it becomes writable.  However, yielding a
 write means that when the coroutine resumes, the data has been fully sent to the
@@ -182,9 +193,9 @@ with a much more intuitive and readable code.  This means that if you design
 your application to use signals and callbacks, it might not be clear where
 coroutines would be useful.</p>
 <p>However, if you make use of the asynchronous plumbing that kaa offers early on
-in your design &#8211; and that includes healthy use of <a title="kaa.InProgress" class="reference external" href="inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a>
+in your design &#8211; and that includes healthy use of <a class="reference internal" href="inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a>
 objects, either explicitly or implicitly through the use of the &#64;coroutine
-and <a class="reference external" href="threads.html#threaded"><em>&#64;threaded</em></a> decorators &#8211; you should find that you&#8217;re able
+and <a class="reference internal" href="threads.html#threaded"><em>&#64;threaded</em></a> decorators &#8211; you should find that you&#8217;re able
 to produce some surprisingly elegant, non-trivial code.</p>
 <div class="section" id="decorator">
 <h2>Decorator<a class="headerlink" href="#decorator" title="Permalink to this headline">¶</a></h2>
@@ -194,7 +205,7 @@ to produce some surprisingly elegant, non-trivial code.</p>
 <dd><p>Decorated functions (which must be generators) may yield control
 back to the mainloop and be subsequently resumed at a later time.</p>
 <p>Functions which yield <tt class="docutils literal"><span class="pre">kaa.NotFinished</span></tt> will be resumed on the
-next mainloop iteration; yielding an <a title="kaa.InProgress" class="reference external" href="inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> object
+next mainloop iteration; yielding an <a class="reference internal" href="inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> object
 will cause the coroutine to be resumed when the InProgress is finished.
 However, yielding a <em>finished</em> InProgress object will cause the coroutine
 to be resumed immediately.</p>
@@ -204,18 +215,19 @@ a value other than <tt class="docutils literal"><span class="pre">kaa.NotFinishe
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><em>interval</em> &#8211; Number of seconds to delay before resuming entry into
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>interval</strong> &#8211; Number of seconds to delay before resuming entry into
 the coroutine.  Set to 0 (default) to resume as soon as
 possible (but not sooner than the next mainloop iteration).</li>
-<li><em>policy</em> &#8211; None, or one of <tt class="docutils literal"><span class="pre">POLICY_SYNCHRONIZED</span></tt>, <tt class="docutils literal"><span class="pre">POLICY_SINGLETON</span></tt>, or
+<li><strong>policy</strong> &#8211; None, or one of <tt class="docutils literal"><span class="pre">POLICY_SYNCHRONIZED</span></tt>, <tt class="docutils literal"><span class="pre">POLICY_SINGLETON</span></tt>, or
 <tt class="docutils literal"><span class="pre">POLICY_PASS_LAST</span></tt> (described below).</li>
-<li><em>progress</em> &#8211; if True, a Progress object is passed as the first argument to
-the decorated function, allowing the coroutine to report progress
-to the caller.  (The progress parameter corresponds to the
-<tt class="docutils literal"><span class="pre">progress</span></tt> attribute of the InProgress object returned to
-the caller.)</li>
-<li><em>group</em> &#8211; Name of the group this coroutine shares its policy with.  For
+<li><strong>progress</strong> &#8211; if True, an <tt class="xref py py-class docutils literal"><span class="pre">InProgressStatus</span></tt> object is
+passed as the first argument to the decorated function,
+allowing the coroutine to report progress to the caller.
+(The progress parameter corresponds to the <tt class="docutils literal"><span class="pre">progress</span></tt>
+attribute of the InProgress object returned to the
+caller.)</li>
+<li><strong>group</strong> &#8211; Name of the group this coroutine shares its policy with.  For
 example, multiple coroutines with POLICY_SYNCHRONIZED and the
 same group name will all be synchronized against each other.
 Currently only methods within the same class may belong to
@@ -223,14 +235,14 @@ the same group.</li>
 </ul>
 </td>
 </tr>
-<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">an <a title="kaa.InProgress" class="reference external" href="inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> object representing the coroutine.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">an <a class="reference internal" href="inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> object representing the coroutine.</p>
 </td>
 </tr>
 </tbody>
 </table>
 <p>Possible policies are:</p>
 <blockquote>
-<ul class="simple">
+<div><ul class="simple">
 <li><tt class="docutils literal"><span class="pre">kaa.POLICY_SYNCHRONIZED</span></tt>: reentry into the coroutine is not permitted,
 and multiple calls are queued so that they execute sequentially.</li>
 <li><tt class="docutils literal"><span class="pre">kaa.POLICY_SINGLETON</span></tt>: only one active instance of the coroutine is allowed
@@ -244,16 +256,16 @@ be None.  This is useful to chain multiple invocations of the
 coroutine together, but unlike <tt class="docutils literal"><span class="pre">POLICY_SYNCHRONIZED</span></tt>, the decorated
 function is entered each invocation.</li>
 </ul>
-</blockquote>
+</div></blockquote>
 <p>A function decorated with this decorator will always return an
-<a title="kaa.InProgress" class="reference external" href="inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> object. It may already be finished (which happens if
+<a class="reference internal" href="inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> object. It may already be finished (which happens if
 the coroutine&#8217;s first yielded value is one other than <tt class="docutils literal"><span class="pre">kaa.NotFinished</span></tt> or  
 an InProgress object).</p>
 <p>If it is not finished, the coroutine&#8217;s life can be controlled via the
-<a title="kaa.InProgress" class="reference external" href="inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> it returns.  It can be aborted with
-<a title="kaa.InProgress.abort" class="reference external" href="inprogress.html#kaa.InProgress.abort"><tt class="xref docutils literal"><span class="pre">abort()</span></tt></a>, in which case a GeneratorExit will be raised
+<a class="reference internal" href="inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> it returns.  It can be aborted with
+<a class="reference internal" href="inprogress.html#kaa.InProgress.abort" title="kaa.InProgress.abort"><tt class="xref py py-meth docutils literal"><span class="pre">abort()</span></tt></a>, in which case a GeneratorExit will be raised
 inside the coroutine, or its interval may be adjusted via the
-<tt class="xref docutils literal"><span class="pre">interval</span></tt> property.</p>
+<tt class="xref py py-attr docutils literal"><span class="pre">interval</span></tt> property.</p>
 </dd></dl>
 
 </div>
@@ -265,38 +277,38 @@ inside the coroutine, or its interval may be adjusted via the
       </div>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
-            <h3><a href="../index.html">Table Of Contents</a></h3>
-            <ul>
-<li><a class="reference external" href="#">Coroutines</a><ul>
-<li><a class="reference external" href="#decorator">Decorator</a></li>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Coroutines</a><ul>
+<li><a class="reference internal" href="#decorator">Decorator</a></li>
 </ul>
 </li>
 </ul>
 
-            <h4>Previous topic</h4>
-            <p class="topless"><a href="inprogress.html"
-                                  title="previous chapter">InProgress Objects</a></p>
-            <h4>Next topic</h4>
-            <p class="topless"><a href="threads.html"
-                                  title="next chapter">Thread Support</a></p>
-            <h3>This Page</h3>
-            <ul class="this-page-menu">
-              <li><a href="../_sources/async/coroutines.txt"
-                     rel="nofollow">Show Source</a></li>
-            </ul>
-          <div id="searchbox" style="display: none">
-            <h3>Quick search</h3>
-              <form class="search" action="../search.html" method="get">
-                <input type="text" name="q" size="18" />
-                <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
-              </form>
-              <p class="searchtip" style="font-size: 90%">
-              Enter search terms or a module, class or function name.
-              </p>
-          </div>
-          <script type="text/javascript">$('#searchbox').show(0);</script>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="inprogress.html"
+                        title="previous chapter">InProgress Objects</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="threads.html"
+                        title="next chapter">Thread Support</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/async/coroutines.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -308,7 +320,7 @@ inside the coroutine, or its interval may be adjusted via the
           <a href="../genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="../modindex.html" title="Global Module Index"
+          <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
           <a href="threads.html" title="Thread Support"
@@ -316,13 +328,13 @@ inside the coroutine, or its interval may be adjusted via the
         <li class="right" >
           <a href="inprogress.html" title="InProgress Objects"
              >previous</a> |</li>
-        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jan 24, 2012.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+        &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on May 11, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

@@ -1,25 +1,31 @@
+
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Input Plugins &mdash; kaa.base v0.99.2 documentation</title>
+    <title>Input Plugins &mdash; kaa.base 0.99.2 documentation</title>
+    
     <link rel="stylesheet" href="_static/kaa.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '#',
+        URL_ROOT:    '',
         VERSION:     '0.99.2',
-        COLLAPSE_MODINDEX: false,
+        COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
       };
     </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="kaa.base v0.99.2 documentation" href="index.html" />
+    <link rel="top" title="kaa.base 0.99.2 documentation" href="index.html" />
     <link rel="next" title="TLS" href="net/tls.html" />
     <link rel="prev" title="Utility Functions" href="utils.html" />
     <!-- link rel="stylesheet" href="_static/kaa.css" type="text/css" /-->
@@ -33,15 +39,15 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="modindex.html" title="Global Module Index"
-             accesskey="M">modules</a> |</li>
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="net/tls.html" title="TLS"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="utils.html" title="Utility Functions"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+        <li><a href="index.html">kaa.base 0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -50,11 +56,11 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="input-plugins">
-<span id="module-kaa.input"></span><h1>Input Plugins<a class="headerlink" href="#input-plugins" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="module-kaa.input"></span><div class="section" id="input-plugins">
+<h1>Input Plugins<a class="headerlink" href="#input-plugins" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="stdin-key-presses">
 <h2>Stdin Key Presses<a class="headerlink" href="#stdin-key-presses" title="Permalink to this headline">¶</a></h2>
-<p>Importing <em>kaa.input.stdin</em> plugin will add a new signal to the <a class="reference external" href="core/mainloop.html#mainsignals"><em>global
+<p>Importing <em>kaa.input.stdin</em> plugin will add a new signal to the <a class="reference internal" href="core/mainloop.html#mainsignals"><em>global
 Kaa signals dictionary</em></a> called <tt class="docutils literal"><span class="pre">stdin_key_press</span></tt>.  When
 the first callback is connected to this signal, the terminal is put into
 <em>non-canonical mode</em> which allows per-keystroke input to be available
@@ -78,7 +84,7 @@ backspace</em>.</p>
 </div>
 <div class="section" id="lirc">
 <h2>LIRC<a class="headerlink" href="#lirc" title="Permalink to this headline">¶</a></h2>
-<p>Importing <em>kaa.input.lirc</em> plugin will add a new signal to the <a class="reference external" href="core/mainloop.html#mainsignals"><em>global
+<p>Importing <em>kaa.input.lirc</em> plugin will add a new signal to the <a class="reference internal" href="core/mainloop.html#mainsignals"><em>global
 Kaa signals dictionary</em></a> called <tt class="docutils literal"><span class="pre">lirc</span></tt>.  Use of this plugin
 requires the pylirc module to be available.</p>
 <p>Callbacks connected to the <tt class="docutils literal"><span class="pre">lirc</span></tt> signal will be invoked for each button
@@ -96,15 +102,15 @@ held, up to 10 times a second.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><em>appname</em> &#8211; the name of the program that corresponds to the <em>prog</em>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>appname</strong> &#8211; the name of the program that corresponds to the <em>prog</em>
 value in the lircrc file (default: kaa)</li>
-<li><em>cfg</em> &#8211; the path to the lircrc config file (default: ~/.lircrc).  See
+<li><strong>cfg</strong> &#8211; the path to the lircrc config file (default: ~/.lircrc).  See
 <a class="reference external" href="http://www.lirc.org/html/configure.html">http://www.lirc.org/html/configure.html</a> for more details.</li>
 </ul>
 </td>
 </tr>
-<tr class="field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last">ImportError if pylirc is not installed.</p>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last">ImportError if pylirc is not installed.</p>
 </td>
 </tr>
 </tbody>
@@ -142,39 +148,39 @@ end</pre>
       </div>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
-            <h3><a href="index.html">Table Of Contents</a></h3>
-            <ul>
-<li><a class="reference external" href="#">Input Plugins</a><ul>
-<li><a class="reference external" href="#stdin-key-presses">Stdin Key Presses</a></li>
-<li><a class="reference external" href="#lirc">LIRC</a></li>
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Input Plugins</a><ul>
+<li><a class="reference internal" href="#stdin-key-presses">Stdin Key Presses</a></li>
+<li><a class="reference internal" href="#lirc">LIRC</a></li>
 </ul>
 </li>
 </ul>
 
-            <h4>Previous topic</h4>
-            <p class="topless"><a href="utils.html"
-                                  title="previous chapter">Utility Functions</a></p>
-            <h4>Next topic</h4>
-            <p class="topless"><a href="net/tls.html"
-                                  title="next chapter">TLS</a></p>
-            <h3>This Page</h3>
-            <ul class="this-page-menu">
-              <li><a href="_sources/input.txt"
-                     rel="nofollow">Show Source</a></li>
-            </ul>
-          <div id="searchbox" style="display: none">
-            <h3>Quick search</h3>
-              <form class="search" action="search.html" method="get">
-                <input type="text" name="q" size="18" />
-                <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
-              </form>
-              <p class="searchtip" style="font-size: 90%">
-              Enter search terms or a module, class or function name.
-              </p>
-          </div>
-          <script type="text/javascript">$('#searchbox').show(0);</script>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="utils.html"
+                        title="previous chapter">Utility Functions</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="net/tls.html"
+                        title="next chapter">TLS</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/input.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -186,7 +192,7 @@ end</pre>
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="modindex.html" title="Global Module Index"
+          <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
           <a href="net/tls.html" title="TLS"
@@ -194,13 +200,13 @@ end</pre>
         <li class="right" >
           <a href="utils.html" title="Utility Functions"
              >previous</a> |</li>
-        <li><a href="index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+        <li><a href="index.html">kaa.base 0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jan 24, 2012.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+        &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on May 11, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

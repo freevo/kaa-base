@@ -1,25 +1,31 @@
+
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Signals and Callables &mdash; kaa.base v0.99.2 documentation</title>
+    <title>Signals and Callables &mdash; kaa.base 0.99.2 documentation</title>
+    
     <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
         VERSION:     '0.99.2',
-        COLLAPSE_MODINDEX: false,
+        COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
       };
     </script>
     <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="kaa.base v0.99.2 documentation" href="../index.html" />
+    <link rel="top" title="kaa.base 0.99.2 documentation" href="../index.html" />
     <link rel="next" title="The Main Loop" href="mainloop.html" />
     <link rel="prev" title="The Kaa Application Framework" href="../index.html" />
     <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
@@ -33,15 +39,15 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="../modindex.html" title="Global Module Index"
-             accesskey="M">modules</a> |</li>
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="mainloop.html" title="The Main Loop"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="../index.html" title="The Kaa Application Framework"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -50,11 +56,11 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="module-kaa.callable">
-<span id="callables"></span><h1>Signals and Callables<a class="headerlink" href="#module-kaa.callable" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="signals-and-callables">
+<span id="callables"></span><h1>Signals and Callables<a class="headerlink" href="#signals-and-callables" title="Permalink to this headline">¶</a></h1>
 <p>Signal and Callable objects are among the core building blocks of Kaa and are
 used extensively throughout the framework.</p>
-<div class="section" id="id1">
+<span class="target" id="module-kaa.callable"></span><div class="section" id="id1">
 <h2>Callables<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
 <p>Callable objects encapsulate a callable (such as a function or method) and,
 optionally, any number of arguments and keyword arguments.  Callable objects
@@ -74,7 +80,7 @@ achieve the same result with less overhead.  But it helps to start simple.)</p>
 <p>By default, all arguments passed upon invocation of the Callable are passed to the
 wrapped callable first, followed by arguments passed upon construction.  So the
 above example translates to <tt class="docutils literal"><span class="pre">pow(5,</span> <span class="pre">2)</span></tt>.  It is possible to reverse this behaviour
-by setting the <a title="kaa.Callable.init_args_first" class="reference internal" href="#kaa.Callable.init_args_first"><tt class="xref docutils literal"><span class="pre">init_args_first</span></tt></a> property to True:</p>
+by setting the <a class="reference internal" href="#kaa.Callable.init_args_first" title="kaa.Callable.init_args_first"><tt class="xref py py-attr docutils literal"><span class="pre">init_args_first</span></tt></a> property to True:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">square</span><span class="o">.</span><span class="n">init_args_first</span> <span class="o">=</span> <span class="bp">True</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">square</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>  <span class="c"># Of course, now this isn&#39;t a square</span>
 <span class="go">32</span>
@@ -82,9 +88,9 @@ by setting the <a title="kaa.Callable.init_args_first" class="reference internal
 </div>
 <p>Keyword arguments work in a similar way.  Keyword arguments given to the
 constructor as well as those passed upon invocation are passed to the
-wrapped callable.  When <tt class="docutils literal"><span class="pre">init_args_first</span></tt> is <tt class="xref docutils literal"><span class="pre">False</span></tt> (default), keyword
+wrapped callable.  When <tt class="docutils literal"><span class="pre">init_args_first</span></tt> is <tt class="docutils literal"><span class="pre">False</span></tt> (default), keyword
 arguments passed on invocation take precedence (overwrite) same-named keyword
-arguments passed on the constructor.  When <tt class="xref docutils literal"><span class="pre">True</span></tt>, keyword arguments from the
+arguments passed on the constructor.  When <tt class="docutils literal"><span class="pre">True</span></tt>, keyword arguments from the
 constructor take precedence over those passed upon invocation.</p>
 <p>Here&#8217;s an example that more clearly demonstrates the rules of precedence:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -103,13 +109,13 @@ constructor take precedence over those passed upon invocation.</p>
 <p>Because Callable objects hold references to the function, or to the class
 instance in the case of a method, and any arguments passed at construction
 time, those objects remain alive as long as the Callable is referenced.  This
-is not always what&#8217;s wanted, and in those cases the <a title="kaa.WeakCallable" class="reference internal" href="#kaa.WeakCallable"><tt class="xref docutils literal"><span class="pre">WeakCallable</span></tt></a>
+is not always what&#8217;s wanted, and in those cases the <a class="reference internal" href="#kaa.WeakCallable" title="kaa.WeakCallable"><tt class="xref py py-class docutils literal"><span class="pre">WeakCallable</span></tt></a>
 variant can be used.</p>
-<p>With <a title="kaa.WeakCallable" class="reference internal" href="#kaa.WeakCallable"><tt class="xref docutils literal"><span class="pre">WeakCallable</span></tt></a>, only weak references are held to the callable
+<p>With <a class="reference internal" href="#kaa.WeakCallable" title="kaa.WeakCallable"><tt class="xref py py-class docutils literal"><span class="pre">WeakCallable</span></tt></a>, only weak references are held to the callable
 and constructor arguments.  When any of the wrapped objects are destroyed,
 the WeakCallable ceases to be valid.  One common use-case for WeakCallable
 is to avoid cyclical references.  For example, an object may hold an
-<a title="kaa.IOMonitor" class="reference external" href="io.html#kaa.IOMonitor"><tt class="xref docutils literal"><span class="pre">IOMonitor</span></tt></a> on some file descriptor, and have a method invoked
+<a class="reference internal" href="io.html#kaa.IOMonitor" title="kaa.IOMonitor"><tt class="xref py py-class docutils literal"><span class="pre">IOMonitor</span></tt></a> on some file descriptor, and have a method invoked
 when there&#8217;s activity.  Consider this code fragment:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">MyClass</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fd</span><span class="p">):</span>
@@ -123,7 +129,7 @@ of the MyClass instance (which implicitly holds a reference to the MyClass insta
 itself).</p>
 <p>You might be thinking this isn&#8217;t a problem: after all, Python has a garbage
 collector that will detect and break orphaned cyclic references.  However,
-because the file descriptor <tt class="docutils literal"><span class="pre">fd</span></tt> is registered (with the <a class="reference external" href="mainloop.html#notifier"><em>notifier</em></a>), Kaa keeps an internal reference to the IOMonitor.  Therefore,
+because the file descriptor <tt class="docutils literal"><span class="pre">fd</span></tt> is registered (with the <a class="reference internal" href="mainloop.html#notifier"><em>notifier</em></a>), Kaa keeps an internal reference to the IOMonitor.  Therefore,
 even if all user-visible references to the MyClass instance are gone, neither
 that object nor the IOMonitor ever get deleted (at least so long as the fd is
 open).  And furthermore, <tt class="docutils literal"><span class="pre">MyClass._handle_read()</span></tt> will continue to be invoked
@@ -134,7 +140,7 @@ WeakCallable:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="bp">self</span><span class="o">.</span><span class="n">_monitor</span> <span class="o">=</span> <span class="n">kaa</span><span class="o">.</span><span class="n">IOMonitor</span><span class="p">(</span><span class="n">kaa</span><span class="o">.</span><span class="n">WeakCallable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handle_read</span><span class="p">))</span>
 </pre></div>
 </div>
-<p>In this example, when the <a class="reference external" href="mainloop.html#notifier"><em>notifier</em></a> would normally invoke the
+<p>In this example, when the <a class="reference internal" href="mainloop.html#notifier"><em>notifier</em></a> would normally invoke the
 callback (when there is activity on the registered file descriptor), it will
 find the weak callable is in fact dead and automatically unregister the
 monitor.  With this, the instance of MyClass is allowed to be destroyed (at
@@ -147,9 +153,9 @@ called WeakIOMonitor can be used:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="bp">self</span><span class="o">.</span><span class="n">_monitor</span> <span class="o">=</span> <span class="n">kaa</span><span class="o">.</span><span class="n">WeakIOMonitor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handle_read</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Weak variants of these <a class="reference external" href="mainloop.html#notifier"><em>notifier</em></a>-aware classes exist
-throughout Kaa: <a title="kaa.WeakIOMonitor" class="reference external" href="io.html#kaa.WeakIOMonitor"><tt class="xref docutils literal"><span class="pre">WeakIOMonitor</span></tt></a>, <a title="kaa.WeakTimer" class="reference external" href="timer.html#kaa.WeakTimer"><tt class="xref docutils literal"><span class="pre">WeakTimer</span></tt></a>,
-<a title="kaa.WeakOneShotTimer" class="reference external" href="timer.html#kaa.WeakOneShotTimer"><tt class="xref docutils literal"><span class="pre">WeakOneShotTimer</span></tt></a>, <tt class="xref docutils literal"><span class="pre">WeakEventHandler</span></tt>.</p>
+<p>Weak variants of these <a class="reference internal" href="mainloop.html#notifier"><em>notifier</em></a>-aware classes exist
+throughout Kaa: <a class="reference internal" href="io.html#kaa.WeakIOMonitor" title="kaa.WeakIOMonitor"><tt class="xref py py-class docutils literal"><span class="pre">WeakIOMonitor</span></tt></a>, <a class="reference internal" href="timer.html#kaa.WeakTimer" title="kaa.WeakTimer"><tt class="xref py py-class docutils literal"><span class="pre">WeakTimer</span></tt></a>,
+<a class="reference internal" href="timer.html#kaa.WeakOneShotTimer" title="kaa.WeakOneShotTimer"><tt class="xref py py-class docutils literal"><span class="pre">WeakOneShotTimer</span></tt></a>, <tt class="xref py py-class docutils literal"><span class="pre">WeakEventHandler</span></tt>.</p>
 <div class="section" id="callable-api">
 <h3>Callable API<a class="headerlink" href="#callable-api" title="Permalink to this headline">¶</a></h3>
 <p><dl class="class">
@@ -163,10 +169,10 @@ underlying callable is invoked with those arguments.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><em>func</em> &#8211; callable function or object</li>
-<li><em>args</em> &#8211; arguments to be passed to func when invoked</li>
-<li><em>kwargs</em> &#8211; keyword arguments to be passed to func when invoked</li>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>func</strong> &#8211; callable function or object</li>
+<li><strong>args</strong> &#8211; arguments to be passed to func when invoked</li>
+<li><strong>kwargs</strong> &#8211; keyword arguments to be passed to func when invoked</li>
 </ul>
 </td>
 </tr>
@@ -176,13 +182,13 @@ underlying callable is invoked with those arguments.</p>
 <div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal current">kaa.Callable</tt><br /></p>
 <div class="heading">Methods</div>
 <table>
-<tr><th><a title="kaa.Callable.__call__" class="reference internal" href="#kaa.Callable.__call__"><tt class="xref docutils literal"><span class="pre">__call__()</span></tt></a></th><td class="desc">Invoke the callable.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Callable.__call__" title="kaa.Callable.__call__"><tt class="xref py py-meth docutils literal"><span class="pre">__call__()</span></tt></a></th><td class="desc">Invoke the callable.</td></tr>
 </table>
 <div class="heading">Properties</div>
 <table>
-<tr><th><a title="kaa.Callable.ignore_caller_args" class="reference internal" href="#kaa.Callable.ignore_caller_args"><tt class="xref docutils literal"><span class="pre">ignore_caller_args</span></tt></a></th><td>read/write</td><td class="desc">If True, any arguments passed when invoking the Callable object are not
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Callable.ignore_caller_args" title="kaa.Callable.ignore_caller_args"><tt class="xref py py-attr docutils literal"><span class="pre">ignore_caller_args</span></tt></a></th><td>read/write</td><td class="desc">If True, any arguments passed when invoking the Callable object are not
 passed to the underlying callable.</td></tr>
-<tr><th><a title="kaa.Callable.init_args_first" class="reference internal" href="#kaa.Callable.init_args_first"><tt class="xref docutils literal"><span class="pre">init_args_first</span></tt></a></th><td>read/write</td><td class="desc">If True, any arguments passed upon invocation of the Callable object take
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Callable.init_args_first" title="kaa.Callable.init_args_first"><tt class="xref py py-attr docutils literal"><span class="pre">init_args_first</span></tt></a></th><td>read/write</td><td class="desc">If True, any arguments passed upon invocation of the Callable object take
 precedence over those arguments passed at object initialization time.
 e.g. <tt class="docutils literal"><span class="pre">func(constructor_args...,</span> <span class="pre">invocation_args...)</span></tt></td></tr>
 </table>
@@ -193,7 +199,7 @@ e.g. <tt class="docutils literal"><span class="pre">func(constructor_args...,</s
 <tt class="descname">__call__</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.Callable.__call__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Invoke the callable.</p>
 <p>The arguments passed here take precedence over constructor arguments
-if the <a title="kaa.Callable.init_args_first" class="reference internal" href="#kaa.Callable.init_args_first"><tt class="xref docutils literal"><span class="pre">init_args_first</span></tt></a> property is False (default).
+if the <a class="reference internal" href="#kaa.Callable.init_args_first" title="kaa.Callable.init_args_first"><tt class="xref py py-attr docutils literal"><span class="pre">init_args_first</span></tt></a> property is False (default).
 The wrapped callable&#8217;s return value is returned.</p>
 </dd></dl>
 
@@ -233,10 +239,10 @@ the arguments and keyword arguments.</p>
 <p>This also works recursively, so if there are nested data structures, for example 
 <tt class="docutils literal"><span class="pre">kwarg=[1,</span> <span class="pre">[2,</span> <span class="pre">[3,</span> <span class="pre">my_object]]]</span></tt>, only a weak reference is held for my_object.</p>
 <p><h4>Synopsis</h4><div class="kaa synopsis">
-<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.Callable" class="reference internal" href="#kaa.Callable"><tt class="xref docutils literal"><span class="pre">kaa.Callable</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal current">kaa.WeakCallable</tt><br /></p>
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a class="reference internal" href="#kaa.Callable" title="kaa.Callable"><tt class="xref py py-class docutils literal"><span class="pre">kaa.Callable</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal current">kaa.WeakCallable</tt><br /></p>
 <div class="heading">Properties</div>
 <table>
-<tr><th><a title="kaa.WeakCallable.weakref_destroyed_cb" class="reference internal" href="#kaa.WeakCallable.weakref_destroyed_cb"><tt class="xref docutils literal"><span class="pre">weakref_destroyed_cb</span></tt></a></th><td>read/write</td><td class="desc">A callback that&#8217;s invoked when any of the weak references held (either
+<tr class="row-even"><th><a class="reference internal" href="#kaa.WeakCallable.weakref_destroyed_cb" title="kaa.WeakCallable.weakref_destroyed_cb"><tt class="xref py py-attr docutils literal"><span class="pre">weakref_destroyed_cb</span></tt></a></th><td>read/write</td><td class="desc">A callback that&#8217;s invoked when any of the weak references held (either
 for the callable or any of the arguments passed on the constructor)
 become dead.</td></tr>
 </table>
@@ -252,7 +258,7 @@ become dead.</p>
 it will raise a kaa.CallableError.</p>
 <p>The callback is passed the weakref object (which is probably dead).
 If the callback requires additional arguments, they can be encapsulated
-in a <a title="kaa.Callable" class="reference internal" href="#kaa.Callable"><tt class="xref docutils literal"><span class="pre">kaa.Callable</span></tt></a> object.</p>
+in a <a class="reference internal" href="#kaa.Callable" title="kaa.Callable"><tt class="xref py py-class docutils literal"><span class="pre">kaa.Callable</span></tt></a> object.</p>
 </dd></dl>
 
 </p>
@@ -267,36 +273,36 @@ in a <a title="kaa.Callable" class="reference internal" href="#kaa.Callable"><tt
 in that they are hooks to allow you to connect callbacks to be triggered when
 certain events occur.  A signal may have any number of callbacks connected to it,
 and when it is <em>emitted</em>, all the callbacks are invoked.  For example,
-<a title="kaa.IOChannel" class="reference external" href="io.html#kaa.IOChannel"><tt class="xref docutils literal"><span class="pre">kaa.IOChannel</span></tt></a> has a signal called <a title="kaa.IOChannel.signals.read" class="reference external" href="io.html#kaa.IOChannel.signals.read"><tt class="xref docutils literal"><span class="pre">read</span></tt></a>
+<a class="reference internal" href="io.html#kaa.IOChannel" title="kaa.IOChannel"><tt class="xref py py-class docutils literal"><span class="pre">kaa.IOChannel</span></tt></a> has a signal called <a class="reference internal" href="io.html#kaa.IOChannel.signals.read" title="kaa.IOChannel.signals.read"><tt class="xref py py-attr docutils literal"><span class="pre">read</span></tt></a>
 which is emitted when a chunk of data has been read from the IO channel.</p>
 <p>Classes that offer signals have a <em>signals</em> attribute, which is a dictionary
-(or in fact a <a title="kaa.Signals" class="reference internal" href="#kaa.Signals"><tt class="xref docutils literal"><span class="pre">kaa.Signals</span></tt></a> object, which behaves like a dictionary), whose
+(or in fact a <a class="reference internal" href="#kaa.Signals" title="kaa.Signals"><tt class="xref py py-class docutils literal"><span class="pre">kaa.Signals</span></tt></a> object, which behaves like a dictionary), whose
 keys are the names of the signal supported by that object, and the corresponding
-values are <a title="kaa.Signal" class="reference internal" href="#kaa.Signal"><tt class="xref docutils literal"><span class="pre">kaa.Signal</span></tt></a> objects.  For example:</p>
+values are <a class="reference internal" href="#kaa.Signal" title="kaa.Signal"><tt class="xref py py-class docutils literal"><span class="pre">kaa.Signal</span></tt></a> objects.  For example:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">handle_data_chunk</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">userdata</span><span class="p">):</span>
     <span class="k">print</span> <span class="s">&#39;Read:&#39;</span><span class="p">,</span> <span class="n">data</span>
 
 <span class="n">iochannel</span><span class="o">.</span><span class="n">signals</span><span class="p">[</span><span class="s">&#39;read&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">handle_data_chunk</span><span class="p">,</span> <span class="s">&#39;This is user data&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The <a title="kaa.Signal.connect" class="reference internal" href="#kaa.Signal.connect"><tt class="xref docutils literal"><span class="pre">connect()</span></tt></a> method accepts a callable and arbitrary
+<p>The <a class="reference internal" href="#kaa.Signal.connect" title="kaa.Signal.connect"><tt class="xref py py-meth docutils literal"><span class="pre">connect()</span></tt></a> method accepts a callable and arbitrary
 non-keyword and keyword arguments, which are passed to the callback.  This
 method, and the whole <tt class="docutils literal"><span class="pre">connect_*</span></tt> family of methods in general, constructs a
-<a title="kaa.Callable" class="reference internal" href="#kaa.Callable"><tt class="xref docutils literal"><span class="pre">Callable</span></tt></a> object implicitly (and in fact return that newly
+<a class="reference internal" href="#kaa.Callable" title="kaa.Callable"><tt class="xref py py-class docutils literal"><span class="pre">Callable</span></tt></a> object implicitly (and in fact return that newly
 constructed Callable).  So the above example is equivalent to:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="n">iochannel</span><span class="o">.</span><span class="n">signals</span><span class="p">[</span><span class="s">&#39;read&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">kaa</span><span class="o">.</span><span class="n">Callable</span><span class="p">(</span><span class="n">handle_data_chunk</span><span class="p">,</span> <span class="s">&#39;this is user data&#39;</span><span class="p">))</span>
 </pre></div>
 </div>
-<p>Obviously the earlier form is more convenient.  Similarly, <a title="kaa.Signal.connect_weak" class="reference internal" href="#kaa.Signal.connect_weak"><tt class="xref docutils literal"><span class="pre">connect_weak()</span></tt></a>
-does the same thing, except it creates a <a title="kaa.WeakCallable" class="reference internal" href="#kaa.WeakCallable"><tt class="xref docutils literal"><span class="pre">WeakCallable</span></tt></a> from the callback and
+<p>Obviously the earlier form is more convenient.  Similarly, <a class="reference internal" href="#kaa.Signal.connect_weak" title="kaa.Signal.connect_weak"><tt class="xref py py-meth docutils literal"><span class="pre">connect_weak()</span></tt></a>
+does the same thing, except it creates a <a class="reference internal" href="#kaa.WeakCallable" title="kaa.WeakCallable"><tt class="xref py py-class docutils literal"><span class="pre">WeakCallable</span></tt></a> from the callback and
 arguments.</p>
 <p>It is possible to detect when a Signal changes by assigning a callback to the Signal
-object&#8217;s <a title="kaa.Signal.changed_cb" class="reference internal" href="#kaa.Signal.changed_cb"><tt class="xref docutils literal"><span class="pre">changed_cb</span></tt></a> property (or by passing it on the constructor):</p>
+object&#8217;s <a class="reference internal" href="#kaa.Signal.changed_cb" title="kaa.Signal.changed_cb"><tt class="xref py py-attr docutils literal"><span class="pre">changed_cb</span></tt></a> property (or by passing it on the constructor):</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">signal_changed</span><span class="p">(</span><span class="n">signal</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
 <span class="gp">... </span>    <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">kaa</span><span class="o">.</span><span class="n">Signal</span><span class="o">.</span><span class="n">CONNECTED</span><span class="p">:</span>
 <span class="gp">... </span>        <span class="k">print</span> <span class="s">&#39;New callback added, signal now has </span><span class="si">%d</span><span class="s">&#39;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">signal</span><span class="p">)</span>
 <span class="gp">... </span>    <span class="k">else</span><span class="p">:</span>
-<span class="gp">... </span>        <span class="k">print</span> <span class="s">&#39;Callback added, signal now has </span><span class="si">%d</span><span class="s">&#39;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">signal</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="k">print</span> <span class="s">&#39;Callback removed, signal now has </span><span class="si">%d</span><span class="s">&#39;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">signal</span><span class="p">)</span>
 <span class="gp">...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">sig</span> <span class="o">=</span> <span class="n">kaa</span><span class="o">.</span><span class="n">Signal</span><span class="p">(</span><span class="n">changed_cb</span><span class="o">=</span><span class="n">signal_changed</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">callback</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="bp">None</span><span class="p">)</span>
@@ -306,18 +312,18 @@ object&#8217;s <a title="kaa.Signal.changed_cb" class="reference internal" href=
 </pre></div>
 </div>
 <p>One example of where this is used is with IOChannel&#8217;s
-<a title="kaa.IOChannel.signals.read" class="reference external" href="io.html#kaa.IOChannel.signals.read"><tt class="xref docutils literal"><span class="pre">read</span></tt></a> signal.  If there are no callbacks
+<a class="reference internal" href="io.html#kaa.IOChannel.signals.read" title="kaa.IOChannel.signals.read"><tt class="xref py py-attr docutils literal"><span class="pre">read</span></tt></a> signal.  If there are no callbacks
 connected to the <tt class="docutils literal"><span class="pre">read</span></tt> signal then we don&#8217;t want to consume any data
 from the channel.  So, when a callback is connected, the IOChannel must
-register itself with the <a class="reference external" href="mainloop.html#notifier"><em>notifier</em></a> and handle read events in
+register itself with the <a class="reference internal" href="mainloop.html#notifier"><em>notifier</em></a> and handle read events in
 order to consume data, passing it to all the callbacks connected to the read
 signal.  When all callbacks have been disconnected, the IOChannel must
 unregister itself, so that no data is consumed when it has no listeners.</p>
 <p>Signal objects also behave like containers, in that they can be iterated
-over (where each element is the <a title="kaa.Callable" class="reference internal" href="#kaa.Callable"><tt class="xref docutils literal"><span class="pre">Callable</span></tt></a> object), counted
+over (where each element is the <a class="reference internal" href="#kaa.Callable" title="kaa.Callable"><tt class="xref py py-class docutils literal"><span class="pre">Callable</span></tt></a> object), counted
 (via <tt class="docutils literal"><span class="pre">len()</span></tt>), and tested for membership (<tt class="docutils literal"><span class="pre">myfunc</span> <span class="pre">in</span> <span class="pre">signal</span></tt>).</p>
-<p>A Signal knows how to be coerced into an <a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> object
-via <a title="kaa.inprogress" class="reference external" href="../async/inprogress.html#kaa.inprogress"><tt class="xref docutils literal"><span class="pre">kaa.inprogress()</span></tt></a>, and can therefore be yielded from a <a class="reference external" href="../async/coroutines.html#coroutines"><em>coroutine</em></a>:</p>
+<p>A Signal knows how to be coerced into an <a class="reference internal" href="../async/inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> object
+via <a class="reference internal" href="../async/inprogress.html#kaa.inprogress" title="kaa.inprogress"><tt class="xref py py-func docutils literal"><span class="pre">kaa.inprogress()</span></tt></a>, and can therefore be yielded from a <a class="reference internal" href="../async/coroutines.html#coroutines"><em>coroutine</em></a>:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="nd">@kaa.coroutine</span><span class="p">()</span>
 <span class="k">def</span> <span class="nf">stop_process</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;quit</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
@@ -331,10 +337,10 @@ via <a title="kaa.inprogress" class="reference external" href="../async/inprogre
 </div>
 <p>Here, the <tt class="docutils literal"><span class="pre">stop_process()</span></tt> coroutine is finished when the <tt class="docutils literal"><span class="pre">terminated</span></tt> signal
 is emitted.  For more information on coroutines, see the section on
-<a class="reference external" href="../async/coroutines.html#coroutines"><em>asynchronous programming in Kaa</em></a>.</p>
-<p>A collection of many Signal objects is represented by a <a title="kaa.Signals" class="reference internal" href="#kaa.Signals"><tt class="xref docutils literal"><span class="pre">Signals</span></tt></a>
+<a class="reference internal" href="../async/coroutines.html#coroutines"><em>asynchronous programming in Kaa</em></a>.</p>
+<p>A collection of many Signal objects is represented by a <a class="reference internal" href="#kaa.Signals" title="kaa.Signals"><tt class="xref py py-class docutils literal"><span class="pre">Signals</span></tt></a>
 object, which behaves like a dictionary.  There are several additional methods
-with Signals object, such as <a title="kaa.Signals.any" class="reference internal" href="#kaa.Signals.any"><tt class="xref docutils literal"><span class="pre">any()</span></tt></a> and <a title="kaa.Signals.all" class="reference internal" href="#kaa.Signals.all"><tt class="xref docutils literal"><span class="pre">all()</span></tt></a>.</p>
+with Signals object, such as <a class="reference internal" href="#kaa.Signals.any" title="kaa.Signals.any"><tt class="xref py py-meth docutils literal"><span class="pre">any()</span></tt></a> and <a class="reference internal" href="#kaa.Signals.all" title="kaa.Signals.all"><tt class="xref py py-meth docutils literal"><span class="pre">all()</span></tt></a>.</p>
 <div class="section" id="signals-api">
 <h3>Signals API<a class="headerlink" href="#signals-api" title="Permalink to this headline">¶</a></h3>
 <p><dl class="class">
@@ -346,7 +352,7 @@ invoked in sequence when the Signal is emitted.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>changed_cb</em> (callable) &#8211; corresponds to the <a title="kaa.Signal.changed_cb" class="reference internal" href="#kaa.Signal.changed_cb"><tt class="xref docutils literal"><span class="pre">changed_cb</span></tt></a> property.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>changed_cb</strong> (<em>callable</em>) &#8211; corresponds to the <a class="reference internal" href="#kaa.Signal.changed_cb" title="kaa.Signal.changed_cb"><tt class="xref py py-attr docutils literal"><span class="pre">changed_cb</span></tt></a> property.</td>
 </tr>
 </tbody>
 </table>
@@ -354,32 +360,32 @@ invoked in sequence when the Signal is emitted.</p>
 <div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal current">kaa.Signal</tt><br /></p>
 <div class="heading">Methods</div>
 <table>
-<tr><th><a title="kaa.Signal.connect" class="reference internal" href="#kaa.Signal.connect"><tt class="xref docutils literal"><span class="pre">connect()</span></tt></a></th><td class="desc">Connects the callback with the (optional) given arguments to be invoked
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Signal.connect" title="kaa.Signal.connect"><tt class="xref py py-meth docutils literal"><span class="pre">connect()</span></tt></a></th><td class="desc">Connects the callback with the (optional) given arguments to be invoked
 when the signal is emitted.</td></tr>
-<tr><th><a title="kaa.Signal.connect_first" class="reference internal" href="#kaa.Signal.connect_first"><tt class="xref docutils literal"><span class="pre">connect_first()</span></tt></a></th><td class="desc">Variant of <a title="kaa.Signal.connect" class="reference internal" href="#kaa.Signal.connect"><tt class="xref docutils literal"><span class="pre">connect()</span></tt></a> in which the given callback is
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Signal.connect_first" title="kaa.Signal.connect_first"><tt class="xref py py-meth docutils literal"><span class="pre">connect_first()</span></tt></a></th><td class="desc">Variant of <a class="reference internal" href="#kaa.Signal.connect" title="kaa.Signal.connect"><tt class="xref py py-meth docutils literal"><span class="pre">connect()</span></tt></a> in which the given callback is
 inserted to the front of the callback list.</td></tr>
-<tr><th><a title="kaa.Signal.connect_first_once" class="reference internal" href="#kaa.Signal.connect_first_once"><tt class="xref docutils literal"><span class="pre">connect_first_once()</span></tt></a></th><td class="desc">Variant of <a title="kaa.Signal.connect_once" class="reference internal" href="#kaa.Signal.connect_once"><tt class="xref docutils literal"><span class="pre">connect_once()</span></tt></a> in which the given callback is
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Signal.connect_first_once" title="kaa.Signal.connect_first_once"><tt class="xref py py-meth docutils literal"><span class="pre">connect_first_once()</span></tt></a></th><td class="desc">Variant of <a class="reference internal" href="#kaa.Signal.connect_once" title="kaa.Signal.connect_once"><tt class="xref py py-meth docutils literal"><span class="pre">connect_once()</span></tt></a> in which the given callback is
 inserted to the front of the callback list.</td></tr>
-<tr><th><a title="kaa.Signal.connect_once" class="reference internal" href="#kaa.Signal.connect_once"><tt class="xref docutils literal"><span class="pre">connect_once()</span></tt></a></th><td class="desc">Variant of <a title="kaa.Signal.connect" class="reference internal" href="#kaa.Signal.connect"><tt class="xref docutils literal"><span class="pre">connect()</span></tt></a> where the callback is automatically
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Signal.connect_once" title="kaa.Signal.connect_once"><tt class="xref py py-meth docutils literal"><span class="pre">connect_once()</span></tt></a></th><td class="desc">Variant of <a class="reference internal" href="#kaa.Signal.connect" title="kaa.Signal.connect"><tt class="xref py py-meth docutils literal"><span class="pre">connect()</span></tt></a> where the callback is automatically
 disconnected after one signal emission.</td></tr>
-<tr><th><a title="kaa.Signal.connect_weak" class="reference internal" href="#kaa.Signal.connect_weak"><tt class="xref docutils literal"><span class="pre">connect_weak()</span></tt></a></th><td class="desc">Weak variant of <a title="kaa.Signal.connect" class="reference internal" href="#kaa.Signal.connect"><tt class="xref docutils literal"><span class="pre">connect()</span></tt></a> where only weak references are
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Signal.connect_weak" title="kaa.Signal.connect_weak"><tt class="xref py py-meth docutils literal"><span class="pre">connect_weak()</span></tt></a></th><td class="desc">Weak variant of <a class="reference internal" href="#kaa.Signal.connect" title="kaa.Signal.connect"><tt class="xref py py-meth docutils literal"><span class="pre">connect()</span></tt></a> where only weak references are
 held to the callback and arguments.</td></tr>
-<tr><th><a title="kaa.Signal.connect_weak_first" class="reference internal" href="#kaa.Signal.connect_weak_first"><tt class="xref docutils literal"><span class="pre">connect_weak_first()</span></tt></a></th><td class="desc">Weak variant of <a title="kaa.Signal.connect_first" class="reference internal" href="#kaa.Signal.connect_first"><tt class="xref docutils literal"><span class="pre">connect_first()</span></tt></a>.</td></tr>
-<tr><th><a title="kaa.Signal.connect_weak_first_once" class="reference internal" href="#kaa.Signal.connect_weak_first_once"><tt class="xref docutils literal"><span class="pre">connect_weak_first_once()</span></tt></a></th><td class="desc">Weak variant of <a title="kaa.Signal.connect_weak_first_once" class="reference internal" href="#kaa.Signal.connect_weak_first_once"><tt class="xref docutils literal"><span class="pre">connect_weak_first_once()</span></tt></a>.</td></tr>
-<tr><th><a title="kaa.Signal.connect_weak_once" class="reference internal" href="#kaa.Signal.connect_weak_once"><tt class="xref docutils literal"><span class="pre">connect_weak_once()</span></tt></a></th><td class="desc">Weak variant of <a title="kaa.Signal.connect_once" class="reference internal" href="#kaa.Signal.connect_once"><tt class="xref docutils literal"><span class="pre">connect_once()</span></tt></a>.</td></tr>
-<tr><th><a title="kaa.Signal.count" class="reference internal" href="#kaa.Signal.count"><tt class="xref docutils literal"><span class="pre">count()</span></tt></a></th><td class="desc">Returns the number of callbacks connected to the signal.</td></tr>
-<tr><th><a title="kaa.Signal.disconnect" class="reference internal" href="#kaa.Signal.disconnect"><tt class="xref docutils literal"><span class="pre">disconnect()</span></tt></a></th><td class="desc">Disconnects the given callback from the signal so that future emissions
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Signal.connect_weak_first" title="kaa.Signal.connect_weak_first"><tt class="xref py py-meth docutils literal"><span class="pre">connect_weak_first()</span></tt></a></th><td class="desc">Weak variant of <a class="reference internal" href="#kaa.Signal.connect_first" title="kaa.Signal.connect_first"><tt class="xref py py-meth docutils literal"><span class="pre">connect_first()</span></tt></a>.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Signal.connect_weak_first_once" title="kaa.Signal.connect_weak_first_once"><tt class="xref py py-meth docutils literal"><span class="pre">connect_weak_first_once()</span></tt></a></th><td class="desc">Weak variant of <a class="reference internal" href="#kaa.Signal.connect_weak_first_once" title="kaa.Signal.connect_weak_first_once"><tt class="xref py py-meth docutils literal"><span class="pre">connect_weak_first_once()</span></tt></a>.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Signal.connect_weak_once" title="kaa.Signal.connect_weak_once"><tt class="xref py py-meth docutils literal"><span class="pre">connect_weak_once()</span></tt></a></th><td class="desc">Weak variant of <a class="reference internal" href="#kaa.Signal.connect_once" title="kaa.Signal.connect_once"><tt class="xref py py-meth docutils literal"><span class="pre">connect_once()</span></tt></a>.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Signal.count" title="kaa.Signal.count"><tt class="xref py py-meth docutils literal"><span class="pre">count()</span></tt></a></th><td class="desc">Returns the number of callbacks connected to the signal.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Signal.disconnect" title="kaa.Signal.disconnect"><tt class="xref py py-meth docutils literal"><span class="pre">disconnect()</span></tt></a></th><td class="desc">Disconnects the given callback from the signal so that future emissions
 will not invoke that callback any longer.</td></tr>
-<tr><th><a title="kaa.Signal.disconnect_all" class="reference internal" href="#kaa.Signal.disconnect_all"><tt class="xref docutils literal"><span class="pre">disconnect_all()</span></tt></a></th><td class="desc">Disconnects all callbacks from the signal.</td></tr>
-<tr><th><a title="kaa.Signal.emit" class="reference internal" href="#kaa.Signal.emit"><tt class="xref docutils literal"><span class="pre">emit()</span></tt></a></th><td class="desc">Emits the signal, passing the given arguments callback connected to the signal.</td></tr>
-<tr><th><a title="kaa.Signal.emit_deferred" class="reference internal" href="#kaa.Signal.emit_deferred"><tt class="xref docutils literal"><span class="pre">emit_deferred()</span></tt></a></th><td class="desc">Queues the emission until after the next callback is connected.</td></tr>
-<tr><th><a title="kaa.Signal.emit_when_handled" class="reference internal" href="#kaa.Signal.emit_when_handled"><tt class="xref docutils literal"><span class="pre">emit_when_handled()</span></tt></a></th><td class="desc">Emits the signal if there are callbacks connected, or defers it until
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Signal.disconnect_all" title="kaa.Signal.disconnect_all"><tt class="xref py py-meth docutils literal"><span class="pre">disconnect_all()</span></tt></a></th><td class="desc">Disconnects all callbacks from the signal.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Signal.emit" title="kaa.Signal.emit"><tt class="xref py py-meth docutils literal"><span class="pre">emit()</span></tt></a></th><td class="desc">Emits the signal, passing the given arguments callback connected to the signal.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Signal.emit_deferred" title="kaa.Signal.emit_deferred"><tt class="xref py py-meth docutils literal"><span class="pre">emit_deferred()</span></tt></a></th><td class="desc">Queues the emission until after the next callback is connected.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Signal.emit_when_handled" title="kaa.Signal.emit_when_handled"><tt class="xref py py-meth docutils literal"><span class="pre">emit_when_handled()</span></tt></a></th><td class="desc">Emits the signal if there are callbacks connected, or defers it until
 the first callback is connected.</td></tr>
 </table>
 <div class="heading">Properties</div>
 <table>
-<tr><th><a title="kaa.Signal.callbacks" class="reference internal" href="#kaa.Signal.callbacks"><tt class="xref docutils literal"><span class="pre">callbacks</span></tt></a></th><td>read-only</td><td class="desc">Tuple containing the callbacks connected to this signal.</td></tr>
-<tr><th><a title="kaa.Signal.changed_cb" class="reference internal" href="#kaa.Signal.changed_cb"><tt class="xref docutils literal"><span class="pre">changed_cb</span></tt></a></th><td>read/write</td><td class="desc">Callable to be invoked whenever a callback is connected to or
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Signal.callbacks" title="kaa.Signal.callbacks"><tt class="xref py py-attr docutils literal"><span class="pre">callbacks</span></tt></a></th><td>read-only</td><td class="desc">Tuple containing the callbacks connected to this signal.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Signal.changed_cb" title="kaa.Signal.changed_cb"><tt class="xref py py-attr docutils literal"><span class="pre">changed_cb</span></tt></a></th><td>read/write</td><td class="desc">Callable to be invoked whenever a callback is connected to or
 disconnected from the Signal.</td></tr>
 </table>
 <div class="heading">Signals</div><div class="nomembers">This class has no signals.</div>
@@ -393,14 +399,14 @@ when the signal is emitted.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><em>callback</em> &#8211; callable invoked when signal emits</li>
-<li><em>args</em> &#8211; optional non-keyword arguments passed to the callback</li>
-<li><em>kwargs</em> &#8211; optional keyword arguments passed to the callback.</li>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>callback</strong> &#8211; callable invoked when signal emits</li>
+<li><strong>args</strong> &#8211; optional non-keyword arguments passed to the callback</li>
+<li><strong>kwargs</strong> &#8211; optional keyword arguments passed to the callback.</li>
 </ul>
 </td>
 </tr>
-<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a new <a title="kaa.Callable" class="reference internal" href="#kaa.Callable"><tt class="xref docutils literal"><span class="pre">Callable</span></tt></a> object encapsulating the supplied
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a new <a class="reference internal" href="#kaa.Callable" title="kaa.Callable"><tt class="xref py py-class docutils literal"><span class="pre">Callable</span></tt></a> object encapsulating the supplied
 callable and arguments.</p>
 </td>
 </tr>
@@ -411,31 +417,34 @@ callable and arguments.</p>
 <dl class="method">
 <dt id="kaa.Signal.connect_first">
 <tt class="descname">connect_first</tt><big>(</big><em>callback</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.Signal.connect_first" title="Permalink to this definition">¶</a></dt>
-<dd>Variant of <a title="kaa.Signal.connect" class="reference internal" href="#kaa.Signal.connect"><tt class="xref docutils literal"><span class="pre">connect()</span></tt></a> in which the given callback is
-inserted to the front of the callback list.</dd></dl>
+<dd><p>Variant of <a class="reference internal" href="#kaa.Signal.connect" title="kaa.Signal.connect"><tt class="xref py py-meth docutils literal"><span class="pre">connect()</span></tt></a> in which the given callback is
+inserted to the front of the callback list.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kaa.Signal.connect_first_once">
 <tt class="descname">connect_first_once</tt><big>(</big><em>callback</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.Signal.connect_first_once" title="Permalink to this definition">¶</a></dt>
-<dd>Variant of <a title="kaa.Signal.connect_once" class="reference internal" href="#kaa.Signal.connect_once"><tt class="xref docutils literal"><span class="pre">connect_once()</span></tt></a> in which the given callback is
-inserted to the front of the callback list.</dd></dl>
+<dd><p>Variant of <a class="reference internal" href="#kaa.Signal.connect_once" title="kaa.Signal.connect_once"><tt class="xref py py-meth docutils literal"><span class="pre">connect_once()</span></tt></a> in which the given callback is
+inserted to the front of the callback list.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kaa.Signal.connect_once">
 <tt class="descname">connect_once</tt><big>(</big><em>callback</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.Signal.connect_once" title="Permalink to this definition">¶</a></dt>
-<dd>Variant of <a title="kaa.Signal.connect" class="reference internal" href="#kaa.Signal.connect"><tt class="xref docutils literal"><span class="pre">connect()</span></tt></a> where the callback is automatically
-disconnected after one signal emission.</dd></dl>
+<dd><p>Variant of <a class="reference internal" href="#kaa.Signal.connect" title="kaa.Signal.connect"><tt class="xref py py-meth docutils literal"><span class="pre">connect()</span></tt></a> where the callback is automatically
+disconnected after one signal emission.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kaa.Signal.connect_weak">
 <tt class="descname">connect_weak</tt><big>(</big><em>callback</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.Signal.connect_weak" title="Permalink to this definition">¶</a></dt>
-<dd><p>Weak variant of <a title="kaa.Signal.connect" class="reference internal" href="#kaa.Signal.connect"><tt class="xref docutils literal"><span class="pre">connect()</span></tt></a> where only weak references are
+<dd><p>Weak variant of <a class="reference internal" href="#kaa.Signal.connect" title="kaa.Signal.connect"><tt class="xref py py-meth docutils literal"><span class="pre">connect()</span></tt></a> where only weak references are
 held to the callback and arguments.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Returns:</th><td class="field-body">a new <a title="kaa.WeakCallable" class="reference internal" href="#kaa.WeakCallable"><tt class="xref docutils literal"><span class="pre">WeakCallable</span></tt></a> object encapsulating the
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">a new <a class="reference internal" href="#kaa.WeakCallable" title="kaa.WeakCallable"><tt class="xref py py-class docutils literal"><span class="pre">WeakCallable</span></tt></a> object encapsulating the
 supplied callable and arguments.</td>
 </tr>
 </tbody>
@@ -445,17 +454,20 @@ supplied callable and arguments.</td>
 <dl class="method">
 <dt id="kaa.Signal.connect_weak_first">
 <tt class="descname">connect_weak_first</tt><big>(</big><em>callback</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.Signal.connect_weak_first" title="Permalink to this definition">¶</a></dt>
-<dd>Weak variant of <a title="kaa.Signal.connect_first" class="reference internal" href="#kaa.Signal.connect_first"><tt class="xref docutils literal"><span class="pre">connect_first()</span></tt></a>.</dd></dl>
+<dd><p>Weak variant of <a class="reference internal" href="#kaa.Signal.connect_first" title="kaa.Signal.connect_first"><tt class="xref py py-meth docutils literal"><span class="pre">connect_first()</span></tt></a>.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kaa.Signal.connect_weak_first_once">
 <tt class="descname">connect_weak_first_once</tt><big>(</big><em>callback</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.Signal.connect_weak_first_once" title="Permalink to this definition">¶</a></dt>
-<dd>Weak variant of <a title="kaa.Signal.connect_weak_first_once" class="reference internal" href="#kaa.Signal.connect_weak_first_once"><tt class="xref docutils literal"><span class="pre">connect_weak_first_once()</span></tt></a>.</dd></dl>
+<dd><p>Weak variant of <a class="reference internal" href="#kaa.Signal.connect_weak_first_once" title="kaa.Signal.connect_weak_first_once"><tt class="xref py py-meth docutils literal"><span class="pre">connect_weak_first_once()</span></tt></a>.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kaa.Signal.connect_weak_once">
 <tt class="descname">connect_weak_once</tt><big>(</big><em>callback</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.Signal.connect_weak_once" title="Permalink to this definition">¶</a></dt>
-<dd>Weak variant of <a title="kaa.Signal.connect_once" class="reference internal" href="#kaa.Signal.connect_once"><tt class="xref docutils literal"><span class="pre">connect_once()</span></tt></a>.</dd></dl>
+<dd><p>Weak variant of <a class="reference internal" href="#kaa.Signal.connect_once" title="kaa.Signal.connect_once"><tt class="xref py py-meth docutils literal"><span class="pre">connect_once()</span></tt></a>.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kaa.Signal.count">
@@ -476,10 +488,10 @@ will be disconnected.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>callback</em> &#8211; either the callback originally connected, or the <a title="kaa.Callable" class="reference internal" href="#kaa.Callable"><tt class="xref docutils literal"><span class="pre">Callable</span></tt></a>
-object returned by <a title="kaa.Signal.connect" class="reference internal" href="#kaa.Signal.connect"><tt class="xref docutils literal"><span class="pre">connect()</span></tt></a>.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>callback</strong> &#8211; either the callback originally connected, or the <a class="reference internal" href="#kaa.Callable" title="kaa.Callable"><tt class="xref py py-class docutils literal"><span class="pre">Callable</span></tt></a>
+object returned by <a class="reference internal" href="#kaa.Signal.connect" title="kaa.Signal.connect"><tt class="xref py py-meth docutils literal"><span class="pre">connect()</span></tt></a>.</td>
 </tr>
-<tr class="field"><th class="field-name">Returns:</th><td class="field-body">True if any callbacks were disconnected, and False if none were found.</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">True if any callbacks were disconnected, and False if none were found.</td>
 </tr>
 </tbody>
 </table>
@@ -488,7 +500,8 @@ object returned by <a title="kaa.Signal.connect" class="reference internal" href
 <dl class="method">
 <dt id="kaa.Signal.disconnect_all">
 <tt class="descname">disconnect_all</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.Signal.disconnect_all" title="Permalink to this definition">¶</a></dt>
-<dd>Disconnects all callbacks from the signal.</dd></dl>
+<dd><p>Disconnects all callbacks from the signal.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kaa.Signal.emit">
@@ -498,7 +511,7 @@ object returned by <a title="kaa.Signal.connect" class="reference internal" href
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Returns:</th><td class="field-body">False if any of the callbacks returned False, and True otherwise.</td>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">False if any of the callbacks returned False, and True otherwise.</td>
 </tr>
 </tbody>
 </table>
@@ -516,15 +529,16 @@ arguments.</p>
 <dl class="method">
 <dt id="kaa.Signal.emit_when_handled">
 <tt class="descname">emit_when_handled</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.Signal.emit_when_handled" title="Permalink to this definition">¶</a></dt>
-<dd>Emits the signal if there are callbacks connected, or defers it until
-the first callback is connected.</dd></dl>
+<dd><p>Emits the signal if there are callbacks connected, or defers it until
+the first callback is connected.</p>
+</dd></dl>
 
 <h4>Properties</h4><dl class="attribute">
 <dt id="kaa.Signal.callbacks">
 <tt class="descname">callbacks</tt><a class="headerlink" href="#kaa.Signal.callbacks" title="Permalink to this definition">¶</a></dt>
 <dd><p>Tuple containing the callbacks connected to this signal.</p>
 <p>Because this value is a tuple, it cannot be manipulated directly.  Use
-<a title="kaa.Signal.connect" class="reference internal" href="#kaa.Signal.connect"><tt class="xref docutils literal"><span class="pre">connect()</span></tt></a> and <a title="kaa.Signal.disconnect" class="reference internal" href="#kaa.Signal.disconnect"><tt class="xref docutils literal"><span class="pre">disconnect()</span></tt></a> instead.</p>
+<a class="reference internal" href="#kaa.Signal.connect" title="kaa.Signal.connect"><tt class="xref py py-meth docutils literal"><span class="pre">connect()</span></tt></a> and <a class="reference internal" href="#kaa.Signal.disconnect" title="kaa.Signal.disconnect"><tt class="xref py py-meth docutils literal"><span class="pre">disconnect()</span></tt></a> instead.</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -539,11 +553,9 @@ disconnected from the Signal.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><em>signal</em> &#8211; the <a title="kaa.Signal" class="reference internal" href="#kaa.Signal"><tt class="xref docutils literal"><span class="pre">Signal</span></tt></a> object acted upon</li>
-<li><em>action</em> &#8211; either <tt class="docutils literal"><span class="pre">kaa.Signal.CONNECTED</span></tt> or <tt class="docutils literal"><span class="pre">kaa.Signal.DISCONNECTED</span></tt></li>
-</ul>
-</td>
+<tr class="field-odd field"><th class="field-name">Param signal:</th><td class="field-body">the <a class="reference internal" href="#kaa.Signal" title="kaa.Signal"><tt class="xref py py-class docutils literal"><span class="pre">Signal</span></tt></a> object acted upon</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Param action:</th><td class="field-body">either <tt class="docutils literal"><span class="pre">kaa.Signal.CONNECTED</span></tt> or <tt class="docutils literal"><span class="pre">kaa.Signal.DISCONNECTED</span></tt></td>
 </tr>
 </tbody>
 </table>
@@ -570,17 +582,17 @@ disconnected from the Signal.</p>
 </dd>
 </dl>
 <p><h4>Synopsis</h4><div class="kaa synopsis">
-<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal"><span class="pre">__builtin__.dict</span></tt><br />&#9492;&#9472; <tt class="xref docutils literal current">kaa.Signals</tt><br /></p>
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref py py-class docutils literal"><span class="pre">__builtin__.dict</span></tt><br />&#9492;&#9472; <tt class="xref docutils literal current">kaa.Signals</tt><br /></p>
 <div class="heading">Methods</div>
 <table>
-<tr><th><a title="kaa.Signals.add" class="reference internal" href="#kaa.Signals.add"><tt class="xref docutils literal"><span class="pre">add()</span></tt></a></th><td class="desc">Creates a new Signals object by merging all signals defined in
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Signals.add" title="kaa.Signals.add"><tt class="xref py py-meth docutils literal"><span class="pre">add()</span></tt></a></th><td class="desc">Creates a new Signals object by merging all signals defined in
 self and the signals specified in the arguments.</td></tr>
-<tr><th><a title="kaa.Signals.all" class="reference internal" href="#kaa.Signals.all"><tt class="xref docutils literal"><span class="pre">all()</span></tt></a></th><td class="desc">Returns an <a title="kaa.InProgressAll" class="reference external" href="../async/inprogress.html#kaa.InProgressAll"><tt class="xref docutils literal"><span class="pre">InProgressAll</span></tt></a> object with all signals in self.</td></tr>
-<tr><th><a title="kaa.Signals.any" class="reference internal" href="#kaa.Signals.any"><tt class="xref docutils literal"><span class="pre">any()</span></tt></a></th><td class="desc">Returns an <a title="kaa.InProgressAny" class="reference external" href="../async/inprogress.html#kaa.InProgressAny"><tt class="xref docutils literal"><span class="pre">InProgressAny</span></tt></a> object with all signals in self.</td></tr>
-<tr><th><a title="kaa.Signals.keys" class="reference internal" href="#kaa.Signals.keys"><tt class="xref docutils literal"><span class="pre">keys()</span></tt></a></th><td class="desc">List of signal names (strings).</td></tr>
-<tr><th><a title="kaa.Signals.subset" class="reference internal" href="#kaa.Signals.subset"><tt class="xref docutils literal"><span class="pre">subset()</span></tt></a></th><td class="desc">Returns a new Signals object by taking a subset of the supplied
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Signals.all" title="kaa.Signals.all"><tt class="xref py py-meth docutils literal"><span class="pre">all()</span></tt></a></th><td class="desc">Returns an <a class="reference internal" href="../async/inprogress.html#kaa.InProgressAll" title="kaa.InProgressAll"><tt class="xref py py-class docutils literal"><span class="pre">InProgressAll</span></tt></a> object with all signals in self.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Signals.any" title="kaa.Signals.any"><tt class="xref py py-meth docutils literal"><span class="pre">any()</span></tt></a></th><td class="desc">Returns an <a class="reference internal" href="../async/inprogress.html#kaa.InProgressAny" title="kaa.InProgressAny"><tt class="xref py py-class docutils literal"><span class="pre">InProgressAny</span></tt></a> object with all signals in self.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Signals.keys" title="kaa.Signals.keys"><tt class="xref py py-meth docutils literal"><span class="pre">keys()</span></tt></a></th><td class="desc">List of signal names (strings).</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Signals.subset" title="kaa.Signals.subset"><tt class="xref py py-meth docutils literal"><span class="pre">subset()</span></tt></a></th><td class="desc">Returns a new Signals object by taking a subset of the supplied
 signal names.</td></tr>
-<tr><th><a title="kaa.Signals.values" class="reference internal" href="#kaa.Signals.values"><tt class="xref docutils literal"><span class="pre">values()</span></tt></a></th><td class="desc">List of Signal objects.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Signals.values" title="kaa.Signals.values"><tt class="xref py py-meth docutils literal"><span class="pre">values()</span></tt></a></th><td class="desc">List of Signal objects.</td></tr>
 </table>
 <div class="heading">Properties</div><div class="nomembers">This class has no properties.</div><div class="heading">Signals</div><div class="nomembers">This class has no signals.</div>
 </div>
@@ -596,17 +608,20 @@ here.</p>
 <dl class="method">
 <dt id="kaa.Signals.all">
 <tt class="descname">all</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.Signals.all" title="Permalink to this definition">¶</a></dt>
-<dd>Returns an <a title="kaa.InProgressAll" class="reference external" href="../async/inprogress.html#kaa.InProgressAll"><tt class="xref docutils literal"><span class="pre">InProgressAll</span></tt></a> object with all signals in self.</dd></dl>
+<dd><p>Returns an <a class="reference internal" href="../async/inprogress.html#kaa.InProgressAll" title="kaa.InProgressAll"><tt class="xref py py-class docutils literal"><span class="pre">InProgressAll</span></tt></a> object with all signals in self.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kaa.Signals.any">
 <tt class="descname">any</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.Signals.any" title="Permalink to this definition">¶</a></dt>
-<dd>Returns an <a title="kaa.InProgressAny" class="reference external" href="../async/inprogress.html#kaa.InProgressAny"><tt class="xref docutils literal"><span class="pre">InProgressAny</span></tt></a> object with all signals in self.</dd></dl>
+<dd><p>Returns an <a class="reference internal" href="../async/inprogress.html#kaa.InProgressAny" title="kaa.InProgressAny"><tt class="xref py py-class docutils literal"><span class="pre">InProgressAny</span></tt></a> object with all signals in self.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kaa.Signals.keys">
 <tt class="descname">keys</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.Signals.keys" title="Permalink to this definition">¶</a></dt>
-<dd>List of signal names (strings).</dd></dl>
+<dd><p>List of signal names (strings).</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kaa.Signals.subset">
@@ -623,7 +638,8 @@ names parameter.</p>
 <dl class="method">
 <dt id="kaa.Signals.values">
 <tt class="descname">values</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.Signals.values" title="Permalink to this definition">¶</a></dt>
-<dd>List of Signal objects.</dd></dl>
+<dd><p>List of Signal objects.</p>
+</dd></dl>
 
 </p>
 </dd></dl>
@@ -639,45 +655,45 @@ names parameter.</p>
       </div>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
-            <h3><a href="../index.html">Table Of Contents</a></h3>
-            <ul>
-<li><a class="reference external" href="#">Signals and Callables</a><ul>
-<li><a class="reference external" href="#id1">Callables</a><ul>
-<li><a class="reference external" href="#callable-api">Callable API</a></li>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Signals and Callables</a><ul>
+<li><a class="reference internal" href="#id1">Callables</a><ul>
+<li><a class="reference internal" href="#callable-api">Callable API</a></li>
 </ul>
 </li>
-<li><a class="reference external" href="#signals">Signals</a><ul>
-<li><a class="reference external" href="#signals-api">Signals API</a></li>
+<li><a class="reference internal" href="#signals">Signals</a><ul>
+<li><a class="reference internal" href="#signals-api">Signals API</a></li>
 </ul>
 </li>
 </ul>
 </li>
 </ul>
 
-            <h4>Previous topic</h4>
-            <p class="topless"><a href="../index.html"
-                                  title="previous chapter">The Kaa Application Framework</a></p>
-            <h4>Next topic</h4>
-            <p class="topless"><a href="mainloop.html"
-                                  title="next chapter">The Main Loop</a></p>
-            <h3>This Page</h3>
-            <ul class="this-page-menu">
-              <li><a href="../_sources/core/signals.txt"
-                     rel="nofollow">Show Source</a></li>
-            </ul>
-          <div id="searchbox" style="display: none">
-            <h3>Quick search</h3>
-              <form class="search" action="../search.html" method="get">
-                <input type="text" name="q" size="18" />
-                <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
-              </form>
-              <p class="searchtip" style="font-size: 90%">
-              Enter search terms or a module, class or function name.
-              </p>
-          </div>
-          <script type="text/javascript">$('#searchbox').show(0);</script>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../index.html"
+                        title="previous chapter">The Kaa Application Framework</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="mainloop.html"
+                        title="next chapter">The Main Loop</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/core/signals.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -689,7 +705,7 @@ names parameter.</p>
           <a href="../genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="../modindex.html" title="Global Module Index"
+          <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
           <a href="mainloop.html" title="The Main Loop"
@@ -697,13 +713,13 @@ names parameter.</p>
         <li class="right" >
           <a href="../index.html" title="The Kaa Application Framework"
              >previous</a> |</li>
-        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jan 24, 2012.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+        &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on May 11, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

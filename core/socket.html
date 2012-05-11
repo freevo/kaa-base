@@ -1,25 +1,31 @@
+
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Socket I/O &mdash; kaa.base v0.99.2 documentation</title>
+    <title>Socket I/O &mdash; kaa.base 0.99.2 documentation</title>
+    
     <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
         VERSION:     '0.99.2',
-        COLLAPSE_MODINDEX: false,
+        COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
       };
     </script>
     <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="kaa.base v0.99.2 documentation" href="../index.html" />
+    <link rel="top" title="kaa.base 0.99.2 documentation" href="../index.html" />
     <link rel="next" title="Sub-Process I/O" href="process.html" />
     <link rel="prev" title="I/O Channels" href="io.html" />
     <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
@@ -33,15 +39,15 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="../modindex.html" title="Global Module Index"
-             accesskey="M">modules</a> |</li>
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="process.html" title="Sub-Process I/O"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="io.html" title="I/O Channels"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -50,13 +56,13 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="socket-i-o">
-<span id="socket"></span><span id="module-kaa.sockets"></span><h1>Socket I/O<a class="headerlink" href="#socket-i-o" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="module-kaa.sockets"></span><div class="section" id="socket-i-o">
+<span id="socket"></span><h1>Socket I/O<a class="headerlink" href="#socket-i-o" title="Permalink to this headline">¶</a></h1>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p>Socket subclasses <a title="kaa.IOChannel" class="reference external" href="io.html#kaa.IOChannel"><tt class="xref docutils literal"><span class="pre">IOChannel</span></tt></a> but for convenience all superclass
+<p>Socket subclasses <a class="reference internal" href="io.html#kaa.IOChannel" title="kaa.IOChannel"><tt class="xref py py-class docutils literal"><span class="pre">IOChannel</span></tt></a> but for convenience all superclass
 methods and properties are shown below.</p>
-<p class="last">See <a title="kaa.IOChannel" class="reference external" href="io.html#kaa.IOChannel"><tt class="xref docutils literal"><span class="pre">IOChannel</span></tt></a> for more information on internal details.</p>
+<p class="last">See <a class="reference internal" href="io.html#kaa.IOChannel" title="kaa.IOChannel"><tt class="xref py py-class docutils literal"><span class="pre">IOChannel</span></tt></a> for more information on internal details.</p>
 </div>
 <p><dl class="class">
 <dt id="kaa.Socket">
@@ -65,48 +71,48 @@ methods and properties are shown below.</p>
 and writes.</p>
 <p>kaa.Socket requires an IPv6-capable stack, and favors IPv6 connectivity
 when available.  This should generally be completely transparent on
-IPv4-only networks.  See <a title="kaa.Socket.connect" class="reference internal" href="#kaa.Socket.connect"><tt class="xref docutils literal"><span class="pre">connect()</span></tt></a> for more information.</p>
+IPv4-only networks.  See <a class="reference internal" href="#kaa.Socket.connect" title="kaa.Socket.connect"><tt class="xref py py-meth docutils literal"><span class="pre">connect()</span></tt></a> for more information.</p>
 <p><h4>Synopsis</h4><div class="kaa synopsis">
-<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <a title="kaa.IOChannel" class="reference external" href="io.html#kaa.IOChannel"><tt class="xref docutils literal"><span class="pre">kaa.IOChannel</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.Socket</tt><br /></p>
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref py py-class docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <a class="reference internal" href="io.html#kaa.IOChannel" title="kaa.IOChannel"><tt class="xref py py-class docutils literal"><span class="pre">kaa.IOChannel</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.Socket</tt><br /></p>
 <div class="heading">Methods</div>
 <table>
-<tr><th><a title="kaa.Socket.close" class="reference internal" href="#kaa.Socket.close"><tt class="xref docutils literal"><span class="pre">close()</span></tt></a></th><td class="desc">Closes the channel.</td></tr>
-<tr><th><a title="kaa.Socket.connect" class="reference internal" href="#kaa.Socket.connect"><tt class="xref docutils literal"><span class="pre">connect()</span></tt></a></th><td class="desc">Connects to the host specified in address.</td></tr>
-<tr><th><a title="kaa.Socket.listen" class="reference internal" href="#kaa.Socket.listen"><tt class="xref docutils literal"><span class="pre">listen()</span></tt></a></th><td class="desc">Set the socket to accept incoming connections.</td></tr>
-<tr><th><a title="kaa.Socket.read" class="reference internal" href="#kaa.Socket.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a></th><td class="desc">Reads a chunk of data from the channel.</td></tr>
-<tr><th><a title="kaa.Socket.readline" class="reference internal" href="#kaa.Socket.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a></th><td class="desc">Reads a line from the channel.</td></tr>
-<tr><th><a title="kaa.Socket.steal" class="reference internal" href="#kaa.Socket.steal"><tt class="xref docutils literal"><span class="pre">steal()</span></tt></a></th><td class="desc"></td></tr>
-<tr><th><a title="kaa.Socket.wrap" class="reference internal" href="#kaa.Socket.wrap"><tt class="xref docutils literal"><span class="pre">wrap()</span></tt></a></th><td class="desc">Wraps an existing low-level socket object.</td></tr>
-<tr><th><a title="kaa.Socket.write" class="reference internal" href="#kaa.Socket.write"><tt class="xref docutils literal"><span class="pre">write()</span></tt></a></th><td class="desc">Writes the given data to the channel.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Socket.close" title="kaa.Socket.close"><tt class="xref py py-meth docutils literal"><span class="pre">close()</span></tt></a></th><td class="desc">Closes the channel.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Socket.connect" title="kaa.Socket.connect"><tt class="xref py py-meth docutils literal"><span class="pre">connect()</span></tt></a></th><td class="desc">Connects to the host specified in address.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Socket.listen" title="kaa.Socket.listen"><tt class="xref py py-meth docutils literal"><span class="pre">listen()</span></tt></a></th><td class="desc">Set the socket to accept incoming connections.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Socket.read" title="kaa.Socket.read"><tt class="xref py py-meth docutils literal"><span class="pre">read()</span></tt></a></th><td class="desc">Reads a chunk of data from the channel.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Socket.readline" title="kaa.Socket.readline"><tt class="xref py py-meth docutils literal"><span class="pre">readline()</span></tt></a></th><td class="desc">Reads a line from the channel.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Socket.steal" title="kaa.Socket.steal"><tt class="xref py py-meth docutils literal"><span class="pre">steal()</span></tt></a></th><td class="desc"></td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Socket.wrap" title="kaa.Socket.wrap"><tt class="xref py py-meth docutils literal"><span class="pre">wrap()</span></tt></a></th><td class="desc">Wraps an existing low-level socket object.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Socket.write" title="kaa.Socket.write"><tt class="xref py py-meth docutils literal"><span class="pre">write()</span></tt></a></th><td class="desc">Writes the given data to the channel.</td></tr>
 </table>
 <div class="heading">Properties</div>
 <table>
-<tr><th><a title="kaa.Socket.alive" class="reference internal" href="#kaa.Socket.alive"><tt class="xref docutils literal"><span class="pre">alive</span></tt></a></th><td>read-only</td><td class="desc">True if the socket is <a title="kaa.Socket.connected" class="reference internal" href="#kaa.Socket.connected"><tt class="xref docutils literal"><span class="pre">connected</span></tt></a>, <a title="kaa.Socket.listening" class="reference internal" href="#kaa.Socket.listening"><tt class="xref docutils literal"><span class="pre">listening</span></tt></a>, or
-<a title="kaa.Socket.connecting" class="reference internal" href="#kaa.Socket.connecting"><tt class="xref docutils literal"><span class="pre">connecting</span></tt></a>.</td></tr>
-<tr><th><a title="kaa.Socket.buffer_size" class="reference internal" href="#kaa.Socket.buffer_size"><tt class="xref docutils literal"><span class="pre">buffer_size</span></tt></a></th><td>read/write</td><td class="desc">Size of the send and receive socket buffers (SO_SNDBUF and SO_RCVBUF)
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Socket.alive" title="kaa.Socket.alive"><tt class="xref py py-attr docutils literal"><span class="pre">alive</span></tt></a></th><td>read-only</td><td class="desc">True if the socket is <tt class="xref py py-attr docutils literal"><span class="pre">connected</span></tt>, <tt class="xref py py-attr docutils literal"><span class="pre">listening</span></tt>, or
+<tt class="xref py py-attr docutils literal"><span class="pre">connecting</span></tt>.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Socket.buffer_size" title="kaa.Socket.buffer_size"><tt class="xref py py-attr docutils literal"><span class="pre">buffer_size</span></tt></a></th><td>read/write</td><td class="desc">Size of the send and receive socket buffers (SO_SNDBUF and SO_RCVBUF)
 in bytes.</td></tr>
-<tr><th><a title="kaa.Socket.chunk_size" class="reference internal" href="#kaa.Socket.chunk_size"><tt class="xref docutils literal"><span class="pre">chunk_size</span></tt></a></th><td>read/write</td><td class="desc">Number of bytes to attempt to read from the channel at a time.</td></tr>
-<tr><th><a title="kaa.Socket.connected" class="reference internal" href="#kaa.Socket.connected"><tt class="xref docutils literal"><span class="pre">connected</span></tt></a></th><td>read-only</td><td class="desc">True when the socket is currently connected to a peer.</td></tr>
-<tr><th><a title="kaa.Socket.connecting" class="reference internal" href="#kaa.Socket.connecting"><tt class="xref docutils literal"><span class="pre">connecting</span></tt></a></th><td>read-only</td><td class="desc">True if the socket is in the process of establishing a connection
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Socket.chunk_size" title="kaa.Socket.chunk_size"><tt class="xref py py-attr docutils literal"><span class="pre">chunk_size</span></tt></a></th><td>read/write</td><td class="desc">Number of bytes to attempt to read from the channel at a time.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Socket.connected" title="kaa.Socket.connected"><tt class="xref py py-attr docutils literal"><span class="pre">connected</span></tt></a></th><td>read-only</td><td class="desc">True when the socket is currently connected to a peer.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Socket.connecting" title="kaa.Socket.connecting"><tt class="xref py py-attr docutils literal"><span class="pre">connecting</span></tt></a></th><td>read-only</td><td class="desc">True if the socket is in the process of establishing a connection
 but is not yet connected.</td></tr>
-<tr><th><a title="kaa.Socket.delimiter" class="reference internal" href="#kaa.Socket.delimiter"><tt class="xref docutils literal"><span class="pre">delimiter</span></tt></a></th><td>read/write</td><td class="desc">String used to split data for use with <a title="kaa.Socket.readline" class="reference internal" href="#kaa.Socket.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a>.</td></tr>
-<tr><th><a title="kaa.Socket.fileno" class="reference internal" href="#kaa.Socket.fileno"><tt class="xref docutils literal"><span class="pre">fileno</span></tt></a></th><td>read-only</td><td class="desc"></td></tr>
-<tr><th><a title="kaa.Socket.listening" class="reference internal" href="#kaa.Socket.listening"><tt class="xref docutils literal"><span class="pre">listening</span></tt></a></th><td>read-only</td><td class="desc">True if this is a listening socket, and False otherwise.</td></tr>
-<tr><th><a title="kaa.Socket.local" class="reference internal" href="#kaa.Socket.local"><tt class="xref docutils literal"><span class="pre">local</span></tt></a></th><td>read-only</td><td class="desc">Information about the local side of the socket.</td></tr>
-<tr><th><a title="kaa.Socket.mode" class="reference internal" href="#kaa.Socket.mode"><tt class="xref docutils literal"><span class="pre">mode</span></tt></a></th><td>read-only</td><td class="desc">Whether the channel is read-only, or read/write.</td></tr>
-<tr><th><a title="kaa.Socket.peer" class="reference internal" href="#kaa.Socket.peer"><tt class="xref docutils literal"><span class="pre">peer</span></tt></a></th><td>read-only</td><td class="desc">Information about the remote side of the socket.</td></tr>
-<tr><th><a title="kaa.Socket.queue_size" class="reference internal" href="#kaa.Socket.queue_size"><tt class="xref docutils literal"><span class="pre">queue_size</span></tt></a></th><td>read/write</td><td class="desc">The size limit in bytes for the read and write queues.</td></tr>
-<tr><th><a title="kaa.Socket.read_queue_used" class="reference internal" href="#kaa.Socket.read_queue_used"><tt class="xref docutils literal"><span class="pre">read_queue_used</span></tt></a></th><td>read-only</td><td class="desc">The number of bytes in the read queue.</td></tr>
-<tr><th><a title="kaa.Socket.readable" class="reference internal" href="#kaa.Socket.readable"><tt class="xref docutils literal"><span class="pre">readable</span></tt></a></th><td>read-only</td><td class="desc">True if <a title="kaa.Socket.read" class="reference internal" href="#kaa.Socket.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a> may be called.</td></tr>
-<tr><th><a title="kaa.Socket.writable" class="reference internal" href="#kaa.Socket.writable"><tt class="xref docutils literal"><span class="pre">writable</span></tt></a></th><td>read-only</td><td class="desc">True if <a title="kaa.Socket.write" class="reference internal" href="#kaa.Socket.write"><tt class="xref docutils literal"><span class="pre">write()</span></tt></a> may be called.</td></tr>
-<tr><th><a title="kaa.Socket.write_queue_used" class="reference internal" href="#kaa.Socket.write_queue_used"><tt class="xref docutils literal"><span class="pre">write_queue_used</span></tt></a></th><td>read-only</td><td class="desc">The number of bytes queued in memory to be written to the channel.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Socket.delimiter" title="kaa.Socket.delimiter"><tt class="xref py py-attr docutils literal"><span class="pre">delimiter</span></tt></a></th><td>read/write</td><td class="desc">String used to split data for use with <tt class="xref py py-meth docutils literal"><span class="pre">readline()</span></tt>.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Socket.fileno" title="kaa.Socket.fileno"><tt class="xref py py-attr docutils literal"><span class="pre">fileno</span></tt></a></th><td>read-only</td><td class="desc"></td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Socket.listening" title="kaa.Socket.listening"><tt class="xref py py-attr docutils literal"><span class="pre">listening</span></tt></a></th><td>read-only</td><td class="desc">True if this is a listening socket, and False otherwise.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Socket.local" title="kaa.Socket.local"><tt class="xref py py-attr docutils literal"><span class="pre">local</span></tt></a></th><td>read-only</td><td class="desc">Information about the local side of the socket.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Socket.mode" title="kaa.Socket.mode"><tt class="xref py py-attr docutils literal"><span class="pre">mode</span></tt></a></th><td>read-only</td><td class="desc">Whether the channel is read-only, or read/write.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Socket.peer" title="kaa.Socket.peer"><tt class="xref py py-attr docutils literal"><span class="pre">peer</span></tt></a></th><td>read-only</td><td class="desc">Information about the remote side of the socket.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Socket.queue_size" title="kaa.Socket.queue_size"><tt class="xref py py-attr docutils literal"><span class="pre">queue_size</span></tt></a></th><td>read/write</td><td class="desc">The size limit in bytes for the read and write queues.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Socket.read_queue_used" title="kaa.Socket.read_queue_used"><tt class="xref py py-attr docutils literal"><span class="pre">read_queue_used</span></tt></a></th><td>read-only</td><td class="desc">The number of bytes in the read queue.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Socket.readable" title="kaa.Socket.readable"><tt class="xref py py-attr docutils literal"><span class="pre">readable</span></tt></a></th><td>read-only</td><td class="desc">True if <tt class="xref py py-meth docutils literal"><span class="pre">read()</span></tt> may be called.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Socket.writable" title="kaa.Socket.writable"><tt class="xref py py-attr docutils literal"><span class="pre">writable</span></tt></a></th><td>read-only</td><td class="desc">True if <tt class="xref py py-meth docutils literal"><span class="pre">write()</span></tt> may be called.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Socket.write_queue_used" title="kaa.Socket.write_queue_used"><tt class="xref py py-attr docutils literal"><span class="pre">write_queue_used</span></tt></a></th><td>read-only</td><td class="desc">The number of bytes queued in memory to be written to the channel.</td></tr>
 </table>
 <div class="heading">Signals</div>
 <table>
-<tr><th><a title="kaa.Socket.signals.read" class="reference internal" href="#kaa.Socket.signals.read"><tt class="xref docutils literal"><span class="pre">read</span></tt></a></th><td class="desc">Emitted for each chunk of data read from the channel.</td></tr>
-<tr><th><a title="kaa.Socket.signals.readline" class="reference internal" href="#kaa.Socket.signals.readline"><tt class="xref docutils literal"><span class="pre">readline</span></tt></a></th><td class="desc">Emitted for each line read from the channel.</td></tr>
-<tr><th><a title="kaa.Socket.signals.new-client" class="reference internal" href="#kaa.Socket.signals.new-client"><tt class="xref docutils literal"><span class="pre">new-client</span></tt></a></th><td class="desc">Emitted when a new client connects to a listening socket.</td></tr>
-<tr><th><a title="kaa.Socket.signals.closed" class="reference internal" href="#kaa.Socket.signals.closed"><tt class="xref docutils literal"><span class="pre">closed</span></tt></a></th><td class="desc">Emitted when the channel is closed.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Socket.signals.read" title="kaa.Socket.signals.read"><tt class="xref py py-attr docutils literal"><span class="pre">read</span></tt></a></th><td class="desc">Emitted for each chunk of data read from the channel.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Socket.signals.readline" title="kaa.Socket.signals.readline"><tt class="xref py py-attr docutils literal"><span class="pre">readline</span></tt></a></th><td class="desc">Emitted for each line read from the channel.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Socket.signals.new-client" title="kaa.Socket.signals.new-client"><tt class="xref py py-attr docutils literal"><span class="pre">new-client</span></tt></a></th><td class="desc">Emitted when a new client connects to a listening socket.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Socket.signals.closed" title="kaa.Socket.signals.closed"><tt class="xref py py-attr docutils literal"><span class="pre">closed</span></tt></a></th><td class="desc">Emitted when the channel is closed.</td></tr>
 </table>
 
 </div>
@@ -118,7 +124,7 @@ but is not yet connected.</td></tr>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>immediate</em> (bool) &#8211; if False and there is data in the write buffer, the
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>immediate</strong> (<em>bool</em>) &#8211; if False and there is data in the write buffer, the
 channel is closed once the write buffer is emptied.
 Otherwise the channel is closed immediately and the 
 <em>closed</em> signal is emitted.</td>
@@ -135,12 +141,12 @@ Otherwise the channel is closed immediately and the
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><em>addr</em> (str, or 2- or 4-tuple) &#8211; Address for a remote host, or a Unix socket.  If a str,
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>addr</strong> (<em>str, or 2- or 4-tuple</em>) &#8211; Address for a remote host, or a Unix socket.  If a str,
 it is either a Unix socket path or represents a TCP
 socket when in the form <tt class="docutils literal"><span class="pre">host:service[%scope]</span></tt>.  See
 below for further details.</li>
-<li><em>ipv6</em> &#8211; if True, will connect to the remote host using IPv6 if
+<li><strong>ipv6</strong> &#8211; if True, will connect to the remote host using IPv6 if
 it is reachable via IPv6.  This is perfectly safe for IPv4
 only hosts too.  Set this to False if the remote host
 has a AAAA record and the local host has an IPv6 route to
@@ -148,7 +154,7 @@ it, but you want to force IPv4 anyway.</li>
 </ul>
 </td>
 </tr>
-<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">An <a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> object.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">An <a class="reference internal" href="../async/inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> object.</p>
 </td>
 </tr>
 </tbody>
@@ -159,21 +165,21 @@ it, but you want to force IPv4 anyway.</li>
 be 0.</p>
 <p>The <em>flowinfo</em> and <em>scope</em> fields are only relevant for IPv6 hosts,
 where they represent the <tt class="docutils literal"><span class="pre">sin6_flowinfo</span></tt> and <tt class="docutils literal"><span class="pre">sin6_scope_id</span></tt>
-members in <tt class="xref docutils literal"><span class="pre">struct</span> <span class="pre">sockaddr_in6</span></tt> in C.  <em>scope</em> may be the name
+members in <tt class="xref py py-const docutils literal"><span class="pre">struct</span> <span class="pre">sockaddr_in6</span></tt> in C.  <em>scope</em> may be the name
 of an interface (e.g. <tt class="docutils literal"><span class="pre">eth0</span></tt>) or an interface id, and is needed when
 connecting to link-local addresses (<tt class="docutils literal"><span class="pre">fe80::/16</span></tt>).</p>
 <p>If <em>addr</em> is given as a string, it is treated as a Unix socket path if it
 does not contain <tt class="docutils literal"><span class="pre">:</span></tt>, otherwise it is specified as <tt class="docutils literal"><span class="pre">host:service[%scope]</span></tt>,
 where <tt class="docutils literal"><span class="pre">[x]</span></tt> indicates that <tt class="docutils literal"><span class="pre">x</span></tt> is optional, and where:</p>
 <blockquote>
-<ul class="simple">
+<div><ul class="simple">
 <li><em>host</em> is a hostname, an IPv4 dotted quad, or an IPv6 address
 wrapped in square brackets.  e.g. freevo.org, 192.168.0.1,
 [3000::1]</li>
 <li><em>service</em> is a service name or port number.  e.g. http, 80</li>
 <li><em>scope</em> is an interface name or number.  e.g. eth0, 2</li>
 </ul>
-</blockquote>
+</div></blockquote>
 <p>When connecting to a link-local address (fe80::/16), <em>scope</em> must be
 specified.  Relative Unix socket names (those not prefixed with <tt class="docutils literal"><span class="pre">/</span></tt>)
 are created via kaa.tempfile.</p>
@@ -191,21 +197,21 @@ an exception is thrown to the InProgress.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><em>addr</em> (int, str, or 2- or 4-tuple) &#8211; Binds the socket to this address.  If an int, this
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>addr</strong> (<em>int, str, or 2- or 4-tuple</em>) &#8211; Binds the socket to this address.  If an int, this
 specifies a TCP port that is bound on all interfaces; if a
 str, it is either a Unix socket path or represents a TCP
 socket when in the form <tt class="docutils literal"><span class="pre">[host]:[service][%scope]</span></tt>.  
 See below for further details.</li>
-<li><em>backlog</em> (int) &#8211; the maximum length to which the queue of pending
+<li><strong>backlog</strong> (<em>int</em>) &#8211; the maximum length to which the queue of pending
 connections for the socket may grow.</li>
-<li><em>ipv6</em> (bool) &#8211; if True, will prefer binding to IPv6 addresses if addr is
+<li><strong>ipv6</strong> (<em>bool</em>) &#8211; if True, will prefer binding to IPv6 addresses if addr is
 a hostname that contains both AAAA and A records.  If addr
 is specified as an IP address, this argument does nothing.</li>
 </ul>
 </td>
 </tr>
-<tr class="field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last">ValueError if <em>addr</em> is invalid, or socket.error if the bind fails.</p>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><p class="first last">ValueError if <em>addr</em> is invalid, or socket.error if the bind fails.</p>
 </td>
 </tr>
 </tbody>
@@ -213,13 +219,13 @@ is specified as an IP address, this argument does nothing.</li>
 <p>If <em>addr</em> is given as a 4-tuple, it is in the form <tt class="docutils literal"><span class="pre">(host,</span> <span class="pre">service,</span>
 <span class="pre">flowinfo,</span> <span class="pre">scope)</span></tt>.  If passed as a 2-tuple, it is in the form
 <tt class="docutils literal"><span class="pre">(host,</span> <span class="pre">service)</span></tt>, and in this case, it is assumed that <em>flowinfo</em> and
-<em>scope</em> are both 0.  See <a title="kaa.Socket.connect" class="reference internal" href="#kaa.Socket.connect"><tt class="xref docutils literal"><span class="pre">connect()</span></tt></a> for more
+<em>scope</em> are both 0.  See <a class="reference internal" href="#kaa.Socket.connect" title="kaa.Socket.connect"><tt class="xref py py-meth docutils literal"><span class="pre">connect()</span></tt></a> for more
 information.</p>
 <p>If <em>host</em> is given as a string, it is treated as a Unix socket path if it
 does not contain <tt class="docutils literal"><span class="pre">:</span></tt>, otherwise it is specified as <tt class="docutils literal"><span class="pre">[host]:[service][%scope]</span></tt>,
 where <tt class="docutils literal"><span class="pre">[x]</span></tt> indicates that <tt class="docutils literal"><span class="pre">x</span></tt> is optional, and where:</p>
 <blockquote>
-<ul class="simple">
+<div><ul class="simple">
 <li><em>host</em> is a hostname, an IPv4 dotted quad, or an IPv6 address
 wrapped in square brackets.  e.g. localhost, 192.168.0.1,
 [3000::1].  If host is not specified, the socket will listen on
@@ -227,7 +233,7 @@ all interfaces.</li>
 <li><em>service</em> is a service name or port number.  e.g. http, 80</li>
 <li><em>scope</em> is an interface name or number.  e.g. eth0, 2</li>
 </ul>
-</blockquote>
+</div></blockquote>
 <p>When binding to a link-local address (<tt class="docutils literal"><span class="pre">fe80::/16</span></tt>), <em>scope</em> must be
 specified.  Relative Unix socket names (those not prefixed with
 <tt class="docutils literal"><span class="pre">/</span></tt>) are created via kaa.tempfile.</p>
@@ -239,7 +245,7 @@ hostname if the name is not specified in /etc/hosts.  (In other words,
 <tt class="docutils literal"><span class="pre">localhost</span></tt> is probably safe.)</p>
 </div>
 <p>Once listening, new connections are automatically accepted, and the
-<a title="kaa.Socket.signals.new-client" class="reference internal" href="#kaa.Socket.signals.new-client"><tt class="xref docutils literal"><span class="pre">new-client</span></tt></a> signal is emitted for each new
+<a class="reference internal" href="#kaa.Socket.signals.new-client" title="kaa.Socket.signals.new-client"><tt class="xref py py-attr docutils literal"><span class="pre">new-client</span></tt></a> signal is emitted for each new
 connection.  Callbacks connecting to the signal will receive a new
 Socket object representing the client connection.</p>
 </dd></dl>
@@ -252,7 +258,7 @@ Socket object representing the client connection.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Returns:</th><td class="field-body">An <a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> object. If the InProgress is
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">An <a class="reference internal" href="../async/inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> object. If the InProgress is
 finished with the empty string, it means that no data 
 was collected and the channel was closed (or the channel 
 was already closed when read() was called).</td>
@@ -266,7 +272,7 @@ was already closed when read() was called).</td>
 </pre></div>
 </div>
 <p>So the return value of read() should be checked.  Alternatively,
-the <a title="kaa.Socket.readable" class="reference internal" href="#kaa.Socket.readable"><tt class="xref docutils literal"><span class="pre">readable</span></tt></a> property could be tested:</p>
+the <tt class="xref py py-attr docutils literal"><span class="pre">readable</span></tt> property could be tested:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="k">while</span> <span class="n">channel</span><span class="o">.</span><span class="n">readable</span><span class="p">:</span>
      <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">process</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
 </pre></div>
@@ -284,7 +290,7 @@ channel was closed before a delimiter was received.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Returns:</th><td class="field-body">An <a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> object. If the InProgress is
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">An <a class="reference internal" href="../async/inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> object. If the InProgress is
 finished with the empty string, it means that no data 
 was collected and the channel was closed (or the channel 
 was already closed when readline() was called).</td>
@@ -292,7 +298,7 @@ was already closed when readline() was called).</td>
 </tbody>
 </table>
 <p>Data from the channel is read and queued in until the delimiter (\n by
-default, but may be changed by the <a title="kaa.Socket.delimiter" class="reference internal" href="#kaa.Socket.delimiter"><tt class="xref docutils literal"><span class="pre">delimiter</span></tt></a>
+default, but may be changed by the <tt class="xref py py-attr docutils literal"><span class="pre">delimiter</span></tt>
 property) is found.  If the read queue size exceeds the queue limit,
 then the InProgress returned here will be finished prematurely with
 whatever is in the read queue, and the read queue will be purged.</p>
@@ -321,15 +327,13 @@ other.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><p class="first"><em>data</em> (string) &#8211; the data to be written to the channel.</p>
-</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> (<em>string</em>) &#8211; the data to be written to the channel.</td>
 </tr>
-<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">An <a title="kaa.InProgress" class="reference external" href="../async/inprogress.html#kaa.InProgress"><tt class="xref docutils literal"><span class="pre">InProgress</span></tt></a> object which is finished when the
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">An <a class="reference internal" href="../async/inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> object which is finished when the
 given data is fully written to the channel.  The InProgress
 is finished with the number of bytes sent in the last write 
 required to commit the given data to the channel.  (This may
-not be the actual number of bytes of the given data.)</p>
-<p class="last">If the channel closes unexpectedly before the data was
+not be the actual number of bytes of the given data.)<p>If the channel closes unexpectedly before the data was
 written, an IOError is thrown to the InProgress.</p>
 </td>
 </tr>
@@ -348,8 +352,9 @@ prematurely, an IOError is thrown to the InProgress.</p>
 <h4>Properties</h4><dl class="attribute">
 <dt id="kaa.Socket.alive">
 <tt class="descname">alive</tt><a class="headerlink" href="#kaa.Socket.alive" title="Permalink to this definition">¶</a></dt>
-<dd>True if the socket is <a title="kaa.Socket.connected" class="reference internal" href="#kaa.Socket.connected"><tt class="xref docutils literal"><span class="pre">connected</span></tt></a>, <a title="kaa.Socket.listening" class="reference internal" href="#kaa.Socket.listening"><tt class="xref docutils literal"><span class="pre">listening</span></tt></a>, or
-<a title="kaa.Socket.connecting" class="reference internal" href="#kaa.Socket.connecting"><tt class="xref docutils literal"><span class="pre">connecting</span></tt></a>.</dd></dl>
+<dd><p>True if the socket is <tt class="xref py py-attr docutils literal"><span class="pre">connected</span></tt>, <tt class="xref py py-attr docutils literal"><span class="pre">listening</span></tt>, or
+<tt class="xref py py-attr docutils literal"><span class="pre">connecting</span></tt>.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="kaa.Socket.buffer_size">
@@ -375,18 +380,18 @@ chunk size, but will never be more.)</p>
 <dt id="kaa.Socket.connected">
 <tt class="descname">connected</tt><a class="headerlink" href="#kaa.Socket.connected" title="Permalink to this definition">¶</a></dt>
 <dd><p>True when the socket is currently connected to a peer.</p>
-<p>When a socket is in the process of <a title="kaa.Socket.connecting" class="reference internal" href="#kaa.Socket.connecting"><tt class="xref docutils literal"><span class="pre">connecting</span></tt></a>, it is not
-considered connected, although it is considered <a title="kaa.Socket.alive" class="reference internal" href="#kaa.Socket.alive"><tt class="xref docutils literal"><span class="pre">alive</span></tt></a>.</p>
+<p>When a socket is in the process of <tt class="xref py py-attr docutils literal"><span class="pre">connecting</span></tt>, it is not
+considered connected, although it is considered <tt class="xref py py-attr docutils literal"><span class="pre">alive</span></tt>.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">This property will not change until a <a title="kaa.Socket.read" class="reference internal" href="#kaa.Socket.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a> or <a title="kaa.Socket.write" class="reference internal" href="#kaa.Socket.write"><tt class="xref docutils literal"><span class="pre">write()</span></tt></a>
+<p class="last">This property will not change until a <tt class="xref py py-meth docutils literal"><span class="pre">read()</span></tt> or <tt class="xref py py-meth docutils literal"><span class="pre">write()</span></tt>
 is attempted on the socket.  Only then can it be determined if
 the socket has disconnected.</p>
 </div>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
 <p class="last">When you want to read all data from the socket until it closes,
-you should use the <a title="kaa.Socket.readable" class="reference internal" href="#kaa.Socket.readable"><tt class="xref docutils literal"><span class="pre">readable</span></tt></a> property instead.</p>
+you should use the <tt class="xref py py-attr docutils literal"><span class="pre">readable</span></tt> property instead.</p>
 </div>
 </dd></dl>
 
@@ -396,13 +401,13 @@ you should use the <a title="kaa.Socket.readable" class="reference internal" hre
 <dd><p>True if the socket is in the process of establishing a connection
 but is not yet connected.</p>
 <p>Once the socket is connected, the connecting property will be False,
-but the <a title="kaa.Socket.connected" class="reference internal" href="#kaa.Socket.connected"><tt class="xref docutils literal"><span class="pre">connected</span></tt></a> property will be True.</p>
+but the <tt class="xref py py-attr docutils literal"><span class="pre">connected</span></tt> property will be True.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="kaa.Socket.delimiter">
 <tt class="descname">delimiter</tt><a class="headerlink" href="#kaa.Socket.delimiter" title="Permalink to this definition">¶</a></dt>
-<dd><p>String used to split data for use with <a title="kaa.Socket.readline" class="reference internal" href="#kaa.Socket.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a>.</p>
+<dd><p>String used to split data for use with <tt class="xref py py-meth docutils literal"><span class="pre">readline()</span></tt>.</p>
 <p>Delimiter may also be a list of strings, in which case any one of the
 elements in the list will be used as a delimiter.  For example, if you
 want to delimit based on either \r or \n, specify [&#8216;\r&#8217;, &#8216;\n&#8217;].</p>
@@ -416,7 +421,8 @@ want to delimit based on either \r or \n, specify [&#8216;\r&#8217;, &#8216;\n&#
 <dl class="attribute">
 <dt id="kaa.Socket.listening">
 <tt class="descname">listening</tt><a class="headerlink" href="#kaa.Socket.listening" title="Permalink to this definition">¶</a></dt>
-<dd>True if this is a listening socket, and False otherwise.</dd></dl>
+<dd><p>True if this is a listening socket, and False otherwise.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="kaa.Socket.local">
@@ -445,7 +451,7 @@ the name of a Unix socket.</p>
 representing the remote end of the socket.</p>
 <p><em>scope</em> is the interface name represented by <em>scopeid</em>, and is None if
 <em>scopeid</em> is 0.  <em>reqhost</em> is the requested hostname if
-<a title="kaa.Socket.connect" class="reference internal" href="#kaa.Socket.connect"><tt class="xref docutils literal"><span class="pre">connect()</span></tt></a> was called, or None if this is a listening
+<a class="reference internal" href="#kaa.Socket.connect" title="kaa.Socket.connect"><tt class="xref py py-meth docutils literal"><span class="pre">connect()</span></tt></a> was called, or None if this is a listening
 socket.</p>
 <p>On Python 2.6 and later, the returned value is a namedtuple.</p>
 </dd></dl>
@@ -469,11 +475,11 @@ is.</p>
 <dl class="attribute">
 <dt id="kaa.Socket.readable">
 <tt class="descname">readable</tt><a class="headerlink" href="#kaa.Socket.readable" title="Permalink to this definition">¶</a></dt>
-<dd><p>True if <a title="kaa.Socket.read" class="reference internal" href="#kaa.Socket.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a> may be called.</p>
-<p>A socket is considered readable when it is <a title="kaa.Socket.alive" class="reference internal" href="#kaa.Socket.alive"><tt class="xref docutils literal"><span class="pre">alive</span></tt></a>, or if it&#8217;s
+<dd><p>True if <tt class="xref py py-meth docutils literal"><span class="pre">read()</span></tt> may be called.</p>
+<p>A socket is considered readable when it is <tt class="xref py py-attr docutils literal"><span class="pre">alive</span></tt>, or if it&#8217;s
 closed but there is buffered data to be read.</p>
 <p>Because of the presence of a read buffer, you should test this property
-to determine if you should <a title="kaa.Socket.read" class="reference internal" href="#kaa.Socket.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a>, not the <a title="kaa.Socket.connected" class="reference internal" href="#kaa.Socket.connected"><tt class="xref docutils literal"><span class="pre">connected</span></tt></a>
+to determine if you should <tt class="xref py py-meth docutils literal"><span class="pre">read()</span></tt>, not the <tt class="xref py py-attr docutils literal"><span class="pre">connected</span></tt>
 property:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="k">while</span> <span class="n">socket</span><span class="o">.</span><span class="n">readable</span><span class="p">:</span>
     <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">socket</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
@@ -483,8 +489,8 @@ property:</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">A value of True does not mean there <strong>is</strong> data available, but
-rather that there could be and that a <a title="kaa.Socket.read" class="reference internal" href="#kaa.Socket.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a> call is possible
-(however that <a title="kaa.Socket.read" class="reference internal" href="#kaa.Socket.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a> call may return None, in which case the
+rather that there could be and that a <tt class="xref py py-meth docutils literal"><span class="pre">read()</span></tt> call is possible
+(however that <tt class="xref py py-meth docutils literal"><span class="pre">read()</span></tt> call may return None, in which case the
 readable property will subsequently be False because the socket is
 disconnected).</p>
 </div>
@@ -493,7 +499,7 @@ disconnected).</p>
 <dl class="attribute">
 <dt id="kaa.Socket.writable">
 <tt class="descname">writable</tt><a class="headerlink" href="#kaa.Socket.writable" title="Permalink to this definition">¶</a></dt>
-<dd><p>True if <a title="kaa.Socket.write" class="reference internal" href="#kaa.Socket.write"><tt class="xref docutils literal"><span class="pre">write()</span></tt></a> may be called.</p>
+<dd><p>True if <tt class="xref py py-meth docutils literal"><span class="pre">write()</span></tt> may be called.</p>
 <p>(However, if you pass too much data to write() such that the write
 queue limit is exceeded, the write will fail.)</p>
 </dd></dl>
@@ -501,7 +507,8 @@ queue limit is exceeded, the write will fail.)</p>
 <dl class="attribute">
 <dt id="kaa.Socket.write_queue_used">
 <tt class="descname">write_queue_used</tt><a class="headerlink" href="#kaa.Socket.write_queue_used" title="Permalink to this definition">¶</a></dt>
-<dd>The number of bytes queued in memory to be written to the channel.</dd></dl>
+<dd><p>The number of bytes queued in memory to be written to the channel.</p>
+</dd></dl>
 
 <h4>Signals</h4><dl class="attribute">
 <dt id="kaa.Socket.signals.read">
@@ -514,7 +521,9 @@ queue limit is exceeded, the write will fail.)</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>chunk</em> (str) &#8211; data read from the channel</td>
+<tr class="field-odd field"><th class="field-name">Param chunk:</th><td class="field-body">data read from the channel</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type chunk:</th><td class="field-body">str</td>
 </tr>
 </tbody>
 </table>
@@ -524,8 +533,8 @@ queue limit is exceeded, the write will fail.)</p>
 read from the channel as soon as it becomes available, and the signal
 is emitted.</p>
 <p>It is allowed to have a callback connected to the <em>read</em> signal
-and simultaneously use the <a title="kaa.IOChannel.read" class="reference external" href="io.html#kaa.IOChannel.read"><tt class="xref docutils literal"><span class="pre">read()</span></tt></a> and
-<a title="kaa.IOChannel.readline" class="reference external" href="io.html#kaa.IOChannel.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a> methods.</p>
+and simultaneously use the <a class="reference internal" href="io.html#kaa.IOChannel.read" title="kaa.IOChannel.read"><tt class="xref py py-meth docutils literal"><span class="pre">read()</span></tt></a> and
+<a class="reference internal" href="io.html#kaa.IOChannel.readline" title="kaa.IOChannel.readline"><tt class="xref py py-meth docutils literal"><span class="pre">readline()</span></tt></a> methods.</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -539,15 +548,17 @@ and simultaneously use the <a title="kaa.IOChannel.read" class="reference extern
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>line</em> (str) &#8211; line read from the channel</td>
+<tr class="field-odd field"><th class="field-name">Param line:</th><td class="field-body">line read from the channel</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type line:</th><td class="field-body">str</td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
 <p>It is not allowed to have a callback connected to the <em>readline</em> signal
-and simultaneously use the <a title="kaa.IOChannel.readline" class="reference external" href="io.html#kaa.IOChannel.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a> method.</p>
-<p>Refer to <a title="kaa.IOChannel.readline" class="reference external" href="io.html#kaa.IOChannel.readline"><tt class="xref docutils literal"><span class="pre">readline()</span></tt></a> for more details.</p>
+and simultaneously use the <a class="reference internal" href="io.html#kaa.IOChannel.readline" title="kaa.IOChannel.readline"><tt class="xref py py-meth docutils literal"><span class="pre">readline()</span></tt></a> method.</p>
+<p>Refer to <a class="reference internal" href="io.html#kaa.IOChannel.readline" title="kaa.IOChannel.readline"><tt class="xref py py-meth docutils literal"><span class="pre">readline()</span></tt></a> for more details.</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -559,7 +570,7 @@ and simultaneously use the <a title="kaa.IOChannel.readline" class="reference ex
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>client</em> (<a title="kaa.Socket" class="reference internal" href="#kaa.Socket"><tt class="xref docutils literal"><span class="pre">Socket</span></tt></a> object) &#8211; the new client that just connected.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>client</strong> (<a class="reference internal" href="#kaa.Socket" title="kaa.Socket"><tt class="xref py py-class docutils literal"><span class="pre">Socket</span></tt></a> object) &#8211; the new client that just connected.</td>
 </tr>
 </tbody>
 </table>
@@ -576,8 +587,10 @@ and simultaneously use the <a title="kaa.IOChannel.readline" class="reference ex
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameter:</th><td class="field-body"><em>expected</em> (bool) &#8211; True if the channel is closed because
-<a title="kaa.IOChannel.close" class="reference external" href="io.html#kaa.IOChannel.close"><tt class="xref docutils literal"><span class="pre">close()</span></tt></a> was called.</td>
+<tr class="field-odd field"><th class="field-name">Param expected:</th><td class="field-body">True if the channel is closed because
+<a class="reference internal" href="io.html#kaa.IOChannel.close" title="kaa.IOChannel.close"><tt class="xref py py-meth docutils literal"><span class="pre">close()</span></tt></a> was called.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type expected:</th><td class="field-body">bool</td>
 </tr>
 </tbody>
 </table>
@@ -597,30 +610,30 @@ and simultaneously use the <a title="kaa.IOChannel.readline" class="reference ex
       </div>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
-            <h4>Previous topic</h4>
-            <p class="topless"><a href="io.html"
-                                  title="previous chapter">I/O Channels</a></p>
-            <h4>Next topic</h4>
-            <p class="topless"><a href="process.html"
-                                  title="next chapter">Sub-Process I/O</a></p>
-            <h3>This Page</h3>
-            <ul class="this-page-menu">
-              <li><a href="../_sources/core/socket.txt"
-                     rel="nofollow">Show Source</a></li>
-            </ul>
-          <div id="searchbox" style="display: none">
-            <h3>Quick search</h3>
-              <form class="search" action="../search.html" method="get">
-                <input type="text" name="q" size="18" />
-                <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
-              </form>
-              <p class="searchtip" style="font-size: 90%">
-              Enter search terms or a module, class or function name.
-              </p>
-          </div>
-          <script type="text/javascript">$('#searchbox').show(0);</script>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="io.html"
+                        title="previous chapter">I/O Channels</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="process.html"
+                        title="next chapter">Sub-Process I/O</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/core/socket.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -632,7 +645,7 @@ and simultaneously use the <a title="kaa.IOChannel.readline" class="reference ex
           <a href="../genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="../modindex.html" title="Global Module Index"
+          <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
           <a href="process.html" title="Sub-Process I/O"
@@ -640,13 +653,13 @@ and simultaneously use the <a title="kaa.IOChannel.readline" class="reference ex
         <li class="right" >
           <a href="io.html" title="I/O Channels"
              >previous</a> |</li>
-        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jan 24, 2012.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+        &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on May 11, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

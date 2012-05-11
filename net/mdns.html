@@ -1,25 +1,31 @@
+
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Multicast DNS &mdash; kaa.base v0.99.2 documentation</title>
+    <title>Multicast DNS &mdash; kaa.base 0.99.2 documentation</title>
+    
     <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
         VERSION:     '0.99.2',
-        COLLAPSE_MODINDEX: false,
+        COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
       };
     </script>
     <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="kaa.base v0.99.2 documentation" href="../index.html" />
+    <link rel="top" title="kaa.base 0.99.2 documentation" href="../index.html" />
     <link rel="next" title="Distribution Helpers" href="../distribution.html" />
     <link rel="prev" title="TLS" href="tls.html" />
     <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
@@ -33,15 +39,15 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="../modindex.html" title="Global Module Index"
-             accesskey="M">modules</a> |</li>
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="../distribution.html" title="Distribution Helpers"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="tls.html" title="TLS"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -63,32 +69,35 @@ a gtk based mainloop) or as thread using kaa.gobject_set_threaded().</p>
 <div class="heading">Class Hierarchy</div><p class="hierarchy"><tt class="xref docutils literal current">kaa.net.mdns.Avahi</tt><br /></p>
 <div class="heading">Methods</div>
 <table>
-<tr><th><a title="kaa.net.mdns.Avahi.get_type" class="reference internal" href="#kaa.net.mdns.Avahi.get_type"><tt class="xref docutils literal"><span class="pre">get_type()</span></tt></a></th><td class="desc">Get a ServiceList object for the given type.
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.net.mdns.Avahi.get_type" title="kaa.net.mdns.Avahi.get_type"><tt class="xref py py-meth docutils literal"><span class="pre">get_type()</span></tt></a></th><td class="desc">Get a ServiceList object for the given type.
 e.g. get_type(&#8216;_ssh._tcp&#8217;)</td></tr>
-<tr><th><a title="kaa.net.mdns.Avahi.provide" class="reference internal" href="#kaa.net.mdns.Avahi.provide"><tt class="xref docutils literal"><span class="pre">provide()</span></tt></a></th><td class="desc">Provide a service with the given name and type listening on the given
+<tr class="row-even"><th><a class="reference internal" href="#kaa.net.mdns.Avahi.provide" title="kaa.net.mdns.Avahi.provide"><tt class="xref py py-meth docutils literal"><span class="pre">provide()</span></tt></a></th><td class="desc">Provide a service with the given name and type listening on the given
 port with additional information in the txt record. This function returns
 the id of the service to remove the service later.</td></tr>
-<tr><th><a title="kaa.net.mdns.Avahi.remove" class="reference internal" href="#kaa.net.mdns.Avahi.remove"><tt class="xref docutils literal"><span class="pre">remove()</span></tt></a></th><td class="desc">Remove a service.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.net.mdns.Avahi.remove" title="kaa.net.mdns.Avahi.remove"><tt class="xref py py-meth docutils literal"><span class="pre">remove()</span></tt></a></th><td class="desc">Remove a service.</td></tr>
 </table>
 <div class="heading">Properties</div><div class="nomembers">This class has no properties.</div><div class="heading">Signals</div><div class="nomembers">This class has no signals.</div>
 </div>
 <h4>Methods</h4><dl class="method">
 <dt id="kaa.net.mdns.Avahi.get_type">
 <tt class="descname">get_type</tt><big>(</big><em>service</em><big>)</big><a class="headerlink" href="#kaa.net.mdns.Avahi.get_type" title="Permalink to this definition">¶</a></dt>
-<dd>Get a ServiceList object for the given type.
-e.g. get_type(&#8216;_ssh._tcp&#8217;)</dd></dl>
+<dd><p>Get a ServiceList object for the given type.
+e.g. get_type(&#8216;_ssh._tcp&#8217;)</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kaa.net.mdns.Avahi.provide">
 <tt class="descname">provide</tt><big>(</big><em>name</em>, <em>type</em>, <em>port</em>, <em>txt</em><big>)</big><a class="headerlink" href="#kaa.net.mdns.Avahi.provide" title="Permalink to this definition">¶</a></dt>
-<dd>Provide a service with the given name and type listening on the given
+<dd><p>Provide a service with the given name and type listening on the given
 port with additional information in the txt record. This function returns
-the id of the service to remove the service later.</dd></dl>
+the id of the service to remove the service later.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="kaa.net.mdns.Avahi.remove">
 <tt class="descname">remove</tt><big>(</big><em>id</em><big>)</big><a class="headerlink" href="#kaa.net.mdns.Avahi.remove" title="Permalink to this definition">¶</a></dt>
-<dd>Remove a service.</dd></dl>
+<dd><p>Remove a service.</p>
+</dd></dl>
 
 </p>
 </dd></dl>
@@ -102,30 +111,30 @@ the id of the service to remove the service later.</dd></dl>
       </div>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
-            <h4>Previous topic</h4>
-            <p class="topless"><a href="tls.html"
-                                  title="previous chapter">TLS</a></p>
-            <h4>Next topic</h4>
-            <p class="topless"><a href="../distribution.html"
-                                  title="next chapter">Distribution Helpers</a></p>
-            <h3>This Page</h3>
-            <ul class="this-page-menu">
-              <li><a href="../_sources/net/mdns.txt"
-                     rel="nofollow">Show Source</a></li>
-            </ul>
-          <div id="searchbox" style="display: none">
-            <h3>Quick search</h3>
-              <form class="search" action="../search.html" method="get">
-                <input type="text" name="q" size="18" />
-                <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
-              </form>
-              <p class="searchtip" style="font-size: 90%">
-              Enter search terms or a module, class or function name.
-              </p>
-          </div>
-          <script type="text/javascript">$('#searchbox').show(0);</script>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="tls.html"
+                        title="previous chapter">TLS</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../distribution.html"
+                        title="next chapter">Distribution Helpers</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/net/mdns.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -137,7 +146,7 @@ the id of the service to remove the service later.</dd></dl>
           <a href="../genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="../modindex.html" title="Global Module Index"
+          <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
           <a href="../distribution.html" title="Distribution Helpers"
@@ -145,13 +154,13 @@ the id of the service to remove the service later.</dd></dl>
         <li class="right" >
           <a href="tls.html" title="TLS"
              >previous</a> |</li>
-        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jan 24, 2012.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+        &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on May 11, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

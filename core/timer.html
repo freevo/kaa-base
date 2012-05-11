@@ -1,25 +1,31 @@
+
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Timers &mdash; kaa.base v0.99.2 documentation</title>
+    <title>Timers &mdash; kaa.base 0.99.2 documentation</title>
+    
     <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
         VERSION:     '0.99.2',
-        COLLAPSE_MODINDEX: false,
+        COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
       };
     </script>
     <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="kaa.base v0.99.2 documentation" href="../index.html" />
+    <link rel="top" title="kaa.base 0.99.2 documentation" href="../index.html" />
     <link rel="next" title="Events and Event Handlers" href="event.html" />
     <link rel="prev" title="The Main Loop" href="mainloop.html" />
     <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
@@ -33,15 +39,15 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="../modindex.html" title="Global Module Index"
-             accesskey="M">modules</a> |</li>
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="event.html" title="Events and Event Handlers"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="mainloop.html" title="The Main Loop"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -50,8 +56,8 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="timers">
-<span id="timer"></span><span id="module-kaa.timer"></span><h1>Timers<a class="headerlink" href="#timers" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="module-kaa.timer"></span><div class="section" id="timers">
+<span id="timer"></span><h1>Timers<a class="headerlink" href="#timers" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="the-timed-decorator">
 <h2>The timed decorator<a class="headerlink" href="#the-timed-decorator" title="Permalink to this headline">¶</a></h2>
 <p>FIXME: this section is not yet written</p>
@@ -86,7 +92,7 @@ subsequent calls will be discarded.</p>
 <dt id="kaa.Timer">
 <em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">Timer</tt><big>(</big><em>callback</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.Timer" title="Permalink to this definition">¶</a></dt>
 <dd><p>Invokes the supplied callback after the supplied interval (passed to
-<a title="kaa.Timer.start" class="reference internal" href="#kaa.Timer.start"><tt class="xref docutils literal"><span class="pre">start()</span></tt></a>) elapses.  The Timer is created stopped.</p>
+<a class="reference internal" href="#kaa.Timer.start" title="kaa.Timer.start"><tt class="xref py py-meth docutils literal"><span class="pre">start()</span></tt></a>) elapses.  The Timer is created stopped.</p>
 <p>When the timer interval elapses, we say that the timer is &#8220;fired&#8221; or
 &#8220;triggered,&#8221; at which time the given callback is invoked.</p>
 <p>If the callback returns False, then the timer is automatically stopped.
@@ -96,27 +102,27 @@ to fire.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><em>callback</em> &#8211; the callable to be invoked</li>
-<li><em>args</em> &#8211; the arguments to be passed to the callable when it&#8217;s invoked</li>
-<li><em>kwargs</em> &#8211; the keyword arguments to be passed to the callable when it&#8217;s invoked</li>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>callback</strong> &#8211; the callable to be invoked</li>
+<li><strong>args</strong> &#8211; the arguments to be passed to the callable when it&#8217;s invoked</li>
+<li><strong>kwargs</strong> &#8211; the keyword arguments to be passed to the callable when it&#8217;s invoked</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
 <p><h4>Synopsis</h4><div class="kaa synopsis">
-<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.Callable" class="reference external" href="signals.html#kaa.Callable"><tt class="xref docutils literal"><span class="pre">kaa.Callable</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.nf_wrapper.NotifierCallback</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.Timer</tt><br /></p>
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a class="reference internal" href="signals.html#kaa.Callable" title="kaa.Callable"><tt class="xref py py-class docutils literal"><span class="pre">kaa.Callable</span></tt></a><br />&#9492;&#9472; <tt class="xref py py-class docutils literal"><span class="pre">kaa.nf_wrapper.NotifierCallback</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.Timer</tt><br /></p>
 <div class="heading">Methods</div>
 <table>
-<tr><th><a title="kaa.Timer.start" class="reference internal" href="#kaa.Timer.start"><tt class="xref docutils literal"><span class="pre">start()</span></tt></a></th><td class="desc">Start the timer, invoking the callback every <em>interval</em> seconds.</td></tr>
-<tr><th><a title="kaa.Timer.stop" class="reference internal" href="#kaa.Timer.stop"><tt class="xref docutils literal"><span class="pre">stop()</span></tt></a></th><td class="desc">Stop a running timer.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Timer.start" title="kaa.Timer.start"><tt class="xref py py-meth docutils literal"><span class="pre">start()</span></tt></a></th><td class="desc">Start the timer, invoking the callback every <em>interval</em> seconds.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.Timer.stop" title="kaa.Timer.stop"><tt class="xref py py-meth docutils literal"><span class="pre">stop()</span></tt></a></th><td class="desc">Stop a running timer.</td></tr>
 </table>
 <div class="heading">Properties</div>
 <table>
-<tr><th><a title="kaa.Timer.interval" class="reference internal" href="#kaa.Timer.interval"><tt class="xref docutils literal"><span class="pre">interval</span></tt></a></th><td>read-only</td><td class="desc">Timer interval when the timer is running, None if not.  The interval
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.Timer.interval" title="kaa.Timer.interval"><tt class="xref py py-attr docutils literal"><span class="pre">interval</span></tt></a></th><td>read-only</td><td class="desc">Timer interval when the timer is running, None if not.  The interval
 cannot be changed once the timer is started, and it is set via the
-<a title="kaa.Timer.start" class="reference internal" href="#kaa.Timer.start"><tt class="xref docutils literal"><span class="pre">start()</span></tt></a> method.</td></tr>
+<a class="reference internal" href="#kaa.Timer.start" title="kaa.Timer.start"><tt class="xref py py-meth docutils literal"><span class="pre">start()</span></tt></a> method.</td></tr>
 </table>
 <div class="heading">Signals</div><div class="nomembers">This class has no signals.</div>
 </div>
@@ -128,9 +134,9 @@ cannot be changed once the timer is started, and it is set via the
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><em>interval</em> (float) &#8211; interval between invocations of the callback, in seconds</li>
-<li><em>now</em> (bool) &#8211; if True, invoke the callback once immediately before starting
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>interval</strong> (<em>float</em>) &#8211; interval between invocations of the callback, in seconds</li>
+<li><strong>now</strong> (<em>bool</em>) &#8211; if True, invoke the callback once immediately before starting
 the timer.</li>
 </ul>
 </td>
@@ -159,9 +165,10 @@ will not be called again unless the timer is restarted.</p>
 <h4>Properties</h4><dl class="attribute">
 <dt id="kaa.Timer.interval">
 <tt class="descname">interval</tt><a class="headerlink" href="#kaa.Timer.interval" title="Permalink to this definition">¶</a></dt>
-<dd>Timer interval when the timer is running, None if not.  The interval
+<dd><p>Timer interval when the timer is running, None if not.  The interval
 cannot be changed once the timer is started, and it is set via the
-<a title="kaa.Timer.start" class="reference internal" href="#kaa.Timer.start"><tt class="xref docutils literal"><span class="pre">start()</span></tt></a> method.</dd></dl>
+<a class="reference internal" href="#kaa.Timer.start" title="kaa.Timer.start"><tt class="xref py py-meth docutils literal"><span class="pre">start()</span></tt></a> method.</p>
+</dd></dl>
 
 </p>
 </dd></dl>
@@ -175,7 +182,7 @@ cannot be changed once the timer is started, and it is set via the
 references.  When any of the underlying objects are deleted,
 the WeakTimer is automatically stopped.</p>
 <p><h4>Synopsis</h4><div class="kaa synopsis">
-<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.Callable" class="reference external" href="signals.html#kaa.Callable"><tt class="xref docutils literal"><span class="pre">kaa.Callable</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.nf_wrapper.NotifierCallback</span></tt><br />&#9492;&#9472; <a title="kaa.WeakCallable" class="reference external" href="signals.html#kaa.WeakCallable"><tt class="xref docutils literal"><span class="pre">kaa.WeakCallable</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a title="kaa.Timer" class="reference internal" href="#kaa.Timer"><tt class="xref docutils literal"><span class="pre">kaa.Timer</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.nf_wrapper.WeakNotifierCallback</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.WeakTimer</tt><br /></p>
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a class="reference internal" href="signals.html#kaa.Callable" title="kaa.Callable"><tt class="xref py py-class docutils literal"><span class="pre">kaa.Callable</span></tt></a><br />&#9492;&#9472; <tt class="xref py py-class docutils literal"><span class="pre">kaa.nf_wrapper.NotifierCallback</span></tt><br />&#9492;&#9472; <a class="reference internal" href="signals.html#kaa.WeakCallable" title="kaa.WeakCallable"><tt class="xref py py-class docutils literal"><span class="pre">kaa.WeakCallable</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a class="reference internal" href="#kaa.Timer" title="kaa.Timer"><tt class="xref py py-class docutils literal"><span class="pre">kaa.Timer</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref py py-class docutils literal"><span class="pre">kaa.nf_wrapper.WeakNotifierCallback</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.WeakTimer</tt><br /></p>
 
 </div>
 </p>
@@ -195,17 +202,17 @@ stopped before it gets a chance to fire.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><em>callback</em> &#8211; the callable to be invoked</li>
-<li><em>args</em> &#8211; the arguments to be passed to the callable when it&#8217;s invoked</li>
-<li><em>kwargs</em> &#8211; the keyword arguments to be passed to the callable when it&#8217;s invoked</li>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>callback</strong> &#8211; the callable to be invoked</li>
+<li><strong>args</strong> &#8211; the arguments to be passed to the callable when it&#8217;s invoked</li>
+<li><strong>kwargs</strong> &#8211; the keyword arguments to be passed to the callable when it&#8217;s invoked</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
 <p><h4>Synopsis</h4><div class="kaa synopsis">
-<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.Callable" class="reference external" href="signals.html#kaa.Callable"><tt class="xref docutils literal"><span class="pre">kaa.Callable</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.nf_wrapper.NotifierCallback</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a title="kaa.Timer" class="reference internal" href="#kaa.Timer"><tt class="xref docutils literal"><span class="pre">kaa.Timer</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.OneShotTimer</tt><br /></p>
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a class="reference internal" href="signals.html#kaa.Callable" title="kaa.Callable"><tt class="xref py py-class docutils literal"><span class="pre">kaa.Callable</span></tt></a><br />&#9492;&#9472; <tt class="xref py py-class docutils literal"><span class="pre">kaa.nf_wrapper.NotifierCallback</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a class="reference internal" href="#kaa.Timer" title="kaa.Timer"><tt class="xref py py-class docutils literal"><span class="pre">kaa.Timer</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.OneShotTimer</tt><br /></p>
 
 </div>
 </p>
@@ -220,7 +227,7 @@ stopped before it gets a chance to fire.</p>
 references.  When any of the underlying objects are deleted,
 the WeakTimer is automatically stopped.</p>
 <p><h4>Synopsis</h4><div class="kaa synopsis">
-<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.Callable" class="reference external" href="signals.html#kaa.Callable"><tt class="xref docutils literal"><span class="pre">kaa.Callable</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.nf_wrapper.NotifierCallback</span></tt><br />&#9492;&#9472; <a title="kaa.Callable" class="reference external" href="signals.html#kaa.Callable"><tt class="xref docutils literal"><span class="pre">kaa.Callable</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.nf_wrapper.NotifierCallback</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a title="kaa.Timer" class="reference internal" href="#kaa.Timer"><tt class="xref docutils literal"><span class="pre">kaa.Timer</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a title="kaa.WeakCallable" class="reference external" href="signals.html#kaa.WeakCallable"><tt class="xref docutils literal"><span class="pre">kaa.WeakCallable</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.nf_wrapper.WeakNotifierCallback</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a title="kaa.OneShotTimer" class="reference internal" href="#kaa.OneShotTimer"><tt class="xref docutils literal"><span class="pre">kaa.OneShotTimer</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.WeakOneShotTimer</tt><br /></p>
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a class="reference internal" href="signals.html#kaa.Callable" title="kaa.Callable"><tt class="xref py py-class docutils literal"><span class="pre">kaa.Callable</span></tt></a><br />&#9492;&#9472; <tt class="xref py py-class docutils literal"><span class="pre">kaa.nf_wrapper.NotifierCallback</span></tt><br />&#9492;&#9472; <a class="reference internal" href="signals.html#kaa.Callable" title="kaa.Callable"><tt class="xref py py-class docutils literal"><span class="pre">kaa.Callable</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref py py-class docutils literal"><span class="pre">kaa.nf_wrapper.NotifierCallback</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a class="reference internal" href="#kaa.Timer" title="kaa.Timer"><tt class="xref py py-class docutils literal"><span class="pre">kaa.Timer</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a class="reference internal" href="signals.html#kaa.WeakCallable" title="kaa.WeakCallable"><tt class="xref py py-class docutils literal"><span class="pre">kaa.WeakCallable</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref py py-class docutils literal"><span class="pre">kaa.nf_wrapper.WeakNotifierCallback</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a class="reference internal" href="#kaa.OneShotTimer" title="kaa.OneShotTimer"><tt class="xref py py-class docutils literal"><span class="pre">kaa.OneShotTimer</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.WeakOneShotTimer</tt><br /></p>
 
 </div>
 </p>
@@ -236,26 +243,26 @@ it is stopped.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><em>callback</em> &#8211; the callable to be invoked</li>
-<li><em>args</em> &#8211; the arguments to be passed to the callable when it&#8217;s invoked</li>
-<li><em>kwargs</em> &#8211; the keyword arguments to be passed to the callable when it&#8217;s invoked</li>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>callback</strong> &#8211; the callable to be invoked</li>
+<li><strong>args</strong> &#8211; the arguments to be passed to the callable when it&#8217;s invoked</li>
+<li><strong>kwargs</strong> &#8211; the keyword arguments to be passed to the callable when it&#8217;s invoked</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
 <p><h4>Synopsis</h4><div class="kaa synopsis">
-<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.Callable" class="reference external" href="signals.html#kaa.Callable"><tt class="xref docutils literal"><span class="pre">kaa.Callable</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.nf_wrapper.NotifierCallback</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a title="kaa.Timer" class="reference internal" href="#kaa.Timer"><tt class="xref docutils literal"><span class="pre">kaa.Timer</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a title="kaa.OneShotTimer" class="reference internal" href="#kaa.OneShotTimer"><tt class="xref docutils literal"><span class="pre">kaa.OneShotTimer</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.OneShotAtTimer</tt><br /></p>
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a class="reference internal" href="signals.html#kaa.Callable" title="kaa.Callable"><tt class="xref py py-class docutils literal"><span class="pre">kaa.Callable</span></tt></a><br />&#9492;&#9472; <tt class="xref py py-class docutils literal"><span class="pre">kaa.nf_wrapper.NotifierCallback</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a class="reference internal" href="#kaa.Timer" title="kaa.Timer"><tt class="xref py py-class docutils literal"><span class="pre">kaa.Timer</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a class="reference internal" href="#kaa.OneShotTimer" title="kaa.OneShotTimer"><tt class="xref py py-class docutils literal"><span class="pre">kaa.OneShotTimer</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.OneShotAtTimer</tt><br /></p>
 <div class="heading">Methods</div>
 <table>
-<tr><th><a title="kaa.OneShotAtTimer.start" class="reference internal" href="#kaa.OneShotAtTimer.start"><tt class="xref docutils literal"><span class="pre">start()</span></tt></a></th><td class="desc">Starts the timer, causing it to be fired at the specified time.</td></tr>
+<tr class="row-even"><th><tt class="xref py py-meth docutils literal"><span class="pre">start()</span></tt></th><td class="desc">Starts the timer, causing it to be fired at the specified time.</td></tr>
 </table>
 
 </div>
 <h4>Methods</h4><dl class="method">
-<dt id="kaa.OneShotAtTimer.start">
-<tt class="descname">start</tt><big>(</big><em>hour=range(24)</em>, <em>min=range(60)</em>, <em>sec=0</em><big>)</big><a class="headerlink" href="#kaa.OneShotAtTimer.start" title="Permalink to this definition">¶</a></dt>
+<dt id="kaa.timer.OneShotAtTimer.start">
+<tt class="descname">start</tt><big>(</big><em>hour=range(24)</em>, <em>min=range(60)</em>, <em>sec=0</em><big>)</big><a class="headerlink" href="#kaa.timer.OneShotAtTimer.start" title="Permalink to this definition">¶</a></dt>
 <dd><p>Starts the timer, causing it to be fired at the specified time.</p>
 <p>By default, the timer will fire every minute at 0 seconds.  The timer
 has second precision.</p>
@@ -263,10 +270,10 @@ has second precision.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><em>hour</em> (int or list of ints) &#8211; the hour number (0-23) or list of hours</li>
-<li><em>min</em> (int or list of ints) &#8211; the minute number (0-59) or list of minutes</li>
-<li><em>sec</em> (int or list of ints) &#8211; the second number (0-59) or list of seconds</li>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>hour</strong> (<em>int or list of ints</em>) &#8211; the hour number (0-23) or list of hours</li>
+<li><strong>min</strong> (<em>int or list of ints</em>) &#8211; the minute number (0-59) or list of minutes</li>
+<li><strong>sec</strong> (<em>int or list of ints</em>) &#8211; the second number (0-59) or list of seconds</li>
 </ul>
 </td>
 </tr>
@@ -286,17 +293,17 @@ has second precision.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><em>callback</em> &#8211; the callable to be invoked</li>
-<li><em>args</em> &#8211; the arguments to be passed to the callable when it&#8217;s invoked</li>
-<li><em>kwargs</em> &#8211; the keyword arguments to be passed to the callable when it&#8217;s invoked</li>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>callback</strong> &#8211; the callable to be invoked</li>
+<li><strong>args</strong> &#8211; the arguments to be passed to the callable when it&#8217;s invoked</li>
+<li><strong>kwargs</strong> &#8211; the keyword arguments to be passed to the callable when it&#8217;s invoked</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
 <p><h4>Synopsis</h4><div class="kaa synopsis">
-<div class="heading">Class Hierarchy</div><p class="hierarchy"><a title="kaa.Callable" class="reference external" href="signals.html#kaa.Callable"><tt class="xref docutils literal"><span class="pre">kaa.Callable</span></tt></a><br />&#9492;&#9472; <tt class="xref docutils literal"><span class="pre">kaa.nf_wrapper.NotifierCallback</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a title="kaa.Timer" class="reference internal" href="#kaa.Timer"><tt class="xref docutils literal"><span class="pre">kaa.Timer</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a title="kaa.OneShotTimer" class="reference internal" href="#kaa.OneShotTimer"><tt class="xref docutils literal"><span class="pre">kaa.OneShotTimer</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a title="kaa.OneShotAtTimer" class="reference internal" href="#kaa.OneShotAtTimer"><tt class="xref docutils literal"><span class="pre">kaa.OneShotAtTimer</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.AtTimer</tt><br /></p>
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a class="reference internal" href="signals.html#kaa.Callable" title="kaa.Callable"><tt class="xref py py-class docutils literal"><span class="pre">kaa.Callable</span></tt></a><br />&#9492;&#9472; <tt class="xref py py-class docutils literal"><span class="pre">kaa.nf_wrapper.NotifierCallback</span></tt><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a class="reference internal" href="#kaa.Timer" title="kaa.Timer"><tt class="xref py py-class docutils literal"><span class="pre">kaa.Timer</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a class="reference internal" href="#kaa.OneShotTimer" title="kaa.OneShotTimer"><tt class="xref py py-class docutils literal"><span class="pre">kaa.OneShotTimer</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <a class="reference internal" href="#kaa.OneShotAtTimer" title="kaa.OneShotAtTimer"><tt class="xref py py-class docutils literal"><span class="pre">kaa.OneShotAtTimer</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.AtTimer</tt><br /></p>
 
 </div>
 </p>
@@ -312,39 +319,39 @@ has second precision.</p>
       </div>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
-            <h3><a href="../index.html">Table Of Contents</a></h3>
-            <ul>
-<li><a class="reference external" href="#">Timers</a><ul>
-<li><a class="reference external" href="#the-timed-decorator">The timed decorator</a></li>
-<li><a class="reference external" href="#timer-callbacks">Timer Callbacks</a></li>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Timers</a><ul>
+<li><a class="reference internal" href="#the-timed-decorator">The timed decorator</a></li>
+<li><a class="reference internal" href="#timer-callbacks">Timer Callbacks</a></li>
 </ul>
 </li>
 </ul>
 
-            <h4>Previous topic</h4>
-            <p class="topless"><a href="mainloop.html"
-                                  title="previous chapter">The Main Loop</a></p>
-            <h4>Next topic</h4>
-            <p class="topless"><a href="event.html"
-                                  title="next chapter">Events and Event Handlers</a></p>
-            <h3>This Page</h3>
-            <ul class="this-page-menu">
-              <li><a href="../_sources/core/timer.txt"
-                     rel="nofollow">Show Source</a></li>
-            </ul>
-          <div id="searchbox" style="display: none">
-            <h3>Quick search</h3>
-              <form class="search" action="../search.html" method="get">
-                <input type="text" name="q" size="18" />
-                <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
-              </form>
-              <p class="searchtip" style="font-size: 90%">
-              Enter search terms or a module, class or function name.
-              </p>
-          </div>
-          <script type="text/javascript">$('#searchbox').show(0);</script>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="mainloop.html"
+                        title="previous chapter">The Main Loop</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="event.html"
+                        title="next chapter">Events and Event Handlers</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/core/timer.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -356,7 +363,7 @@ has second precision.</p>
           <a href="../genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="../modindex.html" title="Global Module Index"
+          <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
           <a href="event.html" title="Events and Event Handlers"
@@ -364,13 +371,13 @@ has second precision.</p>
         <li class="right" >
           <a href="mainloop.html" title="The Main Loop"
              >previous</a> |</li>
-        <li><a href="../index.html">kaa.base v0.99.2 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
-      &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jan 24, 2012.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 0.6.4.
+        &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
+      Last updated on May 11, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

@@ -1933,6 +1933,7 @@ class TLSSocket(kaa.Socket):
         :meth:`starttls_client`)
 
         .. note::
+
            Subclasses may override this method to implement custom verification
            behaviour, but it may be more convenient to set the
            :attr:`verify_cb` property with a callback.

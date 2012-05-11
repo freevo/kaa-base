@@ -584,6 +584,7 @@ class Process(Object):
         active. 
 
         .. warning::
+
            If :meth:`~kaa.InProgress.timeout` is called on the returned
            InProgress and the timeout occurs, the InProgress returned by
            :meth:`start` will be finished with a :class:`~kaa.TimeoutException`
@@ -591,7 +592,6 @@ class Process(Object):
            test the :attr:`running` property, or use the
            :attr:`~signals.finished` signal, which doesn't emit until the child
            process is genuinely dead.
-
         """
         if self._child and self._state != Process.STATE_HUNG:
             raise IOError(errno.EEXIST, 'Child process has already been started')

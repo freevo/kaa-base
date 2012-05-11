@@ -374,6 +374,7 @@ def step(*args, **kwargs):
     Performs a single iteration of the main loop.
 
     .. warning::
+
        This function should almost certainly never be called directly.  Use it
        at your own peril.  (If you do use it, you must call
        :func:`~kaa.main.init` first.)

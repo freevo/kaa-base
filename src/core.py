@@ -63,8 +63,8 @@ class CoreThreading:
     # this variable in which case it is None.
     python_shutting_down = False
 
-    # The amount of time the main thread can be blocked while executing
-    # callbacks that were queued to be invoked from the main loop.
+    # The amount of time (in seconds) the main thread can be blocked while
+    # executing callbacks that were queued to be invoked from the main loop.
     mainthread_callback_max_time = 2.0
 
     # Internal only attributes.

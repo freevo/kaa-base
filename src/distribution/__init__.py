@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # __init__.py - kaa.distribution module initialization
 # -----------------------------------------------------------------------------
-# $Id$
-# -----------------------------------------------------------------------------
 # Copyright 2006-2012 Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.

@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # version.py - version handling for kaa modules
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # Copyright 2005-2012 Dirk Meyer, Jason Tackaberry
 #
 # This program is free software; you can redistribute it and/or modify

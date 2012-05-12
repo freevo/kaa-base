@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # saxutils.py - some classes helping dealing with xml files
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # Copyright 2007-2012 Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.

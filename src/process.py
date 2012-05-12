@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # process.py - asynchronous subprocess control via IOChannel
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
 # Copyright 2008-2012 Dirk Meyer, Jason Tackaberry, et al.
 #

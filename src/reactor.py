@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # reactor.py - Twisted integration code
 # -----------------------------------------------------------------------------
-# $Id$
-#
 # Twisted reactor to run the kaa mainloop as twisted reactor.
 #
 # import kaa.reactor

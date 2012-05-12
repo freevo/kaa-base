@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # nf_thread.py - Thread based notifier to include in other mainloops
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
 # Copyright 2007-2012 Dirk Meyer, Jason Tackaberry, et al.
 #

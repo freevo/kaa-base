@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # rpc.py - Simple interprocess communication via remote procedure calls.
 # -----------------------------------------------------------------------------
-# $Id$
-#
 # This module defines an alternative way for InterProcessCommunication with
 # less features than the ipc.py module. It does not keep references, return
 # values are only given back as a callback and it is only possible to access

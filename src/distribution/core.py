@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # core.py - distribution core functions for kaa packages
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # Copyright 2005-2012 Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.

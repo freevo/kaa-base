@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # coroutine.py - coroutine decorator and helper functions
 # -----------------------------------------------------------------------------
-# $Id$
-#
 # This file contains a decorator usefull for functions that may need more
 # time to execute and that needs more than one step to fullfill the task.
 #

@@ -256,7 +256,7 @@ class CoreThreading:
                 # queued callbacks, but we still have more.  Poke the thread
                 # pipe so the next iteration of the main loop calls us back
                 # and abort the loop.
-                self._wakeup()
+                CoreThreading._wakeup()
                 break
 
             callback, args, kwargs, in_progress = CoreThreading._queue.get()

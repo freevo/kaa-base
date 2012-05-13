@@ -316,6 +316,39 @@ class OneShotAtTimer(OneShotTimer):
         self._last_time = next
 
 
+    @property
+    def hours(self):
+        """
+        List of hours passed to :meth:`start`
+        """
+        return tuple(self._timings[0]) if getattr(self, '_timings', None) else ()
+
+    @property
+    def minutes(self):
+        """
+        List of minutes passed to :meth:`start`
+        """
+        return tuple(self._timings[1]) if getattr(self, '_timings', None) else ()
+
+    @property
+    def seconds(self):
+        """
+        List of seconds passed to :meth:`start`
+        """
+        return tuple(self._timings[2]) if getattr(self, '_timings', None) else ()
+
+
+    @property
+    def next(self):
+        """
+        A datetime object indicating the next time the timer will fire, or
+        None if the time is not running.
+        """
+        # _last_time is the last time calculated, but actually the next time
+        # the timer will fire.
+        return self._last_time if getattr(self, '_last_time', None) else ()
+
+
 class AtTimer(OneShotAtTimer):
     """
     A timer that is triggered at a specific time or times of day.

@@ -253,28 +253,32 @@ class OneShotAtTimer(OneShotTimer):
     A timer that is triggered at a specific time of day.  Once the timer fires
     it is stopped.
     """
-    def start(self, hour=range(24), min=range(60), sec=0):
+    def start(self, hours=range(24), minutes=range(60), seconds=0, **kwargs):
         """
         Starts the timer, causing it to be fired at the specified time.
 
         By default, the timer will fire every minute at 0 seconds.  The timer
         has second precision.
 
-        :param hour: the hour number (0-23) or list of hours
-        :type hour: int or list of ints
-        :param min: the minute number (0-59) or list of minutes
-        :type min: int or list of ints
-        :param sec: the second number (0-59) or list of seconds
-        :type sec: int or list of ints
+        :param hours: the hour number (0-23) or list of hours
+        :type hours: int or list of ints
+        :param minutes: the minute number (0-59) or list of minutes
+        :type minutes: int or list of ints
+        :param seconds: the second number (0-59) or list of seconds
+        :type seconds: int or list of ints
         """
-        if not isinstance(hour, (list, tuple)):
-            hour = [ hour ]
-        if not isinstance(min, (list, tuple)):
-            min = [ min ]
-        if not isinstance(sec, (list, tuple)):
-            sec = [ sec ]
+        # Legacy support for hour, min, sec kwargs.
+        hours = kwargs.get('hour', hours)
+        minutes = kwargs.get('min', minutes)
+        seconds = kwargs.get('sec', seconds)
+        if not isinstance(hours, (list, tuple)):
+            hours = [hours]
+        if not isinstance(minutes, (list, tuple)):
+            minutes = [minutes]
+        if not isinstance(seconds, (list, tuple)):
+            seconds = [seconds]
 
-        self._timings = sorted(hour), sorted(min), sorted(sec)
+        self._timings = sorted(hours), sorted(minutes), sorted(seconds)
         self._last_time = datetime.datetime.now()
         self._schedule_next()
 

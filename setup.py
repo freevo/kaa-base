@@ -128,6 +128,7 @@ setup(
             'rpc.py': ['throw'],
         }
     },
+    auto_changelog = True,
     # Don't declare kaa.base as part of the kaa namespace.  Doing so will
     # suppress installation of kaa/__init__.py when installing with pip.  This
     # needs to be installed with kaa.base in order to make our namespace hack

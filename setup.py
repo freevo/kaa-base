@@ -120,6 +120,10 @@ elif os.path.isfile('PKG-INFO'):
     ver = [l.split(':')[1].strip() for l in open('PKG-INFO') if l.startswith('Version')]
     if ver:
         version = ver[0]
+else:
+    # Lack of PKG-INFO means installation was not from an official dist bundle,
+    # so treat it as a development version.
+    version += 'dev'
 
 setup(
     module = MODULE,

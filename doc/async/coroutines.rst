@@ -14,7 +14,6 @@ suspending and resuming execution at specified locations.  They allow you to:
    socket IO) that is actually completely non-blocking
  * "time slice" large, computationally expensive tasks to avoid blocking
  * help solve complex problems involving state `without using explicit state machines <http://eli.thegreenplace.net/2009/08/29/co-routines-as-an-alternative-to-state-machines/>`_
-   the main loop for extended periods without the need for multiple functions
 
 In the event where blocking is unavoidable, and the duration of the block is
 unknown (for example, connecting to a remote host, or scaling a very large

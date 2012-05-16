@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # gnutls.py - Gnutls backend for TLSSocket
 # -----------------------------------------------------------------------------
-# $Id$
-#
 # Gnutls seems to be the most promising TLS library we could use. It
 # supports everything from certificates over OpenGPG to SRP. This lib
 # uses python-gnutls from http://pypi.python.org/pypi/python-gnutls.

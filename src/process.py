@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # process.py - asynchronous subprocess control via IOChannel
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
 # Copyright 2008-2012 Dirk Meyer, Jason Tackaberry, et al.
 #
@@ -584,6 +581,7 @@ class Process(Object):
         active. 
 
         .. warning::
+
            If :meth:`~kaa.InProgress.timeout` is called on the returned
            InProgress and the timeout occurs, the InProgress returned by
            :meth:`start` will be finished with a :class:`~kaa.TimeoutException`
@@ -591,7 +589,6 @@ class Process(Object):
            test the :attr:`running` property, or use the
            :attr:`~signals.finished` signal, which doesn't emit until the child
            process is genuinely dead.
-
         """
         if self._child and self._state != Process.STATE_HUNG:
             raise IOError(errno.EEXIST, 'Child process has already been started')
@@ -828,6 +825,9 @@ class Process(Object):
         :return: an :class:`~kaa.InProgress`, which will be finished with a
                  2-tuple (stdoutdata, stderrdata)
 
+        If the process has not yet been started, :meth:`start` will be
+        called implicitly.
+
         Any data previously written to the child with :meth:`write` will be
         flushed and the pipe to the child's stdin will be closed.  All
         subsequent data from the child's stdout and stderr will be read until
@@ -836,6 +836,9 @@ class Process(Object):
         This method is modeled after Python's standard library call
         ``subprocess.Popen.communicate()``.
         """
+        if self._state == Process.STATE_STOPPED:
+            self.start()
+
         if input:
             yield self.write(input)
         self.stdin.close()

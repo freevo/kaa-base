@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # glib.py - Glib (gobject mainloop) thread wrapper
 # -----------------------------------------------------------------------------
-# $Id$
-#
 # This module makes it possible to run the glib mainloop in an extra thread
 # and provides a hook to run callbacks in the glib thread. This module also
 # supports using the glib mainloop as main mainloop. In that case, no threads

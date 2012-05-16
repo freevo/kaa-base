@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # core.py - provides core functionality needed by most kaa.base modules
 # -----------------------------------------------------------------------------
-# $Id$
-# -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
 # Copyright 2010-2012 Dirk Meyer, Jason Tackaberry, et al.
 #
@@ -63,8 +61,8 @@ class CoreThreading:
     # this variable in which case it is None.
     python_shutting_down = False
 
-    # The amount of time the main thread can be blocked while executing
-    # callbacks that were queued to be invoked from the main loop.
+    # The amount of time (in seconds) the main thread can be blocked while
+    # executing callbacks that were queued to be invoked from the main loop.
     mainthread_callback_max_time = 2.0
 
     # Internal only attributes.
@@ -230,7 +228,7 @@ class CoreThreading:
 
 
         # It's possible that a thread is actively enqueuing callbacks faster
-        # than we can dequeue and invoke them.  r3583 tried to fix this by
+        # than we can dequeue and invoke them.  207fc3af77 tried to fix this by
         # locking the queue for the entire loop, but this introduced a
         # deadlock caused when a thread enqueues a callback while a previously
         # queued callback is being invoked and is blocked on a resource used
@@ -238,7 +236,7 @@ class CoreThreading:
         #
         # So we don't lock the whole loop to avoid the deadlock, and we stop
         # invoking callbacks after mainthread_callback_max_time seconds
-        # has elapsed in order to solve the problem r3583 tried to fix.
+        # has elapsed in order to solve the problem 207fc3af77 tried to fix.
         #
         # Now, there is a large upper bound on the queue to prevent memory
         # exhaustion, which means a producer will block if it's adding
@@ -256,7 +254,7 @@ class CoreThreading:
                 # queued callbacks, but we still have more.  Poke the thread
                 # pipe so the next iteration of the main loop calls us back
                 # and abort the loop.
-                self._wakeup()
+                CoreThreading._wakeup()
                 break
 
             callback, args, kwargs, in_progress = CoreThreading._queue.get()

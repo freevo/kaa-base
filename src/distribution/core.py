@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # core.py - distribution core functions for kaa packages
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # Copyright 2005-2012 Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.
@@ -43,6 +40,7 @@ import distutils.dist
 from .version import Version
 from .build_py import build_py
 from .svn2log import svn2log
+from .git2log import git2log
 
 __all__ = ['compile', 'check_library', 'get_library', 'setup', 'ConfigFile',
            'Extension', 'Library' ]
@@ -539,12 +537,16 @@ def setup(**kwargs):
                     break
             f.close()
 
-    if len(sys.argv) > 1 and any(arg.startswith('bdist') or arg.startswith('sdist') for arg in sys.argv) and \
-           os.path.isfile('ChangeLog.in'):
-        # TODO: find a better way to detect if we need to create a
-        # ChangeLog file or not.
-        print('generate ChangeLog')
-        svn2log(kwargs.get('module', kwargs.get('name')))
+    auto_changelog = kwargs.pop('auto_changelog', False)
+    if len(sys.argv) > 1 and any(arg.startswith('bdist') or arg.startswith('sdist') for arg in sys.argv):
+        if auto_changelog:
+            if os.path.isdir('.git'):
+                print('generate ChangeLog from git')
+                git2log()
+            elif os.path.isdir('.svn'):
+                print('generate ChangeLog from svn')
+                svn2log(kwargs.get('module', kwargs.get('name')))
+
         if os.path.isfile('doc/Makefile'):
             # FIXME: this does not work in some cases. Sphinx requires the
             # files in build to generate the doc files. The build directory

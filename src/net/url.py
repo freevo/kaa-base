@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # url.py - wrapper for receiving urllib2.Request objects
 # -----------------------------------------------------------------------------
-# $Id$
-#
 # Usage:
 # request = urllib2.Request('http://www.freevo.org/')
 # url = URLOpener(request)

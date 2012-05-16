@@ -1,9 +1,6 @@
 # -----------------------------------------------------------------------------
 # db.py - db abstraction module
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # Copyright 2006-2012 Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.
@@ -1959,8 +1956,8 @@ class Database(object):
         """
         Like :meth:`~kaa.db.Database.query` but returns a single object only.
 
-        This is a convenience method, and query_one(...) is equivalent
-        to::
+        This is a convenience method, and query_one(...) is equivalent to::
+
             results = db.query(...)
             if results:
                 obj = results[0]

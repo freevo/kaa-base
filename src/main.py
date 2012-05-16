@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # main.py - Main loop functions
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
 # Copyright 2005-2012 Dirk Meyer, Jason Tackaberry, et al.
 #
@@ -374,6 +371,7 @@ def step(*args, **kwargs):
     Performs a single iteration of the main loop.
 
     .. warning::
+
        This function should almost certainly never be called directly.  Use it
        at your own peril.  (If you do use it, you must call
        :func:`~kaa.main.init` first.)

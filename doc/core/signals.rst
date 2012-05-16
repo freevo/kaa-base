@@ -181,7 +181,7 @@ object's :attr:`~kaa.Signal.changed_cb` property (or by passing it on the constr
     ...     if action == kaa.Signal.CONNECTED:
     ...         print 'New callback added, signal now has %d' % len(signal)
     ...     else:
-    ...         print 'Callback added, signal now has %d' % len(signal)
+    ...         print 'Callback removed, signal now has %d' % len(signal)
     ... 
     >>> sig = kaa.Signal(changed_cb=signal_changed)
     >>> callback = sig.connect(lambda: None)

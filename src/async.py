@@ -26,7 +26,7 @@ from __future__ import absolute_import
 
 __all__ = [
     'InProgress', 'InProgressCallable', 'InProgressAny', 'InProgressAll', 'inprogress',
-    'delay', 'InProgressStatus'
+    'InProgressStatus'
 ]
 
 # python imports

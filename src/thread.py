@@ -314,7 +314,6 @@ class ThreadCallableBase(Callable, Object):
 
             # We can't raise the exact exception into the thread, so just use the class.
             res = ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(tid), ctypes.py_object(exc.__class__))
-            print tid, res
             if res == 0:
                 # Thread not found.  Must have terminated an instant ago.
                 return

@@ -220,6 +220,12 @@ def coroutine(interval=0, policy=None, progress=False, group=None):
             elif ip._step() == True:
                 # Generator yielded NotFinished, so start the CoroutineInProgress timer.
                 ip._timer.start(interval)
+            elif ip.failed:
+                # Coroutine raised an exception immediately.  Here we just
+                # reference the result attribute, which will reraise back to
+                # the caller, rather than leaving it as an asynchronous
+                # exception.
+                ip.result
             return wrap(ip)
 
 

@@ -129,7 +129,15 @@ class InProgressAborted(BaseException):
     and SystemExit, and also (for slightly different reasons) GeneratorExit,
     which as of Python 2.6 also subclasses BaseException.
     """
-    pass
+    def __init__(self, *args, **kwargs):
+        super(InProgressAborted, self).__init__(*args)
+        self.message = args[0] if args else None
+        self.inprogress = kwargs.get('inprogress')
+        self.origin = kwargs.get('origin')
+
+    def __inprogress__(self):
+        # Support kaa.inprogress(exc)
+        return self.inprogress
 
 
 class SocketError(Exception):

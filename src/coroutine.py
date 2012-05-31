@@ -121,7 +121,7 @@ def coroutine(interval=0, policy=None, progress=False, group=None):
                   same group name will all be synchronized against each other.
                   Currently only methods within the same class may belong to
                   the same group.
-    :return: an :class:`~kaa.InProgress` object representing the coroutine.
+    :return: a :class:`~kaa.CoroutineInProgress` object representing the coroutine
 
     Possible policies are:
 
@@ -129,25 +129,25 @@ def coroutine(interval=0, policy=None, progress=False, group=None):
           and multiple calls are queued so that they execute sequentially.
         * ``kaa.POLICY_SINGLETON``: only one active instance of the coroutine is allowed
           to exist.  If the coroutine is invoked while another is running,
-          the CoroutineInProgress object returned by the first invocation
+          the :class:`~kaa.CoroutineInProgress` object returned by the first invocation
           until it finishes.
-        * ``kaa.POLICY_PASS_LAST``: passes the CoroutineInProgress of the most recently
-          called, unfinished invocation of this coroutine as the 'last'
-          kwarg.  If no such CoroutineInProgress exists, the last kwarg will
-          be None.  This is useful to chain multiple invocations of the
-          coroutine together, but unlike ``POLICY_SYNCHRONIZED``, the decorated
-          function is entered each invocation.
+        * ``kaa.POLICY_PASS_LAST``: passes the :class:`~kaa.CoroutineInProgress`
+          of the most recently called, unfinished invocation of this coroutine
+          as the 'last' kwarg.  If no such CoroutineInProgress exists, the last
+          kwarg will be None.  This is useful to chain multiple invocations of
+          the coroutine together, but unlike ``POLICY_SYNCHRONIZED``, the
+          decorated function is entered each invocation.
 
-    A function decorated with this decorator will always return an
-    :class:`~kaa.InProgress` object. It may already be finished (which happens if
-    the coroutine's first yielded value is one other than ``kaa.NotFinished`` or  
-    an InProgress object).
+    A function decorated with this decorator will always return a
+    :class:`~kaa.CoroutineInProgress` object. It may already be finished (which
+    happens if the coroutine's first yielded value is one other than
+    ``kaa.NotFinished`` or an :class:`~kaa.InProgress` object).
     
     If it is not finished, the coroutine's life can be controlled via the
-    :class:`~kaa.InProgress` it returns.  It can be aborted with
-    :meth:`~kaa.InProgress.abort`, in which case a GeneratorExit will be raised
-    inside the coroutine, or its interval may be adjusted via the
-    :attr:`~kaa.CoroutineInProgress.interval` property.
+    :class:`~kaa.CoroutineInProgress` it returns.  It can be aborted with
+    :meth:`~kaa.InProgress.abort`, in which case an `~kaa.InProgressAborted`
+    will be raised inside the coroutine, or its interval may be adjusted via
+    the :attr:`~kaa.CoroutineInProgress.interval` property.
     """
     if progress is True:
         progress = InProgressStatus
@@ -265,9 +265,12 @@ def _generator_coroutine(generator, func, args, kwargs):
 
 class CoroutineInProgress(InProgress):
     """
-    InProgress class that runs a generator function. This is also the return value
-    for coroutine if it takes some more time. progress can be either NotFinished
-    (iterate now) or InProgress (wait until InProgress is done).
+    An :class:`~kaa.InProgress` object returned by the :func:`coroutine` decorator.
+
+    The caller of :func:`kaa.coroutine` can interact with the coroutine via the returned
+    ``CoroutineInProgress`` object, or yield it from other coroutines.
+
+    Notably, coroutines can be aborted by invoking :meth:`abort` on this object.
     """
     def __init__(self, function, function_info, interval, progress=None):
         InProgress.__init__(self)

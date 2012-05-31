@@ -441,7 +441,7 @@ class CoroutineInProgress(InProgress):
         be aborted if and only if nothing else is waiting for it.
 
         For example, a ``POLICY_SINGLETON`` coroutine ``a()`` that is yielded
-        from both coroutine ``a()`` and ``b(0`` would not be aborted if either
+        from both coroutine ``a()`` and ``b()`` would not be aborted if either
         ``a()`` or ``b()`` were aborted.  If you want ``z()`` to be aborted, then
         ``a()`` and/or ``b()`` would need to catch :class:`~kaa.InProgressAborted`
         when yielding ``z()`` and explicitly abort it::

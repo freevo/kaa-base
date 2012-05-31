@@ -94,29 +94,6 @@ class AsyncException(AsyncExceptionBase):
     __metaclass__ = make_exception_class
 
 
-class TimeoutException(Exception):
-    """
-    This exception is raised by an :class:`~kaa.InProgress` returned by
-    :meth:`~kaa.InProgress.timeout` when the timeout occurs.
-
-    For example::
-
-        sock = kaa.Socket()
-        try:
-            yield sock.connect('deadhost.com:80').timeout(10)
-        except kaa.TimeoutException:
-            print 'Connection timed out after 10 seconds'
-
-    """
-    def __init__(self, msg, inprogress):
-        super(TimeoutException, self).__init__(msg)
-        self.args = (msg, inprogress)
-        self.inprogress = inprogress
-
-    def __getitem__(self, idx):
-        return self.args[idx]
-
-
 class InProgressAborted(BaseException):
     """
     This exception is thrown into an InProgress object when 
@@ -138,6 +115,22 @@ class InProgressAborted(BaseException):
     def __inprogress__(self):
         # Support kaa.inprogress(exc)
         return self.inprogress
+
+
+class TimeoutException(InProgressAborted):
+    """
+    This exception is raised by an :class:`~kaa.InProgress` returned by
+    :meth:`~kaa.InProgress.timeout` when the timeout occurs.
+
+    For example::
+
+        sock = kaa.Socket()
+        try:
+            yield sock.connect('deadhost.com:80').timeout(10)
+        except kaa.TimeoutException:
+            print 'Connection timed out after 10 seconds'
+    """
+    pass
 
 
 class SocketError(Exception):

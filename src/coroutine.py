@@ -317,6 +317,15 @@ class CoroutineInProgress(InProgress):
 
 
     @property
+    def active(self):
+        """
+        True if the coroutine is still waiting to be processed, or False if it's
+        finished.
+        """
+        return True if self._coroutine else False
+
+
+    @property
     def interval(self):
         """
         The interval between the coroutine yielding a ``kaa.NotFinished`` or

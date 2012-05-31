@@ -48,7 +48,10 @@
 # -----------------------------------------------------------------------------
 from __future__ import absolute_import
 
-__all__ = [ 'NotFinished', 'coroutine' ]
+__all__ = [
+    'NotFinished', 'coroutine', 'CoroutineInProgress',
+    'POLICY_SYNCHRONIZED', 'POLICY_SINGLETON', 'POLICY_PASS_LAST'
+]
 
 # python imports
 import sys

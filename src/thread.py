@@ -696,8 +696,8 @@ def threaded(pool=None, priority=0, async=True, progress=False, wait=False):
                  be necessary to set this to True if the kaa main loop is not
                  running.  (Default: False)
     :type wait: bool
-    :returns: :class:`~kaa.InProgress` if ``progress=False``, or the return value
-              or the decorated function if ``progress=True``
+    :returns: :class:`~kaa.ThreadedInProgress` if ``async=False``, or the return value
+              or the decorated function if ``async=True``
 
     A special pool constant :const:`kaa.MAINTHREAD` is available, which causes
     the decorated function to always be invoked from the main thread.  In this

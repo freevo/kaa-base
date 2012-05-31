@@ -229,6 +229,8 @@ class ThreadInProgress(InProgress):
         """
         Aborts the callable being executed inside a thread.  (Or attempts to.)
 
+        See :meth:`kaa.InProgress.abort` for argument details.
+
         Invocation of a :class:`~kaa.ThreadCallable` or
         :class:`~kaa.ThreadPoolCallable` will return a ``ThreadInProgress``
         object which may be aborted by calling this method.  When an

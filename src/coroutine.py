@@ -273,7 +273,7 @@ class CoroutineInProgress(InProgress):
     Notably, coroutines can be aborted by invoking :meth:`abort` on this object.
     """
     def __init__(self, function, function_info, interval, progress=None):
-        InProgress.__init__(self)
+        super(CoroutineInProgress, self).__init__(frame=-1)
         self._coroutine = function
         self._coroutine_info = function_info
         self._timer = Timer(self._step)
@@ -309,6 +309,11 @@ class CoroutineInProgress(InProgress):
         # stopped.
         #
         _active_coroutines.add(self)
+
+
+    def __repr__(self):
+        s = super(CoroutineInProgress, self).__repr__()
+        return s[:-1] + ', coroutine=%s at %s:%s>' % self._coroutine_info
 
 
     @property

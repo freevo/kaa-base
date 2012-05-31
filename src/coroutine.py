@@ -79,18 +79,6 @@ POLICY_PASS_LAST = 'passlast'
 # CoroutineInProgress.__init__ for rational.
 _active_coroutines = set()
 
-def _process(generator, inprogress=None):
-    """
-    function to call next, step, or throw
-    """
-    if inprogress is not None:
-        if inprogress._exception:
-            inprogress._unhandled_exception = None
-            return generator.throw(*inprogress._exception)
-        return generator.send(inprogress._result)
-    return generator.next()
-
-
 def coroutine(interval=0, policy=None, progress=False, group=None):
     """
     Decorated functions (which must be generators) may yield control
@@ -380,8 +368,7 @@ class CoroutineInProgress(InProgress):
         """
         try:
             while True:
-                result = _process(self._coroutine, self._prerequisite_ip)
-                self._prerequisite_ip = None
+                result = self._step_generator()
                 if result is NotFinished:
                     # Schedule next iteration with the timer
                     return True
@@ -514,3 +501,27 @@ class CoroutineInProgress(InProgress):
             self._timer = None
             self._coroutine = None
             self._prerequisite_ip = None
+
+
+    def _step_generator(self):
+        """
+        Invokes the appropriate method on the generator.  If the coroutine
+        yielded on some other InProgress which has finished, it will either
+        throw() or send() into the generator.  Otherwise it will next().
+        """
+        prereq = self._prerequisite_ip
+        if prereq is not None:
+            self._prerequisite_ip = None
+            if prereq._exception:
+                tp, exc, tb = prereq._exception
+                prereq._unhandled_exception = None
+                if isinstance(exc, InProgressAborted):
+                    # Exception being raised inside the generator is an InProgressAborted.
+                    # Replace the inprogress attribute with the prerequisite InProgress
+                    # before raising.
+                    if exc.inprogress != prereq:
+                        exc = exc.__class__(*exc.args, inprogress=prereq, origin=exc.origin)
+                        log.debug('modifying exc %s for %s prereq=%s', exc.__class__, self, prereq)
+                return self._coroutine.throw(tp, exc, tb)
+            return self._coroutine.send(prereq._result)
+        return self._coroutine.next()

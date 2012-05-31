@@ -440,11 +440,20 @@ class CoroutineInProgress(InProgress):
         functions, both of which are abortable by default), then it will also
         be aborted if and only if nothing else is waiting for it.
 
-        For example, a ``POLICY_SINGLETON`` coroutine ``a()`` that is yielded
+        For example, a ``POLICY_SINGLETON`` coroutine ``z()`` that is yielded
         from both coroutine ``a()`` and ``b()`` would not be aborted if either
         ``a()`` or ``b()`` were aborted.  If you want ``z()`` to be aborted, then
         ``a()`` and/or ``b()`` would need to catch :class:`~kaa.InProgressAborted`
         when yielding ``z()`` and explicitly abort it::
+
+            @kaa.coroutine(policy=kaa.POLICY_SINGLETON)
+            def z():
+                # do stuff ...
+                yield whatever()
+
+            @kaa.coroutine()
+            def a():
+                yield z()
 
             @kaa.coroutine()
             def b():
@@ -453,8 +462,11 @@ class CoroutineInProgress(InProgress):
                 except kaa.InProgressAborted as e:
                     e.inprogress.abort(e)
 
-        If ``b()`` didn't exist in the above example, ``z()`` would automatically be
-        aborted.  You could prevent this by using :meth:`noabort`::
+        In this case, if ``abort()`` was called on ``b()``, its exception handler
+        would abort ``z()``, which could cause :class:`~kaa.InProgressAborted`
+        to be raised inside ``a()``.  If ``b()`` didn't exist in the above
+        example, ``z()`` would automatically be aborted.  You could prevent
+        this by using :meth:`noabort`::
 
             @kaa.coroutine()
             def b():

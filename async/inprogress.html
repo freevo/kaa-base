@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>InProgress Objects &mdash; kaa.base 0.99.2dev-385-2744df5a documentation</title>
+    <title>InProgress Objects &mdash; kaa.base 0.99.2dev-406-2796ba76 documentation</title>
     
     <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -16,7 +16,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.99.2dev-385-2744df5a',
+        VERSION:     '0.99.2dev-406-2796ba76',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="kaa.base 0.99.2dev-385-2744df5a documentation" href="../index.html" />
+    <link rel="top" title="kaa.base 0.99.2dev-406-2796ba76 documentation" href="../index.html" />
     <link rel="next" title="Coroutines" href="coroutines.html" />
     <link rel="prev" title="Events and Event Handlers" href="../core/event.html" />
     <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
@@ -47,7 +47,7 @@
         <li class="right" >
           <a href="../core/event.html" title="Events and Event Handlers"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">kaa.base 0.99.2dev-385-2744df5a documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2dev-406-2796ba76 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -93,7 +93,8 @@ in order to handle success result and exceptions:</p>
 </div>
 <p>Connecting callbacks to signals in this way is fairly standard and this
 approach is used in many other frameworks.  For example, readers familiar
-with the Twisted framework may find similarities with Twisted&#8217;s Deferreds.</p>
+with the Twisted framework may find similarities with Twisted&#8217;s Deferreds.
+InProgress objects are also very similar to <a class="reference external" href="http://en.wikipedia.org/wiki/Futures_and_promises">futures and promises</a>.</p>
 <p>However, InProgress objects can be used with <a class="reference internal" href="coroutines.html#coroutines"><em>coroutines</em></a>
 (covered in more detail later), a more interesting and powerful approach which
 allows you to handle the result of InProgress objects without the use of
@@ -125,7 +126,7 @@ in a coroutine), the exception will be logged to stderr with the heading
 &#8220;Unhandled asynchronous exception.&#8221;</p>
 <p><dl class="class">
 <dt id="kaa.InProgress">
-<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">InProgress</tt><big>(</big><em>abortable=False</em>, <em>frame=0</em><big>)</big><a class="headerlink" href="#kaa.InProgress" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">InProgress</tt><big>(</big><em>abortable=None</em>, <em>frame=0</em><big>)</big><a class="headerlink" href="#kaa.InProgress" title="Permalink to this definition">¶</a></dt>
 <dd><p>InProgress objects are returned from functions that require more time to
 complete (because they are either blocked on some resource, are executing
 in a thread, or perhaps simply because they yielded control back to the main
@@ -140,8 +141,7 @@ emitted instead.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>abortable</strong> (<em>bool</em>) &#8211; see the <a class="reference internal" href="#kaa.InProgress.abortable" title="kaa.InProgress.abortable"><tt class="xref py py-attr docutils literal"><span class="pre">abortable</span></tt></a> property.  
-(Default: False)</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>abortable</strong> (<em>bool</em>) &#8211; see the <a class="reference internal" href="#kaa.InProgress.abortable" title="kaa.InProgress.abortable"><tt class="xref py py-attr docutils literal"><span class="pre">abortable</span></tt></a> property.</td>
 </tr>
 </tbody>
 </table>
@@ -166,22 +166,23 @@ given timeout.</td></tr>
 <tr class="row-even"><th><a class="reference internal" href="#kaa.InProgress.wait" title="kaa.InProgress.wait"><tt class="xref py py-meth docutils literal"><span class="pre">wait()</span></tt></a></th><td class="desc">Blocks until the InProgress is finished.</td></tr>
 <tr class="row-odd"><th><a class="reference internal" href="#kaa.InProgress.waitfor" title="kaa.InProgress.waitfor"><tt class="xref py py-meth docutils literal"><span class="pre">waitfor()</span></tt></a></th><td class="desc">Connects to another InProgress object (A) to self (B).  When A finishes
 (or throws), B is finished with the result or exception.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.InProgress.noabort" title="kaa.InProgress.noabort"><tt class="xref py py-meth docutils literal"><span class="pre">noabort()</span></tt></a></th><td class="desc">Create a new InProgress object for this task that cannot be aborted.</td></tr>
 </table>
 <div class="heading">Properties</div>
 <table>
-<tr class="row-even"><th><a class="reference internal" href="#kaa.InProgress.abortable" title="kaa.InProgress.abortable"><tt class="xref py py-attr docutils literal"><span class="pre">abortable</span></tt></a></th><td>read/write</td><td class="desc">True if the asynchronous task this InProgress represents can be
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.InProgress.abortable" title="kaa.InProgress.abortable"><tt class="xref py py-attr docutils literal"><span class="pre">abortable</span></tt></a></th><td>read/write</td><td class="desc">True if the asynchronous task this InProgress represents can be
 aborted by a call to <a class="reference internal" href="#kaa.InProgress.abort" title="kaa.InProgress.abort"><tt class="xref py py-meth docutils literal"><span class="pre">abort()</span></tt></a>.</td></tr>
-<tr class="row-odd"><th><a class="reference internal" href="#kaa.InProgress.exception" title="kaa.InProgress.exception"><tt class="xref py py-attr docutils literal"><span class="pre">exception</span></tt></a></th><td>read-only</td><td class="desc">A <a class="reference internal" href="../core/signals.html#kaa.Signal" title="kaa.Signal"><tt class="xref py py-class docutils literal"><span class="pre">Signal</span></tt></a> emitted when the asynchronous task this InProgress
+<tr class="row-even"><th><a class="reference internal" href="#kaa.InProgress.exception" title="kaa.InProgress.exception"><tt class="xref py py-attr docutils literal"><span class="pre">exception</span></tt></a></th><td>read-only</td><td class="desc">A <a class="reference internal" href="../core/signals.html#kaa.Signal" title="kaa.Signal"><tt class="xref py py-class docutils literal"><span class="pre">Signal</span></tt></a> emitted when the asynchronous task this InProgress
 represents has raised an exception.</td></tr>
-<tr class="row-even"><th><a class="reference internal" href="#kaa.InProgress.failed" title="kaa.InProgress.failed"><tt class="xref py py-attr docutils literal"><span class="pre">failed</span></tt></a></th><td>read-only</td><td class="desc">True if an exception was thrown to the InProgress, False if it was
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.InProgress.failed" title="kaa.InProgress.failed"><tt class="xref py py-attr docutils literal"><span class="pre">failed</span></tt></a></th><td>read-only</td><td class="desc">True if an exception was thrown to the InProgress, False if it was
 finished without error or if it is not yet finished.</td></tr>
-<tr class="row-odd"><th><a class="reference internal" href="#kaa.InProgress.finished" title="kaa.InProgress.finished"><tt class="xref py py-attr docutils literal"><span class="pre">finished</span></tt></a></th><td>read-only</td><td class="desc">True if the InProgress is finished.</td></tr>
-<tr class="row-even"><th><a class="reference internal" href="#kaa.InProgress.result" title="kaa.InProgress.result"><tt class="xref py py-attr docutils literal"><span class="pre">result</span></tt></a></th><td>read-only</td><td class="desc">The result the InProgress was finished with.  If an exception was thrown
+<tr class="row-even"><th><a class="reference internal" href="#kaa.InProgress.finished" title="kaa.InProgress.finished"><tt class="xref py py-attr docutils literal"><span class="pre">finished</span></tt></a></th><td>read-only</td><td class="desc">True if the InProgress is finished.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.InProgress.result" title="kaa.InProgress.result"><tt class="xref py py-attr docutils literal"><span class="pre">result</span></tt></a></th><td>read-only</td><td class="desc">The result the InProgress was finished with.  If an exception was thrown
 to the InProgress, accessing this property will raise that exception.</td></tr>
 </table>
 <div class="heading">Signals</div>
 <table>
-<tr class="row-odd"><th><a class="reference internal" href="#kaa.InProgress.signals.abort" title="kaa.InProgress.signals.abort"><tt class="xref py py-attr docutils literal"><span class="pre">abort</span></tt></a></th><td class="desc">Emitted when abort() is called.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.InProgress.signals.abort" title="kaa.InProgress.signals.abort"><tt class="xref py py-attr docutils literal"><span class="pre">abort</span></tt></a></th><td class="desc">Emitted when abort() is called.</td></tr>
 </table>
 
 </div>
@@ -193,7 +194,7 @@ to the InProgress, accessing this property will raise that exception.</td></tr>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>exc</strong> (<a class="reference internal" href="#kaa.InProgressAborted" title="kaa.InProgressAborted"><tt class="xref py py-class docutils literal"><span class="pre">InProgressAborted</span></tt></a>) &#8211; optional exception object with which to abort the InProgress; if
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>exc</strong> (<a class="reference internal" href="#kaa.InProgressAborted" title="kaa.InProgressAborted"><tt class="xref py py-class docutils literal"><span class="pre">InProgressAborted</span></tt></a> or subclass thereof) &#8211; optional exception object with which to abort the InProgress; if
 None is given, a general <a class="reference internal" href="#kaa.InProgressAborted" title="kaa.InProgressAborted"><tt class="xref py py-class docutils literal"><span class="pre">InProgressAborted</span></tt></a>
 exception will be used.</td>
 </tr>
@@ -201,10 +202,6 @@ exception will be used.</td>
 </table>
 <p>Not all such tasks can be aborted.  If aborting is not supported, or if
 the InProgress is already finished, a RuntimeError exception is raised.</p>
-<p>If a coroutine is aborted, the CoroutineInProgress object returned by
-the coroutine will be finished with <a class="reference internal" href="#kaa.InProgressAborted" title="kaa.InProgressAborted"><tt class="xref py py-class docutils literal"><span class="pre">InProgressAborted</span></tt></a>,
-while the underlying generator used by the coroutine will have the
-standard GeneratorExit raised inside it.</p>
 </dd></dl>
 
 <dl class="method">
@@ -345,7 +342,9 @@ if the timeout occurs.</li>
 </tbody>
 </table>
 <p>If the original InProgress finishes before the timeout, the new InProgress
-(returned by this method) is finished with the result of the original.</p>
+(returned by this method) is finished with the result of the original.  If
+<tt class="xref py py-meth docutils literal"><span class="pre">abort()</span></tt> is called on the returned InProgress, the original one will
+also be aborted.</p>
 <p>If a timeout does occur and the <tt class="docutils literal"><span class="pre">abort</span></tt> argument is False, the
 original InProgress object is not affected: it is not finished with the
 <tt class="xref py py-class docutils literal"><span class="pre">TimeoutException</span></tt>, nor is it aborted.  You can explicitly
@@ -354,12 +353,17 @@ abort the original InProgress:</p>
 <span class="k">def</span> <span class="nf">read_from_socket</span><span class="p">(</span><span class="n">sock</span><span class="p">):</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">sock</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
-    <span class="k">except</span> <span class="n">kaa</span><span class="o">.</span><span class="n">TimeoutException</span><span class="p">,</span> <span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">inprogress</span><span class="p">):</span>
-        <span class="k">print</span> <span class="s">&#39;Error:&#39;</span><span class="p">,</span> <span class="n">msg</span>
-        <span class="n">inprogress</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span>
+    <span class="k">except</span> <span class="n">kaa</span><span class="o">.</span><span class="n">TimeoutException</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s">&#39;Error:&#39;</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">e</span><span class="o">.</span><span class="n">inprogress</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>Aside from the print statement, this is equivalent:</p>
+<p>If you set <tt class="docutils literal"><span class="pre">abort=True</span></tt> then the original InProgress is aborted
+automatically, but <em>before</em> the TimeoutException is thrown into the new
+InProgress returned by this method.  This allows a coroutine being
+aborted to perform cleanup actions before relinquishing control back to
+the caller.  In this example, sock.read() will be aborted if not
+completed within 3 seconds:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="nd">@kaa.coroutine</span><span class="p">()</span>
 <span class="k">def</span> <span class="nf">read_from_socket</span><span class="p">(</span><span class="n">sock</span><span class="p">):</span>
     <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">sock</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">abort</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
@@ -404,12 +408,27 @@ TimeoutException is raised.</td>
 </table>
 </dd></dl>
 
+<dl class="method">
+<dt id="kaa.InProgress.noabort">
+<tt class="descname">noabort</tt><big>(</big><big>)</big><a class="headerlink" href="#kaa.InProgress.noabort" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new InProgress object for this task that cannot be aborted.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">a new <a class="reference internal" href="#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> object that finishes when self
+finishes, but will raise if an <tt class="xref py py-meth docutils literal"><span class="pre">abort()</span></tt> is attempted</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 <h4>Properties</h4><dl class="attribute">
 <dt id="kaa.InProgress.abortable">
 <tt class="descname">abortable</tt><a class="headerlink" href="#kaa.InProgress.abortable" title="Permalink to this definition">¶</a></dt>
 <dd><p>True if the asynchronous task this InProgress represents can be
 aborted by a call to <a class="reference internal" href="#kaa.InProgress.abort" title="kaa.InProgress.abort"><tt class="xref py py-meth docutils literal"><span class="pre">abort()</span></tt></a>.</p>
-<p>Normally <a class="reference internal" href="#kaa.InProgress.abort" title="kaa.InProgress.abort"><tt class="xref py py-meth docutils literal"><span class="pre">abort()</span></tt></a> will fail if there are no
+<p>By default <a class="reference internal" href="#kaa.InProgress.abort" title="kaa.InProgress.abort"><tt class="xref py py-meth docutils literal"><span class="pre">abort()</span></tt></a> will fail if there are no
 callbacks attached to the <a class="reference internal" href="#kaa.InProgress.signals.abort" title="kaa.InProgress.signals.abort"><tt class="xref py py-attr docutils literal"><span class="pre">abort</span></tt></a> signal.
 This property may be explicitly set to <tt class="docutils literal"><span class="pre">True</span></tt>, in which case
 <a class="reference internal" href="#kaa.InProgress.abort" title="kaa.InProgress.abort"><tt class="xref py py-meth docutils literal"><span class="pre">abort()</span></tt></a> will succeed regardless.  An InProgress is
@@ -476,6 +495,8 @@ will cause an exception to be raised by abort().</p>
 </dd></dl>
 
 </p>
+<p>Also see related classes <a class="reference internal" href="coroutines.html#kaa.CoroutineInProgress" title="kaa.CoroutineInProgress"><tt class="xref py py-class docutils literal"><span class="pre">CoroutineInProgress</span></tt></a> and
+<a class="reference internal" href="threads.html#kaa.ThreadInProgress" title="kaa.ThreadInProgress"><tt class="xref py py-class docutils literal"><span class="pre">ThreadInProgress</span></tt></a>.</p>
 <div class="section" id="inprogress-collections">
 <h2>InProgress Collections<a class="headerlink" href="#inprogress-collections" title="Permalink to this headline">¶</a></h2>
 <p><dl class="class">
@@ -523,7 +544,7 @@ objects.  It can be treated as an iterator, and can be indexed:</p>
 <p>The following exceptions can be raised by InProgress methods.</p>
 <p><dl class="class">
 <dt id="kaa.TimeoutException">
-<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">TimeoutException</tt><big>(</big><em>msg</em>, <em>inprogress</em><big>)</big><a class="headerlink" href="#kaa.TimeoutException" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">TimeoutException</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.TimeoutException" title="Permalink to this definition">¶</a></dt>
 <dd><p>This exception is raised by an <a class="reference internal" href="#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> returned by
 <a class="reference internal" href="#kaa.InProgress.timeout" title="kaa.InProgress.timeout"><tt class="xref py py-meth docutils literal"><span class="pre">timeout()</span></tt></a> when the timeout occurs.</p>
 <p>For example:</p>
@@ -539,7 +560,7 @@ objects.  It can be treated as an iterator, and can be indexed:</p>
 </p>
 <p><dl class="class">
 <dt id="kaa.InProgressAborted">
-<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">InProgressAborted</tt><a class="headerlink" href="#kaa.InProgressAborted" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">InProgressAborted</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.InProgressAborted" title="Permalink to this definition">¶</a></dt>
 <dd><p>This exception is thrown into an InProgress object when 
 <a class="reference internal" href="#kaa.InProgress.abort" title="kaa.InProgress.abort"><tt class="xref py py-meth docutils literal"><span class="pre">abort()</span></tt></a> is called.</p>
 <p>For <a class="reference internal" href="threads.html#kaa.ThreadCallable" title="kaa.ThreadCallable"><tt class="xref py py-class docutils literal"><span class="pre">ThreadCallable</span></tt></a> and  <a class="reference internal" href="threads.html#kaa.ThreadPoolCallable" title="kaa.ThreadPoolCallable"><tt class="xref py py-class docutils literal"><span class="pre">ThreadPoolCallable</span></tt></a>
@@ -663,12 +684,12 @@ constructor of InProgressAny or InProgressAll.</p>
         <li class="right" >
           <a href="../core/event.html" title="Events and Event Handlers"
              >previous</a> |</li>
-        <li><a href="../index.html">kaa.base 0.99.2dev-385-2744df5a documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2dev-406-2796ba76 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on May 14, 2012.
+      Last updated on May 30, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>

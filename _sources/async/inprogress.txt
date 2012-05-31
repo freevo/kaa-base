@@ -45,6 +45,8 @@ in order to handle success result and exceptions::
 Connecting callbacks to signals in this way is fairly standard and this
 approach is used in many other frameworks.  For example, readers familiar
 with the Twisted framework may find similarities with Twisted's Deferreds.
+InProgress objects are also very similar to `futures and promises
+<http://en.wikipedia.org/wiki/Futures_and_promises>`_.
 
 However, InProgress objects can be used with :ref:`coroutines <coroutines>`
 (covered in more detail later), a more interesting and powerful approach which
@@ -98,6 +100,10 @@ in a coroutine), the exception will be logged to stderr with the heading
    .. autoproperties::
    .. autosignals::
 
+
+
+Also see related classes :class:`~kaa.CoroutineInProgress` and
+:class:`~kaa.ThreadInProgress`.
 
 
 InProgress Collections

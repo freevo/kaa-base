@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Thread Support &mdash; kaa.base 0.99.2dev-385-2744df5a documentation</title>
+    <title>Thread Support &mdash; kaa.base 0.99.2dev-406-2796ba76 documentation</title>
     
     <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -16,7 +16,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.99.2dev-385-2744df5a',
+        VERSION:     '0.99.2dev-406-2796ba76',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="kaa.base 0.99.2dev-385-2744df5a documentation" href="../index.html" />
+    <link rel="top" title="kaa.base 0.99.2dev-406-2796ba76 documentation" href="../index.html" />
     <link rel="next" title="Generators" href="generators.html" />
     <link rel="prev" title="Coroutines" href="coroutines.html" />
     <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
@@ -47,7 +47,7 @@
         <li class="right" >
           <a href="coroutines.html" title="Coroutines"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">kaa.base 0.99.2dev-385-2744df5a documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2dev-406-2796ba76 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -118,8 +118,8 @@ running.  (Default: False)</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><a class="reference internal" href="inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> if <tt class="docutils literal"><span class="pre">progress=False</span></tt>, or the return value
-or the decorated function if <tt class="docutils literal"><span class="pre">progress=True</span></tt></p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><tt class="xref py py-class docutils literal"><span class="pre">ThreadedInProgress</span></tt> if <tt class="docutils literal"><span class="pre">async=False</span></tt>, or the return value
+or the decorated function if <tt class="docutils literal"><span class="pre">async=True</span></tt></p>
 </td>
 </tr>
 </tbody>
@@ -320,6 +320,7 @@ objects are returned when invoking <a class="reference internal" href="#kaa.Thre
 <dt id="kaa.ThreadInProgress.abort">
 <tt class="descname">abort</tt><big>(</big><em>exc=None</em><big>)</big><a class="headerlink" href="#kaa.ThreadInProgress.abort" title="Permalink to this definition">¶</a></dt>
 <dd><p>Aborts the callable being executed inside a thread.  (Or attempts to.)</p>
+<p>See <a class="reference internal" href="inprogress.html#kaa.InProgress.abort" title="kaa.InProgress.abort"><tt class="xref py py-meth docutils literal"><span class="pre">kaa.InProgress.abort()</span></tt></a> for argument details.</p>
 <p>Invocation of a <a class="reference internal" href="#kaa.ThreadCallable" title="kaa.ThreadCallable"><tt class="xref py py-class docutils literal"><span class="pre">ThreadCallable</span></tt></a> or
 <a class="reference internal" href="#kaa.ThreadPoolCallable" title="kaa.ThreadPoolCallable"><tt class="xref py py-class docutils literal"><span class="pre">ThreadPoolCallable</span></tt></a> will return a <tt class="docutils literal"><span class="pre">ThreadInProgress</span></tt>
 object which may be aborted by calling this method.  When an
@@ -702,12 +703,12 @@ MainThreadCallables always returns an InProgress object:</p>
         <li class="right" >
           <a href="coroutines.html" title="Coroutines"
              >previous</a> |</li>
-        <li><a href="../index.html">kaa.base 0.99.2dev-385-2744df5a documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2dev-406-2796ba76 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on May 14, 2012.
+      Last updated on May 30, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>

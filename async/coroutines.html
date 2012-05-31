@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Coroutines &mdash; kaa.base 0.99.2dev-385-2744df5a documentation</title>
+    <title>Coroutines &mdash; kaa.base 0.99.2dev-406-2796ba76 documentation</title>
     
     <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -16,7 +16,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.99.2dev-385-2744df5a',
+        VERSION:     '0.99.2dev-406-2796ba76',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="kaa.base 0.99.2dev-385-2744df5a documentation" href="../index.html" />
+    <link rel="top" title="kaa.base 0.99.2dev-406-2796ba76 documentation" href="../index.html" />
     <link rel="next" title="Thread Support" href="threads.html" />
     <link rel="prev" title="InProgress Objects" href="inprogress.html" />
     <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
@@ -47,7 +47,7 @@
         <li class="right" >
           <a href="inprogress.html" title="InProgress Objects"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">kaa.base 0.99.2dev-385-2744df5a documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2dev-406-2796ba76 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -234,7 +234,7 @@ the same group.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">an <a class="reference internal" href="inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> object representing the coroutine.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a <a class="reference internal" href="#kaa.CoroutineInProgress" title="kaa.CoroutineInProgress"><tt class="xref py py-class docutils literal"><span class="pre">CoroutineInProgress</span></tt></a> object representing the coroutine</p>
 </td>
 </tr>
 </tbody>
@@ -246,27 +246,144 @@ the same group.</li>
 and multiple calls are queued so that they execute sequentially.</li>
 <li><tt class="docutils literal"><span class="pre">kaa.POLICY_SINGLETON</span></tt>: only one active instance of the coroutine is allowed
 to exist.  If the coroutine is invoked while another is running,
-the CoroutineInProgress object returned by the first invocation
+the <a class="reference internal" href="#kaa.CoroutineInProgress" title="kaa.CoroutineInProgress"><tt class="xref py py-class docutils literal"><span class="pre">CoroutineInProgress</span></tt></a> object returned by the first invocation
 until it finishes.</li>
-<li><tt class="docutils literal"><span class="pre">kaa.POLICY_PASS_LAST</span></tt>: passes the CoroutineInProgress of the most recently
-called, unfinished invocation of this coroutine as the &#8216;last&#8217;
-kwarg.  If no such CoroutineInProgress exists, the last kwarg will
-be None.  This is useful to chain multiple invocations of the
-coroutine together, but unlike <tt class="docutils literal"><span class="pre">POLICY_SYNCHRONIZED</span></tt>, the decorated
-function is entered each invocation.</li>
+<li><tt class="docutils literal"><span class="pre">kaa.POLICY_PASS_LAST</span></tt>: passes the <a class="reference internal" href="#kaa.CoroutineInProgress" title="kaa.CoroutineInProgress"><tt class="xref py py-class docutils literal"><span class="pre">CoroutineInProgress</span></tt></a>
+of the most recently called, unfinished invocation of this coroutine
+as the &#8216;last&#8217; kwarg.  If no such CoroutineInProgress exists, the last
+kwarg will be None.  This is useful to chain multiple invocations of
+the coroutine together, but unlike <tt class="docutils literal"><span class="pre">POLICY_SYNCHRONIZED</span></tt>, the
+decorated function is entered each invocation.</li>
 </ul>
 </div></blockquote>
-<p>A function decorated with this decorator will always return an
-<a class="reference internal" href="inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> object. It may already be finished (which happens if
-the coroutine&#8217;s first yielded value is one other than <tt class="docutils literal"><span class="pre">kaa.NotFinished</span></tt> or  
-an InProgress object).</p>
+<p>A function decorated with this decorator will always return a
+<a class="reference internal" href="#kaa.CoroutineInProgress" title="kaa.CoroutineInProgress"><tt class="xref py py-class docutils literal"><span class="pre">CoroutineInProgress</span></tt></a> object. It may already be finished (which
+happens if the coroutine&#8217;s first yielded value is one other than
+<tt class="docutils literal"><span class="pre">kaa.NotFinished</span></tt> or an <a class="reference internal" href="inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> object).</p>
 <p>If it is not finished, the coroutine&#8217;s life can be controlled via the
-<a class="reference internal" href="inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> it returns.  It can be aborted with
-<a class="reference internal" href="inprogress.html#kaa.InProgress.abort" title="kaa.InProgress.abort"><tt class="xref py py-meth docutils literal"><span class="pre">abort()</span></tt></a>, in which case a GeneratorExit will be raised
-inside the coroutine, or its interval may be adjusted via the
-<tt class="xref py py-attr docutils literal"><span class="pre">interval</span></tt> property.</p>
+<a class="reference internal" href="#kaa.CoroutineInProgress" title="kaa.CoroutineInProgress"><tt class="xref py py-class docutils literal"><span class="pre">CoroutineInProgress</span></tt></a> it returns.  It can be aborted with
+<a class="reference internal" href="inprogress.html#kaa.InProgress.abort" title="kaa.InProgress.abort"><tt class="xref py py-meth docutils literal"><span class="pre">abort()</span></tt></a>, in which case an <cite>~kaa.InProgressAborted</cite>
+will be raised inside the coroutine, or its interval may be adjusted via
+the <a class="reference internal" href="#kaa.CoroutineInProgress.interval" title="kaa.CoroutineInProgress.interval"><tt class="xref py py-attr docutils literal"><span class="pre">interval</span></tt></a> property.</p>
 </dd></dl>
 
+<p><dl class="class">
+<dt id="kaa.CoroutineInProgress">
+<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">CoroutineInProgress</tt><big>(</big><em>function</em>, <em>function_info</em>, <em>interval</em>, <em>progress=None</em><big>)</big><a class="headerlink" href="#kaa.CoroutineInProgress" title="Permalink to this definition">¶</a></dt>
+<dd><p>An <a class="reference internal" href="inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> object returned by the <tt class="xref py py-func docutils literal"><span class="pre">coroutine()</span></tt> decorator.</p>
+<p>The caller of <a class="reference internal" href="#kaa.coroutine" title="kaa.coroutine"><tt class="xref py py-func docutils literal"><span class="pre">kaa.coroutine()</span></tt></a> can interact with the coroutine via the returned
+<tt class="docutils literal"><span class="pre">CoroutineInProgress</span></tt> object, or yield it from other coroutines.</p>
+<p>Notably, coroutines can be aborted by invoking <tt class="xref py py-meth docutils literal"><span class="pre">abort()</span></tt> on this object.</p>
+<p><h4>Synopsis</h4><div class="kaa synopsis">
+<div class="heading">Class Hierarchy</div><p class="hierarchy"><a class="reference internal" href="../core/signals.html#kaa.Signal" title="kaa.Signal"><tt class="xref py py-class docutils literal"><span class="pre">kaa.Signal</span></tt></a><br /><tt class="xref py py-class docutils literal"><span class="pre">kaa.Object</span></tt><br />&#9492;&#9472; <a class="reference internal" href="inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">kaa.InProgress</span></tt></a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; <tt class="xref docutils literal current">kaa.CoroutineInProgress</tt><br /></p>
+<div class="heading">Methods</div>
+<table>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.CoroutineInProgress.abort" title="kaa.CoroutineInProgress.abort"><tt class="xref py py-meth docutils literal"><span class="pre">abort()</span></tt></a></th><td class="desc">Aborts the coroutine.</td></tr>
+</table>
+<div class="heading">Properties</div>
+<table>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.CoroutineInProgress.active" title="kaa.CoroutineInProgress.active"><tt class="xref py py-attr docutils literal"><span class="pre">active</span></tt></a></th><td>read-only</td><td class="desc">True if the coroutine is still waiting to be processed, or False if it&#8217;s
+finished.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.CoroutineInProgress.interval" title="kaa.CoroutineInProgress.interval"><tt class="xref py py-attr docutils literal"><span class="pre">interval</span></tt></a></th><td>read/write</td><td class="desc">The interval between the coroutine yielding a <tt class="docutils literal"><span class="pre">kaa.NotFinished</span></tt> or
+<a class="reference internal" href="inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> and reentry.</td></tr>
+</table>
+<div class="heading">Signals</div>
+<table>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.CoroutineInProgress.signals.abort" title="kaa.CoroutineInProgress.signals.abort"><tt class="xref py py-attr docutils literal"><span class="pre">abort</span></tt></a></th><td class="desc">Emitted when abort() is called.</td></tr>
+</table>
+
+</div>
+<h4>Methods</h4><dl class="method">
+<dt id="kaa.CoroutineInProgress.abort">
+<tt class="descname">abort</tt><big>(</big><em>exc=None</em><big>)</big><a class="headerlink" href="#kaa.CoroutineInProgress.abort" title="Permalink to this definition">¶</a></dt>
+<dd><p>Aborts the coroutine.</p>
+<p>See <a class="reference internal" href="inprogress.html#kaa.InProgress.abort" title="kaa.InProgress.abort"><tt class="xref py py-meth docutils literal"><span class="pre">kaa.InProgress.abort()</span></tt></a> for argument details.</p>
+<p>This will raise the supplied exception (<a class="reference internal" href="inprogress.html#kaa.InProgressAborted" title="kaa.InProgressAborted"><tt class="xref py py-class docutils literal"><span class="pre">InProgressAborted</span></tt></a>
+if not given) inside the coroutine.  If the coroutine doesn&#8217;t catch the
+exception, then it will be raised back to the caller of <tt class="xref py py-meth docutils literal"><span class="pre">abort()</span></tt>.</p>
+<p>If the coroutine being aborted is currently waiting on some other yielded
+<a class="reference internal" href="inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> which is <a class="reference internal" href="inprogress.html#kaa.InProgress.abortable" title="kaa.InProgress.abortable"><tt class="xref py py-attr docutils literal"><span class="pre">abortable</span></tt></a>
+(which includes other coroutines as well as <a class="reference internal" href="threads.html#kaa.threaded" title="kaa.threaded"><tt class="xref py py-func docutils literal"><span class="pre">threaded()</span></tt></a>
+functions, both of which are abortable by default), then it will also
+be aborted if and only if nothing else is waiting for it.</p>
+<p>For example, a <tt class="docutils literal"><span class="pre">POLICY_SINGLETON</span></tt> coroutine <tt class="docutils literal"><span class="pre">z()</span></tt> that is yielded
+from both coroutine <tt class="docutils literal"><span class="pre">a()</span></tt> and <tt class="docutils literal"><span class="pre">b()</span></tt> would not be aborted if either
+<tt class="docutils literal"><span class="pre">a()</span></tt> or <tt class="docutils literal"><span class="pre">b()</span></tt> were aborted.  If you want <tt class="docutils literal"><span class="pre">z()</span></tt> to be aborted, then
+<tt class="docutils literal"><span class="pre">a()</span></tt> and/or <tt class="docutils literal"><span class="pre">b()</span></tt> would need to catch <a class="reference internal" href="inprogress.html#kaa.InProgressAborted" title="kaa.InProgressAborted"><tt class="xref py py-class docutils literal"><span class="pre">InProgressAborted</span></tt></a>
+when yielding <tt class="docutils literal"><span class="pre">z()</span></tt> and explicitly abort it:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="nd">@kaa.coroutine</span><span class="p">(</span><span class="n">policy</span><span class="o">=</span><span class="n">kaa</span><span class="o">.</span><span class="n">POLICY_SINGLETON</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">z</span><span class="p">():</span>
+    <span class="c"># do stuff ...</span>
+    <span class="k">yield</span> <span class="n">whatever</span><span class="p">()</span>
+
+<span class="nd">@kaa.coroutine</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">a</span><span class="p">():</span>
+    <span class="k">yield</span> <span class="n">z</span><span class="p">()</span>
+
+<span class="nd">@kaa.coroutine</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">b</span><span class="p">():</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">z</span><span class="p">()</span>
+    <span class="k">except</span> <span class="n">kaa</span><span class="o">.</span><span class="n">InProgressAborted</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">e</span><span class="o">.</span><span class="n">inprogress</span><span class="o">.</span><span class="n">abort</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In this case, if <tt class="docutils literal"><span class="pre">abort()</span></tt> was called on <tt class="docutils literal"><span class="pre">b()</span></tt>, its exception handler
+would abort <tt class="docutils literal"><span class="pre">z()</span></tt>, which could cause <a class="reference internal" href="inprogress.html#kaa.InProgressAborted" title="kaa.InProgressAborted"><tt class="xref py py-class docutils literal"><span class="pre">InProgressAborted</span></tt></a>
+to be raised inside <tt class="docutils literal"><span class="pre">a()</span></tt>.  If <tt class="docutils literal"><span class="pre">b()</span></tt> didn&#8217;t exist in the above
+example, <tt class="docutils literal"><span class="pre">z()</span></tt> would automatically be aborted.  You could prevent
+this by using <tt class="xref py py-meth docutils literal"><span class="pre">noabort()</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="nd">@kaa.coroutine</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">b</span><span class="p">():</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">z</span><span class="p">()</span><span class="o">.</span><span class="n">noabort</span><span class="p">()</span>
+    <span class="k">except</span> <span class="n">kaa</span><span class="o">.</span><span class="n">InProgressAborted</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">&#39;b() is aborted, but z() lives on&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<h4>Properties</h4><dl class="attribute">
+<dt id="kaa.CoroutineInProgress.active">
+<tt class="descname">active</tt><a class="headerlink" href="#kaa.CoroutineInProgress.active" title="Permalink to this definition">¶</a></dt>
+<dd><p>True if the coroutine is still waiting to be processed, or False if it&#8217;s
+finished.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.CoroutineInProgress.interval">
+<tt class="descname">interval</tt><a class="headerlink" href="#kaa.CoroutineInProgress.interval" title="Permalink to this definition">¶</a></dt>
+<dd><p>The interval between the coroutine yielding a <tt class="docutils literal"><span class="pre">kaa.NotFinished</span></tt> or
+<a class="reference internal" href="inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> and reentry.</p>
+</dd></dl>
+
+<h4>Signals</h4><dl class="attribute">
+<dt id="kaa.CoroutineInProgress.signals.abort">
+<tt class="descname">abort</tt><a class="headerlink" href="#kaa.CoroutineInProgress.signals.abort" title="Permalink to this definition">¶</a></dt>
+<dd><p>Emitted when abort() is called.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">def callback(exc)</tt></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Param exc:</th><td class="field-body">an exception object the InProgress was aborted with.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type exc:</th><td class="field-body"><a class="reference internal" href="inprogress.html#kaa.InProgressAborted" title="kaa.InProgressAborted"><tt class="xref py py-class docutils literal"><span class="pre">InProgressAborted</span></tt></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<p>If the task cannot be aborted, the callback can return False, which
+will cause an exception to be raised by abort().</p>
+</dd></dl>
+
+</p>
+</dd></dl>
+
+</p>
 </div>
 </div>
 
@@ -327,12 +444,12 @@ inside the coroutine, or its interval may be adjusted via the
         <li class="right" >
           <a href="inprogress.html" title="InProgress Objects"
              >previous</a> |</li>
-        <li><a href="../index.html">kaa.base 0.99.2dev-385-2744df5a documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2dev-406-2796ba76 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on May 14, 2012.
+      Last updated on May 30, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>

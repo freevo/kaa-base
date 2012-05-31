@@ -538,7 +538,7 @@ def setup(**kwargs):
             f.close()
 
     auto_changelog = kwargs.pop('auto_changelog', False)
-    if len(sys.argv) > 1 and any(arg.startswith('bdist') or arg.startswith('sdist') for arg in sys.argv):
+    if any(arg.startswith('bdist') or arg.startswith('sdist') for arg in sys.argv):
         if auto_changelog:
             if os.path.isdir('.git'):
                 print('generate ChangeLog from git')

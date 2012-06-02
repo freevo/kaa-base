@@ -12,7 +12,9 @@ suspending and resuming execution at specified locations.  They allow you to:
 
  * write sequentially flowing code involving potentially blocking tasks (e.g.
    socket IO) that is actually completely non-blocking
- * "time slice" large, computationally expensive tasks to avoid blocking
+ * "time slice" large, computationally expensive tasks to avoid blocking the
+   mainloop for extended periods of time (which would prevent timers, IO
+   handlers, and other coroutines from running)
  * help solve complex problems involving state `without using explicit state machines <http://eli.thegreenplace.net/2009/08/29/co-routines-as-an-alternative-to-state-machines/>`_
 
 In the event where blocking is unavoidable, and the duration of the block is
@@ -44,9 +46,9 @@ a "time slice" so that other tasks may run.
 
 When a coroutine yields any value other than ``kaa.NotFinished`` (including None),
 the coroutine is considered finished and the InProgress returned to the caller
-will be :ref:`emitted <emitting>` (i.e. it is finished). As with return, if no
-value is explicitly yielded and the coroutine terminates, the InProgress is
-finished with None.
+will be :ref:`emitted <emitting>` (i.e. it is finished). As with normal
+function return values, if no value is explicitly yielded and the coroutine
+terminates, the InProgress is finished with None.
 
 There is an important exception to the above rule: if the coroutine yields an
 :class:`~kaa.InProgress` object, the coroutine will be resumed when the
@@ -101,8 +103,9 @@ was introduced in Python 2.5.  kaa.base requires Python 2.5 or later.)
 
 Classes in kaa make heavy use of coroutines and (to a lesser extent) threads
 when methods would otherwise block on some resource.  Both coroutines and
-:ref:`@threaded <threaded>`-decorated methods return InProgress objects and behave identically.
-These can be therefore yielded from a coroutine in the same way::
+:ref:`@threaded <threaded>`-decorated methods return InProgress objects (well,
+special subclasses of InProgress objects) and behave identically.  These can be
+therefore yielded from a coroutine in the same way::
 
     @kaa.coroutine()
     def fetch_page(host):
@@ -149,14 +152,110 @@ your application to use signals and callbacks, it might not be clear where
 coroutines would be useful.
 
 However, if you make use of the asynchronous plumbing that kaa offers early on
-in your design -- and that includes healthy use of :class:`~kaa.InProgress`
-objects, either explicitly or implicitly through the use of the @coroutine
-and :ref:`@threaded <threaded>` decorators -- you should find that you're able
-to produce some surprisingly elegant, non-trivial code.
+in your design -- and that includes liberal use of :class:`~kaa.InProgress`
+objects, either explicitly or implicitly through the use of the
+:ref:`@coroutine <coroutine>` and :ref:`@threaded <threaded>` decorators -- you
+should find that you're able to produce some surprisingly elegant, non-trivial
+code.
+
+
+Aborting Coroutines
+===================
+
+Coroutines that have yielded and are awaiting reentry can be aborted by calling
+the :meth:`~kaa.CoroutineInProgress.abort` method on the
+:class:`~kaa.CoroutineInProgress` object returned when invoking a coroutine.
+Consider this simple case::
+
+    @kaa.coroutine()
+    def delay_print(s):
+        yield kaa.delay(5)
+        print s
+
+    delay_print('Hello Kaa').abort()
+    kaa.main.run()
+
+When aborted, an :class:`~kaa.InProgressAborted` exception will be raised inside
+the coroutine.  If the exception is not caught, then it is raised back to the
+caller of :meth:`~kaa.CoroutineInProgress.abort`.  In the above example, because
+``delay_print`` doesn't catch any exception, abort() will raise.  The
+coroutine can catch the exception and do something suitable::
+
+    @kaa.coroutine()
+    def delay_print(s):
+        try:
+            yield kaa.delay(5)
+        except kaa.InProgressAborted as e:
+            # Nothing special needed to abort this.
+            pass
+        else:
+            print s
+
+The :class:`~kaa.InProgressAborted` exception object has an
+:attr:`~kaa.InProgressAborted.inprogress` attribute, which will always be the
+:class:`~kaa.InProgress` object of the yielded task (or none if
+``kaa.NotFinished`` was yielded), and an :attr:`~kaa.InProgressAborted.origin`
+attribute that is the :class:`~kaa.InProgress` of the task that abort() was
+called on.
+
+Provided it is :attr:`~kaa.InProgress.abortable` and nothing else but the
+coroutine being aborted is waiting on it, any :class:`~kaa.InProgress` task
+yielded by a coroutine will be aborted before the exception is raised inside
+the function.  So in the above example, ``e.inprogress`` refers to the
+:class:`~kaa.InProgress` object returned by :func:`kaa.delay` and
+``e.inprogress.finished`` will be True.
+
+This cascading abort can be prevented by the coroutine by instead yielding an
+unabortable version of the InProgress using :meth:`~kaa.InProgress.noabort`::
+
+    @kaa.coroutine()
+    def delay_print(s):
+        try:
+            yield kaa.delay(5).noabort()
+        except kaa.InProgressAborted as e:
+            print e.inprogress.finished, 'will be false'
+        else:
+            print s
+
+This means :func:`kaa.delay` in the above example will live on even when
+``delay_print`` is aborted.  (Not that it does any good in this contrived example,
+since the timer will fire and do nothing, but you get the idea.)
+
+Although it can catch the :class:`~kaa.InProgressAborted`, the coroutine is
+still considered aborted and it will not be reentered again.  If it attempts to
+yield a value that suggests it expects reentry (like ``kaa.NotFinished`` or an
+:class:`~kaa.InProgress`) then a ``RuntimeError`` will be raised.  There is
+nothing a coroutine can do to prevent its own demise.  But a coroutine ``a()``
+that yields another coroutine ``z()`` can prevent ``z()`` from being aborted when
+``a()`` is aborted by using :meth:`~kaa.InProgress.noabort`.
+
+If a coroutine yields a task that is aborted, then an :class:`~kaa.InProgressAborted`
+will also be raised inside the coroutine whose yielded task was aborted.  The
+:attr:`~kaa.InProgressAborted.origin` attribute will indicate the task that was the
+source of the abort::
+
+    @kaa.coroutine(policy=kaa.POLICY_SINGLETON)
+    def singleton():
+        try:
+            yield kaa.delay(5)
+        except kaa.InProgressAborted as e:
+            print 'singleton() aborted'
+
+    @kaa.coroutine()
+    def master():
+        try:
+            yield singleton()
+        except kaa.InProgressAborted as e:
+            print 'master() aborted because %s aborted' % e.origin
+
+    master()
+    kaa.OneShotTimer(singleton().abort).start(1)
 
 
 Decorator
 =========
+
+.. _coroutine:
 
 .. autofunction:: kaa.coroutine
 

@@ -41,7 +41,7 @@ FIXME: this section is not yet written
    .. automethods::
       :remove: start
 
-      .. automethod:: start(hour=range(24), min=range(60), sec=0)
+      .. automethod:: kaa.OneShotAtTimer.start(hour=range(24), min=range(60), sec=0)
 
 .. kaaclass:: kaa.AtTimer
    :synopsis:

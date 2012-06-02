@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>The Main Loop &mdash; kaa.base 0.99.2dev-406-2796ba76 documentation</title>
+    <title>The Main Loop &mdash; kaa.base 0.99.2dev-408-9f294ff9 documentation</title>
     
     <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -16,7 +16,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.99.2dev-406-2796ba76',
+        VERSION:     '0.99.2dev-408-9f294ff9',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="kaa.base 0.99.2dev-406-2796ba76 documentation" href="../index.html" />
+    <link rel="top" title="kaa.base 0.99.2dev-408-9f294ff9 documentation" href="../index.html" />
     <link rel="next" title="Timers" href="timer.html" />
     <link rel="prev" title="Signals and Callables" href="signals.html" />
     <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
@@ -47,7 +47,7 @@
         <li class="right" >
           <a href="signals.html" title="Signals and Callables"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">kaa.base 0.99.2dev-406-2796ba76 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2dev-408-9f294ff9 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -56,7 +56,7 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <span class="target" id="module-kaa.main"></span><div class="section" id="the-main-loop">
+  <div class="section" id="the-main-loop">
 <h1>The Main Loop<a class="headerlink" href="#the-main-loop" title="Permalink to this headline">¶</a></h1>
 <p id="notifier">The plumbing within Kaa that orchestrates the main loop &#8211; dispatching
 callbacks triggered by events (such as activity on a file descriptor or timers)
@@ -254,8 +254,8 @@ For example:</p>
 <p>Importing other Kaa modules (such as those in <a class="reference internal" href="../input.html#module-kaa.input" title="kaa.input: Input plugins for stdin and LIRC"><tt class="xref py py-mod docutils literal"><span class="pre">kaa.input</span></tt></a>) may add specialized
 signals, however by default <tt class="docutils literal"><span class="pre">kaa.signals</span></tt> contains:</p>
 <dl class="attribute">
-<dt id="kaa.main.shutdown">
-<tt class="descclassname">kaa.main.</tt><tt class="descname">shutdown</tt><a class="headerlink" href="#kaa.main.shutdown" title="Permalink to this definition">¶</a></dt>
+<dt id="shutdown">
+<tt class="descname">shutdown</tt><a class="headerlink" href="#shutdown" title="Permalink to this definition">¶</a></dt>
 <dd><p>Emitted when the Kaa main loop is shutting down, but before any
 subprocesses or threads are terminated.</p>
 <dl class="describe">
@@ -267,8 +267,8 @@ subprocesses or threads are terminated.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="kaa.main.exit">
-<tt class="descclassname">kaa.main.</tt><tt class="descname">exit</tt><a class="headerlink" href="#kaa.main.exit" title="Permalink to this definition">¶</a></dt>
+<dt id="exit">
+<tt class="descname">exit</tt><a class="headerlink" href="#exit" title="Permalink to this definition">¶</a></dt>
 <dd><p>Emitted when the process exits.  This differs from the <tt class="docutils literal"><span class="pre">shutdown</span></tt> signal
 in that the Python program may continue to run after <tt class="docutils literal"><span class="pre">shutdown</span></tt> emits and
 the mainloop terminates, whereas <tt class="docutils literal"><span class="pre">exit</span></tt> is invoked from an <tt class="docutils literal"><span class="pre">atexit</span></tt>
@@ -282,8 +282,8 @@ handler.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt>
-<tt class="descclassname">kaa.main.</tt><tt class="descname">step</tt></dt>
+<dt id="step">
+<tt class="descname">step</tt><a class="headerlink" href="#step" title="Permalink to this definition">¶</a></dt>
 <dd><p>Emitted after each iteration step of the main loop.</p>
 <p>This signal is probably not suitable as an &#8216;idle worker&#8217; because the
 interval between emissions may be as much as 30 seconds.  However it is
@@ -299,8 +299,8 @@ canvas after notifier callbacks have manipulated objects upon it.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="kaa.main.exception">
-<tt class="descclassname">kaa.main.</tt><tt class="descname">exception</tt><a class="headerlink" href="#kaa.main.exception" title="Permalink to this definition">¶</a></dt>
+<dt id="exception">
+<tt class="descname">exception</tt><a class="headerlink" href="#exception" title="Permalink to this definition">¶</a></dt>
 <dd><p>Emitted when an uncaught exception has bubbled up to the main loop.  This
 signal presents the last chance to handle it before the main loop will
 be aborted.  (This also includes SystemExit and KeyboardInterrupt.)</p>
@@ -478,7 +478,7 @@ version of kaa may fix that problem.</p>
 <p>If you create a wrapper to use kaa with a different mainloop
 using this solution please send us an example so we can include
 support for that mainloop in the kaa distribution.</p>
-</div>
+<span class="target" id="module-kaa.main"></span></div>
 </div>
 
 
@@ -545,12 +545,12 @@ support for that mainloop in the kaa distribution.</p>
         <li class="right" >
           <a href="signals.html" title="Signals and Callables"
              >previous</a> |</li>
-        <li><a href="../index.html">kaa.base 0.99.2dev-406-2796ba76 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2dev-408-9f294ff9 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on May 30, 2012.
+      Last updated on Jun 02, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>

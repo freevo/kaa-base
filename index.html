@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>The Kaa Application Framework &mdash; kaa.base 0.99.2dev-406-2796ba76 documentation</title>
+    <title>The Kaa Application Framework &mdash; kaa.base 0.99.2dev-408-9f294ff9 documentation</title>
     
     <link rel="stylesheet" href="_static/kaa.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -16,7 +16,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '0.99.2dev-406-2796ba76',
+        VERSION:     '0.99.2dev-408-9f294ff9',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="kaa.base 0.99.2dev-406-2796ba76 documentation" href="#" />
+    <link rel="top" title="kaa.base 0.99.2dev-408-9f294ff9 documentation" href="#" />
     <link rel="next" title="Signals and Callables" href="core/signals.html" />
     <!-- link rel="stylesheet" href="_static/kaa.css" type="text/css" /-->
 
@@ -43,7 +43,7 @@
         <li class="right" >
           <a href="core/signals.html" title="Signals and Callables"
              accesskey="N">next</a> |</li>
-        <li><a href="#">kaa.base 0.99.2dev-406-2796ba76 documentation</a> &raquo;</li> 
+        <li><a href="#">kaa.base 0.99.2dev-408-9f294ff9 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -70,6 +70,72 @@ magical API for <a class="reference internal" href="async/coroutines.html#corout
 coroutines in combination with <a class="reference internal" href="async/inprogress.html#inprogress"><em>InProgress</em></a> objects,
 which are used extensively throughout Kaa, allow you to implement complex state
 machines responding to asynchronous events in very compact, readable code.</p>
+<p>Here is a small taste of what an application written using Kaa looks like:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">time</span><span class="o">,</span> <span class="nn">socket</span><span class="o">,</span> <span class="nn">errno</span>
+<span class="kn">import</span> <span class="nn">kaa</span>
+
+<span class="nd">@kaa.timed</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">timer</span><span class="p">():</span>
+    <span class="s">&quot;This function is invoked every second from the main loop.&quot;</span>
+    <span class="k">print</span> <span class="s">&#39;timer fired at&#39;</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+
+<span class="nd">@kaa.threaded</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">thread</span><span class="p">(</span><span class="n">count</span><span class="p">):</span>
+    <span class="s">&quot;This function runs in a thread.  Notice it blocks.&quot;</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">count</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s">&#39;thread woke up at&#39;</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="nd">@kaa.coroutine</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">coroutine</span><span class="p">():</span>
+    <span class="s">&quot;By yielding, this function can have multiple reentry points.&quot;</span>
+    <span class="c"># We can spawn a new instance of thread().  The coroutine will reenter</span>
+    <span class="c"># after thread() finishes, but the main loop is not blocked; the timer</span>
+    <span class="c"># we started keeps firing all the while.</span>
+    <span class="k">print</span> <span class="s">&#39;coroutine starting&#39;</span>
+    <span class="k">yield</span> <span class="n">thread</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+
+    <span class="c"># Sub-process IO doesn&#39;t block.</span>
+    <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">kaa</span><span class="o">.</span><span class="n">Process</span><span class="p">(</span><span class="s">&#39;lsusb&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">communicate</span><span class="p">()</span>
+
+    <span class="c"># And of course sockets don&#39;t block. Notice that asynchronously</span>
+    <span class="c"># generated exceptions can be handled as if you were writing typical</span>
+    <span class="c"># blocking code.</span>
+    <span class="n">sock</span> <span class="o">=</span> <span class="n">kaa</span><span class="o">.</span><span class="n">Socket</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">sock</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s">&#39;www.freevo.org:80&#39;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">socket</span><span class="o">.</span><span class="n">error</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s">&#39;Connection failed:&#39;</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">strerror</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">sock</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;GET / HTTP/1.0</span><span class="se">\n\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="n">webpage</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">sock</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+        <span class="k">print</span> <span class="n">webpage</span>
+
+    <span class="c"># We can yield back to the main loop at any time.</span>
+    <span class="k">yield</span> <span class="n">kaa</span><span class="o">.</span><span class="n">NotFinished</span>
+
+    <span class="c"># Or we can be reentered after some (non-blocking) period of time.</span>
+    <span class="k">yield</span> <span class="n">kaa</span><span class="o">.</span><span class="n">delay</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="c"># Ok, let&#39;s shut everything down.  Main loop stops and coroutine exits.</span>
+    <span class="n">kaa</span><span class="o">.</span><span class="n">main</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+    <span class="k">print</span> <span class="s">&#39;coroutine done&#39;</span>
+
+<span class="c"># Start a new thread that runs thread() inside it.</span>
+<span class="n">thread</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<span class="c"># Start the timed function</span>
+<span class="n">timer</span><span class="p">()</span>
+<span class="c"># Invoke the coroutine.  It will immediately execute everything before the</span>
+<span class="c"># first yield and then return, having scheduled itself for reentry.</span>
+<span class="n">coroutine</span><span class="p">()</span>
+<span class="c"># Start the main loop.  This blocks until explicitly stopped, or if</span>
+<span class="c"># KeyboardInterrupt or SystemExit is raised, or if there is an uncaught</span>
+<span class="c"># exception.</span>
+<span class="n">kaa</span><span class="o">.</span><span class="n">main</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
 </div>
 <div class="section" id="where-do-i-get-kaa-base">
 <h2>Where do I get kaa.base?<a class="headerlink" href="#where-do-i-get-kaa-base" title="Permalink to this headline">¶</a></h2>
@@ -227,12 +293,12 @@ yum install python-kaa-base
         <li class="right" >
           <a href="core/signals.html" title="Signals and Callables"
              >next</a> |</li>
-        <li><a href="#">kaa.base 0.99.2dev-406-2796ba76 documentation</a> &raquo;</li> 
+        <li><a href="#">kaa.base 0.99.2dev-408-9f294ff9 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on May 30, 2012.
+      Last updated on Jun 02, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>

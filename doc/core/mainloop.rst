@@ -1,6 +1,3 @@
-.. module:: kaa.main
-   :synopsis: The main loop facility
-
 The Main Loop
 =============
 
@@ -273,3 +270,8 @@ version of kaa may fix that problem.
 If you create a wrapper to use kaa with a different mainloop
 using this solution please send us an example so we can include
 support for that mainloop in the kaa distribution.
+
+.. Declare the module at the bottom because otherwise the signal attributes
+   are incorrectly prefixed with kaa.main.
+.. module:: kaa.main
+   :synopsis: The main loop facility

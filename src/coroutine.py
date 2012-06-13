@@ -48,7 +48,10 @@
 # -----------------------------------------------------------------------------
 from __future__ import absolute_import
 
-__all__ = [ 'NotFinished', 'coroutine' ]
+__all__ = [
+    'NotFinished', 'coroutine', 'CoroutineInProgress',
+    'POLICY_SYNCHRONIZED', 'POLICY_SINGLETON', 'POLICY_PASS_LAST'
+]
 
 # python imports
 import sys
@@ -75,18 +78,6 @@ POLICY_PASS_LAST = 'passlast'
 # Currently running (not stopped) CoroutineInProgress objects.  See
 # CoroutineInProgress.__init__ for rational.
 _active_coroutines = set()
-
-def _process(generator, inprogress=None):
-    """
-    function to call next, step, or throw
-    """
-    if inprogress is not None:
-        if inprogress._exception:
-            inprogress._unhandled_exception = None
-            return generator.throw(*inprogress._exception)
-        return generator.send(inprogress._result)
-    return generator.next()
-
 
 def coroutine(interval=0, policy=None, progress=False, group=None):
     """
@@ -118,7 +109,7 @@ def coroutine(interval=0, policy=None, progress=False, group=None):
                   same group name will all be synchronized against each other.
                   Currently only methods within the same class may belong to
                   the same group.
-    :return: an :class:`~kaa.InProgress` object representing the coroutine.
+    :return: a :class:`~kaa.CoroutineInProgress` object representing the coroutine
 
     Possible policies are:
 
@@ -126,25 +117,25 @@ def coroutine(interval=0, policy=None, progress=False, group=None):
           and multiple calls are queued so that they execute sequentially.
         * ``kaa.POLICY_SINGLETON``: only one active instance of the coroutine is allowed
           to exist.  If the coroutine is invoked while another is running,
-          the CoroutineInProgress object returned by the first invocation
+          the :class:`~kaa.CoroutineInProgress` object returned by the first invocation
           until it finishes.
-        * ``kaa.POLICY_PASS_LAST``: passes the CoroutineInProgress of the most recently
-          called, unfinished invocation of this coroutine as the 'last'
-          kwarg.  If no such CoroutineInProgress exists, the last kwarg will
-          be None.  This is useful to chain multiple invocations of the
-          coroutine together, but unlike ``POLICY_SYNCHRONIZED``, the decorated
-          function is entered each invocation.
+        * ``kaa.POLICY_PASS_LAST``: passes the :class:`~kaa.CoroutineInProgress`
+          of the most recently called, unfinished invocation of this coroutine
+          as the 'last' kwarg.  If no such CoroutineInProgress exists, the last
+          kwarg will be None.  This is useful to chain multiple invocations of
+          the coroutine together, but unlike ``POLICY_SYNCHRONIZED``, the
+          decorated function is entered each invocation.
 
-    A function decorated with this decorator will always return an
-    :class:`~kaa.InProgress` object. It may already be finished (which happens if
-    the coroutine's first yielded value is one other than ``kaa.NotFinished`` or  
-    an InProgress object).
+    A function decorated with this decorator will always return a
+    :class:`~kaa.CoroutineInProgress` object. It may already be finished (which
+    happens if the coroutine's first yielded value is one other than
+    ``kaa.NotFinished`` or an :class:`~kaa.InProgress` object).
     
     If it is not finished, the coroutine's life can be controlled via the
-    :class:`~kaa.InProgress` it returns.  It can be aborted with
-    :meth:`~kaa.InProgress.abort`, in which case a GeneratorExit will be raised
-    inside the coroutine, or its interval may be adjusted via the
-    :attr:`~kaa.CoroutineInProgress.interval` property.
+    :class:`~kaa.CoroutineInProgress` it returns.  It can be aborted with
+    :meth:`~kaa.InProgress.abort`, in which case an `~kaa.InProgressAborted`
+    will be raised inside the coroutine, or its interval may be adjusted via
+    the :attr:`~kaa.CoroutineInProgress.interval` property.
     """
     if progress is True:
         progress = InProgressStatus
@@ -220,6 +211,12 @@ def coroutine(interval=0, policy=None, progress=False, group=None):
             elif ip._step() == True:
                 # Generator yielded NotFinished, so start the CoroutineInProgress timer.
                 ip._timer.start(interval)
+            elif ip.failed:
+                # Coroutine raised an exception immediately.  Here we just
+                # reference the result attribute, which will reraise back to
+                # the caller, rather than leaving it as an asynchronous
+                # exception.
+                ip.result
             return wrap(ip)
 
 
@@ -256,18 +253,24 @@ def _generator_coroutine(generator, func, args, kwargs):
 
 class CoroutineInProgress(InProgress):
     """
-    InProgress class that runs a generator function. This is also the return value
-    for coroutine if it takes some more time. progress can be either NotFinished
-    (iterate now) or InProgress (wait until InProgress is done).
+    An :class:`~kaa.InProgress` object returned by the :func:`coroutine` decorator.
+
+    The caller of :func:`kaa.coroutine` can interact with the coroutine via the returned
+    ``CoroutineInProgress`` object, or yield it from other coroutines.
+
+    Notably, coroutines can be aborted by invoking :meth:`abort` on this object.
     """
     def __init__(self, function, function_info, interval, progress=None):
-        InProgress.__init__(self)
+        super(CoroutineInProgress, self).__init__(frame=-1)
         self._coroutine = function
         self._coroutine_info = function_info
         self._timer = Timer(self._step)
         self._interval = interval
         self._prerequisite_ip = None
         self._valid = True
+        # Coroutines are by default abortable.  InProgressAborted will be raised
+        # inside the generator and can be caught there.
+        self._abortable = True
 
         if progress is NotFinished:
             # coroutine was stopped NotFinished, start the step timer
@@ -297,6 +300,20 @@ class CoroutineInProgress(InProgress):
         # stopped.
         #
         _active_coroutines.add(self)
+
+
+    def __repr__(self):
+        s = super(CoroutineInProgress, self).__repr__()
+        return s[:-1] + ', coroutine=%s at %s:%s>' % self._coroutine_info
+
+
+    @property
+    def active(self):
+        """
+        True if the coroutine is still waiting to be processed, or False if it's
+        finished.
+        """
+        return True if self._coroutine else False
 
 
     @property
@@ -354,8 +371,7 @@ class CoroutineInProgress(InProgress):
         """
         try:
             while True:
-                result = _process(self._coroutine, self._prerequisite_ip)
-                self._prerequisite_ip = None
+                result = self._step_generator()
                 if result is NotFinished:
                     # Schedule next iteration with the timer
                     return True
@@ -409,24 +425,90 @@ class CoroutineInProgress(InProgress):
 
 
     def abort(self, exc=None):
-        if isinstance(self._prerequisite_ip, InProgress):
-            self._prerequisite_ip.disconnect(self._continue)
-            self._prerequisite_ip.exception.disconnect(self._continue)
+        """
+        Aborts the coroutine.
 
-            # It's possible for _prerequisite_ip to exist and be finished
-            # if this sequence occurs:
-            #      1. IP finishes, and self._continue is called.
-            #      2. Timer for self._continue is started.
-            #      3. abort() is called before the mainloop fires the timer.
-            # So we don't attempt to abort() it if it's already finished.
-            if not self._prerequisite_ip.finished:
+        See :meth:`kaa.InProgress.abort` for argument details.
+
+        This will raise the supplied exception (:class:`~kaa.InProgressAborted`
+        if not given) inside the coroutine.  If the coroutine doesn't catch the
+        exception, then it will be raised back to the caller of :meth:`abort`.
+
+        If the coroutine being aborted is currently waiting on some other yielded
+        :class:`~kaa.InProgress` which is :attr:`~kaa.InProgress.abortable`
+        (which includes other coroutines as well as :func:`~kaa.threaded`
+        functions, both of which are abortable by default), then it will also
+        be aborted if and only if nothing else is waiting for it.
+
+        For example, a ``POLICY_SINGLETON`` coroutine ``z()`` that is yielded
+        from both coroutine ``a()`` and ``b()`` would not be aborted if either
+        ``a()`` or ``b()`` were aborted.  If you want ``z()`` to be aborted, then
+        ``a()`` and/or ``b()`` would need to catch :class:`~kaa.InProgressAborted`
+        when yielding ``z()`` and explicitly abort it::
+
+            @kaa.coroutine(policy=kaa.POLICY_SINGLETON)
+            def z():
+                # do stuff ...
+                yield whatever()
+
+            @kaa.coroutine()
+            def a():
+                yield z()
+
+            @kaa.coroutine()
+            def b():
                 try:
-                    self._prerequisite_ip.abort(exc)
-                except Exception:
-                    log.exception('Error aborting %s yielded from coroutine', self._prerequisite_ip)
+                    yield z()
+                except kaa.InProgressAborted as e:
+                    e.inprogress.abort(e)
 
-        if self._coroutine:
-            return self._stop(exc=exc)
+        In this case, if ``abort()`` was called on ``b()``, its exception handler
+        would abort ``z()``, which could cause :class:`~kaa.InProgressAborted`
+        to be raised inside ``a()``.  If ``b()`` didn't exist in the above
+        example, ``z()`` would automatically be aborted.  You could prevent
+        this by using :meth:`noabort`::
+
+            @kaa.coroutine()
+            def b():
+                try:
+                    yield z().noabort()
+                except kaa.InProgressAborted as e:
+                    print('b() is aborted, but z() lives on')
+        """
+        if not self.abortable:
+            raise RuntimeError('coroutine is not abortable')
+
+        if not exc:
+            exc = InProgressAborted('Coroutine aborted', inprogress=self)
+        exc.origin = self
+        try:
+            if isinstance(self._prerequisite_ip, InProgress):
+                self._prerequisite_ip.disconnect(self._continue)
+                self._prerequisite_ip.exception.disconnect(self._continue)
+
+                # It's possible for _prerequisite_ip to exist and be finished
+                # if this sequence occurs:
+                #      1. IP finishes, and self._continue is called.
+                #      2. Timer for self._continue is started.
+                #      3. abort() is called before the mainloop fires the timer.
+                #
+                # So we don't attempt to abort() it if it's already finished, nor if it
+                # isn't abortable or if something else is waiting for it.
+                if not self._prerequisite_ip.finished and len(self._prerequisite_ip) == 0 and \
+                   self._prerequisite_ip.abortable:
+                    try:
+                        self._prerequisite_ip.abort(exc)
+                    except InProgressAborted:
+                        # If abort() reraises InProgressAborted, it means it's a coroutine
+                        # whose generator did not handle the exception, and so generator.throw()
+                        # raised it.  Reraise it here since we want to give the opportunity for
+                        # other coroutines that have yielded us to handle it.
+                        raise
+                    except Exception:
+                        log.exception('Error aborting %s yielded from coroutine', self._prerequisite_ip)
+        finally:
+            if self._coroutine:
+                return self._stop(exc=exc)
 
 
     def _stop(self, finished=False, exc=None):
@@ -453,17 +535,6 @@ class CoroutineInProgress(InProgress):
             ### self._prerequisite_ip.abort()
 
         try:
-            if not finished:
-                # Throw an InProgressAborted exception so that any callbacks
-                # attached to us get notified that we've aborted.  The
-                # generator itself will receive a GeneratorExit exception via
-                # the generator's close() method later on.
-                self.signals['abort'].emit(exc)
-                if len(self.exception):
-                    if not exc:
-                        exc = InProgressAborted('Coroutine aborted')
-                    super(CoroutineInProgress, self).throw(exc.__class__, exc, None)
-
             # This is a (potentially) active coroutine that expects to be reentered and we
             # are aborting it prematurely.  We call the generator's close() method
             # (introduced in Python 2.5), which raises GeneratorExit inside the coroutine
@@ -475,6 +546,37 @@ class CoroutineInProgress(InProgress):
             # safely call close(), and can even call it multiple times with no ill effect.
             # So we call it explicitly now and catch any 'generator ignored GeneratorExit'
             # exceptions it might raise so that we can log some more sensible output.
+            if exc:
+                # Coroutine is stopping with an exception, so raise it inside the generator.
+                # throw() will raise the exception we pass to it if it's not handled inside the
+                # generator.  If we're here because of abort(), this will bubble up.  It allows
+                # a chain of coroutines to be aborted, and allows any one of them to handle the
+                # InProgressAborted.  If none do, then the original abort() invoked by the user
+                # call will raise.
+                if isinstance(exc, InProgressAborted):
+                    # Exception being raised inside the generator is an InProgressAborted.
+                    # Replace the inprogress attribute with the prerequisite InProgress
+                    # before raising.
+                    if exc.inprogress != self._prerequisite_ip:
+                        exc = exc.__class__(*exc.args, inprogress=self._prerequisite_ip, origin=exc.origin)
+                try:
+                    self._coroutine.throw(exc.__class__, exc, None)
+                except StopIteration:
+                    # Generator caught the exception but didn't yield an additional value.
+                    # That's fine, since there's nothing we can do with it anyway.
+                    pass
+                finally:
+                    if not finished:
+                        # Throw an InProgressAborted exception so that any callbacks
+                        # attached to us get notified that we've aborted.  The
+                        # generator itself will receive a GeneratorExit exception via
+                        # the generator's close() method later on.
+                        self.signals['abort'].emit(exc)
+                        if len(self.exception):
+                            # Throw if we know someone will handle it.
+                            super(CoroutineInProgress, self).throw(exc.__class__, exc, None)
+
+
             try:
                 self._coroutine.close()
             except RuntimeError:
@@ -488,3 +590,26 @@ class CoroutineInProgress(InProgress):
             self._timer = None
             self._coroutine = None
             self._prerequisite_ip = None
+
+
+    def _step_generator(self):
+        """
+        Invokes the appropriate method on the generator.  If the coroutine
+        yielded on some other InProgress which has finished, it will either
+        throw() or send() into the generator.  Otherwise it will next().
+        """
+        prereq = self._prerequisite_ip
+        if prereq is not None:
+            self._prerequisite_ip = None
+            if prereq._exception:
+                tp, exc, tb = prereq._exception
+                prereq._unhandled_exception = None
+                if isinstance(exc, InProgressAborted):
+                    # Exception being raised inside the generator is an InProgressAborted.
+                    # Replace the inprogress attribute with the prerequisite InProgress
+                    # before raising.
+                    if exc.inprogress != prereq:
+                        exc = exc.__class__(*exc.args, inprogress=prereq, origin=exc.origin)
+                return self._coroutine.throw(tp, exc, tb)
+            return self._coroutine.send(prereq._result)
+        return self._coroutine.next()

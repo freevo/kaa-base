@@ -25,7 +25,7 @@
 from __future__ import absolute_import
 
 __all__ = [ 'timed', 'Timer', 'WeakTimer', 'OneShotTimer', 'WeakOneShotTimer',
-            'AtTimer', 'OneShotAtTimer', 'POLICY_ONCE', 'POLICY_MANY',
+            'AtTimer', 'OneShotAtTimer', 'delay', 'POLICY_ONCE', 'POLICY_MANY',
             'POLICY_RESTART' ]
 
 import logging

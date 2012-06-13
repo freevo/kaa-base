@@ -359,8 +359,8 @@ _lazy_import('event', ['Event', 'EventHandler', 'WeakEventHandler'])
 
 # coroutine decorator and helper classes
 _lazy_import('coroutine', [
-    'NotFinished', 'coroutine', 'POLICY_SYNCHRONIZED', 'POLICY_SINGLETON',
-    'POLICY_PASS_LAST'
+    'NotFinished', 'coroutine', 'CoroutineInProgress',
+    'POLICY_SYNCHRONIZED', 'POLICY_SINGLETON', 'POLICY_PASS_LAST'
 ])
 
 # generator support

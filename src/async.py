@@ -26,7 +26,7 @@ from __future__ import absolute_import
 
 __all__ = [
     'InProgress', 'InProgressCallable', 'InProgressAny', 'InProgressAll', 'inprogress',
-    'delay', 'InProgressStatus'
+    'InProgressStatus'
 ]
 
 # python imports
@@ -196,10 +196,9 @@ class InProgress(Signal, Object):
     # _finished_event_poke() for more details.  
     _finished_event_lock = threading.Lock()
 
-    def __init__(self, abortable=False, frame=0):
+    def __init__(self, abortable=None, frame=0):
         """
         :param abortable: see the :attr:`~kaa.InProgress.abortable` property.  
-                          (Default: False)
         :type abortable: bool
         """
         super(InProgress, self).__init__()
@@ -210,7 +209,9 @@ class InProgress(Signal, Object):
         self._unhandled_exception = None
         # TODO: make progress a property so we can document it.
         self.progress = None
-        self.abortable = abortable
+        # True: always abortable, False: never abortable, None: abortable if
+        # 'abort' signal has callbacks
+        self._abortable = abortable
 
         # If debugging is enabled, get the stack frame for the caller who is
         # creating us.  We only do this for DEBUG or more verbose because it
@@ -304,7 +305,7 @@ class InProgress(Signal, Object):
         True if the asynchronous task this InProgress represents can be
         aborted by a call to :meth:`~kaa.InProgress.abort`.
 
-        Normally :meth:`~kaa.InProgress.abort` will fail if there are no
+        By default :meth:`~kaa.InProgress.abort` will fail if there are no
         callbacks attached to the :attr:`~kaa.InProgress.signals.abort` signal.
         This property may be explicitly set to ``True``, in which case
         :meth:`~kaa.InProgress.abort` will succeed regardless.  An InProgress is
@@ -315,7 +316,7 @@ class InProgress(Signal, Object):
         This is useful when constructing an InProgress object that corresponds
         to an asynchronous task that can be safely aborted with no explicit action.
         """
-        return self._abortable or self.signals['abort'].count() > 0
+        return self._abortable or (self._abortable is None and self.signals['abort'].count() > 0)
 
 
     @abortable.setter
@@ -455,10 +456,14 @@ class InProgress(Signal, Object):
             # False.  So we won't log it.
             self._unhandled_exception = None
 
-        if isinstance(value, InProgressAborted):
+        # If we were thrown an InProgressAborted, the likely reason is an InProgress
+        # we were waiting on has been aborted.  In this case, we emit the abort
+        # signal and clear _unhandled_exception, provided we are abortable (which
+        # by default is true as long as there are any callbacks connected to the
+        # abort signal.  Otherwise, do not clear _unhandled_exception so that it
+        # gets logged.
+        if isinstance(value, InProgressAborted) and self.abortable:
             if not aborted:
-                # An InProgress we were waiting on has been aborted, so we
-                # abort too.
                 self.signals['abort'].emit(value)
             self._unhandled_exception = None
 
@@ -538,27 +543,23 @@ class InProgress(Signal, Object):
         :param exc: optional exception object with which to abort the InProgress; if
                     None is given, a general :class:`~kaa.InProgressAborted`
                     exception will be used.
-        :type exc: :class:`~kaa.InProgressAborted`
+        :type exc: :class:`~kaa.InProgressAborted` or subclass thereof
 
         Not all such tasks can be aborted.  If aborting is not supported, or if
         the InProgress is already finished, a RuntimeError exception is raised.
-
-        If a coroutine is aborted, the CoroutineInProgress object returned by
-        the coroutine will be finished with :class:`~kaa.InProgressAborted`,
-        while the underlying generator used by the coroutine will have the
-        standard GeneratorExit raised inside it.
         """
         if self.finished:
             raise RuntimeError('InProgress is already finished.')
 
         if exc is None:
-            exc = InProgressAborted('InProgress task aborted by abort()')
+            exc = InProgressAborted('InProgress task aborted by abort()', inprogress=self)
         elif not isinstance(exc, InProgressAborted):
             raise ValueError('Exception must be instance of InProgressAborted (or subclass thereof)')
 
         if not self.abortable or self.signals['abort'].emit(exc) == False:
             raise RuntimeError('%s cannot be aborted.' % self)
 
+        exc.origin = self
         self.throw(exc.__class__, exc, None, aborted=True)
 
 
@@ -577,7 +578,9 @@ class InProgress(Signal, Object):
         :return: a new :class:`~kaa.InProgress` object that is subject to the timeout
 
         If the original InProgress finishes before the timeout, the new InProgress
-        (returned by this method) is finished with the result of the original.
+        (returned by this method) is finished with the result of the original.  If
+        :meth:`abort` is called on the returned InProgress, the original one will
+        also be aborted.
 
         If a timeout does occur and the ``abort`` argument is False, the
         original InProgress object is not affected: it is not finished with the
@@ -588,11 +591,16 @@ class InProgress(Signal, Object):
             def read_from_socket(sock):
                 try:
                     data = yield sock.read().timeout(3)
-                except kaa.TimeoutException, (msg, inprogress):
-                    print 'Error:', msg
-                    inprogress.abort()
+                except kaa.TimeoutException as e:
+                    print 'Error:', e.args[0]
+                    e.inprogress.abort()
 
-        Aside from the print statement, this is equivalent::
+        If you set ``abort=True`` then the original InProgress is aborted
+        automatically, but *before* the TimeoutException is thrown into the new
+        InProgress returned by this method.  This allows a coroutine being
+        aborted to perform cleanup actions before relinquishing control back to
+        the caller.  In this example, sock.read() will be aborted if not
+        completed within 3 seconds::
         
             @kaa.coroutine()
             def read_from_socket(sock):
@@ -606,13 +614,48 @@ class InProgress(Signal, Object):
                 if callback:
                     callback()
                 msg = 'InProgress timed out after %.02f seconds' % timeout
-                async.throw(TimeoutException, TimeoutException(msg, self), None)
-                if abort:
-                    self.abort()
+                exc = TimeoutException(msg, inprogress=self)
+                try:
+                    if abort:
+                        # In the case of a coroutine, abort() will raise the supplied exc if there
+                        # are no abort handlers.  But we've already thrown a timeout into async,
+                        # and this closure is invoked from the notifier (via a timer) and can't
+                        # do anything about the exception anyway.  So suppress InProgressAborted
+                        # exceptions raised by abort().
+                        try:
+                            self.abort(exc)
+                        except InProgressAborted:
+                            pass
+                finally:
+                    async.throw(exc.__class__, exc, None)
+
+
         async.waitfor(self)
         from .timer import OneShotTimer
-        OneShotTimer(trigger).start(timeout)
+        timer = OneShotTimer(trigger)
+        timer.start(timeout)
+
+        # Add an abort handler to the new InProgress.  If it's aborted, abort self.
+        def abort(exc):
+            self.disconnect(async.finish)
+            self._exception_signal.disconnect(async.throw)
+            timer.stop()
+            self.abort(exc)
+
+        async.signals['abort'].connect(abort)
         return async
+
+
+    def noabort(self):
+        """
+        Create a new InProgress object for this task that cannot be aborted.
+
+        :return: a new :class:`~kaa.InProgress` object that finishes when self
+                 finishes, but will raise if an :meth:`abort` is attempted
+        """
+        ip = InProgress(abortable=False)
+        ip.waitfor(self)
+        return ip
 
 
     def execute(self, func, *args, **kwargs):
@@ -684,7 +727,7 @@ class InProgress(Signal, Object):
 
         if not self.finished:
             self.disconnect(dummy)
-            raise TimeoutException('Timed out', self)
+            raise TimeoutException('Timed out', inprogress=self)
 
         return self.result
 

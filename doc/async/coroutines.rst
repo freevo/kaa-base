@@ -159,3 +159,11 @@ Decorator
 =========
 
 .. autofunction:: kaa.coroutine
+
+.. kaaclass:: kaa.CoroutineInProgress
+   :synopsis:
+
+   .. automethods::
+      :remove: throw
+   .. autoproperties::
+   .. autosignals::

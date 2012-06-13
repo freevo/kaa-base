@@ -153,7 +153,8 @@ class CoreThreading:
 
     @staticmethod
     def _handle_generic_unix_signal(signum, frame, signals):
-        log.debug('received signal %d at %s:%d', signum, frame.f_code.co_filename, frame.f_lineno)
+        log.debug('received signal %d (%s)', signum,
+                  '%s:%d' % (frame.f_code.co_filename, frame.f_lineno) if frame else 'no frame')
         timer_id = None
         # Create a new closure to be registered with the notifier for
         # invocation to emit the appropriate signal.  We can't use the

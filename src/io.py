@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # io.py - I/O management for the Kaa Framework
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
 # Copyright 2005-2012 Dirk Meyer, Jason Tackaberry, et al.
 #
@@ -51,7 +48,7 @@ from .async import InProgress, inprogress
 from . import main
 
 # get logging object
-log = logging.getLogger('base.io')
+log = logging.getLogger('kaa.base.core.io')
 
 IO_READ   = 1
 IO_WRITE  = 2
@@ -292,7 +289,7 @@ class IOChannel(Object):
            (however that :meth:`read` call may return None, in which case the
            readable property will subsequently be False).
         """
-        return self._mode & IO_READ and (self._channel != None or self._read_queue.tell() > 0)
+        return self._mode & IO_READ and (self.alive or self._read_queue.tell() > 0)
 
 
     @property

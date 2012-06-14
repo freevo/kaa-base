@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # event.py - Event handling for the main loop
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
 # Copyright 2005-2012 Dirk Meyer, Jason Tackaberry, et al.
 #
@@ -41,7 +38,7 @@ from .timer import OneShotTimer
 from .utils import property
 
 # get logging object
-log = logging.getLogger('base')
+log = logging.getLogger('kaa.base.core')
 
 # manager object for eveny handling
 manager = None

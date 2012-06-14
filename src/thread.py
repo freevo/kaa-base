@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # thread.py - Thread support for the Kaa Framework
 # -----------------------------------------------------------------------------
-# $Id$
-# -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
 # Copyright 2005-2012 Dirk Meyer, Jason Tackaberry, et al.
 #
@@ -52,7 +50,7 @@ from .core import CoreThreading, Object
 from .async import InProgress, InProgressAborted, InProgressStatus
 
 # get logging object
-log = logging.getLogger('base')
+log = logging.getLogger('kaa.base.core.thread')
 
 # Thread pool name -> ThreadPool object
 _thread_pools = {}
@@ -231,6 +229,8 @@ class ThreadInProgress(InProgress):
         """
         Aborts the callable being executed inside a thread.  (Or attempts to.)
 
+        See :meth:`kaa.InProgress.abort` for argument details.
+
         Invocation of a :class:`~kaa.ThreadCallable` or
         :class:`~kaa.ThreadPoolCallable` will return a ``ThreadInProgress``
         object which may be aborted by calling this method.  When an
@@ -316,7 +316,6 @@ class ThreadCallableBase(Callable, Object):
 
             # We can't raise the exact exception into the thread, so just use the class.
             res = ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(tid), ctypes.py_object(exc.__class__))
-            print tid, res
             if res == 0:
                 # Thread not found.  Must have terminated an instant ago.
                 return
@@ -697,8 +696,8 @@ def threaded(pool=None, priority=0, async=True, progress=False, wait=False):
                  be necessary to set this to True if the kaa main loop is not
                  running.  (Default: False)
     :type wait: bool
-    :returns: :class:`~kaa.InProgress` if ``progress=False``, or the return value
-              or the decorated function if ``progress=True``
+    :returns: :class:`~kaa.ThreadedInProgress` if ``async=False``, or the return value
+              or the decorated function if ``async=True``
 
     A special pool constant :const:`kaa.MAINTHREAD` is available, which causes
     the decorated function to always be invoked from the main thread.  In this

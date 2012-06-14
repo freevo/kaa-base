@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # process.py - asynchronous subprocess control via IOChannel
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
 # Copyright 2008-2012 Dirk Meyer, Jason Tackaberry, et al.
 #
@@ -52,7 +49,7 @@ from .io import IOChannel, IO_WRITE, IO_READ
 from . import main
 
 # get logging object
-log = logging.getLogger('base.process')
+log = logging.getLogger('kaa.base.process')
 
 class _Supervisor(object):
     """
@@ -69,7 +66,7 @@ class _Supervisor(object):
 
         # Stop all processes as last part of mainloop termination.
         main.signals['shutdown-after'].connect(self.stopall)
-        main.signals['unix-signal'].connect(self._sigchld_handler)
+        main.signals['sigchld'].connect(self._sigchld_handler)
 
         # Set SA_RESTART bit for the signal, which restarts any interrupted
         # system calls -- however, select (at least on Linux) is NOT restarted
@@ -113,29 +110,28 @@ class _Supervisor(object):
             pass
 
 
-    @timed(0, timer=OneShotTimer, policy=POLICY_ONCE)
-    def _sigchld_handler(self, sig=None, frame=None):
+    def _sigchld_handler(self):
         """
-        Handler for SIGCHLD.  We invoke this as a OneShotTimer so that we get called
-        on the next pass of the mainloop.  If SIGCHLD just interrupted the select
+        Handler for SIGCHLD, via the ``sigchld`` signal which is emitted by
+        the core module from the main loop (i.e. not immediately within the SIGCHLD
+        handler which is asynchronous).  If SIGCHLD just interrupted the select
         call in pynotifier, then the following sequence occurs:
 
            1. SIGCHLD received, and Python's internal C sig handler then
-              queues the python handler to run after the bytecode that called
-              Python select() completes
+              queues the python handler (in core.py) to run after the bytecode
+              that called Python select() completes
            2. low level select() aborts with EINTR (because select ignores
               SA_RESTART bit) and select_error exception is set (but not
               raised into Python yet)
            3. The bytecode responsible for calling select() completes and the
               queued Python SIGCHLD handler is invoked (this is before the
               select_error is raised into Python space).
-           4. The @timed decorator wrapper is called (asynchronously), which
-              creates a new OneShotTimer to invoke this method
-              (_sigchld_handler) in 0s.
+           4. CoreThreading._handle_generic_unix_signal() sets up a timer with
+              the notifier to be invoked immediately on next main loop iteration.
            5. Python select() call finally raises select_error with EINTR,
               which is caught and ignored by pynotifier.
            6. pynotifier proceeds to fire any pending timers, and so the timer
-              that was just added to call _sigchld_handler is invoked,
+              that was just added to emit the ``sigchld`` signal is invoked,
               and Bob's your uncle.
 
         For system calls (such as read()) that _do_ honor the SA_RESTART bit,
@@ -146,10 +142,10 @@ class _Supervisor(object):
            2. System call is restarted (presumably within the kernel).
            3. The bytecode responsible for calling the system call completes.
            4. Before the return value is passed back into Python space, the
-              queued python handler (@timed decorator wrapper) is called
-              asynchronously as in #4 above.
+              queued python handler (CoreThreading._handle_generic_unix_signal)
+              is called asynchronously as in #4 above.
            5. The system call's return value is passed back into Python 
-              space as if nothing was interrupted, except now our timer is
+              space as if nothing was interrupted, except now the timer is
               queued.
            6. Next mainloop iteration, select() is called with a 0 timeout;
               then #6 as above.
@@ -160,7 +156,7 @@ class _Supervisor(object):
         especially as Process._check_dead() might involve some fairly complex
         paths.
         """
-        log.debug('SIGCHLD: entering timed handler: %s %s', sig, frame)
+        log.debug('SIGCHLD: entering handler')
         self.reapall()
         log.debug('SIGCHLD: handler completed')
 
@@ -585,6 +581,7 @@ class Process(Object):
         active. 
 
         .. warning::
+
            If :meth:`~kaa.InProgress.timeout` is called on the returned
            InProgress and the timeout occurs, the InProgress returned by
            :meth:`start` will be finished with a :class:`~kaa.TimeoutException`
@@ -592,7 +589,6 @@ class Process(Object):
            test the :attr:`running` property, or use the
            :attr:`~signals.finished` signal, which doesn't emit until the child
            process is genuinely dead.
-
         """
         if self._child and self._state != Process.STATE_HUNG:
             raise IOError(errno.EEXIST, 'Child process has already been started')
@@ -829,6 +825,9 @@ class Process(Object):
         :return: an :class:`~kaa.InProgress`, which will be finished with a
                  2-tuple (stdoutdata, stderrdata)
 
+        If the process has not yet been started, :meth:`start` will be
+        called implicitly.
+
         Any data previously written to the child with :meth:`write` will be
         flushed and the pipe to the child's stdin will be closed.  All
         subsequent data from the child's stdout and stderr will be read until
@@ -837,6 +836,9 @@ class Process(Object):
         This method is modeled after Python's standard library call
         ``subprocess.Popen.communicate()``.
         """
+        if self._state == Process.STATE_STOPPED:
+            self.start()
+
         if input:
             yield self.write(input)
         self.stdin.close()

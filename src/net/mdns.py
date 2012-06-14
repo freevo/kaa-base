@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # mdns.py - Simple Multicast DNS Interface
 # -----------------------------------------------------------------------------
-# $Id$
-#
 # This module provides a simple interface to multicast DNS (zeroconf) and
 # service discovery. Right now it requires Avahi as mdns service. Other
 # mdns implementations are not supported yet but should be added later to
@@ -46,7 +44,7 @@ import kaa
 from kaa.utils import property
 
 # get logging object
-log = logging.getLogger('mdns')
+log = logging.getLogger('kaa.base.net.mdns')
 
 class Service(object):
     """

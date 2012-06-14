@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # strutils.py - Miscellaneous utilities for string handling
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # Copyright 2006-2012 Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.

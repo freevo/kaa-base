@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # config.py - config file reader
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # Copyright 2006-2012 Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.
@@ -49,7 +46,7 @@ from .utils import property
 from . import main
 
 # get logging object
-log = logging.getLogger('config')
+log = logging.getLogger('kaa.base.config')
 
 # align regexp
 align = re.compile(u'\n( *)[^\n]', re.MULTILINE)
@@ -252,7 +249,14 @@ class VarProxy(Base):
         return super(VarProxy, self).__getattribute__(attr)
 
     def __str__(self):
-        return self._class.__str__(self)
+        if self._class == bool:
+            # In Python 2.7, bool.__str__(VarProxy object) no longer works, so we
+            # treat it as a special case and call str() directly on it.  We don't
+            # do this for all cases since with actual strings, the string would
+            # be wrapped in literal quotes.
+            return str(self._item)
+        else:
+            return self._class.__str__(self)
 
     def __repr__(self):
         return self._class.__repr__(self)
@@ -1046,6 +1050,9 @@ class Config(Group, Object):
         self._watch_mtime = 0
         self._watch_timer = WeakTimer(self._check_file_changed)
         self._inotify = None
+        # If True, watcher will ignore the next detected change, which is used
+        # when we save() but don't need to detect that the file has changed.
+        self._ignore_next_change = False
 
 
     def _hash(self, values=True):
@@ -1086,6 +1093,9 @@ class Config(Group, Object):
             if not self.filename:
                 raise ValueError, "Filename not specified and no default filename set."
             filename = self.filename
+        elif not self.filename:
+            # Set stored filename for future watch() and save()
+            self.filename = filename
 
         # If this callback was added due to autosave, remove it now.
         main.signals['exit'].disconnect(self.save)
@@ -1140,6 +1150,8 @@ class Config(Group, Object):
                 f.write('# %s\n%s\n\n' % (error, line))
         os.fdatasync(f.fileno())
         f.close()
+        if self._watching:
+            self._ignore_next_change = True
         os.rename(filename + '~', filename)
 
 
@@ -1392,6 +1404,11 @@ class Config(Group, Object):
 
     def _file_changed(self, mask, path, target):
         if mask & INotify.MODIFY:
+            if self._ignore_next_change:
+                # We're here because we save()ed which updated the file.  We can
+                # ignore.
+                self._ignore_next_change = False
+                return
             # Config file changed.  Attach a monitor so we can keep track of
             # any values that actually changed.
             changed_names = []

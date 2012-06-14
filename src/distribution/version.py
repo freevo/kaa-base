@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # version.py - version handling for kaa modules
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # Copyright 2005-2012 Dirk Meyer, Jason Tackaberry
 #
 # This program is free software; you can redistribute it and/or modify
@@ -25,10 +22,50 @@
 
 # python imports
 import math
+import re
+
+# The following two functions are taken from the setuptools project
+# (pkg_resources.py) in order to ensure compatibility with its
+# versioning scheme.
+#
+# Setuptool is written by Phillip J. Eby and released under the PSF or
+# ZPL licenses.  PSF is GPL-compatible.
+component_re = re.compile(r'(\d+ | [a-z]+ | \.| -)', re.VERBOSE)
+replace = {'pre':'c', 'preview':'c', '-':'final-', 'rc':'c', 'dev':'@'}.get
+
+def _parse_parts(s):
+    for part in component_re.split(s):
+        part = replace(part, part)
+        if not part or part == '.':
+            continue
+        if part[:1] in '0123456789':
+            yield part.zfill(8)    # pad for numeric comparison
+        else:
+            yield '*' + part
+    yield '*final'  # ensure that alpha/beta/candidate are before final
+
+
+def _parse(s):
+    s = str(s)  # coerce floats if needed
+    parts = []
+    for part in _parse_parts(s.lower()):
+        if part.startswith('*'):
+            if part < '*final':   # remove '-' before a prerelease tag
+                while parts and parts[-1] == '*final-':
+                    parts.pop()
+            # remove trailing zeros from each series of numeric parts
+            while parts and parts[-1] == '00000000':
+                parts.pop()
+        parts.append(part)
+    return tuple(parts)
+
 
 class Version(object):
     """
     Version information for kaa modules.
+
+    Version comparison follows the rules defined by `setuptools
+    <http://packages.python.org/distribute/setuptools.html#specifying-your-project-s-version>`_.
     """
     def __init__(self, version):
         """
@@ -47,43 +84,31 @@ class Version(object):
         return str(self)
 
 
-    def _cmp(self, b):
-        """
-        Numeric (if possible) or lexical comparison of each verison component.
-        """
-        b = str(b)  # coerce floats if needed
-        parts = max(self.version.count('.'), b.count('.'))
-        a = self.version.split('.') + ['0'] * (parts - self.version.count('.'))
-        b = b.split('.') + ['0'] * (parts - b.count('.'))
-        for ap, bp in zip(a, b):
-            if ap.isdigit() and bp.isdigit():
-                ap, bp = int(ap), int(bp)
-            if ap < bp:
-                return -1
-            elif ap > bp:
-                return 1
-        return 0
-
-
     def __eq__(self, obj):
-        # Don't just do a string compare, because we consider 0.99.0 == 0.99
-        return self._cmp(obj) == 0
+        return _parse(self.version) == _parse(obj)
 
 
     # Python 2.
     def __cmp__(self, obj):
-        return self._cmp(obj)
+        a = _parse(self.version)
+        b = _parse(obj)
+        if a == b:
+            return 0
+        elif a < b:
+            return -1
+        else:
+            return 1
 
 
     # Python 3
     def __lt__(self, obj):
-        return self._cmp(obj) == -1
+        return _parse(self.version) < _parse(obj)
 
     def __le__(self, obj):
-        return self._cmp(obj) in (-1, 0)
+        return _parse(self.version) < _parse(obj)
 
     def __gt__(self, obj):
-        return self._cmp(obj) == 1
+        return _parse(self.version) > _parse(obj)
 
     def __ge__(self, obj):
-        return self._cmp(obj) in (1, 0)
+        return _parse(self.version) >= _parse(obj)

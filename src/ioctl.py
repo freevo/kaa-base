@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # ioctl.py - A module to make ioctl's in python easier.
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # Copyright 2005-2012 Rob Shortt, Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.

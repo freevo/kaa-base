@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # m2.py - M2Crypto backend for TLSSocket
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # Copyright 2008-2012 Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.
@@ -40,7 +37,7 @@ M2Crypto.threading.init()
 kaa.signals['shutdown'].connect(M2Crypto.threading.cleanup)
 
 # get logging object
-log = logging.getLogger('tls')
+log = logging.getLogger('kaa.base.net.tls.m2')
 
 
 class _SSLWrapper:

@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # async.py - Async callback handling (InProgress)
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
 # Copyright 2006-2012 Dirk Meyer, Jason Tackaberry, et al.
 #
@@ -27,10 +24,10 @@
 # -----------------------------------------------------------------------------
 from __future__ import absolute_import
 
-__all__ = [ 'TimeoutException', 'InProgress', 'InProgressCallable',
-            'AsyncException', 'InProgressAny', 'InProgressAll', 'InProgressAborted',
-            'AsyncExceptionBase', 'make_exception_class', 'inprogress',
-            'delay', 'InProgressStatus' ]
+__all__ = [
+    'InProgress', 'InProgressCallable', 'InProgressAny', 'InProgressAll', 'inprogress',
+    'InProgressStatus'
+]
 
 # python imports
 import sys
@@ -42,22 +39,13 @@ import threading
 import types
 
 # kaa.base imports
+from .errors import AsyncException, AsyncExceptionBase, InProgressAborted, TimeoutException
 from .utils import property
 from .callable import Callable
 from .core import Object, Signal, Signals, CoreThreading
 
 # get logging object
-log = logging.getLogger('base.async')
-
-
-def make_exception_class(name, bases, dict):
-    """
-    Class generator for AsyncException.  Creates AsyncException class
-    which derives the class of a particular Exception instance.
-    """
-    def create(exc, stack, *args):
-        return type(name, bases + (exc.__class__,), {})(exc, stack, *args)
-    return create
+log = logging.getLogger('kaa.base.core.async')
 
 
 def inprogress(obj):
@@ -88,88 +76,6 @@ def inprogress(obj):
 
 
 
-class AsyncExceptionBase(Exception):
-    """
-    Base class for asynchronous exceptions.  This class can be used to raise
-    exceptions where the traceback object is not available.  The stack is
-    stored (which is safe to reference and can be pickled) instead, and when
-    AsyncExceptionBase instances are printed, the original traceback will
-    be printed.
-
-    This class will proxy the given exception object.
-    """
-    def __init__(self, exc, stack, *args):
-        self._kaa_exc = exc
-        self._kaa_exc_stack = stack
-        self._kaa_exc_args = args
-
-    def __getattribute__(self, attr):
-        # Used by python 2.5, where exceptions are new-style classes.
-        if attr.startswith('_kaa'):
-            return super(AsyncExceptionBase, self).__getattribute__(attr)
-        return getattr(self._kaa_exc, attr)
-
-    def __getattr__(self, attr):
-        # Used by python 2.4, where exceptions are old-style classes.
-        exc = self._kaa_exc
-        if attr == '__members__':
-            return [ x for x in dir(exc) if not callable(getattr(exc, x)) ]
-        elif attr == '__methods__':
-            return [ x for x in dir(exc) if callable(getattr(exc, x)) ]
-        return self.__getattribute__(attr)
-
-    def _kaa_get_header(self):
-        return 'Exception raised asynchronously; traceback follows:'
-
-    def __str__(self):
-        dump = ''.join(traceback.format_list(self._kaa_exc_stack))
-        info = '%s: %s' % (self._kaa_exc.__class__.__name__, str(self._kaa_exc))
-        return self._kaa_get_header() + '\n' + dump + info
-
-
-class AsyncException(AsyncExceptionBase):
-    __metaclass__ = make_exception_class
-
-
-class TimeoutException(Exception):
-    """
-    This exception is raised by an :class:`~kaa.InProgress` returned by
-    :meth:`~kaa.InProgress.timeout` when the timeout occurs.
-
-    For example::
-
-        sock = kaa.Socket()
-        try:
-            yield sock.connect('deadhost.com:80').timeout(10)
-        except kaa.TimeoutException:
-            print 'Connection timed out after 10 seconds'
-
-    """
-    def __init__(self, msg, inprogress):
-        super(TimeoutException, self).__init__(msg)
-        self.args = (msg, inprogress)
-        self.inprogress = inprogress
-
-    def __getitem__(self, idx):
-        return self.args[idx]
-
-
-class InProgressAborted(BaseException):
-    """
-    This exception is thrown into an InProgress object when 
-    :meth:`~kaa.InProgress.abort` is called.
-
-    For :class:`~kaa.ThreadCallable` and  :class:`~kaa.ThreadPoolCallable`
-    this exception is raised inside the threaded callable.  This makes it
-    potentially an asynchronous exception (when used this way), and therefore
-    it subclasses BaseException, similar in rationale to KeyboardInterrupt
-    and SystemExit, and also (for slightly different reasons) GeneratorExit,
-    which as of Python 2.6 also subclasses BaseException.
-    """
-    pass
-
-
-
 class InProgressStatus(Signal):
     """
     Generic progress status object for InProgress. This object can be
@@ -181,9 +87,10 @@ class InProgressStatus(Signal):
         self.start_time = time.time()
         self.pos = 0
         self.max = max
+        self._speed = None
 
 
-    def set(self, pos=None, max=None):
+    def set(self, pos=None, max=None, speed=None):
         """
         Set new status. The new status is pos of max.
         """
@@ -193,14 +100,15 @@ class InProgressStatus(Signal):
             self.pos = pos
         if pos > self.max:
             self.max = pos
+        self._speed = speed
         self.emit(self)
 
 
-    def update(self, diff=1):
+    def update(self, diff=1, speed=None):
         """
         Update position by the given difference.
         """
-        self.set(self.pos + diff)
+        self.set(self.pos + diff, speed=speed)
 
 
     def get_progressbar(self, width=70):
@@ -238,8 +146,19 @@ class InProgressStatus(Signal):
         Return percentage of steps done.
         """
         if self.max:
-            return (self.pos * 100) / self.max
+            return (self.pos * 100.0) / self.max
         return 0
+
+    @property
+    def speed(self):
+        """
+        The current speed of the operation as set by :meth:`set` or
+        :meth:`update`.
+
+        This value has no predefined meaning.  It is up to the API to define
+        what units this value indicates.
+        """
+        return self._speed
 
 
 class InProgress(Signal, Object):
@@ -277,10 +196,9 @@ class InProgress(Signal, Object):
     # _finished_event_poke() for more details.  
     _finished_event_lock = threading.Lock()
 
-    def __init__(self, abortable=False, frame=0):
+    def __init__(self, abortable=None, frame=0):
         """
         :param abortable: see the :attr:`~kaa.InProgress.abortable` property.  
-                          (Default: False)
         :type abortable: bool
         """
         super(InProgress, self).__init__()
@@ -291,7 +209,9 @@ class InProgress(Signal, Object):
         self._unhandled_exception = None
         # TODO: make progress a property so we can document it.
         self.progress = None
-        self.abortable = abortable
+        # True: always abortable, False: never abortable, None: abortable if
+        # 'abort' signal has callbacks
+        self._abortable = abortable
 
         # If debugging is enabled, get the stack frame for the caller who is
         # creating us.  We only do this for DEBUG or more verbose because it
@@ -385,7 +305,7 @@ class InProgress(Signal, Object):
         True if the asynchronous task this InProgress represents can be
         aborted by a call to :meth:`~kaa.InProgress.abort`.
 
-        Normally :meth:`~kaa.InProgress.abort` will fail if there are no
+        By default :meth:`~kaa.InProgress.abort` will fail if there are no
         callbacks attached to the :attr:`~kaa.InProgress.signals.abort` signal.
         This property may be explicitly set to ``True``, in which case
         :meth:`~kaa.InProgress.abort` will succeed regardless.  An InProgress is
@@ -396,7 +316,7 @@ class InProgress(Signal, Object):
         This is useful when constructing an InProgress object that corresponds
         to an asynchronous task that can be safely aborted with no explicit action.
         """
-        return self._abortable or self.signals['abort'].count() > 0
+        return self._abortable or (self._abortable is None and self.signals['abort'].count() > 0)
 
 
     @abortable.setter
@@ -443,7 +363,7 @@ class InProgress(Signal, Object):
         result passed to this method.
 
         If *result* is an unfinished InProgress, then instead of finishing, we
-        wait for the result to finish.
+        wait for the result to finish via :meth:`waitfor`.
 
         :param result: the result of the completed asynchronous task.  (This can
                        be thought of as the return value of the task if it had
@@ -536,10 +456,14 @@ class InProgress(Signal, Object):
             # False.  So we won't log it.
             self._unhandled_exception = None
 
-        if isinstance(value, InProgressAborted):
+        # If we were thrown an InProgressAborted, the likely reason is an InProgress
+        # we were waiting on has been aborted.  In this case, we emit the abort
+        # signal and clear _unhandled_exception, provided we are abortable (which
+        # by default is true as long as there are any callbacks connected to the
+        # abort signal.  Otherwise, do not clear _unhandled_exception so that it
+        # gets logged.
+        if isinstance(value, InProgressAborted) and self.abortable:
             if not aborted:
-                # An InProgress we were waiting on has been aborted, so we
-                # abort too.
                 self.signals['abort'].emit(value)
             self._unhandled_exception = None
 
@@ -619,27 +543,23 @@ class InProgress(Signal, Object):
         :param exc: optional exception object with which to abort the InProgress; if
                     None is given, a general :class:`~kaa.InProgressAborted`
                     exception will be used.
-        :type exc: :class:`~kaa.InProgressAborted`
+        :type exc: :class:`~kaa.InProgressAborted` or subclass thereof
 
         Not all such tasks can be aborted.  If aborting is not supported, or if
         the InProgress is already finished, a RuntimeError exception is raised.
-
-        If a coroutine is aborted, the CoroutineInProgress object returned by
-        the coroutine will be finished with :class:`~kaa.InProgressAborted`,
-        while the underlying generator used by the coroutine will have the
-        standard GeneratorExit raised inside it.
         """
         if self.finished:
             raise RuntimeError('InProgress is already finished.')
 
         if exc is None:
-            exc = InProgressAborted('InProgress task aborted by abort()')
+            exc = InProgressAborted('InProgress task aborted by abort()', inprogress=self)
         elif not isinstance(exc, InProgressAborted):
             raise ValueError('Exception must be instance of InProgressAborted (or subclass thereof)')
 
         if not self.abortable or self.signals['abort'].emit(exc) == False:
             raise RuntimeError('%s cannot be aborted.' % self)
 
+        exc.origin = self
         self.throw(exc.__class__, exc, None, aborted=True)
 
 
@@ -658,7 +578,9 @@ class InProgress(Signal, Object):
         :return: a new :class:`~kaa.InProgress` object that is subject to the timeout
 
         If the original InProgress finishes before the timeout, the new InProgress
-        (returned by this method) is finished with the result of the original.
+        (returned by this method) is finished with the result of the original.  If
+        :meth:`abort` is called on the returned InProgress, the original one will
+        also be aborted.
 
         If a timeout does occur and the ``abort`` argument is False, the
         original InProgress object is not affected: it is not finished with the
@@ -669,11 +591,16 @@ class InProgress(Signal, Object):
             def read_from_socket(sock):
                 try:
                     data = yield sock.read().timeout(3)
-                except kaa.TimeoutException, (msg, inprogress):
-                    print 'Error:', msg
-                    inprogress.abort()
+                except kaa.TimeoutException as e:
+                    print 'Error:', e.args[0]
+                    e.inprogress.abort()
 
-        Aside from the print statement, this is equivalent::
+        If you set ``abort=True`` then the original InProgress is aborted
+        automatically, but *before* the TimeoutException is thrown into the new
+        InProgress returned by this method.  This allows a coroutine being
+        aborted to perform cleanup actions before relinquishing control back to
+        the caller.  In this example, sock.read() will be aborted if not
+        completed within 3 seconds::
         
             @kaa.coroutine()
             def read_from_socket(sock):
@@ -687,13 +614,48 @@ class InProgress(Signal, Object):
                 if callback:
                     callback()
                 msg = 'InProgress timed out after %.02f seconds' % timeout
-                async.throw(TimeoutException, TimeoutException(msg, self), None)
-                if abort:
-                    self.abort()
+                exc = TimeoutException(msg, inprogress=self)
+                try:
+                    if abort:
+                        # In the case of a coroutine, abort() will raise the supplied exc if there
+                        # are no abort handlers.  But we've already thrown a timeout into async,
+                        # and this closure is invoked from the notifier (via a timer) and can't
+                        # do anything about the exception anyway.  So suppress InProgressAborted
+                        # exceptions raised by abort().
+                        try:
+                            self.abort(exc)
+                        except InProgressAborted:
+                            pass
+                finally:
+                    async.throw(exc.__class__, exc, None)
+
+
         async.waitfor(self)
         from .timer import OneShotTimer
-        OneShotTimer(trigger).start(timeout)
+        timer = OneShotTimer(trigger)
+        timer.start(timeout)
+
+        # Add an abort handler to the new InProgress.  If it's aborted, abort self.
+        def abort(exc):
+            self.disconnect(async.finish)
+            self._exception_signal.disconnect(async.throw)
+            timer.stop()
+            self.abort(exc)
+
+        async.signals['abort'].connect(abort)
         return async
+
+
+    def noabort(self):
+        """
+        Create a new InProgress object for this task that cannot be aborted.
+
+        :return: a new :class:`~kaa.InProgress` object that finishes when self
+                 finishes, but will raise if an :meth:`abort` is attempted
+        """
+        ip = InProgress(abortable=False)
+        ip.waitfor(self)
+        return ip
 
 
     def execute(self, func, *args, **kwargs):
@@ -765,7 +727,7 @@ class InProgress(Signal, Object):
 
         if not self.finished:
             self.disconnect(dummy)
-            raise TimeoutException('Timed out', self)
+            raise TimeoutException('Timed out', inprogress=self)
 
         return self.result
 
@@ -858,9 +820,8 @@ class InProgressCallable(InProgress):
 
 class InProgressAny(InProgress):
     """
-    InProgress object that finishes when ANY of the supplied InProgress
-    objects (in constructor) finish.  This functionality is useful when
-    building state machines using coroutines.
+    InProgress object that finishes when *any* of the supplied InProgress
+    objects (in constructor) finish.
 
     Sequences or generators passed as arguments will be flattened, allowing
     for this idiom::
@@ -1013,14 +974,15 @@ class InProgressAny(InProgress):
 
 class InProgressAll(InProgressAny):
     """
-    InProgress object that finishes only when ALL of the supplied InProgress
-    objects (in constructor) finish.  This functionality is useful when
-    building state machines using coroutines.
+    InProgress object that finishes only when *all* of the supplied InProgress
+    objects (in constructor) finish.
 
-    The InProgressAll object then finishes with itself (which is really only
-    useful when using the Python 2.5 feature of yield return values).  The
-    finished InProgressAll is useful to fetch the results of the individual
-    InProgress objects.  It can be treated as an iterator, and can be indexed.
+    The InProgressAll object then finishes with itself. The finished
+    InProgressAll is useful to fetch the results of the individual InProgress
+    objects.  It can be treated as an iterator, and can be indexed::
+
+        for ip in (yield kaa.InProgressAll(sock1.read(), sock2.read())):
+            print(ip.result)
     """
     def __init__(self, *objects):
         super(InProgressAll, self).__init__(*objects)

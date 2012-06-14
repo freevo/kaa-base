@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # core.py - provides core functionality needed by most kaa.base modules
 # -----------------------------------------------------------------------------
-# $Id$
-# -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
 # Copyright 2010-2012 Dirk Meyer, Jason Tackaberry, et al.
 #
@@ -46,7 +44,7 @@ from .strutils import bl
 from . import nf_wrapper as notifier
 
 # get logging object
-log = logging.getLogger('base')
+log = logging.getLogger('kaa.base.core')
 
 
 class CoreThreading:
@@ -63,8 +61,8 @@ class CoreThreading:
     # this variable in which case it is None.
     python_shutting_down = False
 
-    # The amount of time the main thread can be blocked while executing
-    # callbacks that were queued to be invoked from the main loop.
+    # The amount of time (in seconds) the main thread can be blocked while
+    # executing callbacks that were queued to be invoked from the main loop.
     mainthread_callback_max_time = 2.0
 
     # Internal only attributes.
@@ -141,17 +139,34 @@ class CoreThreading:
                 # Stop monitoring old signal wake pipe.
                 notifier.socket_remove(CoreThreading._signal_wake_pipe[0])
             pipe = CoreThreading._create_nonblocking_pipe()
-            notifier.socket_add(pipe[0], lambda fd: CoreThreading._purge_pipe(fd) and signals['unix-signal'].emit())
             CoreThreading._signal_wake_pipe = pipe
-            signal.signal(signal.SIGCHLD, lambda sig, frame: None)
+            # _purge_pipe() returns None, which will not unregister the socket
+            # handler.
+            notifier.socket_add(pipe[0], CoreThreading._purge_pipe)
             signal.set_wakeup_fd(pipe[1])
-        else:
-            # With Python 2.5-, we can't wakeup the main loop.  Use emit()
-            # directly as the handler.
-            signal.signal(signal.SIGCHLD, signals['unix-signal'].emit)
-        # Emit now to reap processes that may have terminated before we set the
-        # handler.  process.py connects to this signal.
-        signals['unix-signal'].emit()
+
+        signal.signal(signal.SIGCHLD, Callable(CoreThreading._handle_generic_unix_signal, signals))
+        # Emit 'sigchld' now to reap processes that may have terminated
+        # before we set the handler.  process.py connects to this signal.
+        signals['sigchld'].emit()
+
+
+    @staticmethod
+    def _handle_generic_unix_signal(signum, frame, signals):
+        log.debug('received signal %d (%s)', signum,
+                  '%s:%d' % (frame.f_code.co_filename, frame.f_lineno) if frame else 'no frame')
+        timer_id = None
+        # Create a new closure to be registered with the notifier for
+        # invocation to emit the appropriate signal.  We can't use the
+        # OneShotTimer goodness from kaa.timer since CoreThreading is lower
+        # level than that.
+        def notifier_handler_cb():
+            # Explicitly unregister the timer now in case something raises
+            # below and we don't get a chance to return False.
+            notifier.timer_remove(timer_id)
+            if signum == signal.SIGCHLD:
+                signals['sigchld'].emit()
+        timer_id = notifier.timer_add(0, notifier_handler_cb)
 
 
     @staticmethod
@@ -214,7 +229,7 @@ class CoreThreading:
 
 
         # It's possible that a thread is actively enqueuing callbacks faster
-        # than we can dequeue and invoke them.  r3583 tried to fix this by
+        # than we can dequeue and invoke them.  207fc3af77 tried to fix this by
         # locking the queue for the entire loop, but this introduced a
         # deadlock caused when a thread enqueues a callback while a previously
         # queued callback is being invoked and is blocked on a resource used
@@ -222,7 +237,7 @@ class CoreThreading:
         #
         # So we don't lock the whole loop to avoid the deadlock, and we stop
         # invoking callbacks after mainthread_callback_max_time seconds
-        # has elapsed in order to solve the problem r3583 tried to fix.
+        # has elapsed in order to solve the problem 207fc3af77 tried to fix.
         #
         # Now, there is a large upper bound on the queue to prevent memory
         # exhaustion, which means a producer will block if it's adding
@@ -240,7 +255,7 @@ class CoreThreading:
                 # queued callbacks, but we still have more.  Poke the thread
                 # pipe so the next iteration of the main loop calls us back
                 # and abort the loop.
-                self._wakeup()
+                CoreThreading._wakeup()
                 break
 
             callback, args, kwargs, in_progress = CoreThreading._queue.get()

@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # setup.py - Setup script for kaa.base
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # Copyright 2005-2012 Dirk Meyer, Jason Tackaberry
 #
 # This library is free software; you can redistribute it and/or modify
@@ -22,6 +19,9 @@
 # 02110-1301 USA
 #
 # -----------------------------------------------------------------------------
+
+MODULE = 'base'
+VERSION = '0.99.2'
 
 # python imports
 import sys
@@ -92,7 +92,7 @@ from kaa.distribution.core import Extension, setup
 extensions = []
 
 objectrow_ext = Extension('kaa.base._objectrow', ['src/extensions/objectrow.c'])
-if not objectrow_ext.has_python_h():
+if objectrow_ext.has_python_h():
     extensions.append(objectrow_ext)
 
 if sys.hexversion < 0x02060000:
@@ -103,11 +103,33 @@ if sys.hexversion < 0x02060000:
     if utils_ext.has_python_h():
         extensions.append(utils_ext)
 
+# Automagically construct version.  If installing from a git clone, the
+# version is based on the number of revisions since the last tag.  Otherwise,
+# if PKG-INFO exists, assume it's a dist tarball and pull the version from
+# that.
+version = VERSION
+if os.path.isdir('.git'):
+    # Fetch all revisions since last tag.  The first item is the current HEAD object name
+    # and the last is the tag object name.
+    revs = os.popen('git rev-list --all | grep -B9999  `git rev-list --tags --max-count=1`').read().splitlines()
+    if len(revs) > 1:
+        # We're at least one commit past the last tag, so this is considered a
+        # dev release.
+        version = '%sdev-%d-%s' % (VERSION, len(revs)-1, revs[0][:8])
+elif os.path.isfile('PKG-INFO'):
+    ver = [l.split(':')[1].strip() for l in open('PKG-INFO') if l.startswith('Version')]
+    if ver:
+        version = ver[0]
+else:
+    # Lack of PKG-INFO means installation was not from an official dist bundle,
+    # so treat it as a development version.
+    version += 'dev'
+
 setup(
-    module = 'base',
-    version = '0.99.2',
+    module = MODULE,
+    version = version,
     license = 'LGPL',
-    url = 'http://doc.freevo.org/api/kaa/base/',
+    url = 'http://api.freevo.org/kaa-base/',
     summary = 'An application framework specializing in asynchronous programming.',
     description  = 'kaa.base is an LGPL-licensed generic application framework, providing the '
                    'foundation for other modules within Kaa, and can be used in any type of project, '
@@ -128,6 +150,7 @@ setup(
             'rpc.py': ['throw'],
         }
     },
+    auto_changelog = True,
     # Don't declare kaa.base as part of the kaa namespace.  Doing so will
     # suppress installation of kaa/__init__.py when installing with pip.  This
     # needs to be installed with kaa.base in order to make our namespace hack

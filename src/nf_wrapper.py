@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # nf_wrapper.py - wrap pynotifier in kaa-aware objects
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
 # Copyright 2006-2012 Dirk Meyer, Jason Tackaberry, et al.
 #
@@ -37,7 +34,7 @@ from .callable import Callable, WeakCallable, CallableError
 from .utils import property
 
 # get logging object
-log = logging.getLogger('base')
+log = logging.getLogger('kaa.base.core.main')
 
 # Variable that is set to True (via atexit callback) when python interpreter
 # is in the process of shutting down.  If we're interested if the interpreter

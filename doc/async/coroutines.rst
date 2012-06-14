@@ -7,44 +7,46 @@
 Coroutines
 ----------
 
-Coroutines are used to break up large and computationally expensive
-tasks into smaller tasks, where control is relinquished to the main
-loop after each smaller task. Coroutines are also very useful in
-constructing state machines. In the event where blocking is
-unavoidable, and the duration of the block is unknown (for example,
-connecting to a remote host, or scaling a very large image), threads
-can be used. These two different approaches are unified with a very
-similar API.
+Coroutines are special functions that have multiple entry points that allow
+suspending and resuming execution at specified locations.  They allow you to:
 
-A function or method is designated a coroutine by using the @kaa.coroutine
+ * write sequentially flowing code involving potentially blocking tasks (e.g.
+   socket IO) that is actually completely non-blocking
+ * "time slice" large, computationally expensive tasks to avoid blocking
+ * help solve complex problems involving state `without using explicit state machines <http://eli.thegreenplace.net/2009/08/29/co-routines-as-an-alternative-to-state-machines/>`_
+
+In the event where blocking is unavoidable, and the duration of the block is
+unknown (for example, connecting to a remote host, or scaling a very large
+image), threads can be used.  These two different approaches are unified with a
+very similar API.
+
+A function or method is designated a coroutine by using the ``@kaa.coroutine``
 decorator.  A coroutine allows a larger tasks to be broken down into smaller
 ones by yielding control back to the "scheduler" (the :ref:`notifier
 <notifier>`), implementing a kind of cooperative multitasking.  More usefully,
 coroutines can yield at points where they may otherwise block on resources
 (e.g. disk or network), and when the resource becomes available, the coroutine
-resumes where it left off.  With coroutines and :ref:`InProgress <inprogress>`
-objects, it is possible to construct non-trivial state machines, whose state is
-modified by asynchronous events, using a single coroutine.  Without coroutines,
-this is typically implemented as a series of smaller callback functions.  (For
-more information on coroutines, see `Wikipedia's treatment of the subject
+resumes where it left off.  Without coroutines, this is typically implemented
+as a series of smaller callback functions.  (For more information on
+coroutines, see `Wikipedia's treatment of the subject
 <http://en.wikipedia.org/wiki/Coroutine>`_.)
 
-Any function decorated with coroutine will return an InProgress object, and the
-caller can connect a callback to the InProgress object in order to be notified
-of its return value or any exception.
+Coroutines return an InProgress object, and the caller can connect a callback
+to the InProgress object in order to be notified of its return value or any
+exception, or it can yield the InProgress object from other coroutines.
 
-When a coroutine yields kaa.NotFinished, control is returned to the
+When a coroutine yields ``kaa.NotFinished``, control is returned to the
 main loop, and the coroutine will resume after the yield statement
 at the next main loop iteration, or, if an interval is provided with the
 decorator, after this time interval.  Following the cooperative multitasking
-analogy, yielding kaa.NotFinished can be thought of as the coroutine releasing
+analogy, yielding ``kaa.NotFinished`` can be thought of as the coroutine releasing
 a "time slice" so that other tasks may run.
 
-When a coroutine yields any value other than kaa.NotFinished (including None),
+When a coroutine yields any value other than ``kaa.NotFinished`` (including None),
 the coroutine is considered finished and the InProgress returned to the caller
-will be :ref:`emitted <emitting>` (i.e. it is finished). As with return, if no value is
-explicitly yielded and the coroutine terminates, the InProgress is finished
-with None.
+will be :ref:`emitted <emitting>` (i.e. it is finished). As with return, if no
+value is explicitly yielded and the coroutine terminates, the InProgress is
+finished with None.
 
 There is an important exception to the above rule: if the coroutine yields an
 :class:`~kaa.InProgress` object, the coroutine will be resumed when the
@@ -53,7 +55,7 @@ other InProgress tasks, including other coroutines.
 
 To recap, if a coroutine yields:
 
- * `kaa.NotFinished`: control is returned to the main loop so that other tasks
+ * ``kaa.NotFinished``: control is returned to the main loop so that other tasks
    can run (such as other timers, I/O handlers, etc.) and resumed on the next
    main loop iteration.
  * an :class:`~kaa.InProgress` object: control is returned to the main loop and
@@ -157,3 +159,11 @@ Decorator
 =========
 
 .. autofunction:: kaa.coroutine
+
+.. kaaclass:: kaa.CoroutineInProgress
+   :synopsis:
+
+   .. automethods::
+      :remove: throw
+   .. autoproperties::
+   .. autosignals::

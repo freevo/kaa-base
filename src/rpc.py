@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # rpc.py - Simple interprocess communication via remote procedure calls.
 # -----------------------------------------------------------------------------
-# $Id$
-#
 # This module defines an alternative way for InterProcessCommunication with
 # less features than the ipc.py module. It does not keep references, return
 # values are only given back as a callback and it is only possible to access
@@ -114,11 +112,11 @@ import kaa
 from .utils import property
 from .strutils import py3_b, bl
 from .core import Object, CoreThreading
-from .async import make_exception_class, AsyncExceptionBase
+from .errors import make_exception_class, AsyncExceptionBase
 from .main import is_shutting_down
 
 # get logging object
-log = logging.getLogger('rpc')
+log = logging.getLogger('kaa.base.rpc')
 
 # Global constants
 RPC_PACKET_HEADER_SIZE = struct.calcsize("I4sI")
@@ -143,6 +141,12 @@ class RemoteException(AsyncExceptionBase):
     __metaclass__ = make_exception_class
     def _kaa_get_header(self):
         return "Exception during RPC call '%s'; remote traceback follows:" % self._kaa_exc_args[0]
+
+class NotConnectedError(Exception):
+    """
+    Raised when an attempt is made to call a method on a channel that is not connected.
+    """
+    pass
 
 
 class Server(Object):
@@ -304,6 +308,10 @@ class Channel(Object):
             kwargs['_kaa_rpc_callback'] = callback
             kaa.MainThreadCallable(self.rpc)(cmd, *args, **kwargs)
             return callback
+
+        if not self.connected:
+            raise NotConnectedError()
+
         seq = self._next_seq
         self._next_seq += 1
         # create InProgress object
@@ -761,7 +769,6 @@ class Channel(Object):
         if not self._socket:
             return '<kaa.rpc.Channel (%s) - disconnected>' % tp
         return '<kaa.rpc.Channel (%s) %s>' % (tp, self._socket.fileno)
-
 
 
 DISCONNECTED = 'DISCONNECTED'

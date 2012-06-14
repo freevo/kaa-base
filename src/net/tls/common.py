@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # tls.py - TLS support for the Kaa Framework based on tlslite
 # -----------------------------------------------------------------------------
-# $Id$
-#
 # This module wraps TLS for client and server based on tlslite. See
 # http://trevp.net/tlslite/docs/public/tlslite.TLSConnection.TLSConnection-class.html
 # for more information about optional paramater.
@@ -37,7 +35,7 @@ import os
 import kaa
 
 # get logging object
-log = logging.getLogger('tls')
+log = logging.getLogger('kaa.base.net.tls')
 
 # Search these standard system locations for the CA bundle.
 CA_SEARCH_PATH = (

@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # utils.py - Miscellaneous system utilities
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # Copyright 2006-2012 Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.
@@ -48,7 +45,7 @@ from tempfile import mktemp
 from .weakref import weakref
 
 # get logging object
-log = logging.getLogger('base')
+log = logging.getLogger('kaa.base.utils')
 
 # create tmp directory for the user
 TEMP = '/tmp/kaa-%s' % os.getuid()

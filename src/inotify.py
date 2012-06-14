@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # inotify.py - Inotify interface
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # Copyright 2006-2012 Jason Tackaberry, Dirk Meyer
 #
 # Please see the file AUTHORS for a complete list of authors.
@@ -42,7 +39,7 @@ import kaa
 from kaa.strutils import py3_b, bl, fsname
 
 # get logging object
-log = logging.getLogger('inotify')
+log = logging.getLogger('kaa.base.inotify')
 
 
 class INotify(kaa.Object):

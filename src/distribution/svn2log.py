@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # svn2log.py - create ChangeLog file based on svn log
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # Copyright 2007-2012 Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.

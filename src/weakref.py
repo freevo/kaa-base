@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # weakref.py - weak reference
 # -----------------------------------------------------------------------------
-# $Id$
-#
 # This file contains a wrapper for weakref that the weak reference can
 # be used the same way the real object would be used.
 #

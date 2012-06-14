@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # tlslite.py - tlslite backend for TLSSocket
 # -----------------------------------------------------------------------------
-# $Id$
-#
 # This module wraps TLS for client and server based on tlslite. See
 # http://trevp.net/tlslite/docs/public/tlslite.TLSConnection.TLSConnection-class.html
 # for more information about optional paramater.
@@ -45,7 +43,7 @@ import kaa
 from .common import TLSError, TLSProtocolError, TLSVerificationError, TLSSocketBase
 
 # get logging object
-log = logging.getLogger('tls')
+log = logging.getLogger('kaa.base.net.tls.tlslite')
 
 
 class TLSKey(object):

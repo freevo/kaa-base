@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # gnutls.py - Gnutls backend for TLSSocket
 # -----------------------------------------------------------------------------
-# $Id$
-#
 # Gnutls seems to be the most promising TLS library we could use. It
 # supports everything from certificates over OpenGPG to SRP. This lib
 # uses python-gnutls from http://pypi.python.org/pypi/python-gnutls.
@@ -50,7 +48,7 @@ import gnutls.connection
 from gnutls.connection import X509Certificate, X509PrivateKey, X509Certificate, X509CRL, X509Credentials
 
 # get logging object
-log = logging.getLogger('tls')
+log = logging.getLogger('kaa.base.net.tls.gnutls')
 
 # Search these standard system locations for the CA bundle.
 CA_SEARCH_PATH = (

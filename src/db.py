@@ -1,9 +1,6 @@
 # -----------------------------------------------------------------------------
 # db.py - db abstraction module
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # Copyright 2006-2012 Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.
@@ -62,7 +59,7 @@ if sqlite.sqlite_version < '3.3.1':
     raise ImportError('sqlite 3.3.1 or higher required')
 
 # get logging object
-log = logging.getLogger('db')
+log = logging.getLogger('kaa.base.db')
 
 SCHEMA_VERSION = 0.2
 SCHEMA_VERSION_COMPATIBLE = 0.2
@@ -213,6 +210,9 @@ class PyObjectRow(object):
 
 
     def __del__(self):
+        if self._idxmap is None:
+            # From Database.add(), pickle only, no pysqlite row.
+            return
         query_key = id(self._description)
         query_info = PyObjectRow.queries[query_key]
         query_info[0] -= 1
@@ -616,7 +616,6 @@ class Database(object):
         for cursor in self._cursor, self._qcursor:
             cursor.execute("PRAGMA synchronous=OFF")
             cursor.execute("PRAGMA temp_store=MEMORY")
-            cursor.execute("PRAGMA count_changes=OFF")
             cursor.execute("PRAGMA cache_size=50000")
             cursor.execute("PRAGMA page_size=8192")
 
@@ -1957,8 +1956,8 @@ class Database(object):
         """
         Like :meth:`~kaa.db.Database.query` but returns a single object only.
 
-        This is a convenience method, and query_one(...) is equivalent
-        to::
+        This is a convenience method, and query_one(...) is equivalent to::
+
             results = db.query(...)
             if results:
                 obj = results[0]

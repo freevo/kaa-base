@@ -54,7 +54,6 @@ if os.environ.get('TMPDIR'):
 
 if not os.path.isdir(TEMP):
     try:
-        time.sleep(5)
         os.mkdir(TEMP, 0700)
     except OSError:
         # This could happen with bad timing starting several kaa

@@ -27,7 +27,7 @@ import email.utils
 import calendar
 import time
 
-__all__ = ['utc', 'local', 'TZAny', 'from_rfc822', 'to_timestamp']
+__all__ = ['utc', 'local', 'TZAny', 'from_rfc822', 'to_timestamp', 'now', 'utcnow', 'today']
 
 
 # UTC and Local tzinfo classes, more or less from the python docs.
@@ -130,11 +130,47 @@ def from_rfc822(date):
 
 def to_timestamp(dt):
     """
-    Converts a datetime object to a UTC timestamp.
+    Converts a datetime object to a timestamp (seconds since epoch).
 
     :param dt: datetime object (naive or aware)
     :returns: timestamp (seconds since epoch)
+
+    Native datetime objects will be treated as local time.
+
+    .. note::
+       Epoch is defined as 00:00:00 UTC on 1 January 1970.  It is *always* UTC.
     """
-    return calendar.timegm(dt.utctimetuple())
+    if dt.tzinfo is None:
+        # Treat naive objects as local time.
+        return time.mktime(dt.timetuple()) + dt.microsecond / 1000000.0
+    else:
+        return calendar.timegm(dt.utctimetuple()) + dt.microsecond / 1000000.0
 
 
+def now():
+    """
+    Returns the local date and time as a time-zone aware datetime object in
+    local time.
+
+    This is in contrast to the native datetime.now() which returns a naive
+    object.
+    """
+    return datetime.now(local)
+
+
+def utcnow():
+    """
+    Returns the current time as a time-zone aware datetime object in UTC.
+    """
+    return datetime.now(utc)
+
+
+def today():
+    """
+    Returns the current day at midnight as a time-zone aware datetime object
+    in local time.
+
+    This is in contrast to the native datetime.today() which does not set
+    the time to midnight and returns a naive object.
+    """
+    return now().replace(hour=0, minute=0, second=0, microsecond=0)

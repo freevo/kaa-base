@@ -350,7 +350,7 @@ class ThreadCallable(ThreadCallableBase):
            recommended this not be set to ``False``, otherwise you may experience
            intermittent exceptions during interpreter shutdown.
         """
-        return self._daemon
+        return self._wait_on_exit
 
     @wait_on_exit.setter
     def wait_on_exit(self, wait):

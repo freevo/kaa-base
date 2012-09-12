@@ -27,9 +27,12 @@
 # -----------------------------------------------------------------------------
 
 # python imports
+import os
 import logging
 import BaseHTTPServer
 import SocketServer
+import shutil
+import urlparse
 
 # kaa imports
 import kaa
@@ -48,19 +51,49 @@ class ThreadedHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         Serve a GET request.
         """
         callback = None
+        parse_result = urlparse.urlparse(self.path)
         for path, callback in self.server._get_handler:
-            if path == self.path or \
-                    (self.path.startswith(path) and path.endswith('/')):
-                path = self.path[len(path):]
+            if path == parse_result.path or \
+                    (parse_result.path.startswith(path) and path.endswith('/')):
+                path = parse_result.path[len(path):]
                 break
         else:
             callback = None
         if not callback:
+            if self.path in self.server._static:
+                self.send_response(200)
+                self.end_headers()
+                f = open(self.server._static[self.path])
+                shutil.copyfileobj(f, self.wfile)
+                f.close()
+                return
+            abspath = os.path.abspath(self.path)
+            for path, dirname in self.server._directories:
+                if abspath.startswith(path):
+                    fname = os.path.join(dirname, abspath[len(path)+1:])
+                    if os.path.isfile(fname):
+                        self.send_response(200)
+                        self.end_headers()
+                        f = open(fname)
+                        shutil.copyfileobj(f, self.wfile)
+                        f.close()
+                        return
             self.send_response(404)
             self.end_headers()
             return
         try:
-            ctype, content = kaa.MainThreadCallable(callback)(path).wait()
+            attributes = {}
+            for key, value in urlparse.parse_qs(parse_result.query).items():
+                if isinstance(value, (list, tuple)):
+                    if len(value) == 0:
+                        attributes[key] = True
+                    elif len(value) == 1:
+                        attributes[key] = value[0]
+                    else:
+                        attributes[key] = value
+                else:
+                    attributes[key] = value
+            ctype, content = kaa.MainThreadCallable(callback)(path, **attributes).wait()
         except:
             self.send_response(500)
             log.exception('server error')
@@ -114,6 +147,8 @@ class HTTPServer(SocketServer.ThreadingTCPServer):
         Create the HTTPServer
         """
         self._get_handler = []
+        self._static = {}
+        self._directories = []
         SocketServer.ThreadingTCPServer.__init__(self, server_address, RequestHandlerClass, bind_and_activate)
 
     def __handle_request(self, f):
@@ -134,3 +169,12 @@ class HTTPServer(SocketServer.ThreadingTCPServer):
         Add a handler for path
         """
         self._get_handler.append((path, callback))
+
+    def add_static(self, path, filename):
+        """
+        Add a static page from filename
+        """
+        if os.path.isdir(filename):
+            self._directories.append((path, filename))
+        else:
+            self._static[path] = filename

@@ -75,6 +75,11 @@ class ThreadedHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     self.send_response(500)
                     log.exception('server error')
                     return
+                if result is None:
+                    # return 404
+                    self.send_response(404)
+                    self.end_headers()
+                    return
                 # we need content, content type and content encoding
                 # as result if not already provided when registering
                 # the callback
@@ -82,6 +87,7 @@ class ThreadedHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     # return must be a list with the actual content as
                     # first item and ctype and encoding if missing
                     # following.
+                    result = list(result)
                     if encoding is None:
                         encoding = result.pop()
                     if ctype is None:

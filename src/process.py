@@ -77,17 +77,11 @@ class _Supervisor(object):
         # _Supervisor() gets instantiated at import) so that child processes
         # can be created before the main loop is started, and their
         # termination won't interrupt any system calls.
-        if sys.hexversion >= 0x02060000:
-            # Python 2.6+ has signal.siginterrupt()
+        try:
             signal.siginterrupt(signal.SIGCHLD, False)
-        elif sys.hexversion >= 0x02050000:
-            # Python 2.5
-            import ctypes, ctypes.util
-            libc = ctypes.util.find_library('c')
-            ctypes.CDLL(libc).siginterrupt(signal.SIGCHLD, 0)
-        else:
-            # Python 2.4- is not supported.
-            raise SystemError('kaa.base requires Python 2.5 or later')
+        except AttributeError:
+            # signal.siginterrupt() was introduced in Python 2.6.
+            raise SystemError('kaa.base requires Python 2.6 or later')
 
 
     def register(self, process):

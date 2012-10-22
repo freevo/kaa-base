@@ -29,9 +29,9 @@ import os
 import time
 import platform
 
-# We require python 2.5 or later, so complain if that isn't satisfied.
-if sys.hexversion < 0x02050000:
-    print('Python 2.5 or later required.')
+# We require python 2.6 or later, so complain if that isn't satisfied.
+if sys.hexversion < 0x02060000:
+    print('Python 2.6 or later required.')
     sys.exit(1)
 
 # TODO: remove below at some suitable time in the future.
@@ -95,14 +95,6 @@ objectrow_ext = Extension('kaa.base._objectrow', ['src/extensions/objectrow.c'])
 if objectrow_ext.has_python_h():
     extensions.append(objectrow_ext)
 
-if sys.hexversion < 0x02060000:
-    # Fixed os.listdir for Python 2.5.  This module is optional for Python 2.5
-    # (only installed if headers/libs are available) and not compiled for later
-    # versions.
-    utils_ext = Extension('kaa.base._utils', ['src/extensions/utils.c'])
-    if utils_ext.has_python_h():
-        extensions.append(utils_ext)
-
 # Automagically construct version.  If installing from a git clone, the
 # version is based on the number of revisions since the last tag.  Otherwise,
 # if PKG-INFO exists, assume it's a dist tarball and pull the version from
@@ -135,8 +127,8 @@ setup(
                    'foundation for other modules within Kaa, and can be used in any type of project, '
                    'from small event-driven tools, to larger, complex applications.',
     rpminfo = {
-        'requires': 'glib2 >= 2.6.0, python-sqlite2 >= 2.3.0, libxml2-python >= 2.6.0',
-        'build_requires': 'glib2-devel >= 2.6.0, python-devel >= 2.5.0'
+        'requires': 'glib2 >= 2.6.0, libxml2-python >= 2.6.0',
+        'build_requires': 'glib2-devel >= 2.6.0, python-devel >= 2.6.0'
     },
     ext_modules = extensions,
     opts_2to3 = {

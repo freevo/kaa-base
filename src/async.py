@@ -782,13 +782,36 @@ class InProgress(Signal, Object):
 
 class InProgressCallable(InProgress):
     """
-    InProgress object that can be used as a callback for an async
-    function. The InProgress object will be finished when it is
-    called. Special support for Signals that will finish the InProgress
-    object when the signal is emited.
+    A callable variant of InProgress that finishes when invoked.
     """
-    def __init__(self, func=None, abortable=False, frame=0):
+    def __init__(self, func=None, abortable=None, frame=0, throwable=True):
+        """
+        :param func: if defined, is invoked on initialization and self is
+                     passed as the only argument.  Intended as a convenience.
+        :type func: callable
+        :param frame: corresponds to the abortable property in
+            :class:`~kaa.InProgress`
+        :param throwable: if True, if the InProgressCallable is invoked with 3
+            arguments (tp, exc, value) then :meth:`~kaa.InProgress.throw` is called
+            instead of :meth:`~kaa.InProgress.finish`.
+
+        The main value of the InProgressCallable is the translation done
+        between the arguments passed on invocation and those passed to
+        :meth:`~kaa.InProgress.finish`.  A single positional or named
+        argument is passed as the value to ``finish()``; multiple positional
+        *or* multiple named arguments are passed as a tuple or dict respectively;
+        otherwise the InProgress is finished with a 2-tuple of (args, kwargs).
+
+        If ``throwable`` is True (default) and the callable is invoked with
+        the standard exception 3-tuple (type, value, traceback), then it's
+        treated as an exception which is thrown to the InProgress.
+
+        The primary use-case for the InProgressCallable is to marry
+        conventional callbacks for asynchronous task completion with the
+        InProgress strategy.
+        """
         super(InProgressCallable, self).__init__(abortable, frame=frame-1)
+        self._throwable = throwable
         if func is not None:
             # connect self as callback
             func(self)
@@ -800,6 +823,8 @@ class InProgressCallable(InProgress):
         finish the InProgress object.
         """
         # try to get the results as the caller excepts them
+        if self._throwable and len(args) == 3 and issubclass(args[0], BaseException):
+            return self.throw(*args)
         if args and kwargs:
             # no idea how to merge them
             return self.finish((args, kwargs))

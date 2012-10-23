@@ -106,6 +106,9 @@ Also see related classes :class:`~kaa.CoroutineInProgress` and
 :class:`~kaa.ThreadInProgress`.
 
 
+.. kaaclass:: kaa.InProgressCallable
+
+
 InProgress Collections
 ----------------------
 

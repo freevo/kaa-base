@@ -26,7 +26,7 @@ from __future__ import absolute_import
 
 __all__ = [
     'InProgress', 'InProgressCallable', 'InProgressAny', 'InProgressAll', 'inprogress',
-    'InProgressStatus'
+    'InProgressStatus', 'FINISH_RESULT', 'FINISH_SELF', 'FINISH_IDX_RESULT'
 ]
 
 # python imports
@@ -47,6 +47,19 @@ from .core import Object, Signal, Signals, CoreThreading
 # get logging object
 log = logging.getLogger('kaa.base.core.async')
 
+# Constants for how InProgressAny/All are finished
+FINISH_IDX = 'FINISH_IDX'
+FINISH_RESULT = 'FINISH_RESULT'
+FINISH_SELF = 'FINISH_SELF'
+FINISH_IDX_RESULT = 'FINISH_IDX_RESULT'
+
+# A set of weakrefs for all InProgress objects that have unhandled
+# exceptions.  We need to keep global references to the weakrefs in
+# case the weakref attached to the InProgress gets deleted before the
+# InProgress itself does, in which case the log callback would never
+# get called.
+_unhandled_exceptions = set()
+
 
 def inprogress(obj):
     """
@@ -54,13 +67,13 @@ def inprogress(obj):
 
     :param obj: object to represent as an InProgress.
     :return: an :class:`~kaa.InProgress` representing ``obj``
-    
+
     The precise behaviour of an object represented as an
     :class:`~kaa.InProgress` should be defined in the documentation for the
     class.  For example, the :class:`~kaa.InProgress` for a
     :class:`~kaa.Process` object will be finished when the process is
     terminated.
-    
+
     This function simply calls ``__inprogress__()`` of the given ``obj`` if one
     exists, and if not will raise an exception.  In this sense, it behaves
     quite similar to ``len()`` and ``__len__()``.
@@ -193,12 +206,12 @@ class InProgress(Signal, Object):
 
     # Class-wide lock for the rarely-used finished event.  This is a small
     # optimization, saving about 7% of total instance creation time.  See
-    # _finished_event_poke() for more details.  
+    # _finished_event_poke() for more details.
     _finished_event_lock = threading.Lock()
 
     def __init__(self, abortable=None, frame=0):
         """
-        :param abortable: see the :attr:`~kaa.InProgress.abortable` property.  
+        :param abortable: see the :attr:`~kaa.InProgress.abortable` property.
         :type abortable: bool
         """
         super(InProgress, self).__init__()
@@ -274,7 +287,13 @@ class InProgress(Signal, Object):
         if not self._finished:
             raise RuntimeError('operation not finished')
         if self._exception:
-            self._unhandled_exception = None
+            # _unhandled_exception could be True if the InProgress exception
+            # is being handled synchronously (via the exception callback).  So
+            # check that it's actually a weakref instance before trying to
+            # remove it from the global unhandled exceptions set.
+            if isinstance(self._unhandled_exception, _weakref.ref):
+                _unhandled_exceptions.remove(self._unhandled_exception)
+                self._unhandled_exception = None
             if self._exception[2]:
                 # We have the traceback, so we can raise using it.
                 exc_type, exc_value, exc_tb_or_stack = self._exception
@@ -405,6 +424,18 @@ class InProgress(Signal, Object):
         then the current exception in sys.exc_info() will be used; this is
         analogous to a naked ``raise`` within an ``except`` block.
 
+        .. note::
+           Exceptions thrown to InProgress objects that aren't explicitly
+           handled will be logged at the INFO level (using a logger name with
+           a ``kaa.`` prefix.)  *When* the unhandled asynchronous exception is
+           logged depends on the version of Python used.
+
+           Some versions of CPython (e.g 2.6) will log the unhandled exception
+           immediately when the InProgress has no more references, while
+           others (e.g. 2.7 and 3.2) will only be logged on the next garbage
+           collection.
+
+
         :param type: the class of the exception
         :param value: the instance of the exception
         :param tb: the traceback object representing where the exception took place
@@ -456,13 +487,12 @@ class InProgress(Signal, Object):
             # False.  So we won't log it.
             self._unhandled_exception = None
 
-        # If we were thrown an InProgressAborted, the likely reason is an InProgress
-        # we were waiting on has been aborted.  In this case, we emit the abort
-        # signal and clear _unhandled_exception, provided we are abortable (which
-        # by default is true as long as there are any callbacks connected to the
-        # abort signal.  Otherwise, do not clear _unhandled_exception so that it
-        # gets logged.
-        if isinstance(value, InProgressAborted) and self.abortable:
+        # If we were thrown an InProgressAborted, the likely reason is an
+        # InProgress we were waiting on has been aborted.  In this case, we
+        # emit the abort signal and clear _unhandled_exception, provided there
+        # are callbacks connected to the abort signal.  Otherwise, do not
+        # clear _unhandled_exception so that it gets logged.
+        if isinstance(value, InProgressAborted) and len(self.signals['abort']):
             if not aborted:
                 self.signals['abort'].emit(value)
             self._unhandled_exception = None
@@ -479,6 +509,7 @@ class InProgress(Signal, Object):
             # considered handled, and it will not be logged.
             cb = Callable(InProgress._log_exception, trace, value, self._stack)
             self._unhandled_exception = _weakref.ref(self, cb)
+            _unhandled_exceptions.add(self._unhandled_exception)
 
         # Remove traceback from stored exception.  If any waiting threads
         # haven't gotten it by now, it's too late.
@@ -506,6 +537,7 @@ class InProgress(Signal, Object):
         """
         Callback to log unhandled exceptions.
         """
+        _unhandled_exceptions.remove(weakref)
         if isinstance(exc, (KeyboardInterrupt, SystemExit)):
             # We have an unhandled asynchronous SystemExit or KeyboardInterrupt
             # exception.  Rather than logging it, we reraise it in the main
@@ -559,7 +591,10 @@ class InProgress(Signal, Object):
         if not self.abortable or self.signals['abort'].emit(exc) == False:
             raise RuntimeError('%s cannot be aborted.' % self)
 
-        exc.origin = self
+        if exc.inprogress != self:
+            exc = exc.__class__(*exc.args, inprogress=self, origin=exc.origin)
+        elif not exc.origin:
+            exc.origin = self
         self.throw(exc.__class__, exc, None, aborted=True)
 
 
@@ -601,7 +636,7 @@ class InProgress(Signal, Object):
         aborted to perform cleanup actions before relinquishing control back to
         the caller.  In this example, sock.read() will be aborted if not
         completed within 3 seconds::
-        
+
             @kaa.coroutine()
             def read_from_socket(sock):
                 data = yield sock.read().timeout(3, abort=True)
@@ -635,14 +670,16 @@ class InProgress(Signal, Object):
         timer = OneShotTimer(trigger)
         timer.start(timeout)
 
-        # Add an abort handler to the new InProgress.  If it's aborted, abort self.
-        def abort(exc):
+        # Add an abort handler to the new InProgress.  If it's aborted,
+        # cleanup, and if abort=True then abort self.
+        def handle_abort(exc):
             self.disconnect(async.finish)
             self._exception_signal.disconnect(async.throw)
             timer.stop()
-            self.abort(exc)
+            if abort and not self.finished:
+                self.abort(exc)
+            async.signals['abort'].connect(handle_abort)
 
-        async.signals['abort'].connect(abort)
         return async
 
 
@@ -661,8 +698,8 @@ class InProgress(Signal, Object):
     def execute(self, func, *args, **kwargs):
         """
         Execute the given function and finish the InProgress object with the
-        result or exception. 
-        
+        result or exception.
+
         If the function raises SystemExit or KeyboardInterrupt, those are
         re-raised to allow them to be properly handled by the main loop.
 
@@ -687,7 +724,7 @@ class InProgress(Signal, Object):
     def wait(self, timeout=None):
         """
         Blocks until the InProgress is finished.
-        
+
         The main loop is kept alive if waiting in the main thread, otherwise
         the thread is blocked until another thread finishes the InProgress.
 
@@ -718,7 +755,8 @@ class InProgress(Signal, Object):
             try:
                 main.loop(lambda: not self.finished, timeout)
             except RuntimeError:
-                # oops, there is something running, wait
+                # Main loop started in another thread between the time we checked and
+                # tried to start the loop.  Now just wait on the thread event.
                 self._finished_event_poke(wait=timeout)
         else:
             # We're waiting in some other thread, so wait for some other
@@ -851,38 +889,78 @@ class InProgressAny(InProgress):
     Sequences or generators passed as arguments will be flattened, allowing
     for this idiom::
 
-        yield InProgressAll(func() for func in coroutines)
+        yield InProgressAny(func() for func in coroutines)
 
-    The initializer can take two optional kwargs: pass_index and filter.
+    Arguments will be passed through :func:`kaa.inprogress` so any object that
+    can be coerced to an :class:`~kaa.InProgress` (such as
+    :class:`~kaa.Signal` objects) can be passed directly.
 
-    If pass_index is True, the InProgressAny object then finishes with a
-    2-tuple, whose first element is the index (offset from 0) of the InProgress
-    that finished, and the second element is the result the InProgress was
-    finished with.
+    .. note::
+       Callbacks aren't attached to the supplied InProgress objects to monitor
+       their state until a callback is attached to the InProgressAny object.
+       This means an InProgressAny with nothing connected will not actually
+       finish even when one of its constituent InProgresses finishes.
 
-    If pass_index is False, the InProgressAny is finished with just the result
-    and not the index.
+    :param finish: controls what values the InProgressAny is finished with
+    :type finish: ``FINISH_IDX_RESULT`` (default), ``FINISH_IDX``, or
+        ``FINISH_RESULT``
+    :param filter: optional callback receiving two arguments (index and
+        finished result) invoked each time an underlying InProgress object
+        finishes which, if returns True, prevents the completion of the
+        InProgressAny iff there are other InProgress objects that could
+        yet finish.
+    :type filter: callable
 
-    If filter is specified, it is a callable that receives two arguments,
-    the index and finished result (as described above).  If the callable
-    returns True AND if there are other underlying InProgress objects that
-    could yet be finished, then this InProgressAny is _not_ finished.
+    The possible ``finish`` values are:
+
+        * ``kaa.FINISH_IDX_RESULT``: a 2-tuple (idx, result) containing
+          the index (relative to the position of the InProgress passed to
+          the constructor) and the result that InProgress finished with
+        * ``kaa.FINISH_IDX``: the index (offset from 0) of the InProgress
+          that finished the InProgressAny
+        * ``kaa.FINISH_RESULT``: the result of the InProgress that
+          finished the InProgressAny
+
+    For example::
+
+        # Read data from either sock1 or sock2, whichever happens first within
+        # 2 seconds.
+        idx, data = yield kaa.InProgressAny(kaa.delay(2), sock1.read(), sock2.read())
+        if idx == 0:
+            print 'Nothing read from either socket after 2 seconds'
+        else:
+            print 'Read from sock{0}: {1}'.format(idx, data)
+
+
     """
-    def __init__(self, *objects, **kwargs):
-        super(InProgressAny, self).__init__()
-        self._pass_index = kwargs.get('pass_index', True)
-        self._filter = kwargs.get('filter')
+    _default_finish_args = FINISH_IDX_RESULT
 
+    def __init__(self, *objects, **kwargs):
+        self._finish_args = kwargs.pop('finish', None) or self._default_finish_args
+        self._filter = kwargs.pop('filter', None)
+
+        if 'pass_index' in kwargs:
+            # Legacy behaviour.
+            log.warning('pass_index argument to InProgressAny() is deprecated; use finish')
+            self._finish_args = FINISH_IDX_RESULT if kwargs.pop('pass_index') else FINISH_RESULT
+
+        if self._finish_args not in (FINISH_RESULT, FINISH_SELF, FINISH_IDX_RESULT, FINISH_IDX):
+            raise ValueError('invalid finish kwarg')
+
+        super(InProgressAny, self).__init__(**kwargs)
         # Generate InProgress objects for anything that was passed, including
         # InProgress objects nested within sequences and generators.
         self._objects = [inprogress(o) for o in self._flatten(objects)]
-        self._counter = len(objects) or 1
+        self._counter = len(self._objects) or 1
 
         self._prefinished_visited = set()
         self._check_prefinished()
 
 
     def _flatten(self, v):
+        if isinstance(v, dict) and not hasattr(v, '__inprogress__'):
+            # This works for Signals objects.
+            v = v.values()
         if isinstance(v, (list, tuple, types.GeneratorType)):
             for item in iter(v):
                 for sub in self._flatten(item):
@@ -987,13 +1065,29 @@ class InProgressAny(InProgress):
             # so we'll wait for them.
             return
 
-        super(InProgressAny, self).finish((index, result) if self._pass_index else result)
+        if self._finish_args == FINISH_IDX_RESULT:
+            finish_result = index, result
+        elif self._finish_args == FINISH_RESULT:
+            finish_result = result
+        elif self._finish_args == FINISH_IDX:
+            finish_result = index
+        elif self._finish_args == FINISH_SELF:
+            # Not really useful because _objects is about to be cleared out,
+            # but included for completeness.
+            finish_result = self
 
         # We're done with the underlying IP objects so unref them.  In the
         # case of InProgressCallable connected weakly to signals (which
         # happens when signals are given to us on the constructor), they'll
         # get deleted and disconnected from the signals.
+        #
+        # Small nicety: if we clear out _objects before calling
+        # InProgress.finish() then we force the disconnection of
+        # inprogress()ed Signal objects before (potentially) resuming any
+        # coroutine that yielded this InProgressAny.
         self._objects = None
+
+        super(InProgressAny, self).finish(finish_result)
 
 
 
@@ -1009,12 +1103,7 @@ class InProgressAll(InProgressAny):
         for ip in (yield kaa.InProgressAll(sock1.read(), sock2.read())):
             print(ip.result)
     """
-    def __init__(self, *objects):
-        super(InProgressAll, self).__init__(*objects)
-
-        if not objects:
-            self.finish(None)
-
+    _default_finish_args = FINISH_SELF
 
     def _get_connect_args(self, ip, n):
         return ()
@@ -1029,7 +1118,7 @@ class InProgressAll(InProgressAny):
             self.finish(False, None)
         elif len(prefinished):
             # Some underlying InProgress objects are already finished so we
-            # need to substract them from the number of objects we are still
+            # need to subtract them from the number of objects we are still
             # waiting for.
             self._counter -= len(prefinished)
 
@@ -1038,8 +1127,25 @@ class InProgressAll(InProgressAny):
         # FIXME: rethink how we handle prerequisites that finish
         # by exception.  Should we throw too?
         self._counter -= 1
-        if self._counter == 0:
-            super(InProgressAny, self).finish(self)
+        if self._counter > 0:
+            # Still more prerequisites to finish before we can finish.
+            return
+
+        if self._finish_args == FINISH_SELF:
+            finish_result = self
+        else:
+            all_results = [(idx, ip.result if not ip.failed else ip._exception)
+                                           for idx, ip in enumerate(self._objects)]
+            if self._finish_args == FINISH_IDX_RESULT:
+                finish_result = all_results
+            elif self._finish_args == FINISH_RESULT:
+                finish_result = [result for idx, result in all_results]
+            elif self._finish_args == FINISH_IDX:
+                # Hardly useful, but added for completeness.
+                finish_result = [idx for idx, result in all_results]
+
+        # Note that this calls InProgress.finish(), not InProgressAny.finish().
+        super(InProgressAny, self).finish(finish_result)
         # Unlike InProgressAny, we don't unref _objects because the caller
         # may want to access them by iterating us.  That's fine, because
         # unlike InProgressAny where we'd prefer not to have useless

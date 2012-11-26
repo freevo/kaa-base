@@ -47,6 +47,13 @@ from .core import Object, Signal, Signals, CoreThreading
 # get logging object
 log = logging.getLogger('kaa.base.core.async')
 
+# A set of weakrefs for all InProgress objects that have unhandled
+# exceptions.  We need to keep global references to the weakrefs in
+# case the weakref attached to the InProgress gets deleted before the
+# InProgress itself does, in which case the log callback would never
+# get called.
+_unhandled_exceptions = set()
+
 
 def inprogress(obj):
     """
@@ -274,7 +281,13 @@ class InProgress(Signal, Object):
         if not self._finished:
             raise RuntimeError('operation not finished')
         if self._exception:
-            self._unhandled_exception = None
+            # _unhandled_exception could be True if the InProgress exception
+            # is being handled synchronously (via the exception callback).  So
+            # check that it's actually a weakref instance before trying to
+            # remove it from the global unhandled exceptions set.
+            if isinstance(self._unhandled_exception, _weakref.ref):
+                _unhandled_exceptions.remove(self._unhandled_exception)
+                self._unhandled_exception = None
             if self._exception[2]:
                 # We have the traceback, so we can raise using it.
                 exc_type, exc_value, exc_tb_or_stack = self._exception
@@ -405,6 +418,18 @@ class InProgress(Signal, Object):
         then the current exception in sys.exc_info() will be used; this is
         analogous to a naked ``raise`` within an ``except`` block.
 
+        .. note::
+           Exceptions thrown to InProgress objects that aren't explicitly
+           handled will be logged at the INFO level (using a logger name with
+           a ``kaa.`` prefix.)  *When* the unhandled asynchronous exception is
+           logged depends on the version of Python used.
+
+           Some versions of CPython (e.g 2.6) will log the unhandled exception
+           immediately when the InProgress has no more references, while
+           others (e.g. 2.7 and 3.2) will only be logged on the next garbage
+           collection.
+
+
         :param type: the class of the exception
         :param value: the instance of the exception
         :param tb: the traceback object representing where the exception took place
@@ -479,6 +504,7 @@ class InProgress(Signal, Object):
             # considered handled, and it will not be logged.
             cb = Callable(InProgress._log_exception, trace, value, self._stack)
             self._unhandled_exception = _weakref.ref(self, cb)
+            _unhandled_exceptions.add(self._unhandled_exception)
 
         # Remove traceback from stored exception.  If any waiting threads
         # haven't gotten it by now, it's too late.
@@ -506,6 +532,7 @@ class InProgress(Signal, Object):
         """
         Callback to log unhandled exceptions.
         """
+        _unhandled_exceptions.remove(weakref)
         if isinstance(exc, (KeyboardInterrupt, SystemExit)):
             # We have an unhandled asynchronous SystemExit or KeyboardInterrupt
             # exception.  Rather than logging it, we reraise it in the main

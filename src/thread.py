@@ -80,7 +80,7 @@ def register_thread_pool(name, pool):
     :returns: the supplied :class:`~kaa.ThreadPool` object
 
     Once registered, the thread pool may be referenced by name when using the
-    :func:`@kaa.threaded() <kaa.threaded>` decorator or 
+    :func:`@kaa.threaded() <kaa.threaded>` decorator or
     :class:`~kaa.ThreadPoolCallable` class.
 
     Thread pool names are arbitrary strings, but the recommended convention
@@ -252,18 +252,18 @@ class ThreadInProgress(InProgress):
         :class:`~kaa.InProgressAborted`.
 
         .. warning::
-        
+
            This method raises an exception asynchronously within the thread,
            and this is unreliable.  The asynchronous exception may get
            inadvertently cleared internally, and if it doesn't, it will in any
            case take up to 100 ticks for it to trigger within the thread.
-           
+
            A tick is one or more Python VM bytecodes, which means that if the
            thread is currently executing non-CPython C code, the thread cannot
            be interrupted.  The worst case scenario would be a blocking system
            call, which cannot be reliably interrupted when running inside a
            thread.
-           
+
            This approach still has uses as a general-purposes aborting
            mechanism, but, if possible, it is preferable for you to implement
            custom logic by attaching an abort handler to the
@@ -439,7 +439,7 @@ class ThreadPoolCallable(ThreadCallableBase):
 
 class _ThreadPoolMember(threading.Thread):
     """
-    Member thread for thread pools.  This class dips its fingers into 
+    Member thread for thread pools.  This class dips its fingers into
     ThreadPool private members.
     """
     def __init__(self, pool, name):
@@ -611,7 +611,7 @@ class ThreadPool(object):
 
         If this value is increased and jobs are waiting to be processed, new
         threads will be spawned as needed (but will not exceed the limit).
-        
+
         If this value is decreased and there are too many active pool members
         as a result, the necessary number of pool members will be stopped.  If
         those members are currently processing jobs, they will exit once the job
@@ -655,7 +655,7 @@ class ThreadPool(object):
 
         Thread pools are registered via :func:`kaa.register_thread_pool`.  Once
         registered, the thread pool may subsequently be referenced by name when
-        using :class:`~kaa.ThreadPoolCallable` or the 
+        using :class:`~kaa.ThreadPoolCallable` or the
         :func:`@kaa.threaded() <kaa.threaded>` decorator.
 
         An ThreadPool which has not been registered is called an anonymous thread
@@ -680,7 +680,7 @@ def threaded(pool=None, priority=0, async=True, progress=False, wait=False):
     Decorator causing the decorated function to be executed within a thread
     when invoked.
 
-    :param pool: a :class:`~kaa.ThreadPool` object or name of a registered 
+    :param pool: a :class:`~kaa.ThreadPool` object or name of a registered
                  thread pool; if None, a new thread will be created for each
                  invocation.
     :type pool: :class:`~kaa.ThreadPool`, str, :const:`kaa.MAINTHREAD`, or None
@@ -702,8 +702,8 @@ def threaded(pool=None, priority=0, async=True, progress=False, wait=False):
     A special pool constant :const:`kaa.MAINTHREAD` is available, which causes
     the decorated function to always be invoked from the main thread.  In this
     case, currently the ``priority`` argument is ignored.
-    
-    If ``pool`` is None, the decorated function will be wrapped in a 
+
+    If ``pool`` is None, the decorated function will be wrapped in a
     :class:`~kaa.ThreadCallable` for execution.  Otherwise, ``pool`` specifies
     either a :class:`~kaa.ThreadPool` object or pool name previously registered
     with :func:`kaa.register_thread_pool`, and the decorated function will be

@@ -217,7 +217,7 @@ def get_libssl():
     # int SSL_library_init(void );
     libssl.SSL_library_init.restype = c_int
     libssl.SSL_library_init.argtypes = []
-    
+
     # const char *ERR_reason_error_string(unsigned long e);
     libssl.ERR_reason_error_string.restype = c_char_p
     libssl.ERR_reason_error_string.argtypes = [c_ulong]
@@ -264,7 +264,7 @@ def get_libssl():
     # void SSL_CTX_free(SSL_CTX *);
     libssl.SSL_CTX_free.restype = None
     libssl.SSL_CTX_free.argtypes = [c_void_p]
-    
+
     # SSL *SSL_new(SSL_CTX *ctx);
     libssl.SSL_new.restype = c_void_p
     libssl.SSL_new.argtypes = [c_void_p]
@@ -319,7 +319,7 @@ def get_libssl():
     # void SSL_SESSION_free(SSL_SESSION *ses);
     libssl.SSL_SESSION_free.restype = None
     libssl.SSL_SESSION_free.argtypes = [c_void_p]
-    
+
     # BIO *BIO_new(BIO_METHOD *type);
     libssl.BIO_new.restype = c_void_p
     libssl.BIO_new.argtypes = [c_void_p]
@@ -694,7 +694,7 @@ class Certificate(object):
             libssl.ASN1_GENERALIZEDTIME_free(gt)
 
         return datetime.strptime(timestamp, '%Y%m%d%H%M%SZ').replace(tzinfo=utc)
-    
+
 
     @property
     def not_before(self):
@@ -823,11 +823,11 @@ class X509Name(dict):
         oneline = create_string_buffer(512)
         _check(libssl.X509_NAME_oneline(self._x509name, oneline, 512))
         return nativestr(oneline.value)
-        
+
     def __repr__(self):
         return '<X509Name object "%s" at 0x%x>' % (str(self), id(self))
 
-    
+
     def _cmp(self, other):
         return libssl.X509_NAME_cmp(self._x509name, other._x509name)
 
@@ -963,8 +963,8 @@ class TLSContext(object):
             libssl.CRYPTO_set_id_callback(None)
             libssl.CRYPTO_set_locking_callback(None)
         cls._openssl_initialized = False
-        
-        
+
+
     @classmethod
     def _threading_id_callback(cls):
         return thread.get_ident()
@@ -1395,7 +1395,7 @@ class TLSSocket(kaa.Socket):
     standard :class:`~kaa.Socket`.  After TLS handshaking is initiated, data
     passed to/from the socket is transparently encrypted.
 
-    TLSSockets that :meth:`~kaa.Socket.listen` will emit 
+    TLSSockets that :meth:`~kaa.Socket.listen` will emit
     :attr:`~kaa.Socket.signals.new-client` with a TLSSocket object as the
     client.  This TLSSocket will share the same :class:`TLSContext` as the
     listening TLSSocket.
@@ -1408,6 +1408,7 @@ class TLSSocket(kaa.Socket):
             .. describe:: def callback(...)
             '''
     }
+
 
     def __init__(self, ctx=None, reuse_sessions=False):
         super(TLSSocket, self).__init__()
@@ -1657,6 +1658,7 @@ class TLSSocket(kaa.Socket):
                 self._tls_ip.finish(True)
             self._update_read_monitor()
 
+
         if plaintext and not self._is_read_connected() and not self._is_readline_connected():
             # There is decrypted (user) data from the socket, but no one external is wants
             # it yet.  So this data was decrypted as a consequence of our handshaking.
@@ -1673,6 +1675,7 @@ class TLSSocket(kaa.Socket):
             # have user data.
             self._update_read_monitor()
 
+
         if not plaintext:
             # We read data from the socket, but after passing through the BIO pair
             # there was no decrypted data.  So what we read was protocol traffic.
@@ -1686,7 +1689,7 @@ class TLSSocket(kaa.Socket):
     def _handle_verify_failure(self, tp, exc, tb):
         self._tls_ip.throw(tp, exc, tb)
         self.close(immediate=True, expected=True)
-        
+
 
     def _verify_callback(self, preverify_ok, x509_ctx):
         """
@@ -1720,8 +1723,8 @@ class TLSSocket(kaa.Socket):
             return 0
 
         if depth == 0 and self._verified is None:
-            # We made it all the way the peer cert without failing, so we're
-            # considered verified now.
+            # We made it all the way to the peer cert without failing, so
+            # we're considered verified now.
             self._verified = True
             kaa.OneShotTimer(self.signals['tls'].emit).start(0)
         return 1
@@ -1792,7 +1795,7 @@ class TLSSocket(kaa.Socket):
         chain *instead* of the :meth:`verify` method.
         """
         return self._user_verify_cb
-    
+
 
     @verify_cb.setter
     def verify_cb(self, value):
@@ -1869,8 +1872,8 @@ class TLSSocket(kaa.Socket):
         This value is False by default.  If True, for clients, the session
         state will be perserved between subsequent :meth:`connect` and
         :meth:`starttls_client` calls.
-        
-        .. note:: 
+
+        .. note::
            Currently, servers will always maintain a session cache and allow
            clients to attempt session resumption.
 
@@ -2061,7 +2064,7 @@ class TLSSocket(kaa.Socket):
         Before this method (or :meth:`~TLSSocket.starttls_client`) is invoked,
         a TLSSocket behaves like a standard :class:`~kaa.Socket`.
         """
-        return self._starttls(client=False, cert=cert, key=key, password=password, 
+        return self._starttls(client=False, cert=cert, key=key, password=password,
                               verify=verify, dh=dh, ticket_key=ticket_key)
 
 # TODO: support SSL_CTX_set_tlsext_ticket_key_cb for key rotation

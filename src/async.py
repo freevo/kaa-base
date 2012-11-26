@@ -54,13 +54,13 @@ def inprogress(obj):
 
     :param obj: object to represent as an InProgress.
     :return: an :class:`~kaa.InProgress` representing ``obj``
-    
+
     The precise behaviour of an object represented as an
     :class:`~kaa.InProgress` should be defined in the documentation for the
     class.  For example, the :class:`~kaa.InProgress` for a
     :class:`~kaa.Process` object will be finished when the process is
     terminated.
-    
+
     This function simply calls ``__inprogress__()`` of the given ``obj`` if one
     exists, and if not will raise an exception.  In this sense, it behaves
     quite similar to ``len()`` and ``__len__()``.
@@ -193,12 +193,12 @@ class InProgress(Signal, Object):
 
     # Class-wide lock for the rarely-used finished event.  This is a small
     # optimization, saving about 7% of total instance creation time.  See
-    # _finished_event_poke() for more details.  
+    # _finished_event_poke() for more details.
     _finished_event_lock = threading.Lock()
 
     def __init__(self, abortable=None, frame=0):
         """
-        :param abortable: see the :attr:`~kaa.InProgress.abortable` property.  
+        :param abortable: see the :attr:`~kaa.InProgress.abortable` property.
         :type abortable: bool
         """
         super(InProgress, self).__init__()
@@ -601,7 +601,7 @@ class InProgress(Signal, Object):
         aborted to perform cleanup actions before relinquishing control back to
         the caller.  In this example, sock.read() will be aborted if not
         completed within 3 seconds::
-        
+
             @kaa.coroutine()
             def read_from_socket(sock):
                 data = yield sock.read().timeout(3, abort=True)
@@ -661,8 +661,8 @@ class InProgress(Signal, Object):
     def execute(self, func, *args, **kwargs):
         """
         Execute the given function and finish the InProgress object with the
-        result or exception. 
-        
+        result or exception.
+
         If the function raises SystemExit or KeyboardInterrupt, those are
         re-raised to allow them to be properly handled by the main loop.
 
@@ -687,7 +687,7 @@ class InProgress(Signal, Object):
     def wait(self, timeout=None):
         """
         Blocks until the InProgress is finished.
-        
+
         The main loop is kept alive if waiting in the main thread, otherwise
         the thread is blocked until another thread finishes the InProgress.
 
@@ -1029,7 +1029,7 @@ class InProgressAll(InProgressAny):
             self.finish(False, None)
         elif len(prefinished):
             # Some underlying InProgress objects are already finished so we
-            # need to substract them from the number of objects we are still
+            # need to subtract them from the number of objects we are still
             # waiting for.
             self._counter -= len(prefinished)
 

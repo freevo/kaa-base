@@ -271,7 +271,7 @@ class PyObjectRow(object):
                 return [] if attr[2] else None
             else:
                 value = self._pickle[key]
-        
+
         if sys.hexversion < 0x03000000 and (attr[3] == str or attr[3] == buffer):
             # Python 2's pysqlite returns BLOBs as buffers.  If the attribute
             # type is string or buffer (RAW_TYPE on Python 2), convert to string.
@@ -327,7 +327,7 @@ class PyObjectRow(object):
         else:
             return key in self._idxmap
 
-    
+
 if sys.hexversion >= 0x03000000:
     RAW_TYPE = bytes
     PICKLE_PROTOCOL = 3
@@ -505,8 +505,8 @@ class QExpr(object):
         etc.).
 
         The operand for ``in`` and ``not in`` are lists or tuples of the attribute
-        type, to test inclusion in the given set.  
-        
+        type, to test inclusion in the given set.
+
         The ``range`` operator accepts a 2-tuple specifying min and max values
         for the attribute.  The Python expression age=QExpr('range', (20, 30))
         translates to ``age >= 20 AND age <= 30``.
@@ -674,7 +674,7 @@ class Database(object):
         """
         if isinstance(obj, ObjectRow):
             object_type, object_id = obj['type'], obj['id']
-        else: 
+        else:
             try:
                 object_type, object_id = obj
                 if not isinstance(object_type, (int, basestring)) or not isinstance(object_id, (int, long, QExpr)):
@@ -716,7 +716,7 @@ class Database(object):
         """
         Register one or more object attributes and/or multi-column indexes for
         the given type name.
-        
+
         This function modifies the database as needed to accommodate new
         indexes and attributes, either by creating the object's tables (in the
         case of a new object type) or by altering the object's tables to add
@@ -750,7 +750,7 @@ class Database(object):
         not supported, a ValueError will be raised.
 
         .. note:: Currently, indexes and attributes can only be added, not
-           removed.  That is, once an attribute or indexes is added, it lives
+           removed.  That is, once an attribute or index is added, it lives
            forever.
 
         Object attributes, which are supplied as keyword arguments, are either
@@ -760,8 +760,8 @@ class Database(object):
         can be any type that can be pickled, but can't be searched.
 
         The attribute kwarg value is a tuple of 2 to 4 items in length and in
-        the form (attr_type, flags, ivtidx, split). 
-        
+        the form (attr_type, flags, ivtidx, split).
+
             * attr_type: the type of the object attribute. For simple attributes
               (:attr:`~kaa.db.ATTR_SIMPLE` in *flags*), this can be any picklable
               type; for searchable attributes (:attr:`~kaa.db.ATTR_SEARCHABLE`
@@ -812,7 +812,7 @@ class Database(object):
                 # index for fast term-based searching.
                 subject = (unicode, ATTR_SEARCHABLE | ATTR_INVERTED_INDEX, 'keywords'),
 
-                # Special case where an attribute name is the same as a registered 
+                # Special case where an attribute name is the same as a registered
                 # inverted index.  This lets us index on, for example, the message body
                 # without actually storing the message inside the database.
                 keywords = (list, ATTR_SIMPLE | ATTR_INVERTED_INDEX, 'keywords')
@@ -1031,7 +1031,7 @@ class Database(object):
     def register_inverted_index(self, name, min = None, max = None, split = None, ignore = None):
         """
         Registers a new inverted index with the database.
-        
+
         An inverted index maps arbitrary terms to objects and allows you to
         query based on one or more terms.  If the inverted index already exists
         with the given parameters, no action is performed.
@@ -1466,8 +1466,8 @@ class Database(object):
         Fetch the given object from the database.
 
         :param obj: a 2-tuple (type, id) representing the object.
-        :returns: :class:`ObjectRow` 
-        
+        :returns: :class:`ObjectRow`
+
         obj may also be an :class:`ObjectRow`, however that usage is less
         likely to be useful, because an :class:`ObjectRow` already contains all
         information about the object.  One common use-case is to reload a
@@ -1486,7 +1486,7 @@ class Database(object):
     def update(self, obj, parent=None, **attrs):
         """
         Update attributes for an existing object in the database.
-        
+
         :param obj: the object whose attributes are being modified
         :type obj: :class:`ObjectRow` or 2-tuple (object_type, object_id)
         :param parent: if specified, the object is reparented to the given
@@ -1563,7 +1563,7 @@ class Database(object):
                 row_attrs.update(attrs)
                 attrs = row_attrs
 
-        
+
         if parent:
             attrs['parent_type'], attrs['parent_id'] = self._to_obj_tuple(parent, numeric=True)
         attrs['id'] = object_id
@@ -1693,7 +1693,7 @@ class Database(object):
 
         Values supplied to attributes (other than inverted indexes) require
         exact matches.  To search based on an expression, such as inequality,
-        ranges, substrings, set inclusion, etc. require the use of a 
+        ranges, substrings, set inclusion, etc. require the use of a
         :class:`~kaa.db.QExpr` object.
 
         Expanding on the example provided in
@@ -2348,7 +2348,7 @@ class Database(object):
     def get_inverted_index_terms(self, ivtidx, associated = None, prefix = None):
         """
         Obtain terms used by objects for an inverted index.
-        
+
         :param ivtidx: the name of an inverted index previously registered with
                        :meth:`~kaa.db.Database.register_inverted_index`.
         :type ivtidx: str
@@ -2426,7 +2426,7 @@ class Database(object):
                 * attrs: a dictionary of registered attributes for this type
                 * idx: a list of composite indexes for this type
             * termcounts: a dict of the number of indexed terms for each
-                          inverted index
+              inverted index
             * file: full path to the database file
         """
         total = 0
@@ -2469,8 +2469,8 @@ class Database(object):
         if '::' not in key:
             raise ValueError('Invalid key %s; must be prefixed with "appname::"' % key)
 
-        self._db_query('DELETE FROM meta WHERE attr=?', (key,)) 
-        self._db_query('INSERT INTO meta VALUES (?, ?)', (key, value)) 
+        self._db_query('DELETE FROM meta WHERE attr=?', (key,))
+        self._db_query('INSERT INTO meta VALUES (?, ?)', (key, value))
         self._set_dirty()
 
 
@@ -2481,7 +2481,7 @@ class Database(object):
         :param key: the key name for the metadata, prefixed with ``appname::``.
         :type key: str
         :param default: value to return if key is not found
-        :returns: unicode string containing the value for this key, or 
+        :returns: unicode string containing the value for this key, or
                   the ``default`` parameter if the key was not found.
         """
         row = self._db_query_row('SELECT value FROM meta WHERE attr=?', (key,))
@@ -2516,7 +2516,7 @@ class Database(object):
         Full path to the database file.
         """
         return self._dbfile
-    
+
 
     @property
     def lazy_commit(self):

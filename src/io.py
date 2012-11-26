@@ -58,7 +58,7 @@ class IOMonitor(notifier.NotifierCallback):
     def __init__(self, callback, *args, **kwargs):
         """
         Creates an IOMonitor to monitor IO activity via the mainloop.
-        
+
         Once a file descriptor is registered using the
         :meth:`~kaa.IOMonitor.register` method, the given *callback* is invoked
         upon I/O activity.
@@ -145,7 +145,7 @@ class IOChannel(Object):
     Reads are asynchronous and non-blocking, and may be performed using two
     possible approaches:
 
-        1. Connecting a callback to the :attr:`~kaa.IOChannel.signals.read` 
+        1. Connecting a callback to the :attr:`~kaa.IOChannel.signals.read`
            or :attr:`~kaa.IOChannel.signals.readline` signals.
         2. Invoking the :meth:`~kaa.IOChannel.read` or
            :meth:`~kaa.IOChannel.readline` methods, which return
@@ -296,7 +296,7 @@ class IOChannel(Object):
     def writable(self):
         """
         True if :meth:`write` may be called.
-        
+
         (However, if you pass too much data to write() such that the write
         queue limit is exceeded, the write will fail.)
         """
@@ -324,7 +324,7 @@ class IOChannel(Object):
     def chunk_size(self):
         """
         Number of bytes to attempt to read from the channel at a time.
-        
+
         The default is 1M.  A 'read' signal is emitted for each chunk read from
         the channel.  (The number of bytes read at a time may be less than the
         chunk size, but will never be more.)
@@ -341,7 +341,7 @@ class IOChannel(Object):
     def queue_size(self):
         """
         The size limit in bytes for the read and write queues.
-        
+
         Each queue can consume at most this size plus the chunk size.  Setting
         a value does not affect any data currently in any of the the queues.
         """
@@ -367,7 +367,7 @@ class IOChannel(Object):
     def read_queue_used(self):
         """
         The number of bytes in the read queue.
-        
+
         The read queue is only used if either readline() or the readline signal
         is.
         """
@@ -425,7 +425,7 @@ class IOChannel(Object):
         """
         Update read IOMonitor to register or unregister based on if there are
         any handlers attached to the read signals.  If there are no handlers,
-        there is no point in reading data from the channel since it will go 
+        there is no point in reading data from the channel since it will go
         nowhere.  This also allows us to push back the read buffer to the OS.
 
         We must call this immediately after reading a block, and not defer
@@ -452,13 +452,13 @@ class IOChannel(Object):
     def wrap(self, channel, mode):
         """
         Make the IOChannel represent a new descriptor or file-like object.
-        
+
         This is implicitly called by the initializer.  If the IOChannel is
         already wrapping another channel, it will be closed before the given
         one is wrapped.
-        
+
         :param channel: file descriptor to wrap into the IOChannel
-        :type channel: integer file descriptor, file-like object, or 
+        :type channel: integer file descriptor, file-like object, or
                        other IOChannel
         :param mode: indicates whether the channel is readable, writable,
                      or both.  Only applies to file descriptor channels or
@@ -579,10 +579,10 @@ class IOChannel(Object):
     def read(self):
         """
         Reads a chunk of data from the channel.
-        
+
         :returns: An :class:`~kaa.InProgress` object. If the InProgress is
-                  finished with the empty string, it means that no data 
-                  was collected and the channel was closed (or the channel 
+                  finished with the empty string, it means that no data
+                  was collected and the channel was closed (or the channel
                   was already closed when read() was called).
 
         It is therefore possible to busy-loop by reading on a closed channel::
@@ -609,14 +609,14 @@ class IOChannel(Object):
     def readline(self):
         """
         Reads a line from the channel.
-        
+
         The line delimiter is included in the string to avoid ambiguity.  If no
         delimiter is present then either the read queue became full or the
         channel was closed before a delimiter was received.
 
         :returns: An :class:`~kaa.InProgress` object. If the InProgress is
-                  finished with the empty string, it means that no data 
-                  was collected and the channel was closed (or the channel 
+                  finished with the empty string, it means that no data
+                  was collected and the channel was closed (or the channel
                   was already closed when readline() was called).
 
         Data from the channel is read and queued in until the delimiter (\\\\n by
@@ -655,7 +655,7 @@ class IOChannel(Object):
     def _handle_read(self):
         """
         IOMonitor callback when there is data to be read from the channel.
-        
+
         This callback is only registered when we know the user is interested in
         reading data (by connecting to the read or readline signals, or calling
         read() or readline()).  This is necessary for flow control.
@@ -759,13 +759,13 @@ class IOChannel(Object):
     def write(self, data):
         """
         Writes the given data to the channel.
-        
+
         :param data: the data to be written to the channel.
         :type data: string
 
         :returns: An :class:`~kaa.InProgress` object which is finished when the
                   given data is fully written to the channel.  The InProgress
-                  is finished with the number of bytes sent in the last write 
+                  is finished with the number of bytes sent in the last write
                   required to commit the given data to the channel.  (This may
                   not be the actual number of bytes of the given data.)
 
@@ -818,7 +818,7 @@ class IOChannel(Object):
             while self._write_queue:
                 data, inprogress = self._write_queue.pop(0)
                 sent = self._write(data)
-                log.debug2('IOChannel write data: channel=%s fd=%s len=%d (of %d)', 
+                log.debug2('IOChannel write data: channel=%s fd=%s len=%d (of %d)',
                            self._channel, self.fileno, sent, len(data))
                 if sent != len(data):
                     # Not all data was able to be sent; push remaining data
@@ -878,10 +878,10 @@ class IOChannel(Object):
     def close(self, immediate=False, expected=True):
         """
         Closes the channel.
-        
+
         :param immediate: if False and there is data in the write buffer, the
                           channel is closed once the write buffer is emptied.
-                          Otherwise the channel is closed immediately and the 
+                          Otherwise the channel is closed immediately and the
                           *closed* signal is emitted.
         :type immediate: bool
         """
@@ -960,7 +960,7 @@ class IOChannel(Object):
         standard :class:`~kaa.Socket` into a :class:`~kaa.TLSSocket` in the
         middle of a session.  This method returns ``self`` so that this idiom
         is possible::
-        
+
             from kaa.net.tls import TLSSocket
             sock = TLSSocket().steal(sock)
 

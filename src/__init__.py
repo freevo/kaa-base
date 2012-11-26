@@ -48,7 +48,7 @@ _object = object
 #
 # Lazy importing should be completely user-transparent.  See the _LazyProxy
 # docstring for more info.
-# 
+#
 # XXX: recognizing that this is a new feature and possibly (probably :))
 # buggy, this constant lets you easily disable this functionality.
 ENABLE_LAZY_IMPORTS = 1
@@ -155,7 +155,7 @@ class _LazyProxy(type):
         >>> @timed(1.0)
         ... def foo():
         ...     pass
-        
+
         # imports core (setattr hook)
         >>> import kaa
         >>> kaa.Signal.MAX_CONNECTIONS = 10000
@@ -428,7 +428,7 @@ class KaaLoader:
             imp.release_lock()
 
         return mod
-        
+
 
 class KaaFinder(_object):
     """
@@ -509,7 +509,7 @@ def rename(oldcls, newcls):
             fname, line, c, content = traceback.extract_stack(limit=2)[0]
             log = logging.getLogger('kaa.base.core')
             log.warning('kaa.%s has been renamed to kaa.%s and will not be '
-                        'available in kaa.base 1.0:\n%s (%s): %s', 
+                        'available in kaa.base 1.0:\n%s (%s): %s',
                         oldcls, newcls.__name__, fname, line, content)
             # Replace old class with new class object, so we only warn once.
             globals()[oldcls] = newcls

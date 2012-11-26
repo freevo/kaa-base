@@ -74,7 +74,7 @@ PyTypeObject ObjectRow_PyObject_Type;
 typedef struct {
     int refcount,
         pickle_idx;
-    PyObject *idxmap,     // maps column index to ObjectAttribute  
+    PyObject *idxmap,     // maps column index to ObjectAttribute
              *type_names; // maps type id to type name
 } QueryInfo;
 

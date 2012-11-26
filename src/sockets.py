@@ -74,7 +74,7 @@ def if_nametoindex(name):
     :param name: name of the interface
     :type name: str
     :returns: integer of the interface id
-    :raises: ValueError if the interface name cannot be found; 
+    :raises: ValueError if the interface name cannot be found;
              NotImplementedError on unsupported platforms.
     """
     try:
@@ -173,7 +173,7 @@ class Socket(IOChannel):
         This is either the tuple ``(host, port, flowinfo, scopeid, scope)``
         representing the local end of a TCP socket, or the string containing
         the name of a Unix socket.
-        
+
         *scope* is the interface name represented by *scopeid*, and is None if
         *scopeid* is 0.
 
@@ -189,7 +189,7 @@ class Socket(IOChannel):
 
         This is a tuple ``(host, port, flowinfo, scopeid, scope, reqhost)``
         representing the remote end of the socket.
-        
+
         *scope* is the interface name represented by *scopeid*, and is None if
         *scopeid* is 0.  *reqhost* is the requested hostname if
         :meth:`~kaa.Socket.connect` was called, or None if this is a listening
@@ -213,7 +213,7 @@ class Socket(IOChannel):
         """
         True if the socket is in the process of establishing a connection
         but is not yet connected.
-        
+
         Once the socket is connected, the connecting property will be False,
         but the :attr:`connected` property will be True.
         """
@@ -247,14 +247,14 @@ class Socket(IOChannel):
         :attr:`connecting`.
         """
         # Unroll these properties: connected or connecting
-        return (self._channel != None and not self._closing) or self._connecting
+        return (self._channel != None and not self._close_inprogress) or self._connecting
 
 
     @IOChannel.readable.getter
     def readable(self):
         """
         True if :meth:`read` may be called.
-        
+
         A socket is considered readable when it is :attr:`alive`, or if it's
         closed but there is buffered data to be read.
 
@@ -285,7 +285,7 @@ class Socket(IOChannel):
         """
         Size of the send and receive socket buffers (SO_SNDBUF and SO_RCVBUF)
         in bytes.
-        
+
         Setting this to higher values (say 1M) improves performance when
         sending large amounts of data across the socket.  Note that the upper
         bound may be restricted by the kernel.  (Under Linux, this can be tuned
@@ -479,7 +479,7 @@ class Socket(IOChannel):
         :param addr: Binds the socket to this address.  If an int, this
                      specifies a TCP port that is bound on all interfaces; if a
                      str, it is either a Unix socket path or represents a TCP
-                     socket when in the form ``[host]:[service][%scope]``.  
+                     socket when in the form ``[host]:[service][%scope]``.
                      See below for further details.
         :type addr: int, str, or 2- or 4-tuple
         :param backlog: the maximum length to which the queue of pending
@@ -581,7 +581,7 @@ class Socket(IOChannel):
         flowinfo, scope)``.  If given as a 2-tuple, it is in the form ``(host,
         service)``, and in this case the *flowinfo* and *scope* are assumed to
         be 0.
-        
+
         The *flowinfo* and *scope* fields are only relevant for IPv6 hosts,
         where they represent the ``sin6_flowinfo`` and ``sin6_scope_id``
         members in :const:`struct sockaddr_in6` in C.  *scope* may be the name
@@ -600,7 +600,7 @@ class Socket(IOChannel):
 
         When connecting to a link-local address (fe80::/16), *scope* must be
         specified.  Relative Unix socket names (those not prefixed with ``/``)
-        are created via kaa.tempfile.
+        are created via :func:`kaa.tempfile`.
 
         This function is executed in a thread to avoid blocking.  It therefore
         returns an InProgress object.  If the socket is connected, the InProgress

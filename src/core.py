@@ -179,7 +179,7 @@ class CoreThreading:
             fcntl.fcntl(fd, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
         return pipe
 
-    
+
     @staticmethod
     def _purge_pipe(fd):
         """
@@ -395,7 +395,7 @@ class Object(object):
             setattr(cls, cached_attr, signals)
         return signals
 
-        
+
     def __init__(self, *args, **kwargs):
         # Accept all args, and pass to superclass.  Necessary for kaa.Object
         # descendants to be involved in inheritance diamonds.
@@ -692,7 +692,7 @@ class Signal(object):
     def emit_deferred(self, *args, **kwargs):
         """
         Queues the emission until after the next callback is connected.
-        
+
         This allows a signal to be 'primed' by its creator, and the handler
         that subsequently connects to it will be called with the given
         arguments.
@@ -814,7 +814,7 @@ class Signals(dict):
         """
         Returns a new Signals object by taking a subset of the supplied
         signal names.
-        
+
         The keys of the new Signals object are ordered as specified in the
         names parameter.
 

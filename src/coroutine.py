@@ -133,7 +133,7 @@ def coroutine(interval=0, policy=None, progress=False, group=None):
     
     If it is not finished, the coroutine's life can be controlled via the
     :class:`~kaa.CoroutineInProgress` it returns.  It can be aborted with
-    :meth:`~kaa.InProgress.abort`, in which case an `~kaa.InProgressAborted`
+    :meth:`~kaa.InProgress.abort`, in which case an :class:`~kaa.InProgressAborted`
     will be raised inside the coroutine, or its interval may be adjusted via
     the :attr:`~kaa.CoroutineInProgress.interval` property.
     """
@@ -258,7 +258,8 @@ class CoroutineInProgress(InProgress):
     The caller of :func:`kaa.coroutine` can interact with the coroutine via the returned
     ``CoroutineInProgress`` object, or yield it from other coroutines.
 
-    Notably, coroutines can be aborted by invoking :meth:`abort` on this object.
+    Notably, coroutines can be aborted by invoking
+    :meth:`~kaa.CoroutineInProgress.abort` on this object.
     """
     def __init__(self, function, function_info, interval, progress=None):
         super(CoroutineInProgress, self).__init__(frame=-1)
@@ -323,6 +324,7 @@ class CoroutineInProgress(InProgress):
         :class:`~kaa.InProgress` and reentry.
         """
         return self._interval
+
 
     @interval.setter  
     def interval(self, interval):
@@ -466,7 +468,7 @@ class CoroutineInProgress(InProgress):
         would abort ``z()``, which could cause :class:`~kaa.InProgressAborted`
         to be raised inside ``a()``.  If ``b()`` didn't exist in the above
         example, ``z()`` would automatically be aborted.  You could prevent
-        this by using :meth:`noabort`::
+        this by using :meth:`~kaa.InProgress.noabort`::
 
             @kaa.coroutine()
             def b():

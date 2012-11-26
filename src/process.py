@@ -43,7 +43,7 @@ from .callable import Callable, WeakCallable, CallableError
 from .core import Object, Signals
 from .timer import delay, timed, Timer, OneShotTimer, POLICY_ONCE
 from .thread import MainThreadCallable, threaded, MAINTHREAD
-from .async import InProgress, InProgressAny, InProgressAll, inprogress
+from .async import InProgress, InProgressAny, InProgressAll, inprogress, FINISH_RESULT
 from .coroutine import coroutine, POLICY_SINGLETON
 from .io import IOChannel, IO_WRITE, IO_READ
 from . import main
@@ -713,8 +713,8 @@ class Process(Object):
 
         # TODO: if child is dead, attach handler to this IP and if len data <
         # chunk size, can close the channel.  (What makes this more complicated
-        # is knowing which channel to close, given pass_index=False.)
-        return InProgressAny(stdout_read(), stderr_read(), pass_index=False,
+        # is knowing which channel to close, given finish=FINISH_RESULT.)
+        return InProgressAny(stdout_read(), stderr_read(), finish=FINISH_RESULT,
                              filter=lambda val: val in (None, ''))
 
 

@@ -333,7 +333,9 @@ _lazy_import('callable', ['Callable', 'WeakCallable'])
 # Async programming classes, namely InProgress
 _lazy_import('async', [
     'InProgress', 'InProgressCallable', 'InProgressAny', 'InProgressAll',
-    'InProgressStatus', 'inprogress'
+    'InProgressStatus', 'inprogress',
+    # Constants for InProgressAny/All finish argument.
+    'FINISH_IDX', 'FINISH_RESULT', 'FINISH_SELF', 'FINISH_IDX_RESULT'
 ])
 
 # Thread callables, helper functions and decorators
@@ -360,6 +362,7 @@ _lazy_import('event', ['Event', 'EventHandler', 'WeakEventHandler'])
 # coroutine decorator and helper classes
 _lazy_import('coroutine', [
     'NotFinished', 'coroutine', 'CoroutineInProgress',
+    # Constants for coroutine() policy argument
     'POLICY_SYNCHRONIZED', 'POLICY_SINGLETON', 'POLICY_PASS_LAST'
 ])
 

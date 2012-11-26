@@ -26,7 +26,7 @@ from __future__ import absolute_import
 
 __all__ = [
     'InProgress', 'InProgressCallable', 'InProgressAny', 'InProgressAll', 'inprogress',
-    'InProgressStatus'
+    'InProgressStatus', 'FINISH_RESULT', 'FINISH_SELF', 'FINISH_IDX_RESULT'
 ]
 
 # python imports
@@ -46,6 +46,12 @@ from .core import Object, Signal, Signals, CoreThreading
 
 # get logging object
 log = logging.getLogger('kaa.base.core.async')
+
+# Constants for how InProgressAny/All are finished
+FINISH_IDX = 'FINISH_IDX'
+FINISH_RESULT = 'FINISH_RESULT'
+FINISH_SELF = 'FINISH_SELF'
+FINISH_IDX_RESULT = 'FINISH_IDX_RESULT'
 
 # A set of weakrefs for all InProgress objects that have unhandled
 # exceptions.  We need to keep global references to the weakrefs in
@@ -878,32 +884,69 @@ class InProgressAny(InProgress):
     Sequences or generators passed as arguments will be flattened, allowing
     for this idiom::
 
-        yield InProgressAll(func() for func in coroutines)
+        yield InProgressAny(func() for func in coroutines)
 
-    The initializer can take two optional kwargs: pass_index and filter.
+    Arguments will be passed through :func:`kaa.inprogress` so any object that
+    can be coerced to an :class:`~kaa.InProgress` (such as
+    :class:`~kaa.Signal` objects) can be passed directly.
 
-    If pass_index is True, the InProgressAny object then finishes with a
-    2-tuple, whose first element is the index (offset from 0) of the InProgress
-    that finished, and the second element is the result the InProgress was
-    finished with.
+    .. note::
+       Callbacks aren't attached to the supplied InProgress objects to monitor
+       their state until a callback is attached to the InProgressAny object.
+       This means an InProgressAny with nothing connected will not actually
+       finish even when one of its constituent InProgresses finishes.
 
-    If pass_index is False, the InProgressAny is finished with just the result
-    and not the index.
+    :param finish: controls what values the InProgressAny is finished with
+    :type finish: ``FINISH_IDX_RESULT`` (default), ``FINISH_IDX``, or
+        ``FINISH_RESULT``
+    :param filter: optional callback receiving two arguments (index and
+        finished result) invoked each time an underlying InProgress object
+        finishes which, if returns True, prevents the completion of the
+        InProgressAny iff there are other InProgress objects that could
+        yet finish.
+    :type filter: callable
 
-    If filter is specified, it is a callable that receives two arguments,
-    the index and finished result (as described above).  If the callable
-    returns True AND if there are other underlying InProgress objects that
-    could yet be finished, then this InProgressAny is _not_ finished.
+    The possible ``finish`` values are:
+
+        * ``kaa.FINISH_IDX_RESULT``: a 2-tuple (idx, result) containing
+          the index (relative to the position of the InProgress passed to
+          the constructor) and the result that InProgress finished with
+        * ``kaa.FINISH_IDX``: the index (offset from 0) of the InProgress
+          that finished the InProgressAny
+        * ``kaa.FINISH_RESULT``: the result of the InProgress that
+          finished the InProgressAny
+
+    For example::
+
+        # Read data from either sock1 or sock2, whichever happens first within
+        # 2 seconds.
+        idx, data = yield kaa.InProgressAny(kaa.delay(2), sock1.read(), sock2.read())
+        if idx == 0:
+            print 'Nothing read from either socket after 2 seconds'
+        else:
+            print 'Read from sock{0}: {1}'.format(idx, data)
+
+
     """
-    def __init__(self, *objects, **kwargs):
-        super(InProgressAny, self).__init__()
-        self._pass_index = kwargs.get('pass_index', True)
-        self._filter = kwargs.get('filter')
+    _default_finish_args = FINISH_IDX_RESULT
 
+    def __init__(self, *objects, **kwargs):
+        self._finish_args = kwargs.pop('finish', None) or self._default_finish_args
+        self._filter = kwargs.pop('filter', None)
+
+        if 'pass_index' in kwargs:
+            # Legacy behaviour.
+            log.warning('pass_index argument to InProgressAny() is deprecated; use finish')
+            self._finish_args = FINISH_IDX_RESULT if kwargs.pop('pass_index') else FINISH_RESULT
+
+        if self._finish_args not in (FINISH_RESULT, FINISH_SELF, FINISH_IDX_RESULT, FINISH_IDX):
+            raise ValueError('invalid finish kwarg')
+
+        super(InProgressAny, self).__init__(**kwargs)
         # Generate InProgress objects for anything that was passed, including
         # InProgress objects nested within sequences and generators.
         self._objects = [inprogress(o) for o in self._flatten(objects)]
-        self._counter = len(objects) or 1
+        self._counter = len(self._objects) or 1
 
         self._prefinished_visited = set()
         self._check_prefinished()
@@ -1014,13 +1057,29 @@ class InProgressAny(InProgress):
             # so we'll wait for them.
             return
 
-        super(InProgressAny, self).finish((index, result) if self._pass_index else result)
+        if self._finish_args == FINISH_IDX_RESULT:
+            finish_result = index, result
+        elif self._finish_args == FINISH_RESULT:
+            finish_result = result
+        elif self._finish_args == FINISH_IDX:
+            finish_result = index
+        elif self._finish_args == FINISH_SELF:
+            # Not really useful because _objects is about to be cleared out,
+            # but included for completeness.
+            finish_result = self
 
         # We're done with the underlying IP objects so unref them.  In the
         # case of InProgressCallable connected weakly to signals (which
         # happens when signals are given to us on the constructor), they'll
         # get deleted and disconnected from the signals.
+        #
+        # Small nicety: if we clear out _objects before calling
+        # InProgress.finish() then we force the disconnection of
+        # inprogress()ed Signal objects before (potentially) resuming any
+        # coroutine that yielded this InProgressAny.
         self._objects = None
+
+        super(InProgressAny, self).finish(finish_result)
 
 
 
@@ -1036,12 +1095,7 @@ class InProgressAll(InProgressAny):
         for ip in (yield kaa.InProgressAll(sock1.read(), sock2.read())):
             print(ip.result)
     """
-    def __init__(self, *objects):
-        super(InProgressAll, self).__init__(*objects)
-
-        if not objects:
-            self.finish(None)
-
+    _default_finish_args = FINISH_SELF
 
     def _get_connect_args(self, ip, n):
         return ()
@@ -1065,8 +1119,25 @@ class InProgressAll(InProgressAny):
         # FIXME: rethink how we handle prerequisites that finish
         # by exception.  Should we throw too?
         self._counter -= 1
-        if self._counter == 0:
-            super(InProgressAny, self).finish(self)
+        if self._counter > 0:
+            # Still more prerequisites to finish before we can finish.
+            return
+
+        if self._finish_args == FINISH_SELF:
+            finish_result = self
+        else:
+            all_results = [(idx, ip.result if not ip.failed else ip._exception)
+                                           for idx, ip in enumerate(self._objects)]
+            if self._finish_args == FINISH_IDX_RESULT:
+                finish_result = all_results
+            elif self._finish_args == FINISH_RESULT:
+                finish_result = [result for idx, result in all_results]
+            elif self._finish_args == FINISH_IDX:
+                # Hardly useful, but added for completeness.
+                finish_result = [idx for idx, result in all_results]
+
+        # Note that this calls InProgress.finish(), not InProgressAny.finish().
+        super(InProgressAny, self).finish(finish_result)
         # Unlike InProgressAny, we don't unref _objects because the caller
         # may want to access them by iterating us.  That's fine, because
         # unlike InProgressAny where we'd prefer not to have useless

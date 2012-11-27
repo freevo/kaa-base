@@ -296,13 +296,6 @@ def run(threaded=False, daemon=True):
 
 
 
-# Put the public stop() in a timer to ensure we unravel the stack before
-# shutting down the notifier.
-#
-# notifier.shutdown() raises SystemExit which could get caught and handled in
-# undesirable ways by something else and the notifier loop may never even see
-# it.
-@timer.timed(0, policy=timer.POLICY_ONCE)
 def stop():
     """
     Stop the main loop and terminate all child processes and thread
@@ -311,7 +304,21 @@ def stop():
     Any notifier callback can also cause the main loop to terminate
     by raising SystemExit.
     """
-    _stop()
+    # Put the public stop() in a timer to ensure we unravel the stack before
+    # shutting down the notifier.
+    #
+    # notifier.shutdown() raises SystemExit which could get caught and handled in
+    # undesirable ways by something else and the notifier loop may never even see
+    # it.
+    #
+    # Previous versions decorated stop() with @timed but this prevented stop()
+    # from being executed more than one time (i.e. main loop being
+    # started/stopped after previously being started/stopped).  With
+    # @timed(POLICy_ONCE), a single OneShotTimer was created and attached to
+    # this function.  But because _stop() raises SystemExit, the timer never
+    # got unregistered and subsequent invocations of stop() assumed the timer
+    # was still running and turned the call into a no-op.
+    timer.OneShotTimer(_stop).start(0)
 
 
 def _stop():

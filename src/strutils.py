@@ -33,12 +33,6 @@ import sys
 import locale
 import imp
 
-# find the correct encoding
-try:
-    ENCODING = locale.getdefaultlocale()[1]
-    ''.encode(ENCODING)
-except (UnicodeError, TypeError):
-    ENCODING = 'latin-1'
 
 if sys.hexversion >= 0x03000000:
     UNICODE_TYPE = str
@@ -55,6 +49,29 @@ else:
     # When Python 2.5 support is dropped, this function should be removed
     # and all uses of bl('foo') should be replaced with b'foo'
     bl = str
+
+
+def _detect_encoding():
+    """
+    Find correct encoding from default locale.
+    """
+    # Some locales report encodings like 'utf_8_valencia' which Python doesn't
+    # know.  We try stripping off the right-most parts until we find an
+    # encoding that works.
+    e = locale.getdefaultlocale()[1]
+    while e:
+        try:
+            ''.encode(e)
+            return e
+        except LookupError:
+            pass
+        if '_' not in e:
+            break
+        e = e.rsplit('_', 1)[0]
+
+
+# If encoding can't be detected from locale, default to UTF-8.
+ENCODING = _detect_encoding() or 'UTF8'
 
 
 def get_encoding():
@@ -75,7 +92,7 @@ def set_encoding(encoding):
         # Set python's global encoding (kludge and only works for Python 2.x)
         reload(sys)
         sys.setdefaultencoding(encoding)
-    except (NameError, ValueError):
+    except LookupError:
         pass
 
 

@@ -46,6 +46,10 @@ class INotify(kaa.Object):
     """
     Monitor files and directories, invoking callbacks when changes occur.
 
+    Monitors only live as long as the INotify object is alive, so it is the
+    caller's responsibility to keep a reference.  If the INotify object has no
+    more referrants and is deleted, all monitors are automatically removed.
+
     Multiple instances of this class can be created, but note that there is
     a per-user limit of the number of INotify instances allowed, which is
     controlled by /proc/sys/fs/inotify/max_user_instances

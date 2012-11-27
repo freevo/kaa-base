@@ -92,10 +92,14 @@ Classes
    ObjectRow objects represent a single object from a :class:`kaa.db.Database`,
    and are returned by, or may be passed to, many Database methods.
 
-   For the most part, ObjectRows behave like a read-only dict, providing most
-   (though not all) of the common dict methods, however ObjectRow is a custom
-   type written in C for performance.
+   One key feature provided by ObjectRow is on-demand unpickling of
+   :attr:`~kaa.db.ATTR_SIMPLE` attributes.  It's often the case that
+   simple attributes don't need to be accessed, so there's no point in
+   incurring the unpickling overhead at query time.
 
+   For the most part, ObjectRows behave like a read-only dict, providing most
+   (though not all) of the common dict methods.  If running on CPython, there
+   is a higher performance implementation written in C.
 
 
 .. kaaclass:: kaa.db.QExpr

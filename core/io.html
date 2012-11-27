@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>I/O Channels &mdash; kaa.base 0.99.2dev-408-9f294ff9 documentation</title>
+    <title>I/O Channels &mdash; kaa.base 0.99.2dev-459-5049c011 documentation</title>
     
     <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -16,7 +16,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.99.2dev-408-9f294ff9',
+        VERSION:     '0.99.2dev-459-5049c011',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="kaa.base 0.99.2dev-408-9f294ff9 documentation" href="../index.html" />
+    <link rel="top" title="kaa.base 0.99.2dev-459-5049c011 documentation" href="../index.html" />
     <link rel="next" title="Socket I/O" href="socket.html" />
     <link rel="prev" title="Generators" href="../async/generators.html" />
     <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
@@ -47,7 +47,7 @@
         <li class="right" >
           <a href="../async/generators.html" title="Generators"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">kaa.base 0.99.2dev-408-9f294ff9 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2dev-459-5049c011 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -128,9 +128,10 @@ the notifier when the callback (or any arguments) are destroyed.</p>
 <p><dl class="class">
 <dt id="kaa.IOChannel">
 <em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">IOChannel</tt><big>(</big><em>channel=None</em>, <em>mode=3</em>, <em>chunk_size=1048576</em>, <em>delimiter='n'</em><big>)</big><a class="headerlink" href="#kaa.IOChannel" title="Permalink to this definition">¶</a></dt>
-<dd><p>Base class for read-only, write-only or read-write descriptors such as
-Socket and Process.  Implements logic common to communication over
-such channels such as async read/writes and read/write buffering.</p>
+<dd><p>Base class for read-only, write-only or read-write stream-based
+descriptors such as Socket and Process.  Implements logic common to
+communication over such channels such as async read/writes and read/write
+buffering.</p>
 <p>It may also be used directly with file descriptors or (probably less
 usefully) file-like objects.  e.g. <tt class="docutils literal"><span class="pre">IOChannel(file('somefile'))</span></tt></p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -158,7 +159,7 @@ once it becomes writable.</p>
 possible approaches:</p>
 <blockquote>
 <div><ol class="arabic simple">
-<li>Connecting a callback to the <a class="reference internal" href="#kaa.IOChannel.signals.read" title="kaa.IOChannel.signals.read"><tt class="xref py py-attr docutils literal"><span class="pre">read</span></tt></a> 
+<li>Connecting a callback to the <a class="reference internal" href="#kaa.IOChannel.signals.read" title="kaa.IOChannel.signals.read"><tt class="xref py py-attr docutils literal"><span class="pre">read</span></tt></a>
 or <a class="reference internal" href="#kaa.IOChannel.signals.readline" title="kaa.IOChannel.signals.readline"><tt class="xref py py-attr docutils literal"><span class="pre">readline</span></tt></a> signals.</li>
 <li>Invoking the <a class="reference internal" href="#kaa.IOChannel.read" title="kaa.IOChannel.read"><tt class="xref py py-meth docutils literal"><span class="pre">read()</span></tt></a> or
 <a class="reference internal" href="#kaa.IOChannel.readline" title="kaa.IOChannel.readline"><tt class="xref py py-meth docutils literal"><span class="pre">readline()</span></tt></a> methods, which return
@@ -193,32 +194,36 @@ for more details.</p>
 <div class="heading">Methods</div>
 <table>
 <tr class="row-odd"><th><a class="reference internal" href="#kaa.IOChannel.close" title="kaa.IOChannel.close"><tt class="xref py py-meth docutils literal"><span class="pre">close()</span></tt></a></th><td class="desc">Closes the channel.</td></tr>
-<tr class="row-even"><th><a class="reference internal" href="#kaa.IOChannel.read" title="kaa.IOChannel.read"><tt class="xref py py-meth docutils literal"><span class="pre">read()</span></tt></a></th><td class="desc">Reads a chunk of data from the channel.</td></tr>
-<tr class="row-odd"><th><a class="reference internal" href="#kaa.IOChannel.readline" title="kaa.IOChannel.readline"><tt class="xref py py-meth docutils literal"><span class="pre">readline()</span></tt></a></th><td class="desc">Reads a line from the channel.</td></tr>
-<tr class="row-even"><th><a class="reference internal" href="#kaa.IOChannel.steal" title="kaa.IOChannel.steal"><tt class="xref py py-meth docutils literal"><span class="pre">steal()</span></tt></a></th><td class="desc">Steal all state from the given channel, assuming control over the underlying
+<tr class="row-even"><th><a class="reference internal" href="#kaa.IOChannel.make_native_proxy" title="kaa.IOChannel.make_native_proxy"><tt class="xref py py-meth docutils literal"><span class="pre">make_native_proxy()</span></tt></a></th><td class="desc"></td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.IOChannel.read" title="kaa.IOChannel.read"><tt class="xref py py-meth docutils literal"><span class="pre">read()</span></tt></a></th><td class="desc">Reads a chunk of data from the channel.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.IOChannel.readline" title="kaa.IOChannel.readline"><tt class="xref py py-meth docutils literal"><span class="pre">readline()</span></tt></a></th><td class="desc">Reads a line from the channel.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.IOChannel.steal" title="kaa.IOChannel.steal"><tt class="xref py py-meth docutils literal"><span class="pre">steal()</span></tt></a></th><td class="desc">Steal all state from the given channel, assuming control over the underlying
 file descriptor or socket.</td></tr>
-<tr class="row-odd"><th><a class="reference internal" href="#kaa.IOChannel.wrap" title="kaa.IOChannel.wrap"><tt class="xref py py-meth docutils literal"><span class="pre">wrap()</span></tt></a></th><td class="desc">Make the IOChannel represent a new descriptor or file-like object.</td></tr>
-<tr class="row-even"><th><a class="reference internal" href="#kaa.IOChannel.write" title="kaa.IOChannel.write"><tt class="xref py py-meth docutils literal"><span class="pre">write()</span></tt></a></th><td class="desc">Writes the given data to the channel.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.IOChannel.wrap" title="kaa.IOChannel.wrap"><tt class="xref py py-meth docutils literal"><span class="pre">wrap()</span></tt></a></th><td class="desc">Make the IOChannel represent a new descriptor or file-like object.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.IOChannel.write" title="kaa.IOChannel.write"><tt class="xref py py-meth docutils literal"><span class="pre">write()</span></tt></a></th><td class="desc">Writes the given data to the channel.</td></tr>
 </table>
 <div class="heading">Properties</div>
 <table>
-<tr class="row-odd"><th><a class="reference internal" href="#kaa.IOChannel.alive" title="kaa.IOChannel.alive"><tt class="xref py py-attr docutils literal"><span class="pre">alive</span></tt></a></th><td>read-only</td><td class="desc">True if the channel exists and is open.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.IOChannel.alive" title="kaa.IOChannel.alive"><tt class="xref py py-attr docutils literal"><span class="pre">alive</span></tt></a></th><td>read-only</td><td class="desc">True if the channel exists and is open.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.IOChannel.channel" title="kaa.IOChannel.channel"><tt class="xref py py-attr docutils literal"><span class="pre">channel</span></tt></a></th><td>read-only</td><td class="desc">The original object this IOChannel is wrapping.</td></tr>
 <tr class="row-even"><th><a class="reference internal" href="#kaa.IOChannel.chunk_size" title="kaa.IOChannel.chunk_size"><tt class="xref py py-attr docutils literal"><span class="pre">chunk_size</span></tt></a></th><td>read/write</td><td class="desc">Number of bytes to attempt to read from the channel at a time.</td></tr>
-<tr class="row-odd"><th><a class="reference internal" href="#kaa.IOChannel.delimiter" title="kaa.IOChannel.delimiter"><tt class="xref py py-attr docutils literal"><span class="pre">delimiter</span></tt></a></th><td>read/write</td><td class="desc">String used to split data for use with <tt class="xref py py-meth docutils literal"><span class="pre">readline()</span></tt>.</td></tr>
-<tr class="row-even"><th><a class="reference internal" href="#kaa.IOChannel.fileno" title="kaa.IOChannel.fileno"><tt class="xref py py-attr docutils literal"><span class="pre">fileno</span></tt></a></th><td>read-only</td><td class="desc">The file descriptor (integer) for this channel, or None if no channel
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.IOChannel.close_on_eof" title="kaa.IOChannel.close_on_eof"><tt class="xref py py-attr docutils literal"><span class="pre">close_on_eof</span></tt></a></th><td>read/write</td><td class="desc">Whether the channel automatically closes when EOF is encountered or on
+unexpected exceptions.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.IOChannel.delimiter" title="kaa.IOChannel.delimiter"><tt class="xref py py-attr docutils literal"><span class="pre">delimiter</span></tt></a></th><td>read/write</td><td class="desc">String used to split data for use with <tt class="xref py py-meth docutils literal"><span class="pre">readline()</span></tt>.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.IOChannel.fileno" title="kaa.IOChannel.fileno"><tt class="xref py py-attr docutils literal"><span class="pre">fileno</span></tt></a></th><td>read-only</td><td class="desc">The file descriptor (integer) for this channel, or None if no channel
 has been set.</td></tr>
-<tr class="row-odd"><th><a class="reference internal" href="#kaa.IOChannel.mode" title="kaa.IOChannel.mode"><tt class="xref py py-attr docutils literal"><span class="pre">mode</span></tt></a></th><td>read-only</td><td class="desc">Whether the channel is read-only, or read/write.</td></tr>
-<tr class="row-even"><th><a class="reference internal" href="#kaa.IOChannel.queue_size" title="kaa.IOChannel.queue_size"><tt class="xref py py-attr docutils literal"><span class="pre">queue_size</span></tt></a></th><td>read/write</td><td class="desc">The size limit in bytes for the read and write queues.</td></tr>
-<tr class="row-odd"><th><a class="reference internal" href="#kaa.IOChannel.read_queue_used" title="kaa.IOChannel.read_queue_used"><tt class="xref py py-attr docutils literal"><span class="pre">read_queue_used</span></tt></a></th><td>read-only</td><td class="desc">The number of bytes in the read queue.</td></tr>
-<tr class="row-even"><th><a class="reference internal" href="#kaa.IOChannel.readable" title="kaa.IOChannel.readable"><tt class="xref py py-attr docutils literal"><span class="pre">readable</span></tt></a></th><td>read-only</td><td class="desc">True if <tt class="xref py py-meth docutils literal"><span class="pre">read()</span></tt> may be called.</td></tr>
-<tr class="row-odd"><th><a class="reference internal" href="#kaa.IOChannel.writable" title="kaa.IOChannel.writable"><tt class="xref py py-attr docutils literal"><span class="pre">writable</span></tt></a></th><td>read-only</td><td class="desc">True if <tt class="xref py py-meth docutils literal"><span class="pre">write()</span></tt> may be called.</td></tr>
-<tr class="row-even"><th><a class="reference internal" href="#kaa.IOChannel.write_queue_used" title="kaa.IOChannel.write_queue_used"><tt class="xref py py-attr docutils literal"><span class="pre">write_queue_used</span></tt></a></th><td>read-only</td><td class="desc">The number of bytes queued in memory to be written to the channel.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.IOChannel.mode" title="kaa.IOChannel.mode"><tt class="xref py py-attr docutils literal"><span class="pre">mode</span></tt></a></th><td>read-only</td><td class="desc">Whether the channel is read-only, or read/write.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.IOChannel.queue_size" title="kaa.IOChannel.queue_size"><tt class="xref py py-attr docutils literal"><span class="pre">queue_size</span></tt></a></th><td>read/write</td><td class="desc">The size limit in bytes for the read and write queues.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.IOChannel.read_queue_used" title="kaa.IOChannel.read_queue_used"><tt class="xref py py-attr docutils literal"><span class="pre">read_queue_used</span></tt></a></th><td>read-only</td><td class="desc">The number of bytes in the read queue.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.IOChannel.readable" title="kaa.IOChannel.readable"><tt class="xref py py-attr docutils literal"><span class="pre">readable</span></tt></a></th><td>read-only</td><td class="desc">True if <tt class="xref py py-meth docutils literal"><span class="pre">read()</span></tt> may be called.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.IOChannel.writable" title="kaa.IOChannel.writable"><tt class="xref py py-attr docutils literal"><span class="pre">writable</span></tt></a></th><td>read-only</td><td class="desc">True if <tt class="xref py py-meth docutils literal"><span class="pre">write()</span></tt> may be called.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.IOChannel.write_queue_used" title="kaa.IOChannel.write_queue_used"><tt class="xref py py-attr docutils literal"><span class="pre">write_queue_used</span></tt></a></th><td>read-only</td><td class="desc">The number of bytes queued in memory to be written to the channel.</td></tr>
 </table>
 <div class="heading">Signals</div>
 <table>
-<tr class="row-odd"><th><a class="reference internal" href="#kaa.IOChannel.signals.read" title="kaa.IOChannel.signals.read"><tt class="xref py py-attr docutils literal"><span class="pre">read</span></tt></a></th><td class="desc">Emitted for each chunk of data read from the channel.</td></tr>
-<tr class="row-even"><th><a class="reference internal" href="#kaa.IOChannel.signals.readline" title="kaa.IOChannel.signals.readline"><tt class="xref py py-attr docutils literal"><span class="pre">readline</span></tt></a></th><td class="desc">Emitted for each line read from the channel.</td></tr>
-<tr class="row-odd"><th><a class="reference internal" href="#kaa.IOChannel.signals.closed" title="kaa.IOChannel.signals.closed"><tt class="xref py py-attr docutils literal"><span class="pre">closed</span></tt></a></th><td class="desc">Emitted when the channel is closed.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.IOChannel.signals.read" title="kaa.IOChannel.signals.read"><tt class="xref py py-attr docutils literal"><span class="pre">read</span></tt></a></th><td class="desc">Emitted for each chunk of data read from the channel.</td></tr>
+<tr class="row-odd"><th><a class="reference internal" href="#kaa.IOChannel.signals.readline" title="kaa.IOChannel.signals.readline"><tt class="xref py py-attr docutils literal"><span class="pre">readline</span></tt></a></th><td class="desc">Emitted for each line read from the channel.</td></tr>
+<tr class="row-even"><th><a class="reference internal" href="#kaa.IOChannel.signals.closed" title="kaa.IOChannel.signals.closed"><tt class="xref py py-attr docutils literal"><span class="pre">closed</span></tt></a></th><td class="desc">Emitted when the channel is closed.</td></tr>
 </table>
 
 </div>
@@ -232,12 +237,17 @@ has been set.</td></tr>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>immediate</strong> (<em>bool</em>) &#8211; if False and there is data in the write buffer, the
 channel is closed once the write buffer is emptied.
-Otherwise the channel is closed immediately and the 
+Otherwise the channel is closed immediately and the
 <em>closed</em> signal is emitted.</td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
+
+<dl class="method">
+<dt id="kaa.IOChannel.make_native_proxy">
+<tt class="descname">make_native_proxy</tt><big>(</big><em>close_on_eof=None</em><big>)</big><a class="headerlink" href="#kaa.IOChannel.make_native_proxy" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="method">
 <dt id="kaa.IOChannel.read">
@@ -248,8 +258,8 @@ Otherwise the channel is closed immediately and the
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">An <a class="reference internal" href="../async/inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> object. If the InProgress is
-finished with the empty string, it means that no data 
-was collected and the channel was closed (or the channel 
+finished with the empty string, it means that no data
+was collected and the channel was closed (or the channel
 was already closed when read() was called).</td>
 </tr>
 </tbody>
@@ -280,8 +290,8 @@ channel was closed before a delimiter was received.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">An <a class="reference internal" href="../async/inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> object. If the InProgress is
-finished with the empty string, it means that no data 
-was collected and the channel was closed (or the channel 
+finished with the empty string, it means that no data
+was collected and the channel was closed (or the channel
 was already closed when readline() was called).</td>
 </tr>
 </tbody>
@@ -339,7 +349,7 @@ one is wrapped.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>channel</strong> (<em>integer file descriptor, file-like object, or 
+<li><strong>channel</strong> (<em>integer file descriptor, file-like object, or
 other IOChannel</em>) &#8211; file descriptor to wrap into the IOChannel</li>
 <li><strong>mode</strong> (<em>bitmask of kaa.IO_READ and/or kaa.IO_WRITE</em>) &#8211; indicates whether the channel is readable, writable,
 or both.  Only applies to file descriptor channels or
@@ -364,7 +374,7 @@ channel&#8217;s mode will be assumed.</li>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">An <a class="reference internal" href="../async/inprogress.html#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> object which is finished when the
 given data is fully written to the channel.  The InProgress
-is finished with the number of bytes sent in the last write 
+is finished with the number of bytes sent in the last write
 required to commit the given data to the channel.  (This may
 not be the actual number of bytes of the given data.)<p>If the channel closes unexpectedly before the data was
 written, an IOError is thrown to the InProgress.</p>
@@ -389,12 +399,37 @@ prematurely, an IOError is thrown to the InProgress.</p>
 </dd></dl>
 
 <dl class="attribute">
+<dt id="kaa.IOChannel.channel">
+<tt class="descname">channel</tt><a class="headerlink" href="#kaa.IOChannel.channel" title="Permalink to this definition">¶</a></dt>
+<dd><p>The original object this IOChannel is wrapping.</p>
+<p>This may be a file object, socket object, file descriptor, etc.,
+depending what was passed during initialization or to <tt class="xref py py-meth docutils literal"><span class="pre">wrap()</span></tt>.</p>
+<p>This is None if the channel is closed.</p>
+</dd></dl>
+
+<dl class="attribute">
 <dt id="kaa.IOChannel.chunk_size">
 <tt class="descname">chunk_size</tt><a class="headerlink" href="#kaa.IOChannel.chunk_size" title="Permalink to this definition">¶</a></dt>
 <dd><p>Number of bytes to attempt to read from the channel at a time.</p>
 <p>The default is 1M.  A &#8216;read&#8217; signal is emitted for each chunk read from
 the channel.  (The number of bytes read at a time may be less than the
 chunk size, but will never be more.)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="kaa.IOChannel.close_on_eof">
+<tt class="descname">close_on_eof</tt><a class="headerlink" href="#kaa.IOChannel.close_on_eof" title="Permalink to this definition">¶</a></dt>
+<dd><p>Whether the channel automatically closes when EOF is encountered or on
+unexpected exceptions.</p>
+<p>The channel is considered EOF when a read returns an empty string. A
+write that fails due to IOError or OSError will also close the channel
+if this property is True.</p>
+<p>This behaviour makes sense for stream-based channels (e.g. a
+subprocess or socket), but may not for file-based channels.  The
+default is True unless the underlying wrapped channel object contains
+a <tt class="docutils literal"><span class="pre">seek</span></tt> method, in which case it is treated as a file and this
+property is False.  In either case it can be overridden by explicitly
+setting this property.</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -604,12 +639,12 @@ and simultaneously use the <a class="reference internal" href="#kaa.IOChannel.re
         <li class="right" >
           <a href="../async/generators.html" title="Generators"
              >previous</a> |</li>
-        <li><a href="../index.html">kaa.base 0.99.2dev-408-9f294ff9 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2dev-459-5049c011 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jun 02, 2012.
+      Last updated on Nov 26, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>

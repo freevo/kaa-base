@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>InProgress Objects &mdash; kaa.base 0.99.2dev-408-9f294ff9 documentation</title>
+    <title>InProgress Objects &mdash; kaa.base 0.99.2dev-459-5049c011 documentation</title>
     
     <link rel="stylesheet" href="../_static/kaa.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -16,7 +16,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.99.2dev-408-9f294ff9',
+        VERSION:     '0.99.2dev-459-5049c011',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="kaa.base 0.99.2dev-408-9f294ff9 documentation" href="../index.html" />
+    <link rel="top" title="kaa.base 0.99.2dev-459-5049c011 documentation" href="../index.html" />
     <link rel="next" title="Coroutines" href="coroutines.html" />
     <link rel="prev" title="Events and Event Handlers" href="../core/event.html" />
     <!-- link rel="stylesheet" href="../_static/kaa.css" type="text/css" /-->
@@ -47,7 +47,7 @@
         <li class="right" >
           <a href="../core/event.html" title="Events and Event Handlers"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">kaa.base 0.99.2dev-408-9f294ff9 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2dev-459-5049c011 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -303,6 +303,17 @@ then be emitted with the arguments passed to this method.</p>
 <p>The parameters correspond to sys.exc_info().  If they are not specified
 then the current exception in sys.exc_info() will be used; this is
 analogous to a naked <tt class="docutils literal"><span class="pre">raise</span></tt> within an <tt class="docutils literal"><span class="pre">except</span></tt> block.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>Exceptions thrown to InProgress objects that aren&#8217;t explicitly
+handled will be logged at the INFO level (using a logger name with
+a <tt class="docutils literal"><span class="pre">kaa.</span></tt> prefix.)  <em>When</em> the unhandled asynchronous exception is
+logged depends on the version of Python used.</p>
+<p class="last">Some versions of CPython (e.g 2.6) will log the unhandled exception
+immediately when the InProgress has no more references, while
+others (e.g. 2.7 and 3.2) will only be logged on the next garbage
+collection.</p>
+</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -497,6 +508,42 @@ will cause an exception to be raised by abort().</p>
 </p>
 <p>Also see related classes <a class="reference internal" href="coroutines.html#kaa.CoroutineInProgress" title="kaa.CoroutineInProgress"><tt class="xref py py-class docutils literal"><span class="pre">CoroutineInProgress</span></tt></a> and
 <a class="reference internal" href="threads.html#kaa.ThreadInProgress" title="kaa.ThreadInProgress"><tt class="xref py py-class docutils literal"><span class="pre">ThreadInProgress</span></tt></a>.</p>
+<p><dl class="class">
+<dt id="kaa.InProgressCallable">
+<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">InProgressCallable</tt><big>(</big><em>func=None</em>, <em>abortable=None</em>, <em>frame=0</em>, <em>throwable=True</em><big>)</big><a class="headerlink" href="#kaa.InProgressCallable" title="Permalink to this definition">¶</a></dt>
+<dd><p>A callable variant of InProgress that finishes when invoked.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>func</strong> (<em>callable</em>) &#8211; if defined, is invoked on initialization and self is
+passed as the only argument.  Intended as a convenience.</li>
+<li><strong>frame</strong> &#8211; corresponds to the abortable property in
+<a class="reference internal" href="#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a></li>
+<li><strong>throwable</strong> &#8211; if True, if the InProgressCallable is invoked with 3
+arguments (tp, exc, value) then <a class="reference internal" href="#kaa.InProgress.throw" title="kaa.InProgress.throw"><tt class="xref py py-meth docutils literal"><span class="pre">throw()</span></tt></a> is called
+instead of <a class="reference internal" href="#kaa.InProgress.finish" title="kaa.InProgress.finish"><tt class="xref py py-meth docutils literal"><span class="pre">finish()</span></tt></a>.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>The main value of the InProgressCallable is the translation done
+between the arguments passed on invocation and those passed to
+<a class="reference internal" href="#kaa.InProgress.finish" title="kaa.InProgress.finish"><tt class="xref py py-meth docutils literal"><span class="pre">finish()</span></tt></a>.  A single positional or named
+argument is passed as the value to <tt class="docutils literal"><span class="pre">finish()</span></tt>; multiple positional
+<em>or</em> multiple named arguments are passed as a tuple or dict respectively;
+otherwise the InProgress is finished with a 2-tuple of (args, kwargs).</p>
+<p>If <tt class="docutils literal"><span class="pre">throwable</span></tt> is True (default) and the callable is invoked with
+the standard exception 3-tuple (type, value, traceback), then it&#8217;s
+treated as an exception which is thrown to the InProgress.</p>
+<p>The primary use-case for the InProgressCallable is to marry
+conventional callbacks for asynchronous task completion with the
+InProgress strategy.</p>
+</dd></dl>
+
+</p>
 <div class="section" id="inprogress-collections">
 <h2>InProgress Collections<a class="headerlink" href="#inprogress-collections" title="Permalink to this headline">¶</a></h2>
 <p><dl class="class">
@@ -506,26 +553,64 @@ will cause an exception to be raised by abort().</p>
 objects (in constructor) finish.</p>
 <p>Sequences or generators passed as arguments will be flattened, allowing
 for this idiom:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="k">yield</span> <span class="n">InProgressAll</span><span class="p">(</span><span class="n">func</span><span class="p">()</span> <span class="k">for</span> <span class="n">func</span> <span class="ow">in</span> <span class="n">coroutines</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">yield</span> <span class="n">InProgressAny</span><span class="p">(</span><span class="n">func</span><span class="p">()</span> <span class="k">for</span> <span class="n">func</span> <span class="ow">in</span> <span class="n">coroutines</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The initializer can take two optional kwargs: pass_index and filter.</p>
-<p>If pass_index is True, the InProgressAny object then finishes with a
-2-tuple, whose first element is the index (offset from 0) of the InProgress
-that finished, and the second element is the result the InProgress was
-finished with.</p>
-<p>If pass_index is False, the InProgressAny is finished with just the result
-and not the index.</p>
-<p>If filter is specified, it is a callable that receives two arguments,
-the index and finished result (as described above).  If the callable
-returns True AND if there are other underlying InProgress objects that
-could yet be finished, then this InProgressAny is _not_ finished.</p>
+<p>Arguments will be passed through <a class="reference internal" href="#kaa.inprogress" title="kaa.inprogress"><tt class="xref py py-func docutils literal"><span class="pre">kaa.inprogress()</span></tt></a> so any object that
+can be coerced to an <a class="reference internal" href="#kaa.InProgress" title="kaa.InProgress"><tt class="xref py py-class docutils literal"><span class="pre">InProgress</span></tt></a> (such as
+<a class="reference internal" href="../core/signals.html#kaa.Signal" title="kaa.Signal"><tt class="xref py py-class docutils literal"><span class="pre">Signal</span></tt></a> objects) can be passed directly.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Callbacks aren&#8217;t attached to the supplied InProgress objects to monitor
+their state until a callback is attached to the InProgressAny object.
+This means an InProgressAny with nothing connected will not actually
+finish even when one of its constituent InProgresses finishes.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>finish</strong> (<tt class="docutils literal"><span class="pre">FINISH_IDX_RESULT</span></tt> (default), <tt class="docutils literal"><span class="pre">FINISH_IDX</span></tt>, or
+<tt class="docutils literal"><span class="pre">FINISH_RESULT</span></tt>) &#8211; controls what values the InProgressAny is finished with</li>
+<li><strong>filter</strong> (<em>callable</em>) &#8211; optional callback receiving two arguments (index and
+finished result) invoked each time an underlying InProgress object
+finishes which, if returns True, prevents the completion of the
+InProgressAny iff there are other InProgress objects that could
+yet finish.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>The possible <tt class="docutils literal"><span class="pre">finish</span></tt> values are:</p>
+<blockquote>
+<div><ul class="simple">
+<li><tt class="docutils literal"><span class="pre">kaa.FINISH_IDX_RESULT</span></tt>: a 2-tuple (idx, result) containing
+the index (relative to the position of the InProgress passed to
+the constructor) and the result that InProgress finished with</li>
+<li><tt class="docutils literal"><span class="pre">kaa.FINISH_IDX</span></tt>: the index (offset from 0) of the InProgress
+that finished the InProgressAny</li>
+<li><tt class="docutils literal"><span class="pre">kaa.FINISH_RESULT</span></tt>: the result of the InProgress that
+finished the InProgressAny</li>
+</ul>
+</div></blockquote>
+<p>For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># Read data from either sock1 or sock2, whichever happens first within</span>
+<span class="c"># 2 seconds.</span>
+<span class="n">idx</span><span class="p">,</span> <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">kaa</span><span class="o">.</span><span class="n">InProgressAny</span><span class="p">(</span><span class="n">kaa</span><span class="o">.</span><span class="n">delay</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span> <span class="n">sock1</span><span class="o">.</span><span class="n">read</span><span class="p">(),</span> <span class="n">sock2</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+<span class="k">if</span> <span class="n">idx</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">print</span> <span class="s">&#39;Nothing read from either socket after 2 seconds&#39;</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="k">print</span> <span class="s">&#39;Read from sock{0}: {1}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+</pre></div>
+</div>
 </dd></dl>
 
 </p>
 <p><dl class="class">
 <dt id="kaa.InProgressAll">
-<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">InProgressAll</tt><big>(</big><em>*objects</em><big>)</big><a class="headerlink" href="#kaa.InProgressAll" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">kaa.</tt><tt class="descname">InProgressAll</tt><big>(</big><em>*objects</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#kaa.InProgressAll" title="Permalink to this definition">¶</a></dt>
 <dd><p>InProgress object that finishes only when <em>all</em> of the supplied InProgress
 objects (in constructor) finish.</p>
 <p>The InProgressAll object then finishes with itself. The finished
@@ -684,12 +769,12 @@ constructor of InProgressAny or InProgressAll.</p>
         <li class="right" >
           <a href="../core/event.html" title="Events and Event Handlers"
              >previous</a> |</li>
-        <li><a href="../index.html">kaa.base 0.99.2dev-408-9f294ff9 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">kaa.base 0.99.2dev-459-5049c011 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2005-2012, Dirk Meyer, Jason Tackaberry.
-      Last updated on Jun 02, 2012.
+      Last updated on Nov 26, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>

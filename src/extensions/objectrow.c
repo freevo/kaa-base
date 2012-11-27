@@ -39,13 +39,6 @@
 #endif
 #define PyObjectRow_Check(ob)   (Py_TYPE(ob) == &ObjectRow_PyObject_Type)
 
-#if PY_VERSION_HEX < 0x02050000
-typedef int Py_ssize_t;
-#define PY_SSIZE_T_MAX INT_MAX
-#define PY_SSIZE_T_MIN INT_MIN
-typedef Py_ssize_t (*lenfunc)(PyObject *);
-#endif
-
 struct module_state {
     PyObject *module;
     PyObject *queries; // maps pysqlite row descriptions to QueryInfo

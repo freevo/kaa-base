@@ -898,6 +898,9 @@ class TLSContext(object):
     same context allows things like SSL session resumption between multiple
     sockets.
     """
+
+    # TODO: support SSL_CTX_set_tlsext_ticket_key_cb for key rotation
+
     _openssl_initialized = False
     # Mutex to prevent parallel initialization of OpenSSL.
     _openssl_init_lock = threading.Lock()
@@ -948,50 +951,49 @@ class TLSContext(object):
 
     @classmethod
     def _openssl_init(cls):
-        cls._openssl_init_lock.acquire()
-        if cls._openssl_initialized:
-            return cls._openssl_init_lock.release()
+        with cls._openssl_init_lock:
+            if cls._openssl_initialized:
+                return
 
-        libssl.SSL_library_init()
-        libssl.SSL_load_error_strings()
-        libssl.ERR_load_ERR_strings()
-        libssl.OPENSSL_add_all_algorithms_conf()
+            libssl.SSL_library_init()
+            libssl.SSL_load_error_strings()
+            libssl.ERR_load_ERR_strings()
+            libssl.OPENSSL_add_all_algorithms_conf()
 
-        # OpenSSL isn't thread-safe by default.  It maintains a number of
-        # global shared data structures and rather than doing synchronization
-        # internally, it leaves it up to the API caller to install a thread
-        # locking callback.
-        #
-        # We can install Python functions as callbacks using ctypes.  This isn't
-        # exactly ideal however because each time the locking callback is invoked
-        # by OpenSSL, ctypes must reacquire the GIL before it can call back into
-        # Python.  The GIL should be released quickly enough, but it still acts
-        # as a funnel point for all thread switching with OpenSSL.
-        #
-        # Fortunately, the native Python SSL support uses OpenSSL, and as of
-        # Python 2.6, it registers a proper locking callback with OpenSSL.
-        # We imported _ssl above to give it the opportunity to install that
-        # callback.  If an existing callback is installed, we do nothing.
-        # Otherwise, we install the sub-optimal ctypes-based handler.
-        if libssl.CRYPTO_get_locking_callback() == 0:
-            # No locking callback is currently set, which must mean Python 2.5,
-            # or some other extension has (strangely) removed the callback.
-            # Initialize experimental ctypes threading support for OpenSSL by
-            # registering thread id and thread lock callbacks.  A low-level
-            # thread lock is created for each thread type OpenSSL needs (as
-            # reported by CRYPTO_num_locks()) and a callback function
-            # locks/unlocks as needed.
-            log.warning('Using experimental ctypes-based OpenSSL thread support')
-            n_locks = libssl.CRYPTO_num_locks()
-            for i in range(n_locks):
-                cls._openssl_thread_locks.append(thread.allocate_lock())
+            # OpenSSL isn't thread-safe by default.  It maintains a number of
+            # global shared data structures and rather than doing synchronization
+            # internally, it leaves it up to the API caller to install a thread
+            # locking callback.
+            #
+            # We can install Python functions as callbacks using ctypes.  This isn't
+            # exactly ideal however because each time the locking callback is invoked
+            # by OpenSSL, ctypes must reacquire the GIL before it can call back into
+            # Python.  The GIL should be released quickly enough, but it still acts
+            # as a funnel point for all thread switching with OpenSSL.
+            #
+            # Fortunately, the native Python SSL support uses OpenSSL, and as of
+            # Python 2.6, it registers a proper locking callback with OpenSSL.
+            # We imported _ssl above to give it the opportunity to install that
+            # callback.  If an existing callback is installed, we do nothing.
+            # Otherwise, we install the sub-optimal ctypes-based handler.
+            if libssl.CRYPTO_get_locking_callback() == 0:
+                # No locking callback is currently set, which must mean Python 2.5,
+                # or some other extension has (strangely) removed the callback.
+                # Initialize experimental ctypes threading support for OpenSSL by
+                # registering thread id and thread lock callbacks.  A low-level
+                # thread lock is created for each thread type OpenSSL needs (as
+                # reported by CRYPTO_num_locks()) and a callback function
+                # locks/unlocks as needed.
+                log.warning('Using experimental ctypes-based OpenSSL thread support')
+                n_locks = libssl.CRYPTO_num_locks()
+                for i in range(n_locks):
+                    cls._openssl_thread_locks.append(thread.allocate_lock())
 
-            cls._threading_id_callback_c = ID_CALLBACK(cls._threading_id_callback)
-            libssl.CRYPTO_set_id_callback(cls._threading_id_callback_c)
-            cls._threading_locking_callback_c = LOCKING_CALLBACK(cls._threading_locking_callback)
-            libssl.CRYPTO_set_locking_callback(cls._threading_locking_callback_c)
-        cls._openssl_initialized = True
-        cls._openssl_init_lock.release()
+                cls._threading_id_callback_c = ID_CALLBACK(cls._threading_id_callback)
+                libssl.CRYPTO_set_id_callback(cls._threading_id_callback_c)
+                cls._threading_locking_callback_c = LOCKING_CALLBACK(cls._threading_locking_callback)
+                libssl.CRYPTO_set_locking_callback(cls._threading_locking_callback_c)
+            cls._openssl_initialized = True
 
 
     @classmethod
@@ -1470,36 +1472,33 @@ class TLSSocket(kaa.Socket):
 
 
     def _reset(self):
-        self._lock.acquire()
-        # Certificate chain for connected peer
-        self._peer_cert_chain = None
-        # Application level (plaintext) buffered data
-        self._app_send_buffer = []
-        # Remove reference to _SSLMemoryBIO instance so BIO/SSL objects get freed
-        self._membio = None
-        # True if a _SSLMemoryBIO.send() raised WantReadError and a read is pending
-        self._write_blocked_on_read = False
-        # True while performing initial handshake, False once it completes.
-        self._handshaking = False
-        # True once starttls_*() has been called.  When _tls_started == True and
-        # _handshaking == False , negotiation has finished.
-        self._tls_started = False
-        # None when peer certificate verification hasn't been performed, True if
-        # the peer's cert verified properly or if verify=False was passed to
-        # starttls(), or False if the verification failed.
-        self._verified = None
-        # True if starttls_client() was called, False otherwise.
-        self._is_client = False
-        # kwargs passed to starttls_(client|server) for use by _check()
-        self._starttls_kwargs = None
-        # Reference to the TLSContext currently in use for a connected socket.
-        self._active_ctx = None
-        # TLSSession object for the current session (if set)
-        if not self._reuse_sessions:
-            self._session = None
-        # InProgress finished when starttls completes or fails.
-        self._tls_ip = kaa.InProgress()
-        self._lock.release()
+        with self._lock:
+            # Certificate chain for connected peer
+            self._peer_cert_chain = None
+            # Application level (plaintext) buffered data
+            self._app_send_buffer = []
+            # Remove reference to _SSLMemoryBIO instance so BIO/SSL objects get freed
+            self._membio = None
+            # True if a _SSLMemoryBIO.send() raised WantReadError and a read is pending
+            self._write_blocked_on_read = False
+            # True while performing initial handshake, False once it completes.
+            self._handshaking = False
+            # True once starttls_*() has been called.  When _tls_started == True and
+            # _handshaking == False , negotiation has finished.
+            self._tls_started = False
+            # None when peer certificate verification hasn't been performed, True if
+            # the peer's cert verified properly or if verify=False was passed to
+            # starttls(), or False if the verification failed.
+            self._verified = None
+            # True if starttls_client() was called, False otherwise.
+            self._is_client = False
+            # kwargs passed to starttls_(client|server) for use by _check()
+            self._starttls_kwargs = None
+            # TLSSession object for the current session (if set)
+            if not self._reuse_sessions:
+                self._session = None
+            # InProgress finished when starttls completes or fails.
+            self._tls_ip = kaa.InProgress()
 
 
     def _shutdown_tls(self):
@@ -1511,10 +1510,9 @@ class TLSSocket(kaa.Socket):
         if not immediate and self._tls_started:
             # Send (or rather queue for write) an SSL shutdown message to the
             # client to gracefully terminate the session.
-            self._lock.acquire()
-            if self._membio:
-                self._shutdown_tls()
-            self._lock.release()
+            with self._lock:
+                if self._membio:
+                    self._shutdown_tls()
         return super(TLSSocket, self).close(immediate, expected)
 
 

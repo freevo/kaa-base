@@ -487,13 +487,12 @@ class InProgress(Signal, Object):
             # False.  So we won't log it.
             self._unhandled_exception = None
 
-        # If we were thrown an InProgressAborted, the likely reason is an InProgress
-        # we were waiting on has been aborted.  In this case, we emit the abort
-        # signal and clear _unhandled_exception, provided we are abortable (which
-        # by default is true as long as there are any callbacks connected to the
-        # abort signal.  Otherwise, do not clear _unhandled_exception so that it
-        # gets logged.
-        if isinstance(value, InProgressAborted) and self.abortable:
+        # If we were thrown an InProgressAborted, the likely reason is an
+        # InProgress we were waiting on has been aborted.  In this case, we
+        # emit the abort signal and clear _unhandled_exception, provided there
+        # are callbacks connected to the abort signal.  Otherwise, do not
+        # clear _unhandled_exception so that it gets logged.
+        if isinstance(value, InProgressAborted) and len(self.signals['abort']):
             if not aborted:
                 self.signals['abort'].emit(value)
             self._unhandled_exception = None

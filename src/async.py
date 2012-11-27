@@ -759,7 +759,8 @@ class InProgress(Signal, Object):
             try:
                 main.loop(lambda: not self.finished, timeout)
             except RuntimeError:
-                # oops, there is something running, wait
+                # Main loop started in another thread between the time we checked and
+                # tried to start the loop.  Now just wait on the thread event.
                 self._finished_event_poke(wait=timeout)
         else:
             # We're waiting in some other thread, so wait for some other

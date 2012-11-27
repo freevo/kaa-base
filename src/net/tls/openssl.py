@@ -1675,6 +1675,7 @@ class TLSSocket(kaa.Socket):
         if self._write_blocked_on_read:
             # A previous write got a WantReadError.  Now that we've read, try to
             # write out any queued app-level data.
+            self._write_blocked_on_read = False
             while self._app_send_buffer:
                 chunk = self._app_send_buffer.pop(0)
                 r, ip = self._send_appdata(chunk)
@@ -2047,12 +2048,6 @@ class TLSSocket(kaa.Socket):
             except WantReadError:
                 self._flush_send_bio()
 
-        # Hold a reference to the TLSContext we're using for this SSL object.
-        # We can't rely on _ctx to point to this because the user could change
-        # it via the ctx property.  If the TLSContext object is destroyed it will
-        # free the underlying SSL_CTX before while the SSL object is alive, and
-        # bad things will happen (I assume).
-        self._active_ctx = None
         return self._tls_ip
 
 
@@ -2110,4 +2105,3 @@ class TLSSocket(kaa.Socket):
         return self._starttls(client=False, cert=cert, key=key, password=password,
                               verify=verify, dh=dh, ticket_key=ticket_key)
 
-# TODO: support SSL_CTX_set_tlsext_ticket_key_cb for key rotation

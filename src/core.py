@@ -524,9 +524,10 @@ class Signal(object):
         self._changed(Signal.CONNECTED)
 
         if self._deferred_args:
-            for args, kwargs in self._deferred_args:
+            # Clear deferred args before emitting, in case callbacks do emit_deferred().
+            deferred_args, self._deferred_args = self._deferred_args, []
+            for args, kwargs in deferred_args:
                 self.emit(*args, **kwargs)
-            del self._deferred_args[:]
 
         return callback
 

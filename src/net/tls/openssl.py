@@ -1471,6 +1471,15 @@ class TLSSocket(kaa.Socket):
             self.ctx = ctx
 
 
+    def _make_new(self):
+        """
+        Make new instance of TLSSocket with the same TLSContext.
+
+        Overwridden from super class for Socket._accept().
+        """
+        return self.__class__(self.ctx)
+
+
     def _reset(self):
         with self._lock:
             # Certificate chain for connected peer
@@ -1599,16 +1608,6 @@ class TLSSocket(kaa.Socket):
             return total, None
         else:
             return total, super(TLSSocket, self).write(bl('').join(encrypted))
-
-
-    def _accept(self):
-        # Override Socket._accept so we can create a TLSSocket with the same
-        # context.
-        sock, addr = self._channel.accept()
-        # create new Socket from the same class this object is
-        client_socket = self.__class__(self.ctx)
-        client_socket.wrap(sock, kaa.IO_READ | kaa.IO_WRITE)
-        self.signals['new-client'].emit(client_socket)
 
 
     # Useful for debug.

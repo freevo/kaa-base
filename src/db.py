@@ -136,8 +136,10 @@ class PyObjectRow(object):
     ObjectRows support on-demand unpickling of the internally stored pickle
     which contains ATTR_SIMPLE attributes.
 
-    This is the native Python implementation of ObjectRow.  There is a faster
-    C implementation in the _objectrow extension.
+    This is the native Python implementation of ObjectRow.  There is a
+    faster C implementation in the _objectrow extension.  This
+    implementation is still designed to be efficient -- the C version is
+    only about 60-70% faster.
     """
     # A dict containing per-query data: [refcount, idxmap, typemap, pickle_idx]
     # This is constructed once for each query, and each row returned in the
@@ -454,6 +456,9 @@ def split_path(s):
                 yield match
 
 
+# FIXME: this is flawed.  Can use placeholders by taking a n-tuple and
+# replacing ? to (?, ?, ..., n) and then extend the query params list with the
+# given tuple/list value.
 def _list_to_printable(value):
     """
     Takes a list of mixed types and outputs a unicode string.  For
@@ -1497,7 +1502,8 @@ class Database(object):
         :param attrs: keyword arguments specifying the attribute (which must
                       have been registered) values.  Registered attributes that
                       are not explicitly specified here will preserve their
-                      original values.
+                      original values (except for special attributes named
+                      after inverted index; see warning below).
 
         Continuing from the example in :meth:`~kaa.db.Database.add`, consider::
 
@@ -1506,6 +1512,26 @@ class Database(object):
             >>> d = db.get(d)   # Reload changes
             >>> d['name']
             'bar'
+
+
+        .. warning::
+           When updating an attribute associated with an inverted index, all
+           terms for that inverted index in the object need to be rescored.
+           For special attributes with the same name as inverted indexes, it's
+           the caller's responsibility to ensure terms are passed back during
+           update.
+
+           In the email example from :meth:`register_object_type_attrs`, if the
+           subject attribute is updated by itself, any previously indexed terms
+           passed to the keywords attribute (the message body) would be
+           discarded after the update.  If updating the subject, the caller
+           would be required to pass the message body in the keywords attribute
+           again, in order to preserve those terms.
+
+           If none of the attributes being updated are associated with an
+           inverted index that also has a same-named special attribute then
+           this warning doesn't apply as the inverted index does not need
+           to be updated.
         """
         if self._readonly:
             raise DatabaseReadOnlyError('upgrade_to_py3() must be called before database can be modified')

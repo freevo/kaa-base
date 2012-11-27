@@ -38,11 +38,14 @@ import collections
 from .errors import SocketError
 from .utils import property, tempfile
 from .thread import threaded
-from .io import IO_READ, IO_WRITE, IOChannel
+from .async import InProgress
+from .io import IO_READ, IO_WRITE, IOChannel, WeakIOMonitor
 
 # get logging object
 log = logging.getLogger('kaa.base.sockets')
 
+
+TIMEOUT_SENTINEL = getattr(socket, '_GLOBAL_DEFAULT_TIMEOUT', object())
 
 
 # Implement functions for converting between interface names and indexes.
@@ -124,6 +127,19 @@ class Socket(IOChannel):
     IPv4-only networks.  See :meth:`~kaa.Socket.connect` for more information.
     """
     __kaasignals__ = {
+        'new-client-connecting':
+            '''
+            Emitted when a new client is attempting to connect to a listening
+            socket, but before the connection is accepted.
+
+            ``def callback(...)``
+
+            If :attr:`~kaa.Socket.auto_accept` is True (default), this signal
+            can be used to prevent the client connection by returning False from
+            the callback. If False, the callback must explicitly call
+            :meth:`~kaa.Socket.listen` or the client will not be connected.
+            ''',
+
         'new-client':
             '''
             Emitted when a new client connects to a listening socket.
@@ -135,14 +151,188 @@ class Socket(IOChannel):
             '''
     }
 
+    @staticmethod
+    def normalize_address(addr):
+        """
+        Converts supported address formats into a normalized 4-tuple (hostname,
+        port, flowinfo, scope).  See connect() and listen() for supported
+        formats.
+
+        Service names are resolved to port numbers, and interface names are
+        resolved to scope ids.  However, hostnames are not resolved to IPs
+        since that can block.  Unspecified port or interface name will produced
+        0 values for those fields.
+
+        A non-absolute unix socket name will converted to a full path using
+        kaa.tempfile().
+
+        If we can't make sense of the given address, a ValueError exception will
+        be raised.
+        """
+        if isinstance(addr, int):
+            # Only port number specified; translate to tuple that can be
+            # used with socket.bind()
+            return ('', addr, 0, 0)
+        elif isinstance(addr, basestring):
+            m = re.match(r'^(\d+\.\d+\.\d+\.\d+)(?::(\d+))?', addr)
+            if m:
+                # It's an IPv4 address.
+                return (m.group(1), int(m.group(2) or 0), 0, 0)
+            elif ':' not in addr:
+                # Treat as unix socket.
+                return tempfile(addr) if not addr.startswith('/') else addr
+
+            # See if it's an IPv6 address
+            m = re.match(r'^ (\[(?:[\da-fA-F:]+)\] | (?:[^:]+) )? (?::(\w+))? (?:%(\w+))? ', addr, re.X)
+            if not m:
+                raise ValueError('Invalid format for address')
+            addr = m.group(1) or '', m.group(2) or 0, 0, m.group(3) or 0
+            if addr[0].isdigit():
+                # Sanity check: happens when given ipv6 address without []
+                raise ValueError('Invalid hostname: perhaps ipv6 address is not wrapped in []?')
+
+        elif not isinstance(addr, (tuple, list)) or len(addr) not in (2, 4):
+            raise ValueError('Invalid address specification (must be str, or 2- or 4-tuple)')
+
+        if len(addr) == 2:
+            # Coerce to 4-tuple, assume 0 for both scope and flowid.
+            addr = addr + (0, 0)
+
+        host, service, flowinfo, scopeid = addr
+        # Strip [] from ipv6 addr
+        if host.startswith('[') and host.endswith(']'):
+            host = host[1:-1]
+        # Resolve service name to port number
+        if isinstance(service, basestring):
+            service = int(service) if service.isdigit() else socket.getservbyname(service)
+        # Resolve interface names to index values
+        if isinstance(scopeid, basestring):
+            scopeid = int(scopeid) if scopeid.isdigit() else if_nametoindex(scopeid)
+
+        return host, service, flowinfo, scopeid
+
+
+
+    @staticmethod
+    def create_connection(addr=None, timeout=TIMEOUT_SENTINEL, source_address=None,
+                          overwrite=False, ipv6=True):
+        addr = Socket.normalize_address(addr) if addr else None
+        source_address = Socket.normalize_address(source_address) if source_address else None
+
+        if isinstance(addr, str) or isinstance(source_address, str):
+            sockaddr = addr or source_address
+            if overwrite and os.path.exists(sockaddr):
+                # Unix socket exists; test to see if it's active.
+                try:
+                    dummy = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                    dummy.connect(sockaddr)
+                except socket.error, (err, msg):
+                    if err == errno.ECONNREFUSED:
+                        # Socket is not active, so we can remove it.
+                        log.debug('Replacing dead unix socket at %s' % sockaddr)
+                    else:
+                        # Reraise unexpected exception
+                        raise
+                else:
+                    # We were able to connect to the existing socket, so it's
+                    # in use.  We won't overwrite it.
+                    raise IOError(errno.EADDRINUSE, 'Address already in use')
+                os.unlink(sockaddr)
+
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            if addr:
+                sock.connect(addr)
+            else:
+                sock.bind(source_address)
+            return sock
+
+
+        # Not a unix socket ...
+        req_family = socket.AF_UNSPEC if ipv6 else socket.AF_INET
+        addr_addrinfo = source_addrinfo = None
+        if source_address:
+            # If link-local address is specified, make sure the scopeid is given.
+            if source_address[0].lower().startswith('fe80::'):
+                if not source_address[3]:
+                    raise ValueError('Binding to a link-local address requires scopeid')
+            elif not source_address[0]:
+                source_addrinfo = [(socket.AF_INET, socket.SOCK_STREAM, 0, 0, source_address)]
+            elif source_address[0] == '::' and ipv6:
+                source_addrinfo = [(socket.AF_INET6, socket.SOCK_STREAM, 0, 0, source_address)]
+            else:
+                source_addrinfo = socket.getaddrinfo(source_address[0], source_address[1],
+                                                     req_family, socket.SOCK_STREAM)
+                if not source_addrinfo:
+                    raise socket.error('getaddrinfo returned empty list for source address')
+
+        if addr:
+            addr_addrinfo = socket.getaddrinfo(addr[0], addr[1], req_family, socket.SOCK_STREAM)
+            if not addr_addrinfo:
+                raise socket.error('getaddrinfo returned empty list for destination address')
+
+        # At least on Linux, returned list is ordered to prefer IPv6 addresses
+        # provided that a route is available to them.  We try all addresses
+        # until we get a connection, and if all addresses fail, then we raise
+        # the _first_ exception.
+        err = sock = None
+
+        for res in (source_addrinfo or [(None,) * 5]):
+            b_af, b_socktype, b_proto, b_cn, b_sa = res
+            if b_af is not None:
+                try:
+                    sock = socket.socket(b_af, b_socktype, b_proto)
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    b_sa = b_sa[:2] + source_address[2:]
+                    sock.bind(b_sa if b_af == socket.AF_INET6 else b_sa[:2])
+                except socket.error:
+                    err = sys.exc_info() if not err else err
+                    sock = None
+                    continue
+
+            if not addr_addrinfo and sock:
+                # Nothing to connect to and we bound successfully, so done.
+                return sock
+
+            for (af, socktype, proto, cn, sa) in addr_addrinfo:
+                if b_af is not None and af != b_af:
+                    # Different address family than socket was bound to.
+                    continue
+
+                try:
+                    if not sock:
+                        sock = socket.socket(af, socktype, proto)
+                        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    if timeout is not TIMEOUT_SENTINEL:
+                        sock.settimeout(timeout)
+                    sock.connect(sa)
+                    return sock
+                except socket.error:
+                    err = sys.exc_info() if not err else err
+                    sock = None
+        else:
+            if err:
+                raise err[0], err[1], err[2]
+            else:
+                raise socket.error('destination had no addresses in source address family')
+
+
+
     def __init__(self, buffer_size=None, chunk_size=1024*1024):
         self._connecting = False
         self._listening = False
         self._buffer_size = buffer_size
         # Requested hostname passed to connect()
         self._reqhost = None
+        self._auto_accept = True
+        # If an InProgress object then there is an accept() call in progress,
+        # otherwise None.
+        self._accept_inprogress = None
 
         super(Socket, self).__init__(chunk_size=chunk_size)
+
+
+    def _make_new(self):
+        return self.__class__()
 
 
     @IOChannel.fileno.getter
@@ -154,6 +344,21 @@ class Socket(IOChannel):
             return self._channel.fileno()
         except (AttributeError, socket.error):
             return None
+
+    @property
+    def auto_accept(self):
+        """
+        If True (default), automatically accept new clients connecting to
+        listening sockets.
+
+        See :meth:`listen` for more details.
+        """
+        return self._auto_accept
+
+
+    @auto_accept.setter
+    def auto_accept(self, value):
+        self._auto_accept = value
 
 
     @property
@@ -237,7 +442,7 @@ class Socket(IOChannel):
            When you want to read all data from the socket until it closes,
            you should use the :attr:`readable` property instead.
         """
-        return self._channel != None and not self._closing and not self._listening
+        return self._channel != None and not self._close_inprogress and not self._listening
 
 
     @property
@@ -276,8 +481,8 @@ class Socket(IOChannel):
         """
         # Note: this property is used in superclass's _update_read_monitor()
         # Unroll these properties: alive or super(readable)
-        return (self._channel != None and not self._closing) or self._connecting or \
-               self._read_queue.tell() > 0
+        return (self._channel != None and not self._close_inprogress) or \
+               self._connecting or self._read_queue.tell() > 0
 
 
     @property
@@ -321,155 +526,24 @@ class Socket(IOChannel):
             # Unix socket
             return addr
 
-        try:
-            scope = if_indextoname(addr[3])
-        except (ValueError, NotImplementedError):
-            scope = None
+        if len(addr) == 2:
+            addr += (None, None, None)
+        else:
+            try:
+                addr += (if_indextoname(addr[3]),)
+            except (ValueError, NotImplementedError):
+                addr += (None,)
 
-        reqhost = args[0] if args else None
-        ip = addr[0][7:] if addr[0].lower().startswith('::ffff:') else addr[0]
-        addr = (ip,) + addr[1:] + (scope,) + ((reqhost,) if args else ())
+        # reqhost = args[0] if args else None
+        addr += (args[0] if args else None,)
+        # ip = addr[0][7:] if addr[0].lower().startswith('::ffff:') else addr[0]
+        #addr = (ip,) + addr[1:] + (scope,) + ((reqhost,) if args else ())
         if sys.hexversion < 0x02060000:
             return addr
 
         fields = 'host port flowinfo scopeid scope' + (' reqhost' if args else '')
         return collections.namedtuple('address', fields)(*addr)
 
-
-    def _to_ipv6(self, addr):
-        """
-        Coerces addr into an IPv6 address.  If addr is already IPv6, just
-        return it.  Otherwise return the IPv4-mapped IPv6 address.  The
-        empty string is left untouched.
-        """
-        return '::ffff:' + addr if ':' not in addr and addr else addr
-
-
-    def _normalize_address(self, addr):
-        """
-        Converts supported address formats into a normalized 4-tuple (hostname,
-        port, flowinfo, scope).  See connect() and listen() for supported
-        formats.
-
-        Service names are resolved to port numbers, and interface names are
-        resolved to scope ids.  However, hostnames are not resolved to IPs
-        since that can block.  Unspecified port or interface name will produced
-        0 values for those fields.
-
-        A non-absolute unix socket name will converted to a full path using
-        kaa.tempfile().
-
-        If we can't make sense of the given address, a ValueError exception will
-        be raised.
-        """
-        if isinstance(addr, basestring):
-            if ':' not in addr:
-                # Treat as unix socket.
-                return tempfile(addr) if not addr.startswith('/') else addr
-
-            m = re.match(r'^ (\[(?:[\da-fA-F:]+)\] | (?:[^:]+) )? (?::(\w+))? (?:%(\w+))? ', addr, re.X)
-            if not m:
-                raise ValueError('Invalid format for address')
-            addr = m.group(1) or '', m.group(2) or 0, 0, m.group(3) or 0
-            if addr[0].isdigit():
-                # Sanity check: happens when given ipv6 address without []
-                raise ValueError('Invalid hostname: perhaps ipv6 address is not wrapped in []?')
-
-        elif not isinstance(addr, (tuple, list)) or len(addr) not in (2, 4):
-            raise ValueError('Invalid address specification (must be str, or 2- or 4-tuple)')
-
-        if len(addr) == 2:
-            # Coerce to 4-tuple, assume 0 for both scope and flowid.
-            addr = addr + (0, 0)
-
-        host, service, flowinfo, scopeid = addr
-        # Strip [] from ipv6 addr
-        if host.startswith('[') and host.endswith(']'):
-            host = host[1:-1]
-        # Resolve service name to port number
-        if isinstance(service, basestring):
-            service = int(service) if service.isdigit() else socket.getservbyname(service)
-        # Resolve interface names to index values
-        if isinstance(scopeid, basestring):
-            scopeid = int(scopeid) if scopeid.isdigit() else if_nametoindex(scopeid) 
-
-        return host, service, flowinfo, scopeid
-
-
-    def _make_socket(self, addr=None, overwrite=False):
-        """
-        Constructs a socket based on the given addr.  Returns the socket and
-        the normalized address as a 4-tuple.
-
-        If overwrite is True, if addr specifies a path to a unix socket and
-        that unix socket already exists, it will be removed if the socket is
-        not actually in use.  If it is in use, an IOError will be raised.
-        """
-        addr = self._normalize_address(addr)
-        assert(type(addr) in (str, tuple, None))
-
-        if isinstance(addr, str):
-            if overwrite and os.path.exists(addr):
-                # Unix socket exists; test to see if it's active.
-                try:
-                    dummy = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                    dummy.connect(addr)
-                except socket.error, (err, msg):
-                    if err == errno.ECONNREFUSED:
-                        # Socket is not active, so we can remove it.
-                        log.debug('Replacing dead unix socket at %s' % addr)
-                    else:
-                        # Reraise unexpected exception
-                        tp, exc, tb = sys.exc_info()
-                        raise tp, exc, tb
-                else:
-                    # We were able to connect to the existing socket, so it's
-                    # in use.  We won't overwrite it.
-                    raise IOError(errno.EADDRINUSE, 'Address already in use')
-                os.unlink(addr)
-
-            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        else:
-            sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            try:
-                # If /proc/sys/net/ipv6/bindv6only is 1, then we will not be
-                # able to accept IPv4 connections with mapped addresses on the
-                # socket.  Explicitly set this option in case.
-                # 
-                # See http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=560238
-                sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
-            except socket.error:
-                log.error("Disabling IPV6_V6ONLY failed; the socket probably won't work right")
-
-        return sock, addr
-
-
-    def _resolve_hostname_with_action(self, addr, func, ipv6):
-        """
-        Resolve a host and perform some action on it (e.g. bind or connect).
-
-        :param addr: a 4-tuple containing the address spec.  The first
-                     element will be a hostname or IP.
-        :param func: a callback to invoke on the resolved address tuple
-        :param ipv6: if True, will also consider IPv6 addresses.
-        """
-        # At least on Linux, returned list is ordered to prefer IPv6 addresses
-        # provided that a route is available to them.  We try all addresses
-        # until we get a connection, and if all addresses fail, then we raise
-        # the _first_ exception.
-        err = None
-        addrs = socket.getaddrinfo(addr[0], addr[1], socket.AF_INET6 if ipv6 else socket.AF_INET,
-                                   socket.SOCK_STREAM, 0, socket.AI_V4MAPPED | socket.AI_ALL)
-        for addrinfo in (a[4] for a in addrs):
-            addrinfo = (self._to_ipv6(addrinfo[0]),) + addrinfo[1:]
-            try:
-                func(addrinfo)
-                break
-            except socket.error, e:
-                err = sys.exc_info() if not err else err
-        else:
-            raise err[0], err[1], err[2]
 
 
     def listen(self, addr, backlog=5, ipv6=True):
@@ -524,44 +598,30 @@ class Socket(IOChannel):
         connection.  Callbacks connecting to the signal will receive a new
         Socket object representing the client connection.
         """
-        if isinstance(addr, int):
-            # Only port number specified; translate to tuple that can be
-            # used with socket.bind()
-            addr = ('', addr, 0, 0)
-
-        sock, addr = self._make_socket(addr, overwrite=True)
-        # If link-local address is specified, make sure the scopeid is given.
-        if addr[0].lower().startswith('fe80::'):
-            if not addr[3]:
-                raise ValueError('Binding to a link-local address requires scopeid')
-
-        if not addr[0] or sock.family == socket.AF_UNIX:
-            # Bind to all interfaces or unix socket.
-            sock.bind(addr)
-        else:
-            self._resolve_hostname_with_action(addr, sock.bind, ipv6)
+        sock = Socket.create_connection(source_address=addr, overwrite=True)
         sock.listen(backlog)
         self._listening = True
         self.wrap(sock, IO_READ | IO_WRITE)
 
 
     @threaded()
-    def _connect(self, addr, ipv6=True):
-        sock, addr = self._make_socket(addr)
+    def _connect(self, addr, source_address=None, ipv6=True):
+        sock = Socket.create_connection(addr, source_address=source_address, ipv6=ipv6)
+        # Normalize and store hostname
+        addr = Socket.normalize_address(addr)
+        if type(addr) == str:
+            # Unix socket, just connect.
+            self._reqhost = addr
+        else:
+            self._reqhost = addr[0]
+
         try:
-            if type(addr) == str:
-                # Unix socket, just connect.
-                sock.connect(addr)
-                self._reqhost = addr
-            else:
-                self._reqhost = addr[0]
-                self._resolve_hostname_with_action(addr, sock.connect, ipv6)
             self.wrap(sock, IO_READ | IO_WRITE)
         finally:
             self._connecting = False
 
 
-    def connect(self, addr, ipv6=True):
+    def connect(self, addr, source_address=None, ipv6=True):
         """
         Connects to the host specified in address.
 
@@ -612,18 +672,19 @@ class Socket(IOChannel):
         elif self.connected:
             raise SocketError('socket already connected')
         self._connecting = True
-        return self._connect(addr, ipv6)
+        return self._connect(addr, source_address, ipv6)
 
 
     def wrap(self, sock, mode=IO_READ|IO_WRITE):
         """
         Wraps an existing low-level socket object.
-        
+
         addr specifies the 4-tuple address corresponding to the socket.
         """
         super(Socket, self).wrap(sock, mode)
         if sock and self._buffer_size:
             self._set_buffer_size(sock, self._buffer_size)
+        return self
 
 
     def _is_read_connected(self):
@@ -648,14 +709,31 @@ class Socket(IOChannel):
         """
         sock, addr = self._channel.accept()
         # create new Socket from the same class this object is
-        client_socket = self.__class__()
+        client_socket = self._make_new()
         client_socket.wrap(sock, IO_READ | IO_WRITE)
         self.signals['new-client'].emit(client_socket)
+        if self._accept_inprogress:
+            accept_inprogress = self._accept_inprogress
+            self._accept_inprogress = None
+            accept_inprogress.finish(client_socket)
+
+
+    def accept(self):
+        if not self._accept_inprogress:
+            self._accept_inprogress = InProgress()
+
+        return self._accept_inprogress
 
 
     def _handle_read(self):
         if self._listening:
-            return self._accept()
+            # Give callbacks on the new-client-connecting signal the chance to
+            # abort the autoaccept (if applicable).  If we have an explicit
+            # accept() in progress then it can't be aborted, but we still emit
+            # anyway for notification purposes.
+            aborted = self.signals['new-client-connecting'].emit() == False
+            if (self._auto_accept and not aborted) or self._accept_inprogress:
+                return self._accept()
 
         return super(Socket, self)._handle_read()
 

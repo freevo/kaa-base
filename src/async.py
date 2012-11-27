@@ -962,6 +962,9 @@ class InProgressAny(InProgress):
 
 
     def _flatten(self, v):
+        if isinstance(v, dict) and not hasattr(v, '__inprogress__'):
+            # This works for Signals objects.
+            v = v.values()
         if isinstance(v, (list, tuple, types.GeneratorType)):
             for item in iter(v):
                 for sub in self._flatten(item):

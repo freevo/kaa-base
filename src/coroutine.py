@@ -492,7 +492,9 @@ class CoroutineInProgress(InProgress):
                 except kaa.InProgressAborted as e:
                     print('b() is aborted, but z() lives on')
         """
-        if not self.abortable:
+        if self.finished:
+            raise RuntimeError('coroutine is already finished')
+        elif not self.abortable:
             raise RuntimeError('coroutine is not abortable')
 
         if not exc:
@@ -578,11 +580,17 @@ class CoroutineInProgress(InProgress):
                     if exc.inprogress != self._prerequisite_ip:
                         exc = exc.__class__(*exc.args, inprogress=self._prerequisite_ip, origin=exc.origin)
                 try:
-                    self._coroutine.throw(exc.__class__, exc, None)
+                    result = self._coroutine.throw(exc.__class__, exc, None)
                 except StopIteration:
                     # Generator caught the exception but didn't yield an additional value.
                     # That's fine, since there's nothing we can do with it anyway.
                     pass
+                else:
+                    # If throw() didn't raise then the coroutine caught InProgressAborted.
+                    # Make sure it didn't try to yield something where it would expect
+                    # to get resumed.  It can't, it's been aborted.
+                    if isinstance(result, InProgress) or result == NotFinished:
+                        raise RuntimeError('aborted coroutine yielded value that expects reentry')
                 finally:
                     if not finished:
                         # Throw an InProgressAborted exception so that any callbacks

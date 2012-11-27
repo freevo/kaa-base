@@ -1216,7 +1216,9 @@ class TLSContext(object):
     def ticket_key(self, key):
         # Follow Apache's approach to generate the actual ticket key: use
         # an HMAC of the server certificate with the user-supplied secret.
-        if len(key) < 48:
+        if not isinstance(key, bytes):
+            raise TypeError('ticket key must be a byte string')
+        elif len(key) < 48:
             raise ValueError('ticket key must be at least 48 bytes long')
         elif not self._local_cert:
             raise ValueError('must call load_cert_chain() first')
@@ -1765,6 +1767,8 @@ class TLSSocket(kaa.Socket):
             # We made it all the way to the peer cert without failing, so
             # we're considered verified now.
             self._verified = True
+            # Again, use a timer to avoid invoking signal callbacks within the
+            # ctypes callback.
             kaa.OneShotTimer(self.signals['tls'].emit).start(0)
         return 1
 
@@ -1791,7 +1795,7 @@ class TLSSocket(kaa.Socket):
     @ctx.setter
     def ctx(self, value):
         if not isinstance(value, TLSContext):
-            raise ValueError('value must be a TLSContext object')
+            raise TypeError('value must be a TLSContext object')
         self._ctx = value
 
 
@@ -1839,7 +1843,7 @@ class TLSSocket(kaa.Socket):
     @verify_cb.setter
     def verify_cb(self, value):
         if not callable(value):
-            raise ValueError('value must be callable')
+            raise TypeError('value must be callable')
         self._user_verify_cb = value
 
 
@@ -1883,7 +1887,7 @@ class TLSSocket(kaa.Socket):
     @session.setter
     def session(self, s):
         if not isinstance(s, TLSSession):
-            raise ValueError('session must be a TLSSession')
+            raise TypeError('session must be a TLSSession')
         self._session = s
         # XXX: should we raise if already connected?
 

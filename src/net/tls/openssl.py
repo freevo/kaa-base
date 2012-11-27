@@ -30,7 +30,7 @@ from __future__ import absolute_import
 
 __all__ = [
     'TLSSocket', 'TLSContext', 'Certificate', 'X509Name', 'TLSError',
-    'TLSVerificationError', 'TLSProtocolError'
+    'TLSVerificationError', 'TLSProtocolError', 'libssl'
     ]
 
 # python imports
@@ -197,348 +197,387 @@ class ZeroReturnError(Exception):
     pass
 
 
-def get_libssl():
+class LibSSL(object):
     """
-    Retrieve openssl library and initialize restype/argtypes for all OpenSSL
-    functions used in this module.  (Not all functions in the library, just
-    the ones we're interested in.)
+    Wrapper class to do on-demand loading of openssl.
     """
-    libssl = CDLL(util.find_library('ssl'), use_errno=True)
-    
-    # void OPENSSL_add_all_algorithms_conf(void);
-    libssl.OPENSSL_add_all_algorithms_conf.restype = None
-    libssl.OPENSSL_add_all_algorithms_conf.argtypes = []
-    # void ERR_load_ERR_strings(void);
-    libssl.ERR_load_ERR_strings.restype = None
-    libssl.ERR_load_ERR_strings.argtypes = []
-    # void SSL_load_error_strings(void );
-    libssl.SSL_load_error_strings.restype = None
-    libssl.SSL_load_error_strings.argtypes = []
-    # int SSL_library_init(void );
-    libssl.SSL_library_init.restype = c_int
-    libssl.SSL_library_init.argtypes = []
-
-    # const char *ERR_reason_error_string(unsigned long e);
-    libssl.ERR_reason_error_string.restype = c_char_p
-    libssl.ERR_reason_error_string.argtypes = [c_ulong]
-    # unsigned long ERR_peek_error(void);
-    libssl.ERR_peek_error.restype = c_ulong
-    libssl.ERR_peek_error.argtypes = []
-    # unsigned long ERR_get_error(void);
-    libssl.ERR_get_error.restype = c_ulong
-    libssl.ERR_get_error.argtypes = []
-
-    # SSL_METHOD *SSLv23_method(void);
-    libssl.SSLv23_method.restype = c_void_p
-    libssl.SSLv23_method.argtypes = []
-    # SSL_METHOD *SSLv23_client_method(void);
-    libssl.SSLv23_client_method.restype = c_void_p
-    libssl.SSLv23_client_method.argtypes = []
-    # SSL_CT *SSL_CTX_new(SSL_METHOD *meth);
-    libssl.SSL_CTX_new.restype = c_void_p
-    libssl.SSL_CTX_new.argtypes = [c_void_p]
-    # long SSL_CTX_ctrl(SSL_CTX *ctx,int cmd, long larg, void *parg);
-    libssl.SSL_CTX_ctrl.restype = c_long
-    libssl.SSL_CTX_ctrl.argtypes = [c_void_p, c_long, c_long, c_void_p]
-    # int SSL_CTX_set_cipher_list(SSL_CTX *,const char *str);
-    libssl.SSL_CTX_set_cipher_list.restype = c_int
-    libssl.SSL_CTX_set_cipher_list.argtypes = [c_void_p, c_char_p]
-    # const char *SSL_get_cipher_list(const SSL *ssl, int priority);
-    libssl.SSL_get_cipher_list.restype = c_char_p
-    libssl.SSL_get_cipher_list.argtypes = [c_void_p, c_int]
-    # int SSL_CTX_load_verify_locations(SSL_CTX *ctx, const char *CAfile, const char *CApath);
-    libssl.SSL_CTX_load_verify_locations.restype = c_int
-    libssl.SSL_CTX_load_verify_locations.argtypes = [c_void_p, c_char_p, c_char_p]
-    # int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx, const char *file);
-    libssl.SSL_CTX_use_certificate_chain_file.restype = c_int
-    libssl.SSL_CTX_use_certificate_chain_file.argtypes = [c_void_p, c_char_p]
-    # int SSL_CTX_use_PrivateKey_file(SSL_CTX *ctx, const char *file, int type);
-    libssl.SSL_CTX_use_PrivateKey_file.restype = c_int
-    libssl.SSL_CTX_use_PrivateKey_file.argtypes = [c_void_p, c_char_p, c_int]
-    # void SSL_CTX_set_verify(SSL_CTX *ctx,int mode, int (*callback)(int, X509_STORE_CTX *));
-    libssl.SSL_CTX_set_verify.restype = None
-    libssl.SSL_CTX_set_verify.argtypes = [c_void_p, c_int, c_void_p]
-    # void SSL_CTX_set_default_passwd_cb(SSL_CTX *ctx, pem_password_cb *cb);
-    libssl.SSL_CTX_set_default_passwd_cb.restype = None
-    libssl.SSL_CTX_set_default_passwd_cb.argtypes = [c_void_p, c_void_p]
-    # void SSL_CTX_free(SSL_CTX *);
-    libssl.SSL_CTX_free.restype = None
-    libssl.SSL_CTX_free.argtypes = [c_void_p]
-
-    # SSL *SSL_new(SSL_CTX *ctx);
-    libssl.SSL_new.restype = c_void_p
-    libssl.SSL_new.argtypes = [c_void_p]
-    # int SSL_read(SSL *ssl,void *buf,int num);
-    libssl.SSL_read.restype = c_int
-    libssl.SSL_read.argtypes = [c_void_p, c_void_p, c_int]
-    # int SSL_write(SSL *ssl,const void *buf,int num);
-    libssl.SSL_write.restype = c_int
-    libssl.SSL_write.argtypes = [c_void_p, c_void_p, c_int]
-    # int SSL_shutdown(SSL *s);
-    libssl.SSL_shutdown.restype = c_int
-    libssl.SSL_shutdown.argtypes = [c_void_p]
-    # int SSL_do_handshake(SSL *s);
-    libssl.SSL_do_handshake.restype = c_int
-    libssl.SSL_do_handshake.argtypes = [c_void_p]
-    # int SSL_state(const SSL *ssl);
-    libssl.SSL_state.restype = c_int
-    libssl.SSL_state.argtypes = [c_void_p]
-    # void SSL_set_connect_state(SSL *s);
-    libssl.SSL_set_connect_state.restype = None
-    libssl.SSL_set_connect_state.argtypes = [c_void_p]
-    # void SSL_set_accept_state(SSL *s);
-    libssl.SSL_set_accept_state.restype = None
-    libssl.SSL_set_accept_state.argtypes = [c_void_p]
-    # long SSL_ctrl(SSL *ssl,int cmd, long larg, void *parg);
-    libssl.SSL_ctrl.restype = c_long
-    libssl.SSL_ctrl.argtypes = [c_void_p, c_int, c_long, c_void_p]
-    # void SSL_set_bio(SSL *s, BIO *rbio,BIO *wbio);
-    libssl.SSL_set_bio.restype = None
-    libssl.SSL_set_bio.argtypes = [c_void_p, c_void_p, c_void_p]
-    # int SSL_shutdown(SSL *s);
-    libssl.SSL_shutdown.restype = c_int
-    libssl.SSL_shutdown.argtypes = [c_void_p]
-    # long SSL_get_verify_result(const SSL *ssl);
-    libssl.SSL_get_verify_result.restype = c_long
-    libssl.SSL_get_verify_result.argtypes = [c_void_p]
-    # void SSL_set_verify(SSL *s, int mode, int (*verify_callback)(int, X509_STORE_CTX *));
-    libssl.SSL_set_verify.restype = None
-    libssl.SSL_set_verify.argtypes = [c_void_p, c_int, c_void_p]
-    # void SSL_free(SSL *ssl);
-    libssl.SSL_free.restype = None
-    libssl.SSL_free.argtypes = [c_void_p]
-    # int SSL_get_error(const SSL *s,int ret_code);
-    libssl.SSL_get_error.restype = c_int
-    libssl.SSL_get_error.argtypes = [c_void_p, c_int]
-    # SSL_SESSION *SSL_get1_session(SSL *ssl);
-    libssl.SSL_get1_session.restype = c_void_p
-    libssl.SSL_get1_session.argtypes = [c_void_p]
-    # int SSL_set_session(SSL *to, SSL_SESSION *session);
-    libssl.SSL_set_session.restype = c_int
-    libssl.SSL_set_session.argtypes = [c_void_p, c_void_p]
-    # void SSL_SESSION_free(SSL_SESSION *ses);
-    libssl.SSL_SESSION_free.restype = None
-    libssl.SSL_SESSION_free.argtypes = [c_void_p]
-
-    # BIO *BIO_new(BIO_METHOD *type);
-    libssl.BIO_new.restype = c_void_p
-    libssl.BIO_new.argtypes = [c_void_p]
-    # BIO *BIO_new_file(const char *filename, const char *mode);
-    libssl.BIO_new_file.restype = c_void_p
-    libssl.BIO_new_file.argtypes = [c_char_p, c_char_p]
-    # BIO_METHOD *BIO_f_ssl(void);
-    libssl.BIO_f_ssl.restype = c_void_p
-    libssl.BIO_f_ssl.argtypes = []
-    # BIO_METHOD *BIO_s_mem(void);
-    libssl.BIO_s_mem.restype = c_void_p
-    libssl.BIO_s_mem.argtypes = []
-    # long BIO_ctrl(BIO *bp,int cmd,long larg,void *parg);
-    libssl.BIO_ctrl.restype = c_long
-    libssl.BIO_ctrl.argtypes = [c_void_p, c_int, c_long, c_void_p]
-    # long BIO_int_ctrl(BIO *bp,int cmd,long larg,int iarg);
-    libssl.BIO_int_ctrl.restype = c_long
-    libssl.BIO_int_ctrl.argtypes = [c_void_p, c_int, c_long, c_int]
-    # void BIO_free_all(BIO *a);
-    libssl.BIO_free_all.restype = None
-    libssl.BIO_free_all.argtypes = [c_void_p]
-    # size_t BIO_ctrl_get_write_guarantee(BIO *b);
-    libssl.BIO_ctrl_get_write_guarantee.restype = c_size_t
-    libssl.BIO_ctrl_get_write_guarantee.argtypes = [c_void_p]
-    # int BIO_write(BIO *b, const void *data, int len);
-    libssl.BIO_write.restype = c_int
-    libssl.BIO_write.argtypes = [c_void_p, c_void_p, c_int]
-    # int BIO_read(BIO *b, void *data, int len);
-    libssl.BIO_read.restype = c_int
-    libssl.BIO_read.argtypes = [c_void_p, c_void_p, c_int]
-    # int BIO_test_flags(const BIO *b, int flags);
-    libssl.BIO_test_flags.restype = c_int
-    libssl.BIO_test_flags.argtypes = [c_void_p, c_int]
-    # size_t BIO_ctrl_pending(BIO *b);
-    libssl.BIO_ctrl_pending.restype = c_size_t
-    libssl.BIO_ctrl_pending.argtypes = [c_void_p]
-    # BIO_METHOD *BIO_s_file(void );
-    libssl.BIO_s_file.restype = c_void_p
-    libssl.BIO_s_file.argtypes = []
-
-    # void CRYPTO_set_id_callback(unsigned long (*func)(void));
-    libssl.CRYPTO_set_id_callback.restype = None
-    libssl.CRYPTO_set_id_callback.argtypes = [c_void_p]
-    # void CRYPTO_set_locking_callback(void (*func)(int mode,int type, const char *file,int line));
-    libssl.CRYPTO_set_locking_callback.restype = None
-    libssl.CRYPTO_set_locking_callback.argtypes = [c_void_p]
-    # void (*CRYPTO_get_locking_callback(void))(int mode,int type,const char *file, int line);
-    libssl.CRYPTO_get_locking_callback.restype = c_void_p
-    libssl.CRYPTO_get_locking_callback.argtypes = []
-    # int CRYPTO_num_locks(void);
-    libssl.CRYPTO_num_locks.restype = c_int
-    libssl.CRYPTO_num_locks.argtypes = []
-    # void CRYPTO_free(void *);
-    libssl.CRYPTO_free.restype = None
-    libssl.CRYPTO_free.argtypes = [c_void_p]
-
-    # const char *X509_get_default_cert_dir(void);
-    libssl.X509_get_default_cert_dir.restype = c_char_p
-    libssl.X509_get_default_cert_dir.argtypes = []
-    # const char *X509_get_default_cert_file(void);
-    libssl.X509_get_default_cert_file.restype = c_char_p
-    libssl.X509_get_default_cert_file.argtypes = []
-    # X509 *X509_STORE_CTX_get_current_cert(X509_STORE_CTX *ctx);
-    libssl.X509_STORE_CTX_get_current_cert.restype = c_void_p
-    libssl.X509_STORE_CTX_get_current_cert.argtypes = [c_void_p]
-    # int X509_STORE_CTX_get_error(X509_STORE_CTX *ctx);
-    libssl.X509_STORE_CTX_get_error.restype = c_int
-    libssl.X509_STORE_CTX_get_error.argtypes = [c_void_p]
-    # int X509_STORE_CTX_get_error_depth(X509_STORE_CTX *ctx);
-    libssl.X509_STORE_CTX_get_error_depth.restype = c_int
-    libssl.X509_STORE_CTX_get_error_depth.argtypes = [c_void_p]
-    # const char *X509_verify_cert_error_string(long n);
-    libssl.X509_verify_cert_error_string.restype = c_char_p
-    libssl.X509_verify_cert_error_string.argtypes = [c_long]
-    # void X509_STORE_CTX_set_error(X509_STORE_CTX *ctx,int s);
-    libssl.X509_STORE_CTX_set_error.restype = None
-    libssl.X509_STORE_CTX_set_error.argtypes = [c_void_p, c_int]
-    # X509 *X509_dup(X509 *x509);
-    libssl.X509_dup.restype = c_void_p
-    libssl.X509_dup.argtypes = [c_void_p]
-    # void X509_free(X509 *a);
-    libssl.X509_free.restype = None
-    libssl.X509_free.argtypes = [c_void_p]
-    # X509_NAME *X509_get_subject_name(X509 *a);
-    libssl.X509_get_subject_name.restype = c_void_p
-    libssl.X509_get_subject_name.argtypes = [c_void_p]
-    # X509_NAME *X509_get_issuer_name(X509 *a);
-    libssl.X509_get_issuer_name.restype = c_void_p
-    libssl.X509_get_issuer_name.argtypes = [c_void_p]
-    # ASN1_INTEGER *X509_get_serialNumber(X509 *x);
-    libssl.X509_get_serialNumber.restype = c_void_p
-    libssl.X509_get_serialNumber.argtypes = [c_void_p]
-    # void  *X509_get_ext_d2i(X509 *x, int nid, int *crit, int *idx);
-    libssl.X509_get_ext_d2i.restype = c_void_p
-    libssl.X509_get_ext_d2i.argtypes = [c_void_p, c_int, POINTER(c_int), POINTER(c_int)]
-    # STACK_OF(CONF_VALUE) *i2v_GENERAL_NAMES(X509V3_EXT_METHOD *method, GENERAL_NAMES *gen, STACK_OF(CONF_VALUE) *extlist);
-    libssl.i2v_GENERAL_NAMES.restype = c_void_p
-    libssl.i2v_GENERAL_NAMES.argtypes = [c_void_p, c_void_p, c_void_p]
-
-    # char *X509_NAME_oneline(X509_NAME *a,char *buf,int size);
-    libssl.X509_NAME_oneline.restype = c_char_p
-    libssl.X509_NAME_oneline.argtypes = [c_void_p, c_char_p, c_int]
-    # int X509_NAME_cmp(const X509_NAME *a, const X509_NAME *b);
-    libssl.X509_NAME_cmp.restype = c_int
-    libssl.X509_NAME_cmp.argtypes = [c_void_p, c_void_p]
-    # int X509_NAME_entry_count(X509_NAME *name);
-    libssl.X509_NAME_entry_count.restype = c_int
-    libssl.X509_NAME_entry_count.argtypes = [c_void_p]
-    # X509_NAME_ENTRY *X509_NAME_get_entry(X509_NAME *name, int loc);
-    libssl.X509_NAME_get_entry.restype = c_void_p
-    libssl.X509_NAME_get_entry.argtypes = [c_void_p, c_int]
-    # ASN1_OBJECT *X509_NAME_ENTRY_get_object(X509_NAME_ENTRY *ne);
-    libssl.X509_NAME_ENTRY_get_object.restype = c_void_p
-    libssl.X509_NAME_ENTRY_get_object.argtypes = [c_void_p]
-    # ASN1_STRING *X509_NAME_ENTRY_get_data(X509_NAME_ENTRY *ne);
-    libssl.X509_NAME_ENTRY_get_data.restype = c_void_p
-    libssl.X509_NAME_ENTRY_get_data.argtypes = [c_void_p]
-    # unsigned long X509_subject_name_hash(X509 *x);
-    libssl.X509_subject_name_hash.restype = c_long
-    libssl.X509_subject_name_hash.argtypes = [c_void_p]
-    # int X509_digest(const X509 *data,const EVP_MD *type, unsigned char *md, unsigned int *len);
-    libssl.X509_digest.restype = c_int
-    libssl.X509_digest.argtypes = [c_void_p, c_void_p, c_char_p, POINTER(c_int)]
-    # int X509v3_get_ext_count(const STACK_OF(X509_EXTENSION) *x);
-    libssl.X509v3_get_ext_count.restype = c_int
-    libssl.X509v3_get_ext_count.argtypes = [c_void_p]
-    # int X509_get_ext_count(const STACK_OF(X509_EXTENSION) *x);
-    libssl.X509_get_ext_count.restype = c_int
-    libssl.X509_get_ext_count.argtypes = [c_void_p]
-    # X509_EXTENSION *X509_get_ext(X509 *x, int loc);
-    libssl.X509_get_ext.restype = c_void_p
-    libssl.X509_get_ext.argtypes = [c_void_p, c_int]
-
-    # ASN1_OBJECT *X509_EXTENSION_get_object(X509_EXTENSION *ex);
-    libssl.X509_EXTENSION_get_object.restype = c_void_p
-    libssl.X509_EXTENSION_get_object.argtypes = [c_void_p]
-    # ASN1_OCTET_STRING *X509_EXTENSION_get_data(X509_EXTENSION *ne);
-    libssl.X509_EXTENSION_get_data.restype = c_void_p
-    libssl.X509_EXTENSION_get_data.argtypes = [c_void_p]
-    # int X509_EXTENSION_get_critical(X509_EXTENSION *ex);
-    libssl.X509_EXTENSION_get_critical.restype = c_int
-    libssl.X509_EXTENSION_get_critical.argtypes = [c_void_p]
-
-    # int sk_num(const STACK *);
-    libssl.sk_num.restype = c_int
-    libssl.sk_num.argtypes = [c_void_p]
-    # char *sk_value(const STACK *, int);
-    libssl.sk_value.restype = c_void_p
-    libssl.sk_value.argtypes = [c_void_p, c_int]
-
-    # int ASN1_STRING_length(ASN1_STRING *x);
-    libssl.ASN1_STRING_length.restype = c_int
-    libssl.ASN1_STRING_length.argtypes = [c_void_p]
-    # unsigned char *ASN1_STRING_data(ASN1_STRING *x);
-    libssl.ASN1_STRING_data.restype = c_char_p
-    libssl.ASN1_STRING_data.argtypes = [c_void_p]
-    # int ASN1_STRING_type(ASN1_STRING *x);
-    libssl.ASN1_STRING_type.restype = c_int
-    libssl.ASN1_STRING_type.argtypes = [c_void_p]
-    # int ASN1_STRING_to_UTF8(unsigned char **out, ASN1_STRING *in);
-    libssl.ASN1_STRING_to_UTF8.restype = c_int
-    libssl.ASN1_STRING_to_UTF8.argtypes = [POINTER(c_char_p), c_void_p]
-    # long ASN1_INTEGER_get(ASN1_INTEGER *a);
-    libssl.ASN1_INTEGER_get.restype = c_long
-    libssl.ASN1_INTEGER_get.argtypes = [c_void_p]
-    # BIGNUM *ASN1_INTEGER_to_BN(ASN1_INTEGER *ai,BIGNUM *bn);
-    libssl.ASN1_INTEGER_to_BN.restype = c_void_p
-    libssl.ASN1_INTEGER_to_BN.argtypes = [c_void_p, c_void_p]
-    # ASN1_GENERALIZEDTIME *ASN1_TIME_to_generalizedtime(ASN1_TIME *t, ASN1_GENERALIZEDTIME **out);
-    libssl.ASN1_TIME_to_generalizedtime.restype = c_void_p
-    libssl.ASN1_TIME_to_generalizedtime.argtypes = [c_void_p, c_void_p]
-    # ??? No prototype for ASN1_GENERALIZEDTIME_free
-    libssl.ASN1_GENERALIZEDTIME_free.restype = None
-    libssl.ASN1_GENERALIZEDTIME_free.argtypes = [c_void_p]
-
-    # void *PEM_ASN1_read_bio(d2i_of_void *d2i, const char *name, BIO *bp, void **x, pem_password_cb *cb, void *u);
-    libssl.PEM_ASN1_read_bio.restype = c_void_p
-    libssl.PEM_ASN1_read_bio.argtypes = [c_void_p, c_char_p, c_void_p, POINTER(c_void_p), c_void_p, c_void_p]
-
-    # int OBJ_obj2nid(const ASN1_OBJECT *o);
-    libssl.OBJ_obj2nid.restype = c_int
-    libssl.OBJ_obj2nid.argtypes = [c_void_p]
-    # const char *OBJ_nid2sn(int n);
-    libssl.OBJ_nid2sn.restype = c_char_p
-    libssl.OBJ_nid2sn.argtypes = [c_int]
-
-    # const EVP_MD *EVP_get_digestbyname(const char *name);
-    libssl.EVP_get_digestbyname.restype = c_void_p
-    libssl.EVP_get_digestbyname.argtypes = [c_char_p]
-
-    # DH *d2i_DHparams(DH **a,const unsigned char **pp, long length);
-    libssl.d2i_DHparams.restype = c_void_p
-    libssl.d2i_DHparams.argtypes = [POINTER(c_void_p), POINTER(c_void_p), c_long]
-    # DH *DH_new(void);
-    libssl.DH_new.restype = POINTER(C_DH)
-    libssl.DH_new.argtypes = []
-    # int DH_size(const DH *dh);
-    libssl.DH_size.restype = c_int
-    libssl.DH_size.argtypes = [POINTER(C_DH)]
-    # void DH_free(DH *dh);
-    libssl.DH_free.restype = None
-    libssl.DH_free.argtypes = [c_void_p]
-    # BIGNUM *BN_bin2bn(const unsigned char *s,int len,BIGNUM *ret);
-    libssl.BN_bin2bn.restype = c_void_p
-    libssl.BN_bin2bn.argtypes = [c_void_p, c_int, c_void_p]
-    # char *BN_bn2hex(const BIGNUM *a);
-    libssl.BN_bn2hex.restype = c_void_p   # Can't use c_char_p because we must free()
-    libssl.BN_bn2hex.argtypes = [c_void_p]
-    # void BN_free(BIGNUM *a);
-    libssl.BN_free.restype = None
-    libssl.BN_free.argtypes = [c_void_p]
-    return libssl
+    def __init__(self):
+        self._cdll = None
 
 
-try:
-    libssl = get_libssl()
-except AttributeError, e:
-    # Failed to find libssl, or tried to access a function not present.
-    raise ImportError('libssl could not be found: ' + e.args[0])
+    def __getattr__(self, name):
+        if not self._cdll:
+            self.initialize()
+        return getattr(self._cdll, name)
+
+
+    def initialize(self, lib='ssl'):
+        """
+        Initialize openssl from the given library, which is either a library
+        name or a CDLL object.
+        """
+        trylibs = []
+        if isinstance(lib, str):
+            lib = util.find_library(lib)
+        if lib:
+            if isinstance(lib, str):
+                trylibs.append(CDLL(lib, use_errno=True))
+            elif isinstance(lib, CDLL):
+                trylibs.append(lib)
+            else:
+                raise TypeError('lib must be string or CDLL object')
+
+        # Also try the PyDLL in case ssl is linked in.
+        trylibs.append(pythonapi)
+
+        err = None
+        for lib in trylibs:
+            try:
+                self._init_definitions(lib)
+            except Exception, e:
+                err = err or e
+            else:
+                self._cdll = lib
+                return
+        else:
+            raise err or ImportError('no openssl candidate libraries found')
+
+
+    def _init_definitions(self, libssl):
+        """
+        Initialize in the given CDLL the restype/argtypes for all OpenSSL
+        functions used in this module.  (Not all functions in the library, just
+        the ones we're interested in.)
+        """
+        # void OPENSSL_add_all_algorithms_conf(void);
+        libssl.OPENSSL_add_all_algorithms_conf.restype = None
+        libssl.OPENSSL_add_all_algorithms_conf.argtypes = []
+        # void ERR_load_ERR_strings(void);
+        libssl.ERR_load_ERR_strings.restype = None
+        libssl.ERR_load_ERR_strings.argtypes = []
+        # void SSL_load_error_strings(void );
+        libssl.SSL_load_error_strings.restype = None
+        libssl.SSL_load_error_strings.argtypes = []
+        # int SSL_library_init(void );
+        libssl.SSL_library_init.restype = c_int
+        libssl.SSL_library_init.argtypes = []
+
+        # const char *ERR_reason_error_string(unsigned long e);
+        libssl.ERR_reason_error_string.restype = c_char_p
+        libssl.ERR_reason_error_string.argtypes = [c_ulong]
+        # unsigned long ERR_peek_error(void);
+        libssl.ERR_peek_error.restype = c_ulong
+        libssl.ERR_peek_error.argtypes = []
+        # unsigned long ERR_get_error(void);
+        libssl.ERR_get_error.restype = c_ulong
+        libssl.ERR_get_error.argtypes = []
+
+        # SSL_METHOD *SSLv23_method(void);
+        libssl.SSLv23_method.restype = c_void_p
+        libssl.SSLv23_method.argtypes = []
+        # SSL_METHOD *SSLv23_client_method(void);
+        libssl.SSLv23_client_method.restype = c_void_p
+        libssl.SSLv23_client_method.argtypes = []
+        # SSL_CT *SSL_CTX_new(SSL_METHOD *meth);
+        libssl.SSL_CTX_new.restype = c_void_p
+        libssl.SSL_CTX_new.argtypes = [c_void_p]
+        # long SSL_CTX_ctrl(SSL_CTX *ctx,int cmd, long larg, void *parg);
+        libssl.SSL_CTX_ctrl.restype = c_long
+        libssl.SSL_CTX_ctrl.argtypes = [c_void_p, c_long, c_long, c_void_p]
+        # int SSL_CTX_set_cipher_list(SSL_CTX *,const char *str);
+        libssl.SSL_CTX_set_cipher_list.restype = c_int
+        libssl.SSL_CTX_set_cipher_list.argtypes = [c_void_p, c_char_p]
+        # const char *SSL_get_cipher_list(const SSL *ssl, int priority);
+        libssl.SSL_get_cipher_list.restype = c_char_p
+        libssl.SSL_get_cipher_list.argtypes = [c_void_p, c_int]
+        # int SSL_CTX_load_verify_locations(SSL_CTX *ctx, const char *CAfile, const char *CApath);
+        libssl.SSL_CTX_load_verify_locations.restype = c_int
+        libssl.SSL_CTX_load_verify_locations.argtypes = [c_void_p, c_char_p, c_char_p]
+        # int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx, const char *file);
+        libssl.SSL_CTX_use_certificate_chain_file.restype = c_int
+        libssl.SSL_CTX_use_certificate_chain_file.argtypes = [c_void_p, c_char_p]
+        # int SSL_CTX_use_PrivateKey_file(SSL_CTX *ctx, const char *file, int type);
+        libssl.SSL_CTX_use_PrivateKey_file.restype = c_int
+        libssl.SSL_CTX_use_PrivateKey_file.argtypes = [c_void_p, c_char_p, c_int]
+        # void SSL_CTX_set_verify(SSL_CTX *ctx,int mode, int (*callback)(int, X509_STORE_CTX *));
+        libssl.SSL_CTX_set_verify.restype = None
+        libssl.SSL_CTX_set_verify.argtypes = [c_void_p, c_int, c_void_p]
+        # void SSL_CTX_set_default_passwd_cb(SSL_CTX *ctx, pem_password_cb *cb);
+        libssl.SSL_CTX_set_default_passwd_cb.restype = None
+        libssl.SSL_CTX_set_default_passwd_cb.argtypes = [c_void_p, c_void_p]
+        # void SSL_CTX_free(SSL_CTX *);
+        libssl.SSL_CTX_free.restype = None
+        libssl.SSL_CTX_free.argtypes = [c_void_p]
+
+        # SSL *SSL_new(SSL_CTX *ctx);
+        libssl.SSL_new.restype = c_void_p
+        libssl.SSL_new.argtypes = [c_void_p]
+        # int SSL_read(SSL *ssl,void *buf,int num);
+        libssl.SSL_read.restype = c_int
+        libssl.SSL_read.argtypes = [c_void_p, c_void_p, c_int]
+        # int SSL_write(SSL *ssl,const void *buf,int num);
+        libssl.SSL_write.restype = c_int
+        libssl.SSL_write.argtypes = [c_void_p, c_void_p, c_int]
+        # int SSL_shutdown(SSL *s);
+        libssl.SSL_shutdown.restype = c_int
+        libssl.SSL_shutdown.argtypes = [c_void_p]
+        # int SSL_do_handshake(SSL *s);
+        libssl.SSL_do_handshake.restype = c_int
+        libssl.SSL_do_handshake.argtypes = [c_void_p]
+        # int SSL_state(const SSL *ssl);
+        libssl.SSL_state.restype = c_int
+        libssl.SSL_state.argtypes = [c_void_p]
+        # void SSL_set_connect_state(SSL *s);
+        libssl.SSL_set_connect_state.restype = None
+        libssl.SSL_set_connect_state.argtypes = [c_void_p]
+        # void SSL_set_accept_state(SSL *s);
+        libssl.SSL_set_accept_state.restype = None
+        libssl.SSL_set_accept_state.argtypes = [c_void_p]
+        # long SSL_ctrl(SSL *ssl,int cmd, long larg, void *parg);
+        libssl.SSL_ctrl.restype = c_long
+        libssl.SSL_ctrl.argtypes = [c_void_p, c_int, c_long, c_void_p]
+        # void SSL_set_bio(SSL *s, BIO *rbio,BIO *wbio);
+        libssl.SSL_set_bio.restype = None
+        libssl.SSL_set_bio.argtypes = [c_void_p, c_void_p, c_void_p]
+        # int SSL_shutdown(SSL *s);
+        libssl.SSL_shutdown.restype = c_int
+        libssl.SSL_shutdown.argtypes = [c_void_p]
+        # long SSL_get_verify_result(const SSL *ssl);
+        libssl.SSL_get_verify_result.restype = c_long
+        libssl.SSL_get_verify_result.argtypes = [c_void_p]
+        # void SSL_set_verify(SSL *s, int mode, int (*verify_callback)(int, X509_STORE_CTX *));
+        libssl.SSL_set_verify.restype = None
+        libssl.SSL_set_verify.argtypes = [c_void_p, c_int, c_void_p]
+        # void SSL_free(SSL *ssl);
+        libssl.SSL_free.restype = None
+        libssl.SSL_free.argtypes = [c_void_p]
+        # int SSL_get_error(const SSL *s,int ret_code);
+        libssl.SSL_get_error.restype = c_int
+        libssl.SSL_get_error.argtypes = [c_void_p, c_int]
+        # SSL_SESSION *SSL_get1_session(SSL *ssl);
+        libssl.SSL_get1_session.restype = c_void_p
+        libssl.SSL_get1_session.argtypes = [c_void_p]
+        # int SSL_set_session(SSL *to, SSL_SESSION *session);
+        libssl.SSL_set_session.restype = c_int
+        libssl.SSL_set_session.argtypes = [c_void_p, c_void_p]
+        # void SSL_SESSION_free(SSL_SESSION *ses);
+        libssl.SSL_SESSION_free.restype = None
+        libssl.SSL_SESSION_free.argtypes = [c_void_p]
+
+        # BIO *BIO_new(BIO_METHOD *type);
+        libssl.BIO_new.restype = c_void_p
+        libssl.BIO_new.argtypes = [c_void_p]
+        # BIO *BIO_new_file(const char *filename, const char *mode);
+        libssl.BIO_new_file.restype = c_void_p
+        libssl.BIO_new_file.argtypes = [c_char_p, c_char_p]
+        # BIO_METHOD *BIO_f_ssl(void);
+        libssl.BIO_f_ssl.restype = c_void_p
+        libssl.BIO_f_ssl.argtypes = []
+        # BIO_METHOD *BIO_s_mem(void);
+        libssl.BIO_s_mem.restype = c_void_p
+        libssl.BIO_s_mem.argtypes = []
+        # long BIO_ctrl(BIO *bp,int cmd,long larg,void *parg);
+        libssl.BIO_ctrl.restype = c_long
+        libssl.BIO_ctrl.argtypes = [c_void_p, c_int, c_long, c_void_p]
+        # long BIO_int_ctrl(BIO *bp,int cmd,long larg,int iarg);
+        libssl.BIO_int_ctrl.restype = c_long
+        libssl.BIO_int_ctrl.argtypes = [c_void_p, c_int, c_long, c_int]
+        # void BIO_free_all(BIO *a);
+        libssl.BIO_free_all.restype = None
+        libssl.BIO_free_all.argtypes = [c_void_p]
+        # size_t BIO_ctrl_get_write_guarantee(BIO *b);
+        libssl.BIO_ctrl_get_write_guarantee.restype = c_size_t
+        libssl.BIO_ctrl_get_write_guarantee.argtypes = [c_void_p]
+        # int BIO_write(BIO *b, const void *data, int len);
+        libssl.BIO_write.restype = c_int
+        libssl.BIO_write.argtypes = [c_void_p, c_void_p, c_int]
+        # int BIO_read(BIO *b, void *data, int len);
+        libssl.BIO_read.restype = c_int
+        libssl.BIO_read.argtypes = [c_void_p, c_void_p, c_int]
+        # int BIO_test_flags(const BIO *b, int flags);
+        libssl.BIO_test_flags.restype = c_int
+        libssl.BIO_test_flags.argtypes = [c_void_p, c_int]
+        # size_t BIO_ctrl_pending(BIO *b);
+        libssl.BIO_ctrl_pending.restype = c_size_t
+        libssl.BIO_ctrl_pending.argtypes = [c_void_p]
+        # BIO_METHOD *BIO_s_file(void );
+        libssl.BIO_s_file.restype = c_void_p
+        libssl.BIO_s_file.argtypes = []
+
+        # void CRYPTO_set_id_callback(unsigned long (*func)(void));
+        libssl.CRYPTO_set_id_callback.restype = None
+        libssl.CRYPTO_set_id_callback.argtypes = [c_void_p]
+        # void CRYPTO_set_locking_callback(void (*func)(int mode,int type, const char *file,int line));
+        libssl.CRYPTO_set_locking_callback.restype = None
+        libssl.CRYPTO_set_locking_callback.argtypes = [c_void_p]
+        # void (*CRYPTO_get_locking_callback(void))(int mode,int type,const char *file, int line);
+        libssl.CRYPTO_get_locking_callback.restype = c_void_p
+        libssl.CRYPTO_get_locking_callback.argtypes = []
+        # int CRYPTO_num_locks(void);
+        libssl.CRYPTO_num_locks.restype = c_int
+        libssl.CRYPTO_num_locks.argtypes = []
+        # void CRYPTO_free(void *);
+        libssl.CRYPTO_free.restype = None
+        libssl.CRYPTO_free.argtypes = [c_void_p]
+
+        # const char *X509_get_default_cert_dir(void);
+        libssl.X509_get_default_cert_dir.restype = c_char_p
+        libssl.X509_get_default_cert_dir.argtypes = []
+        # const char *X509_get_default_cert_file(void);
+        libssl.X509_get_default_cert_file.restype = c_char_p
+        libssl.X509_get_default_cert_file.argtypes = []
+        # X509 *X509_STORE_CTX_get_current_cert(X509_STORE_CTX *ctx);
+        libssl.X509_STORE_CTX_get_current_cert.restype = c_void_p
+        libssl.X509_STORE_CTX_get_current_cert.argtypes = [c_void_p]
+        # int X509_STORE_CTX_get_error(X509_STORE_CTX *ctx);
+        libssl.X509_STORE_CTX_get_error.restype = c_int
+        libssl.X509_STORE_CTX_get_error.argtypes = [c_void_p]
+        # int X509_STORE_CTX_get_error_depth(X509_STORE_CTX *ctx);
+        libssl.X509_STORE_CTX_get_error_depth.restype = c_int
+        libssl.X509_STORE_CTX_get_error_depth.argtypes = [c_void_p]
+        # const char *X509_verify_cert_error_string(long n);
+        libssl.X509_verify_cert_error_string.restype = c_char_p
+        libssl.X509_verify_cert_error_string.argtypes = [c_long]
+        # void X509_STORE_CTX_set_error(X509_STORE_CTX *ctx,int s);
+        libssl.X509_STORE_CTX_set_error.restype = None
+        libssl.X509_STORE_CTX_set_error.argtypes = [c_void_p, c_int]
+        # X509 *X509_dup(X509 *x509);
+        libssl.X509_dup.restype = c_void_p
+        libssl.X509_dup.argtypes = [c_void_p]
+        # void X509_free(X509 *a);
+        libssl.X509_free.restype = None
+        libssl.X509_free.argtypes = [c_void_p]
+        # X509_NAME *X509_get_subject_name(X509 *a);
+        libssl.X509_get_subject_name.restype = c_void_p
+        libssl.X509_get_subject_name.argtypes = [c_void_p]
+        # X509_NAME *X509_get_issuer_name(X509 *a);
+        libssl.X509_get_issuer_name.restype = c_void_p
+        libssl.X509_get_issuer_name.argtypes = [c_void_p]
+        # ASN1_INTEGER *X509_get_serialNumber(X509 *x);
+        libssl.X509_get_serialNumber.restype = c_void_p
+        libssl.X509_get_serialNumber.argtypes = [c_void_p]
+        # void  *X509_get_ext_d2i(X509 *x, int nid, int *crit, int *idx);
+        libssl.X509_get_ext_d2i.restype = c_void_p
+        libssl.X509_get_ext_d2i.argtypes = [c_void_p, c_int, POINTER(c_int), POINTER(c_int)]
+        # STACK_OF(CONF_VALUE) *i2v_GENERAL_NAMES(X509V3_EXT_METHOD *method, GENERAL_NAMES *gen, STACK_OF(CONF_VALUE) *extlist);
+        libssl.i2v_GENERAL_NAMES.restype = c_void_p
+        libssl.i2v_GENERAL_NAMES.argtypes = [c_void_p, c_void_p, c_void_p]
+
+        # char *X509_NAME_oneline(X509_NAME *a,char *buf,int size);
+        libssl.X509_NAME_oneline.restype = c_char_p
+        libssl.X509_NAME_oneline.argtypes = [c_void_p, c_char_p, c_int]
+        # int X509_NAME_cmp(const X509_NAME *a, const X509_NAME *b);
+        libssl.X509_NAME_cmp.restype = c_int
+        libssl.X509_NAME_cmp.argtypes = [c_void_p, c_void_p]
+        # int X509_NAME_entry_count(X509_NAME *name);
+        libssl.X509_NAME_entry_count.restype = c_int
+        libssl.X509_NAME_entry_count.argtypes = [c_void_p]
+        # X509_NAME_ENTRY *X509_NAME_get_entry(X509_NAME *name, int loc);
+        libssl.X509_NAME_get_entry.restype = c_void_p
+        libssl.X509_NAME_get_entry.argtypes = [c_void_p, c_int]
+        # ASN1_OBJECT *X509_NAME_ENTRY_get_object(X509_NAME_ENTRY *ne);
+        libssl.X509_NAME_ENTRY_get_object.restype = c_void_p
+        libssl.X509_NAME_ENTRY_get_object.argtypes = [c_void_p]
+        # ASN1_STRING *X509_NAME_ENTRY_get_data(X509_NAME_ENTRY *ne);
+        libssl.X509_NAME_ENTRY_get_data.restype = c_void_p
+        libssl.X509_NAME_ENTRY_get_data.argtypes = [c_void_p]
+        # unsigned long X509_subject_name_hash(X509 *x);
+        libssl.X509_subject_name_hash.restype = c_long
+        libssl.X509_subject_name_hash.argtypes = [c_void_p]
+        # int X509_digest(const X509 *data,const EVP_MD *type, unsigned char *md, unsigned int *len);
+        libssl.X509_digest.restype = c_int
+        libssl.X509_digest.argtypes = [c_void_p, c_void_p, c_char_p, POINTER(c_int)]
+        # int X509v3_get_ext_count(const STACK_OF(X509_EXTENSION) *x);
+        libssl.X509v3_get_ext_count.restype = c_int
+        libssl.X509v3_get_ext_count.argtypes = [c_void_p]
+        # int X509_get_ext_count(const STACK_OF(X509_EXTENSION) *x);
+        libssl.X509_get_ext_count.restype = c_int
+        libssl.X509_get_ext_count.argtypes = [c_void_p]
+        # X509_EXTENSION *X509_get_ext(X509 *x, int loc);
+        libssl.X509_get_ext.restype = c_void_p
+        libssl.X509_get_ext.argtypes = [c_void_p, c_int]
+
+        # ASN1_OBJECT *X509_EXTENSION_get_object(X509_EXTENSION *ex);
+        libssl.X509_EXTENSION_get_object.restype = c_void_p
+        libssl.X509_EXTENSION_get_object.argtypes = [c_void_p]
+        # ASN1_OCTET_STRING *X509_EXTENSION_get_data(X509_EXTENSION *ne);
+        libssl.X509_EXTENSION_get_data.restype = c_void_p
+        libssl.X509_EXTENSION_get_data.argtypes = [c_void_p]
+        # int X509_EXTENSION_get_critical(X509_EXTENSION *ex);
+        libssl.X509_EXTENSION_get_critical.restype = c_int
+        libssl.X509_EXTENSION_get_critical.argtypes = [c_void_p]
+
+        # int sk_num(const STACK *);
+        libssl.sk_num.restype = c_int
+        libssl.sk_num.argtypes = [c_void_p]
+        # char *sk_value(const STACK *, int);
+        libssl.sk_value.restype = c_void_p
+        libssl.sk_value.argtypes = [c_void_p, c_int]
+
+        # int ASN1_STRING_length(ASN1_STRING *x);
+        libssl.ASN1_STRING_length.restype = c_int
+        libssl.ASN1_STRING_length.argtypes = [c_void_p]
+        # unsigned char *ASN1_STRING_data(ASN1_STRING *x);
+        libssl.ASN1_STRING_data.restype = c_char_p
+        libssl.ASN1_STRING_data.argtypes = [c_void_p]
+        # int ASN1_STRING_type(ASN1_STRING *x);
+        libssl.ASN1_STRING_type.restype = c_int
+        libssl.ASN1_STRING_type.argtypes = [c_void_p]
+        # int ASN1_STRING_to_UTF8(unsigned char **out, ASN1_STRING *in);
+        libssl.ASN1_STRING_to_UTF8.restype = c_int
+        libssl.ASN1_STRING_to_UTF8.argtypes = [POINTER(c_char_p), c_void_p]
+        # long ASN1_INTEGER_get(ASN1_INTEGER *a);
+        libssl.ASN1_INTEGER_get.restype = c_long
+        libssl.ASN1_INTEGER_get.argtypes = [c_void_p]
+        # BIGNUM *ASN1_INTEGER_to_BN(ASN1_INTEGER *ai,BIGNUM *bn);
+        libssl.ASN1_INTEGER_to_BN.restype = c_void_p
+        libssl.ASN1_INTEGER_to_BN.argtypes = [c_void_p, c_void_p]
+        # ASN1_GENERALIZEDTIME *ASN1_TIME_to_generalizedtime(ASN1_TIME *t, ASN1_GENERALIZEDTIME **out);
+        libssl.ASN1_TIME_to_generalizedtime.restype = c_void_p
+        libssl.ASN1_TIME_to_generalizedtime.argtypes = [c_void_p, c_void_p]
+        # ??? No prototype for ASN1_GENERALIZEDTIME_free
+        libssl.ASN1_GENERALIZEDTIME_free.restype = None
+        libssl.ASN1_GENERALIZEDTIME_free.argtypes = [c_void_p]
+
+        # void *PEM_ASN1_read_bio(d2i_of_void *d2i, const char *name, BIO *bp, void **x, pem_password_cb *cb, void *u);
+        libssl.PEM_ASN1_read_bio.restype = c_void_p
+        libssl.PEM_ASN1_read_bio.argtypes = [c_void_p, c_char_p, c_void_p, POINTER(c_void_p), c_void_p, c_void_p]
+
+        # int OBJ_obj2nid(const ASN1_OBJECT *o);
+        libssl.OBJ_obj2nid.restype = c_int
+        libssl.OBJ_obj2nid.argtypes = [c_void_p]
+        # const char *OBJ_nid2sn(int n);
+        libssl.OBJ_nid2sn.restype = c_char_p
+        libssl.OBJ_nid2sn.argtypes = [c_int]
+
+        # const EVP_MD *EVP_get_digestbyname(const char *name);
+        libssl.EVP_get_digestbyname.restype = c_void_p
+        libssl.EVP_get_digestbyname.argtypes = [c_char_p]
+
+        # DH *d2i_DHparams(DH **a,const unsigned char **pp, long length);
+        libssl.d2i_DHparams.restype = c_void_p
+        libssl.d2i_DHparams.argtypes = [POINTER(c_void_p), POINTER(c_void_p), c_long]
+        # DH *DH_new(void);
+        libssl.DH_new.restype = POINTER(C_DH)
+        libssl.DH_new.argtypes = []
+        # int DH_size(const DH *dh);
+        libssl.DH_size.restype = c_int
+        libssl.DH_size.argtypes = [POINTER(C_DH)]
+        # void DH_free(DH *dh);
+        libssl.DH_free.restype = None
+        libssl.DH_free.argtypes = [c_void_p]
+        # BIGNUM *BN_bin2bn(const unsigned char *s,int len,BIGNUM *ret);
+        libssl.BN_bin2bn.restype = c_void_p
+        libssl.BN_bin2bn.argtypes = [c_void_p, c_int, c_void_p]
+        # char *BN_bn2hex(const BIGNUM *a);
+        libssl.BN_bn2hex.restype = c_void_p   # Can't use c_char_p because we must free()
+        libssl.BN_bn2hex.argtypes = [c_void_p]
+        # void BN_free(BIGNUM *a);
+        libssl.BN_free.restype = None
+        libssl.BN_free.argtypes = [c_void_p]
+
+
+libssl = LibSSL()
 
 
 def _check(result, cls=TLSError):
@@ -867,8 +906,6 @@ class TLSContext(object):
     _threading_id_callback_c = None
 
     def __init__(self, protocol=None):
-        # Keep a reference for __del__
-        self._libssl = libssl
         # For _passwd_cb()
         self._key_passwd = None
         self._ticket_key = None
@@ -880,6 +917,10 @@ class TLSContext(object):
 
         method = libssl.SSLv23_method()
         self._ctx = libssl.SSL_CTX_new(method)
+
+        # Keep a reference for __del__
+        self._libssl = libssl
+
         # Initialize server-side session cache.
         _check(libssl.SSL_CTX_ctrl(self._ctx, SSL_CTRL_SET_SESS_CACHE_SIZE, 10240, None))
         _check(libssl.SSL_CTX_ctrl(self._ctx, SSL_CTRL_SET_SESS_CACHE_MODE, SSL_SESS_CACHE_BOTH, None))
@@ -901,7 +942,8 @@ class TLSContext(object):
 
 
     def __del__(self):
-        self._libssl.SSL_CTX_free(self._ctx)
+        if hasattr(self, '_libssl'):
+            self._libssl.SSL_CTX_free(self._ctx)
 
 
     @classmethod

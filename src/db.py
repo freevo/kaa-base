@@ -648,15 +648,14 @@ class Database(object):
 
     def _db_query(self, statement, args = (), cursor = None, many = False):
         t0=time.time()
-        self._lock.acquire()
-        if not cursor:
-            cursor = self._cursor
-        if many:
-            cursor.executemany(statement, args)
-        else:
-            cursor.execute(statement, args)
-        rows = cursor.fetchall()
-        self._lock.release()
+        with self._lock:
+            if not cursor:
+                cursor = self._cursor
+            if many:
+                cursor.executemany(statement, args)
+            else:
+                cursor.execute(statement, args)
+            rows = cursor.fetchall()
         t1=time.time()
         #print "QUERY [%.06f%s]: %s" % (t1-t0, ('', ' (many)')[many], statement), args
         return rows
@@ -1090,9 +1089,8 @@ class Database(object):
         if name not in self._inverted_indexes and not self._readonly:
             self._db_query('INSERT INTO inverted_indexes VALUES(?, "objectcount", 0)', (name,))
             # Create the tables needed by the inverted index.
-            self._lock.acquire()
-            self._db.executescript(CREATE_IVTIDX_TEMPLATE.replace('%IDXNAME%', name))
-            self._lock.release()
+            with self._lock:
+                self._db.executescript(CREATE_IVTIDX_TEMPLATE.replace('%IDXNAME%', name))
         elif name in self._inverted_indexes:
             defn = self._inverted_indexes[name]
             if min == defn['min'] and max == defn['max'] and split == defn['split'] and \
@@ -1656,9 +1654,8 @@ class Database(object):
         """
         main.signals['exit'].disconnect(self.commit)
         self._dirty = False
-        self._lock.acquire()
-        self._db.commit()
-        self._lock.release()
+        with self._lock:
+            self._db.commit()
 
 
     def query(self, **attrs):

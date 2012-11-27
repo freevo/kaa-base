@@ -38,6 +38,7 @@ except ImportError:
     from cStringIO import StringIO as BytesIO
 
 
+from .errors import InProgressAborted
 from .utils import property
 from .callable import Callable, WeakCallable, CallableError
 from .core import Object, Signals
@@ -164,7 +165,11 @@ class _Supervisor(object):
         """
         Stops all known child processes by calling 
         """
-        all = InProgressAll(*[process.stop() for process in self.processes.keys()])
+        if not self.processes:
+            # No processes running.
+            return
+
+        all = InProgressAll(process.stop() for process in self.processes.keys())
         # Normally we yield InProgressAll objects and they get implicitly connected
         # by the coroutine code.  We're not doing that here, so we connect a dummy
         # handler so the underlying IPs (the processes) get connected to the IPAll.
@@ -833,20 +838,26 @@ class Process(Object):
         if self._state == Process.STATE_STOPPED:
             self.start()
 
-        if input:
-            yield self.write(input)
-        self.stdin.close()
+        try:
+            if input:
+                yield self.write(input)
+            self.stdin.close()
 
-        buf_out = BytesIO()
-        while self.stdout.readable:
-            buf_out.write((yield self.stdout.read()))
+            buf_out = BytesIO()
+            while self.stdout.readable:
+                buf_out.write((yield self.stdout.read()))
 
-        buf_err = BytesIO()
-        while self.stderr.readable:
-            buf_err.write((yield self.stderr.read()))
-
-        yield self.stop()
-        yield (buf_out.getvalue(), buf_err.getvalue())
+            buf_err = BytesIO()
+            while self.stderr.readable:
+                buf_err.write((yield self.stderr.read()))
+        except InProgressAborted, e:
+            # If the coroutine is aborted while we're trying to read from the
+            # child's stdout/err, then stop the child.  We can't yield stop()
+            # since aborted coroutines can't yield values.
+            self.stop()
+        else:
+            yield self.stop()
+            yield (buf_out.getvalue(), buf_err.getvalue())
 
 
     def _check_dead(self, expected=None):

@@ -114,7 +114,7 @@ def init(module=None, reset=False, **options):
         # Likely, init() was called implicitly from kaa.main.loop() which in
         # turn was called from a thread.  This can happen if the user calls
         # wait() on an InProgress from within a thread, for example.
-        raise ValueError('kaa.main.init() must be called explicitly from the Python main thread')
+        raise RuntimeError('kaa.main.init() must be called explicitly from the Python main thread')
 
     # catch SIGTERM and SIGINT if possible for a clean shutdown
     def signal_handler(*args):

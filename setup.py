@@ -140,6 +140,7 @@ setup(
             'utils.py': ['filter'],
             'io.py': ['throw'],
             'rpc.py': ['throw'],
+            'async.py': ['throw']
         }
     },
     auto_changelog = True,

@@ -33,6 +33,8 @@ import logging
 import time
 import fcntl
 import re
+import errno
+import threading
 try:
     from io import BytesIO
 except ImportError:
@@ -43,7 +45,7 @@ from .strutils import BYTES_TYPE, UNICODE_TYPE, py3_b, bl
 from . import nf_wrapper as notifier
 from .callable import WeakCallable
 from .core import Object, Signal, CoreThreading
-from .thread import MainThreadCallable
+from .thread import MainThreadCallable, threaded, MAINTHREAD
 from .async import InProgress, inprogress
 from . import main
 
@@ -120,9 +122,10 @@ class WeakIOMonitor(notifier.WeakNotifierCallback, IOMonitor):
 
 class IOChannel(Object):
     """
-    Base class for read-only, write-only or read-write descriptors such as
-    Socket and Process.  Implements logic common to communication over
-    such channels such as async read/writes and read/write buffering.
+    Base class for read-only, write-only or read-write stream-based
+    descriptors such as Socket and Process.  Implements logic common to
+    communication over such channels such as async read/writes and read/write
+    buffering.
 
     It may also be used directly with file descriptors or (probably less
     usefully) file-like objects.  e.g. ``IOChannel(file('somefile'))``
@@ -231,12 +234,15 @@ class IOChannel(Object):
         self._write_queue = []
         # Read queue used for read() and readline(), and 'readline' signal.
         self._read_queue = BytesIO()
+        self._read_queue_lock = threading.RLock()
         # Number of bytes each queue (read and write) are limited to.
         self._queue_size = 1024*1024
         self._chunk_size = chunk_size
         self._queue_close = False
-        self._closing = False
-    
+        self._close_inprogress = None
+        self._close_on_eof = True
+        self._eof = False
+
         # Internal signals for read() and readline()  (these are different from
         # the same-named public signals as they get emitted even when data is
         # None.  When these signals get updated, we call _update_read_monitor
@@ -266,12 +272,25 @@ class IOChannel(Object):
 
 
     @property
+    def channel(self):
+        """
+        The original object this IOChannel is wrapping.
+
+        This may be a file object, socket object, file descriptor, etc.,
+        depending what was passed during initialization or to :meth:`wrap`.
+
+        This is None if the channel is closed.
+        """
+        return self._channel
+
+
+    @property
     def alive(self):
         """
         True if the channel exists and is open.
         """
         # If the channel is closed, self._channel will be None.
-        return self._channel != None and not self._closing
+        return self._channel != None and not self._close_inprogress
 
 
     @property
@@ -289,7 +308,8 @@ class IOChannel(Object):
            (however that :meth:`read` call may return None, in which case the
            readable property will subsequently be False).
         """
-        return self._mode & IO_READ and (self.alive or self._read_queue.tell() > 0)
+        return self._mode & IO_READ and \
+               ((self.alive and not self._eof) or self._read_queue.tell() > 0)
 
 
     @property
@@ -407,11 +427,36 @@ class IOChannel(Object):
         return self._mode
 
 
+    @property
+    def close_on_eof(self):
+        """
+        Whether the channel automatically closes when EOF is encountered or on
+        unexpected exceptions.
+
+        The channel is considered EOF when a read returns an empty string. A
+        write that fails due to IOError or OSError will also close the channel
+        if this property is True.
+
+        This behaviour makes sense for stream-based channels (e.g. a
+        subprocess or socket), but may not for file-based channels.  The
+        default is True unless the underlying wrapped channel object contains
+        a ``seek`` method, in which case it is treated as a file and this
+        property is False.  In either case it can be overridden by explicitly
+        setting this property.
+        """
+        return self._close_on_eof
+
+    @close_on_eof.setter
+    def close_on_eof(self, value):
+        self._close_on_eof = value
+
+
     def _is_read_connected(self):
         """
         Returns True if an outside caller is interested in reads (not readlines).
         """
-        return not len(self._read_signal) == len(self.signals['read']) == 0
+        return len(self._read_signal) != 0  or \
+               (len(self.signals['read']) != 0 and not self._eof)
 
 
     def _is_readline_connected(self):
@@ -421,7 +466,7 @@ class IOChannel(Object):
         return not len(self._readline_signal) == len(self.signals['readline']) == 0
 
 
-    def _update_read_monitor(self, signal=None, change=None):
+    def _update_read_monitor(self, signal=None, action=None):
         """
         Update read IOMonitor to register or unregister based on if there are
         any handlers attached to the read signals.  If there are no handlers,
@@ -432,6 +477,16 @@ class IOChannel(Object):
         it until the end of the mainloop iteration via a timer in order not
         to lose incoming data between read() calls.
         """
+        if action == Signal.CONNECTED and len(self.signals['read']) == 1:
+            # First signal connected to the global read.  If there is anything
+            # in the read queue (data accumulated from a readline) emit it
+            # now.
+            #
+            # FIXME: corner case: if the callback is removed and readded, the
+            # same data could get emitted.
+            data = self._read_queue.getvalue()
+            if data:
+                self.signals['read'].emit(data)
         if not (self._mode & IO_READ) or not self._rmon:
             return
         elif not self._is_read_connected() and not self._is_readline_connected():
@@ -475,11 +530,18 @@ class IOChannel(Object):
             # Given channel is itself another IOChannel.  Wrap its underlying
             # channel (file descriptor or other file-like object).
             channel = channel._channel
+            self._close_on_eof = channel._close_on_eof
+            self._eof = channel._close_on_eof
+        else:
+            # Close on EOF unless it looks like a file object
+            self._close_on_eof = not hasattr(channel, 'seek')
+            self._eof = False
 
         self._channel = channel
         self._mode = 0
+        self._clear_read_queue()
         if not channel:
-            return
+            return self
         elif hasattr(channel, 'mode'):
             if 'r' in channel.mode:
                 self._mode |= IO_READ
@@ -518,11 +580,13 @@ class IOChannel(Object):
         # make it opt-in and clearly document why.
         #
         #main.signals['shutdown'].connect_weak(self.close)
+        return self
 
 
     def _clear_read_queue(self):
-        self._read_queue.seek(0)
-        self._read_queue.truncate()
+        with self._read_queue_lock:
+            self._read_queue.seek(0)
+            self._read_queue.truncate()
 
 
     def _find_delim(self, buf, start=0):
@@ -545,14 +609,22 @@ class IOChannel(Object):
         Pops a line (plus delimiter) from the read queue.  If the delimiter
         is not found in the queue, returns None.
         """
-        s = self._read_queue.getvalue()
-        idx = self._find_delim(s)
-        if idx is None:
-            return
- 
-        self._clear_read_queue()
-        self._read_queue.write(s[idx:])
-        return s[:idx]
+        with self._read_queue_lock:
+            s = self._read_queue.getvalue()
+            idx = self._find_delim(s)
+            if idx is None:
+                if (not self._channel or self._eof) and s:
+                    # Channel is closed or EOF and there's data left in the read
+                    # queue. Just return what's left.
+                    self._clear_read_queue()
+                    return s
+                else:
+                    # Wait for more data that contains the delimiter
+                    return
+
+            self._clear_read_queue()
+            self._read_queue.write(s[idx:])
+            return s[:idx]
 
 
     def _abort_read_inprogress(self, exc, signal, ip):
@@ -564,15 +636,23 @@ class IOChannel(Object):
         """
         Common implementation for read() and readline().
         """
-        if not (self._mode & IO_READ):
+        if not self._channel:
+            raise IOError(errno.EBADF, 'I/O operation on closed file')
+        elif not (self._mode & IO_READ):
             raise IOError(9, 'Cannot read on a write-only channel')
-        if not self.readable:
+        elif not self.readable:
             # channel is not readable.  Return an InProgress pre-finished
             # with None
             return InProgress().finish(None)
 
         ip = inprogress(signal)
-        ip.signals['abort'].connect(self._abort_read_inprogress, signal, ip)
+        # If this InProgress is aborted, we need to disconnect it from the
+        # read signal and make sure we update the read monitor.  But we do
+        # this connection weakly to prevent the circular reference (notice we
+        # pass ip as args here) so that if the caller is no longer interested
+        # in the returned InProgress and it is destroyed, we stop listening
+        # for read events on the socket.
+        ip.signals['abort'].connect_weak(self._abort_read_inprogress, signal, ip)
         return ip
 
 
@@ -598,10 +678,11 @@ class IOChannel(Object):
                  data = yield process.read()
 
         """
-        if self._read_queue.tell() > 0:
-            s = self._read_queue.getvalue()
-            self._clear_read_queue()
-            return InProgress().finish(s)
+        with self._read_queue_lock:
+            if self._read_queue.tell() > 0:
+                s = self._read_queue.getvalue()
+                self._clear_read_queue()
+                return InProgress().finish(s)
 
         return self._async_read(self._read_signal)
 
@@ -660,10 +741,11 @@ class IOChannel(Object):
         reading data (by connecting to the read or readline signals, or calling
         read() or readline()).  This is necessary for flow control.
         """
+        exc = None
         try:
             data = self._read(self._chunk_size)
-            log.debug2('IOChannel read data: channel=%s fd=%s len=%d', self._channel, self.fileno, len(data))
-        except (IOError, socket.error), e:
+        except (IOError, socket.error) as e:
+            exc = sys.exc_info()
             if len(e.args) != 2:
                 # IOError and socket.error typically have (errno, msg) args but
                 # occasionally don't (e.g. 'File not open for reading').  Reraise
@@ -675,25 +757,59 @@ class IOChannel(Object):
                 # data on a socket when none is available.
                 return
             # If we're here, then the socket is likely disconnected.
-            data = None
+            log.exception('some error')
+            data = ''
         except Exception:
+            exc = sys.exc_info()
             log.exception('%s._handle_read failed, closing socket', self.__class__.__name__)
-            data = None
+            data = ''
+
+        #log.debug2('IOChannel read data: channel=%s fd=%s len=%d', self._channel, self.fileno, len(data))
 
         if not data:
-            # No data, channel is closed.  IOChannel.close will emit signals
-            # used for read() and readline() with any data left in the read
-            # queue in order to finish any InProgress waiting.
-            return self.close(immediate=True, expected=False)
+            self._eof = True
+            if self._close_on_eof:
+                # No data, channel is closed.  IOChannel.close will emit signals
+                # used for read() and readline() with any data left in the read
+                # queue in order to finish any InProgress waiting.
+                return self.close(immediate=True, expected=False)
 
         # _read_signal is for InProgress objects waiting on the next read().
-        self._read_signal.emit(data)
-        self.signals['read'].emit(data)
- 
-        if self._is_readline_connected():
-            if len(self._readline_signal) == 0:
-                # Callback is connected to the 'readline' signal, so loop
-                # through read queue and emit all lines individually.
+        if len(self._read_signal):
+            if exc:
+                self._read_signal.emit(*exc)
+            else:
+                self._read_signal.emit(data)
+        if data:
+            self.signals['read'].emit(data)
+
+        with self._read_queue_lock:
+            if len(self._readline_signal):
+                # Handle a readline() call
+                if self.read_queue_used + len(data) > self._queue_size:
+                    # This data chunk would exceed the read queue limit.  We
+                    # instead emit whatever's in the read queue, and then start
+                    # it over with this chunk.
+                    # TODO: it's possible this chunk contains the delimiter we've
+                    # been waiting for.  If so, we could salvage things.
+                    line = self._read_queue.getvalue()
+                    self._clear_read_queue()
+                    self._read_queue.write(data)
+                else:
+                    self._read_queue.write(data)
+                    line = self._pop_line_from_read_queue()
+
+                if line is not None:
+                    self._readline_signal.emit(line)
+                elif self._eof:
+                    if exc:
+                        self._readline_signal.throw(*exc)
+                    else:
+                        # EOF with a readline() waiting.  Send it the empty string.
+                        self._readline_signal.emit('')
+            elif len(self.signals['readline']):
+                # Handle global readline signal by looping through read queue and
+                # emit all lines individually.
                 queue = self._read_queue.getvalue() + data
                 self._clear_read_queue()
 
@@ -713,24 +829,6 @@ class IOChannel(Object):
                 for line in lines:
                     self.signals['readline'].emit(line)
 
-            else:
-                # No callbacks connected to 'readline' signal, here we handle
-                # a single readline() call.
-                if self.read_queue_used + len(data) > self._queue_size:
-                    # This data chunk would exceed the read queue limit.  We
-                    # instead emit whatever's in the read queue, and then start
-                    # it over with this chunk.
-                    # TODO: it's possible this chunk contains the delimiter we've
-                    # been waiting for.  If so, we could salvage things.
-                    line = self._read_queue.getvalue()
-                    self._clear_read_queue()
-                    self._read_queue.write(data)
-                else:
-                    self._read_queue.write(data)
-                    line = self._pop_line_from_read_queue()
-
-                if line is not None:
-                    self._readline_signal.emit(line)
 
         # Update read monitor if necessary.  If there are no longer any
         # callbacks left on any of the read signals (most likely _read_signal
@@ -782,13 +880,15 @@ class IOChannel(Object):
         If a write does not complete because the channel was closed
         prematurely, an IOError is thrown to the InProgress.
         """
-        if not (self._mode & IO_WRITE):
+        if not self._channel:
+            raise IOError(errno.EBADF, 'I/O operation on closed file')
+        elif not (self._mode & IO_WRITE):
             raise IOError(9, 'Cannot write to a read-only channel')
-        if not self.writable:
+        elif not self.writable:
             raise IOError(9, 'Channel is not writable')
-        if self.write_queue_used + len(data) > self._queue_size:
+        elif self.write_queue_used + len(data) > self._queue_size:
             raise ValueError('Data would exceed write queue limit')
-        if not isinstance(data, BYTES_TYPE):
+        elif not isinstance(data, BYTES_TYPE):
             raise ValueError('data must be bytes, not unicode')
 
         ip = InProgress()
@@ -837,23 +937,24 @@ class IOChannel(Object):
 
         except Exception, e:
             tp, exc, tb = sys.exc_info()
-            if tp in (OSError, IOError, socket.error) and e.args[0] == 11:
-                # Resource temporarily unavailable -- we are trying to write
-                # data to a socket which is not ready.  To prevent a busy loop
-                # (mainloop will keep calling us back) we sleep a tiny
-                # bit.  It's admittedly a bit kludgy, but it's a simple
-                # solution to a condition which should not occur often.
-                self._write_queue.insert(0, (data, inprogress))
-                time.sleep(0.001)
-                return
+            if tp in (OSError, IOError, socket.error):
+                if e.args[0] == 11:
+                    # Resource temporarily unavailable -- we are trying to write
+                    # data to a socket which is not ready.  To prevent a busy loop
+                    # (mainloop will keep calling us back) we sleep a tiny
+                    # bit.  It's admittedly a bit kludgy, but it's a simple
+                    # solution to a condition which should not occur often.
+                    self._write_queue.insert(0, (data, inprogress))
+                    time.sleep(0.001)
+                    return
+                else:
+                    if self._close_on_eof:
+                        # Close, which also throws to any other pending
+                        # InProgress writes.
+                        self.close(immediate=True, expected=False)
+                    # Normalize exception into an IOError.
+                    tp, exc = IOError, IOError(*e.args)
 
-            if tp in (IOError, socket.error, OSError):
-                # Any of these are treated as fatal.  We close, which
-                # also throws to any other pending InProgress writes.
-                self.close(immediate=True, expected=False)
-                # Normalize exception into an IOError.
-                tp, exc = IOError, IOError(*e.args)
-    
             # Throw the current exception to the InProgress for this write.
             # If nobody is listening for it, it will eventually get logged
             # as unhandled.
@@ -874,7 +975,9 @@ class IOChannel(Object):
             os.close(self.fileno)
 
 
-    # TODO: return an InProgress (relevant is immediate=False)
+    # Among other things, this method invokes callbacks so ensure it runs in
+    # the main thread.
+    @threaded(MAINTHREAD)
     def close(self, immediate=False, expected=True):
         """
         Closes the channel.
@@ -890,13 +993,20 @@ class IOChannel(Object):
             # already closed
             return
 
+        if not self._close_inprogress:
+            # Set _closing flag in case any callbacks connected to any pending
+            # read/write InProgress objects test the 'alive' property, which
+            # we want to be False.  Yet we don't want to actually _close()
+            # before finishing the pending InProgress in case _close() raises,
+            # which we want to let propagate.
+            self._close_inprogress = InProgress()
+
         if not immediate and self._write_queue:
             # Immediate close not requested and we have some data left
             # to be written, so defer close until after write queue
             # is empty.
             self._queue_close = True
-            return
-
+            return self._close_inprogress
 
         if self._rmon:
             self._rmon.unregister()
@@ -906,19 +1016,17 @@ class IOChannel(Object):
         self._wmon = None
         self._queue_close = False
 
-        # Set _closing flag in case any callbacks connected to any pending
-        # read/write InProgress objects test the 'alive' property, which we
-        # want to be False.  Yet we don't want to actually _close() before
-        # finishing the pending InProgress in case _close() raises, which
-        # we want to let propagate.
-        self._closing = True
 
-        # Finish any InProgress waiting on read() or readline() with whatever
+        # If there Finish any InProgress waiting on read() or readline() with whatever
         # is left in the read queue.
-        s = self._read_queue.getvalue()
-        self._read_signal.emit(s)
-        self._readline_signal.emit(s)
-        self._clear_read_queue()
+        with self._read_queue_lock:
+            if len(self._read_signal):
+                s = self._read_queue.getvalue()
+                self._read_signal.emit(s)
+            if len(self._readline_signal):
+                line = self._pop_line_from_read_queue()
+                if line:
+                    self._readline_signal.emit(line)
 
         # Throw IOError to any pending InProgress in the write queue
         for data, inprogress in self._write_queue:
@@ -934,10 +1042,18 @@ class IOChannel(Object):
             # Channel may already be closed, which is ok.
             if errno != 9:
                 # It isn't, this is some other error, so reraise exception.
+                self._close_inprogress.throw()
                 raise
+        except Exception:
+            # Finish the close InProgress with any other exception and
+            # reraise.
+            self._close_inprogress.throw()
+            raise
+        else:
+            self._close_inprogress.finish(expected)
         finally:
             self._channel = None
-            self._closing = False
+            self._close_inprogress = None
             self._mode = 0
 
             self.signals['closed'].emit(expected)
@@ -971,6 +1087,8 @@ class IOChannel(Object):
 
         Once stolen, the given ``channel`` is rendered basically inert.
         """
+        self.wrap(channel, channel.mode)
+
         self._delimiter = channel.delimiter
         self._write_queue = channel._write_queue
         self._read_queue = channel._read_queue
@@ -978,7 +1096,6 @@ class IOChannel(Object):
         self._chunk_size = channel._chunk_size
         self._queue_close = channel._queue_close
 
-        self.wrap(channel, channel.mode)
         # Generate new queues on the channel object whose fd we are stealing, since
         # we stole its queues too.
         channel._write_queue = []

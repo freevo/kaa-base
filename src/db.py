@@ -348,15 +348,16 @@ if sys.hexversion >= 0x03000000:
         Additionally, it maps the unicode and buffer types to corresponding
         Python 3 types.
         """
+        dispatch = pickle._Unpickler.dispatch.copy()
         def load_binstring(self):
             len = pickle.mloads(bytes('i', 'ascii') + self.read(4))
             self.append(bytes(self.read(len)))
-        pickle._Unpickler.dispatch[pickle.BINSTRING[0]] = load_binstring
+        dispatch[pickle.BINSTRING[0]] = load_binstring
 
         def load_short_binstring(self):
             len = ord(self.read(1))
             self.append(bytes(self.read(len)))
-        pickle._Unpickler.dispatch[pickle.SHORT_BINSTRING[0]] = load_short_binstring
+        dispatch[pickle.SHORT_BINSTRING[0]] = load_short_binstring
 
         def load_setitems(self):
             super(Proto2Unpickler, self).load_setitems()
@@ -367,7 +368,7 @@ if sys.hexversion >= 0x03000000:
                     if sk not in d:
                         d[sk] = v
                         del d[k]
-        pickle._Unpickler.dispatch[pickle.SETITEMS[0]] = load_setitems
+        dispatch[pickle.SETITEMS[0]] = load_setitems
 
         def find_class(self, module, name):
             if module == '__builtin__':

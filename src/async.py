@@ -674,14 +674,16 @@ class InProgress(Signal, Object):
         timer = OneShotTimer(trigger)
         timer.start(timeout)
 
-        # Add an abort handler to the new InProgress.  If it's aborted, abort self.
-        def abort(exc):
+        # Add an abort handler to the new InProgress.  If it's aborted,
+        # cleanup, and if abort=True then abort self.
+        def handle_abort(exc):
             self.disconnect(async.finish)
             self._exception_signal.disconnect(async.throw)
             timer.stop()
-            self.abort(exc)
+            if abort and not self.finished:
+                self.abort(exc)
 
-        async.signals['abort'].connect(abort)
+        async.signals['abort'].connect(handle_abort)
         return async
 
 

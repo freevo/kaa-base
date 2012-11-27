@@ -824,20 +824,20 @@ class Signals(dict):
         return Signals(*[(k, self[k]) for k in names])
 
 
-    def any(self):
+    def any(self, finish=None, filter=None):
         """
         Returns an :class:`~kaa.InProgressAny` object with all signals in self.
         """
         from .async import InProgressAny
-        return InProgressAny(*self.values())
+        return InProgressAny(*self.values(), finish=finish, filter=filter)
 
 
-    def all(self):
+    def all(self, finish=None):
         """
         Returns an :class:`~kaa.InProgressAll` object with all signals in self.
         """
         from .async import InProgressAll
-        return InProgressAll(*self.values())
+        return InProgressAll(*self.values(), finish=finish)
 
 
     # XXX: what does this code do?

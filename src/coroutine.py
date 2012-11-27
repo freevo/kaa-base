@@ -481,8 +481,9 @@ class CoroutineInProgress(InProgress):
             raise RuntimeError('coroutine is not abortable')
 
         if not exc:
-            exc = InProgressAborted('Coroutine aborted', inprogress=self)
-        exc.origin = self
+            exc = InProgressAborted('Coroutine aborted', inprogress=self, origin=self)
+        elif not exc.origin:
+            exc.origin = self
         try:
             if isinstance(self._prerequisite_ip, InProgress):
                 self._prerequisite_ip.disconnect(self._continue)

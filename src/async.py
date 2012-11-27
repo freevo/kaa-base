@@ -592,7 +592,14 @@ class InProgress(Signal, Object):
         if not self.abortable or self.signals['abort'].emit(exc) == False:
             raise RuntimeError('%s cannot be aborted.' % self)
 
-        exc.origin = self
+        if exc.inprogress != self:
+            # We're being aborted with an InProgressAborted created by a different
+            # InProgress (one we're linked to?), so create a new exception object,
+            # preserving the origin but replacing the inprogress attribute.
+            exc = exc.__class__(*exc.args, inprogress=self, origin=exc.origin)
+        elif not exc.origin:
+            # InProgressAborted lacks origin, so start with self.
+            exc.origin = self
         self.throw(exc.__class__, exc, None, aborted=True)
 
 

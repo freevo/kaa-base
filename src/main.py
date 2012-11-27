@@ -167,25 +167,22 @@ def loop(condition, timeout=None):
     .. warning::
        Refer to the warning detailed in :func:`kaa.main.run`.
     """
-    _loop_lock.acquire()
-    if is_running() and not CoreThreading.is_mainthread():
-        # race condition. Two threads started a mainloop and the other
-        # one is executed right now. Raise a RuntimeError
-        _loop_lock.release()
-        raise RuntimeError('loop running in a different thread')
+    with _loop_lock:
+        if is_running() and not CoreThreading.is_mainthread():
+            # race condition. Two threads started a mainloop and the other
+            # one is executed right now. Raise a RuntimeError
+            raise RuntimeError('loop running in a different thread')
 
-    initial_mainloop = False
-    if not _initialized:
-        init()
-    if not is_running():
-        # no mainloop is running, set this thread as mainloop and
-        # set the internal running state.
-        initial_mainloop = True
-        CoreThreading.set_as_mainthread()
-        _set_running(True)
+        initial_mainloop = False
+        if not _initialized:
+            init()
+        if not is_running():
+            # no mainloop is running, set this thread as mainloop and
+            # set the internal running state.
+            initial_mainloop = True
+            CoreThreading.set_as_mainthread()
+            _set_running(True)
 
-    # ok, that was the critical part
-    _loop_lock.release()
 
     if not callable(condition):
         condition = lambda: condition

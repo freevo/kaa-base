@@ -62,6 +62,7 @@ import types
 from .utils import property, wraps, DecoratorDataStore
 from .timer import Timer
 from .async import InProgress, InProgressAborted, InProgressStatus
+from .thread import threaded, MAINTHREAD
 from .generator import generator
 
 # get logging object
@@ -130,7 +131,7 @@ def coroutine(interval=0, policy=None, progress=False, group=None):
     :class:`~kaa.CoroutineInProgress` object. It may already be finished (which
     happens if the coroutine's first yielded value is one other than
     ``kaa.NotFinished`` or an :class:`~kaa.InProgress` object).
-    
+
     If it is not finished, the coroutine's life can be controlled via the
     :class:`~kaa.CoroutineInProgress` it returns.  It can be aborted with
     :meth:`~kaa.InProgress.abort`, in which case an :class:`~kaa.InProgressAborted`
@@ -326,12 +327,26 @@ class CoroutineInProgress(InProgress):
         return self._interval
 
 
-    @interval.setter  
+    @interval.setter
     def interval(self, interval):
-        if self._timer and self._timer.active:
-            # restart timer
-            self._timer.start(interval)
+        # If a non-mainloop  thread is setting set the interval property while
+        # the coroutine is being executed in the main thread, we might end up
+        # restarting the timer _after_ the coroutine executes (because Timer.start()
+        # ensures it's run from the main thread).
+        #
+        # To avoid this, we make sure we do both the active test _and_ the start
+        # from the main thread.
+        #
+        # This is more than I care to do in a property setter, but the common case
+        # is that this property gets set from the mainthread and so test_and_set()
+        # will get executed immediately.
+        @threaded(MAINTHREAD)
+        def test_and_set():
+            if self._timer and self._timer.active:
+                # restart timer
+                self._timer.start(interval)
         self._interval = interval
+        test_and_set()
 
 
     def _continue(self, *args, **kwargs):

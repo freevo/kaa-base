@@ -132,6 +132,8 @@ def _fetch_HTTP(url, filename, tmpname):
             length = int(src.info().get('Content-Length', 0))
         if not tmpname:
             tmpname = filename
+        if not os.path.exists(os.path.dirname(tmpname)):
+            os.makedirs(os.path.dirname(tmpname))
         dst = open(tmpname, 'w')
         status.set(0, length)
         while True:

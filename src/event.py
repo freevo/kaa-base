@@ -1,9 +1,21 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# event.py - Event handling for the main loop
+# event.py - Generic event handling
+#
+# Events are similar to Signals but use a different approach. They are
+# global and always synchronized. An EventHandler can monitor specific
+# or all events; it does not even need to know which events
+# exist. Events are always send to the EventHandlers synchronized.
+# This means that a second event is delayed until the first event is
+# handled by all handlers. If a handler posts another event it is
+# delayed; the ordering also respects InProgress results and waits
+# until it is finished before processing the next event.
+#
+# Events are designed for the application using kaa and make only
+# sense in its context. No kaa library is posting an event.
 # -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
-# Copyright 2005-2012 Dirk Meyer, Jason Tackaberry, et al.
+# Copyright 2005-2013 Dirk Meyer, Jason Tackaberry, et al.
 #
 # Please see the file AUTHORS for a complete list of authors.
 #
@@ -31,11 +43,12 @@ import copy
 import logging
 
 # kaa.base imports
-from .nf_wrapper import NotifierCallback, WeakNotifierCallback
+from .callable import Callable, WeakCallable
 from .core import CoreThreading
 from .thread import MainThreadCallable
-from .timer import OneShotTimer
-from .utils import property
+from .main import signals
+from .coroutine import coroutine, POLICY_SYNCHRONIZED
+from .async import InProgress
 
 # get logging object
 log = logging.getLogger('kaa.base.core')
@@ -47,45 +60,50 @@ class Event(object):
     """
     A simple event that can be passed to the registered event handler.
     """
-    def __init__(self, name, *args):
+    def __init__(self, name, *arg):
         """
         Init the event.
         """
         if isinstance(name, Event):
             self.name = name.name
-            self.arg  = name.arg
+            self._arg  = name._arg
         else:
             self.name = name
-            self.arg  = None
-        if args:
-            self._set_args(args)
+            self._arg  = None
+        if arg:
+            self.arg = arg
 
+    @property
+    def arg(self):
+        """
+        Get event arguments
+        """
+        return self._arg
 
-    def _set_args(self, args):
+    @arg.setter
+    def arg(self, arg):
         """
-        Set arguments of the event.
+        Set event arguments
         """
-        if not args:
-            self.arg = None
-        elif len(args) == 1:
-            self.arg = args[0]
+        if not arg:
+            self._arg = None
+        elif len(arg) == 1:
+            self._arg = arg[0]
         else:
-            self.arg = args
+            self._arg = arg
 
-
-    def post(self, *args):
+    def post(self, *arg):
         """
-        Post event into the queue.
+        Post event
         """
         event = self
-        if args:
+        if arg:
             event = copy.copy(self)
-            event._set_args(args)
+            event.arg = arg
         if not CoreThreading.is_mainthread():
             return MainThreadCallable(manager.post, event)()
         else:
             return manager.post(event)
-
 
     def __str__(self):
         """
@@ -93,8 +111,6 @@ class Event(object):
         """
         return self.name
 
-    
-    # Python 2.
     def __cmp__(self, other):
         """
         Compare function, return 0 if the objects are identical, 1 otherwise
@@ -105,16 +121,16 @@ class Event(object):
             return self.name != other.name
         return self.name != other
 
-
-    # Python 3
     def __eq__(self, other):
+        """
+        Compare function, return 0 if the objects are identical, 1 otherwise
+        """
         if isinstance(other, Event):
             return self.name == other.name
         return self.name == other
-        
 
 
-class EventHandler(NotifierCallback):
+class EventHandler(Callable):
     """
     Event handling callback.
     """
@@ -127,14 +143,12 @@ class EventHandler(NotifierCallback):
         if not self in manager.handler:
             manager.handler.append(self)
 
-
     @property
     def active(self):
         """
         True if the object is bound to the event manager.
         """
         return self in manager.handler
-
 
     def unregister(self):
         """
@@ -143,16 +157,15 @@ class EventHandler(NotifierCallback):
         if self in manager.handler:
             manager.handler.remove(self)
 
-
     def __call__(self, event):
         """
         Invoke wrapped callable if the event matches.
         """
         if not self.events or event in self.events:
-            super(EventHandler, self).__call__(event)
+            return super(EventHandler, self).__call__(event)
 
 
-class WeakEventHandler(WeakNotifierCallback, EventHandler):
+class WeakEventHandler(WeakCallable, EventHandler):
     """
     Weak reference version of the EventHandler.
     """
@@ -165,41 +178,26 @@ class EventManager(object):
     Internal use only.
     """
     def __init__(self):
-        self.queue = []
-        self.locked = False
-        self.timer = OneShotTimer(self.handle)
+        self.active = False
         self.handler = []
-
 
     def post(self, event):
         """
-        Add event to the queue.
+        Post event
         """
-        self.queue.append(event)
-        if not self.timer.active:
-            self.timer.start(0)
+        signals['step'].connect_once(self.handle, event)
 
-
-    def handle(self):
+    @coroutine(policy=POLICY_SYNCHRONIZED)
+    def handle(self, event):
         """
         Handle the next event.
         """
-        if self.locked:
-            self.timer.start(0.01)
-            return
-        if not self.queue:
-            return
-        self.locked = True
-        event = self.queue[0]
-        self.queue = self.queue[1:]
-
         try:
-            for handler in copy.copy(self.handler):
-                handler(event)
+            for handler in self.handler[:]:
+                result = handler(event)
+                if isinstance(result, InProgress):
+                    yield result
         except Exception, e:
             log.exception('event callback')
-        self.locked = False
-        if self.queue and not self.timer.active:
-            self.timer.start(0)
 
 manager = EventManager()

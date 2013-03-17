@@ -533,8 +533,18 @@ class IOChannel(Object):
             self._close_on_eof = channel._close_on_eof
             self._eof = channel._close_on_eof
         else:
-            # Close on EOF unless it looks like a file object
-            self._close_on_eof = not hasattr(channel, 'seek')
+            # For normal seekable files, we want to disable close_on_eof
+            # behaviour so we're closer to the normal file API.  Test seeking
+            # on the given channel and if it doesn't raise an exception, we can
+            # set close_on_eof to False.  We can't reliably determine if a channel
+            # is seekable without actually trying a seek, because streams could be
+            # wrapped in file-like objects with fdopen.
+            try:
+                fd = channel if isinstance(channel, int) else channel.fileno()
+                os.lseek(fd, 0, os.SEEK_CUR)
+                self._close_on_eof = False
+            except (AttributeError, TypeError, IOError, OSError):
+                self._close_on_eof = True
             self._eof = False
 
         self._channel = channel

@@ -455,6 +455,15 @@ class Socket(IOChannel):
         return (self._channel != None and not self._close_inprogress) or self._connecting
 
 
+    @IOChannel.close_on_eof.setter
+    def close_on_eof(self, value):
+        # close_on_eof makes no sense for sockets and can result in a busy
+        # read loop because the readable property will return True even when
+        # the socket is dead.  So just prevent this.
+        if value != True:
+            raise ValueError('close_on_eof cannot be False for sockets')
+
+
     @IOChannel.readable.getter
     def readable(self):
         """

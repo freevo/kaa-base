@@ -7,7 +7,7 @@
 # defined when needed.
 #
 # -----------------------------------------------------------------------------
-# Copyright 2006-2012 Dirk Meyer, Jason Tackaberry
+# Copyright 2006-2013 Dirk Meyer, Jason Tackaberry
 #
 # Please see the file AUTHORS for a complete list of authors.
 #
@@ -30,7 +30,9 @@ from __future__ import absolute_import
 
 # Python imports
 import logging
+import logging.handlers
 import sys
+import os
 
 # kaa.base imports
 if sys.hexversion >= 0x02060000:
@@ -108,6 +110,31 @@ class Logger(logging.Logger):
             self._log(logging.DEBUG2, msg, args, **kwargs)
 
 
+def add_stdout_handler():
+    """
+    Add simple stdout logging handler and formater to the root logger
+    """
+    formatter = logging.Formatter('%(levelname)s %(module)s(%(lineno)s): %(message)s')
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    logging.getLogger().addHandler(handler)
+
+
+def add_file_handler(filename, maxbytes=1000000, count=2):
+    """
+    Add simple file logging handler and formater to the root logger
+    """
+    if not os.path.isdir(os.path.dirname(filename)):
+        os.makedirs(os.path.dirname(filename))
+    formatter = logging.Formatter('%(asctime)s %(levelname)-8s [%(name)6s] %(filename)s %(lineno)s: %(message)s')
+    handler = logging.handlers.RotatingFileHandler(filename, maxBytes=maxbytes, backupCount=count)
+    handler.setFormatter(formatter)
+    logging.getLogger().addHandler(handler)
+
+
 logging.DEBUG2 = 5
 logging.addLevelName(logging.DEBUG2, 'DEBUG2')
 logging.setLoggerClass(Logger)
+
+logging.add_stdout_handler = add_stdout_handler
+logging.add_file_handler = add_file_handler

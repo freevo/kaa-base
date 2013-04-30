@@ -4,6 +4,9 @@ import sys
 import gc
 import kaa
 import kaa.rpc
+import kaa.logger
+
+kaa.logger.add_stdout_handler()
 
 sig = kaa.Signals('one', 'two', 'three')
 
@@ -159,6 +162,8 @@ def foo():
     print 'connect to server'
     c = kaa.rpc.connect('test')
     print 'server tests'
+
+    yield kaa.inprogress(c)
 
     # normal rpc
     result = c.rpc('test1', 15)

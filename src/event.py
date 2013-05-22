@@ -87,7 +87,7 @@ class Event(object):
         """
         if not arg:
             self._arg = None
-        elif len(arg) == 1:
+        elif hasattr(arg, '__len__') and len(arg) == 1:
             self._arg = arg[0]
         else:
             self._arg = arg

@@ -35,6 +35,7 @@ import SocketServer
 import shutil
 import urlparse
 import json
+import cgi
 
 # kaa imports
 import kaa
@@ -47,6 +48,44 @@ class ThreadedHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     """
     RequestHandler.
     """
+
+    def do_POST(self):
+        ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
+        if ctype != 'application/json':
+            log.error('HTTP/POST not JSON: %s' % ctype)
+            self.send_response(500)
+            self.end_headers()
+            return
+        length = int(self.headers.getheader('content-length'))
+        data = cgi.parse_qs(self.rfile.read(length), keep_blank_values=1)
+        parse_result = urlparse.urlparse(self.path)
+        try:
+          for path, callback, ctype, encoding in self.server._get_handler:
+            if path == parse_result.path or \
+                    (parse_result.path.startswith(path) and path.endswith('/')):
+                path = parse_result.path[len(path):]
+                result = []
+                for key in data.keys():
+                    calls = json.loads(key)
+                    if not isinstance(calls, (list, tuple)):
+                        calls = (calls,)
+                    for c in calls:
+                        result.append(kaa.MainThreadCallable(callback)(path, **c).wait())
+                if len(result) == 1:
+                    result = json.dumps(result[0])
+                else:
+                    result = json.dumps(result)
+                self.send_response(200)
+                self.send_header("Content-type", ctype)
+                self.send_header("Content-Length", len(result))
+                # self.send_header("Content-Encoding", encoding)
+                self.end_headers()
+                self.wfile.write(result)
+                return
+        except:
+            self.send_response(500)
+            log.exception('server error')
+            return
 
     def do_GET(self):
         """
@@ -128,7 +167,8 @@ class ThreadedHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         """
         Dump log messages to the used logging object
         """
-        log.info(format, *args)
+        if len(args) != 3 or args[1] != '200':
+            log.info(format, *args)
 
 
 class HTTPServer(SocketServer.ThreadingTCPServer):

@@ -40,7 +40,6 @@ try:
 except ImportError:
     from cStringIO import StringIO as BytesIO
 
-from .utils import property
 from .strutils import BYTES_TYPE, UNICODE_TYPE, py3_b, bl
 from . import nf_wrapper as notifier
 from .callable import WeakCallable

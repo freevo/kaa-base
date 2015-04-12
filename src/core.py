@@ -39,7 +39,6 @@ import Queue
 
 # kaa imports
 from .callable import Callable, WeakCallable, CallableError
-from .utils import property
 from .strutils import bl
 from . import nf_wrapper as notifier
 

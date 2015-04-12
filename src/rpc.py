@@ -109,7 +109,6 @@ import os
 
 # kaa imports
 import kaa
-from .utils import property
 from .strutils import py3_b, bl
 from .core import Object, CoreThreading
 from .errors import make_exception_class, AsyncExceptionBase

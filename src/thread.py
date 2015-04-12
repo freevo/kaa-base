@@ -45,7 +45,7 @@ from thread import LockType
 # kaa imports
 from .callable import Callable
 from . import nf_wrapper as notifier
-from .utils import wraps, DecoratorDataStore, property
+from .utils import wraps, DecoratorDataStore
 from .core import CoreThreading, Object
 from .async import InProgress, InProgressAborted, InProgressStatus
 

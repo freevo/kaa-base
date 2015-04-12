@@ -42,7 +42,6 @@ from .strutils import py3_str, py3_b, BYTES_TYPE, UNICODE_TYPE, get_encoding
 from .callable import Callable, WeakCallable
 from .timer import WeakTimer, WeakOneShotTimer
 from kaa.base.inotify import INotify
-from .utils import property
 from . import main
 
 # get logging object

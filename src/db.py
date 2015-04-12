@@ -48,7 +48,6 @@ except ImportError:
     from sqlite3 import dbapi2 as sqlite
 
 # kaa base imports
-from .utils import property
 from .strutils import py3_str, BYTES_TYPE, UNICODE_TYPE
 from .timer import WeakOneShotTimer
 from . import main

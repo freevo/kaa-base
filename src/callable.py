@@ -34,7 +34,6 @@ import atexit
 
 # Kaa imports
 from .errors import CallableError
-from .utils import property
 
 # get logging object
 log = logging.getLogger('kaa.base.core.callable')

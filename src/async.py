@@ -40,7 +40,6 @@ import types
 
 # kaa.base imports
 from .errors import AsyncException, AsyncExceptionBase, InProgressAborted, TimeoutException
-from .utils import property
 from .callable import Callable
 from .core import Object, Signal, Signals, CoreThreading
 

@@ -32,7 +32,7 @@ import logging
 import datetime
 
 from .weakref import weakref
-from .utils import wraps, DecoratorDataStore, property
+from .utils import wraps, DecoratorDataStore
 from . import nf_wrapper as notifier
 from .core import CoreThreading
 from . import thread

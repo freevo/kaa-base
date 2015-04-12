@@ -59,7 +59,7 @@ import logging
 import types
 
 # kaa.base imports
-from .utils import property, wraps, DecoratorDataStore
+from .utils import wraps, DecoratorDataStore
 from .timer import Timer
 from .async import InProgress, InProgressAborted, InProgressStatus
 from .thread import threaded, MAINTHREAD

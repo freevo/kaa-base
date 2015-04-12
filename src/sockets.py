@@ -36,7 +36,7 @@ import ctypes.util
 import collections
 
 from .errors import SocketError
-from .utils import property, tempfile
+from .utils import tempfile
 from .thread import threaded
 from .async import InProgress
 from .io import IO_READ, IO_WRITE, IOChannel, WeakIOMonitor

@@ -39,7 +39,6 @@ except ImportError:
 
 
 from .errors import InProgressAborted
-from .utils import property
 from .callable import Callable, WeakCallable, CallableError
 from .core import Object, Signals
 from .timer import delay, timed, Timer, OneShotTimer, POLICY_ONCE

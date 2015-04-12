@@ -41,7 +41,6 @@ import avahi
 
 # kaa imports
 import kaa
-from kaa.utils import property
 
 # get logging object
 log = logging.getLogger('kaa.base.net.mdns')

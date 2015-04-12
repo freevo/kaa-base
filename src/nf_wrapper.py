@@ -1,9 +1,14 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# nf_wrapper.py - wrap pynotifier in kaa-aware objects
+# nf_wrapper.py - wrap nf_generic in kaa-aware objects
+#
+# This code was written for pynotifier ntegration into kaa.base. Since
+# pynotifier is now stripped down into nf_generic.py it is no longer
+# needed. It should be merged into nf_generic.
+#
 # -----------------------------------------------------------------------------
 # kaa.base - The Kaa Application Framework
-# Copyright 2006-2012 Dirk Meyer, Jason Tackaberry, et al.
+# Copyright 2006-2012,2015 Dirk Meyer, Jason Tackaberry, et al.
 #
 # Please see the file AUTHORS for a complete list of authors.
 #
@@ -31,8 +36,6 @@ import atexit
 
 # notifier import
 from .callable import Callable, WeakCallable, CallableError
-from .utils import property
-# use our own copy of pynotifier
 from . import nf_generic
 
 # get logging object
@@ -45,8 +48,6 @@ log = logging.getLogger('kaa.base.core.main')
 # the interpreter might already have deleted this variable in which case it
 # is None.
 _python_shutting_down = False
-
-loaded = False
 
 class NotifierCallback(Callable):
     """
@@ -79,7 +80,6 @@ class NotifierCallback(Callable):
         except CallableError:
             # A WeakCallable that's no longer valid.  Unregister.
             ret = False
-
         # If Notifier callbacks return False, they get unregistered.
         if ret == False:
             self.unregister()
@@ -96,10 +96,8 @@ class WeakNotifierCallback(WeakCallable, NotifierCallback):
             super(WeakNotifierCallback, self)._weakref_destroyed(object)
             self.unregister()
 
-
 timer_remove = nf_generic.timer_remove
 timer_add = nf_generic.timer_add
-
 step = nf_generic.step
 
 def shutdown():
@@ -107,25 +105,13 @@ def shutdown():
     sys.exit(0)
 
 # socket wrapper
-
-nf_conditions = []
-def _socket_add(id, method, condition = 0):
-    return nf_socket_add(id, method, nf_conditions[condition])
-
-
-def _socket_remove(id, condition = 0):
-    return nf_socket_remove(id, nf_conditions[condition])
-
-nf_socket_remove = nf_generic.socket_remove
-nf_socket_add = nf_generic.socket_add
 nf_conditions = [ nf_generic.IO_READ, nf_generic.IO_WRITE, nf_generic.IO_EXCEPT ]
-socket_remove = _socket_remove
-socket_add = _socket_add
 
+def socket_add(id, method, condition = 0):
+    return nf_generic.socket_add(id, method, nf_conditions[condition])
 
-def init( module = None, force_internal=False, **options ):
-    loaded = True
-
+def socket_remove(id, condition = 0):
+    return nf_generic.socket_remove(id, nf_conditions[condition])
 
 def _shutdown_weakref_destroyed():
     global _python_shutting_down

@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Author: Andreas Büsching <crunchy@bitkipper.net>
+# Modified for kaa.base by Dirk Meyer and Jason Tackaberry
 #
 # generic notifier implementation
 #
@@ -23,16 +24,12 @@
 # 02110-1301 USA
 
 
-"""Simple mainloop that watches sockets and timers."""
-from __future__ import absolute_import
-
 # python core packages
 import logging
 from select import select
 from select import error as select_error
 from time import time, sleep as time_sleep
 import errno, os, sys
-
 import socket
 
 # get logging object
@@ -50,7 +47,6 @@ __sockets[ IO_EXCEPT ] = {}
 __timers = {}
 __timer_id = 0
 __min_timer = None
-__in_step = False
 __step_depth = 0
 __step_depth_max = 5
 
@@ -77,15 +73,12 @@ def timer_add( interval, method ):
     function. This function returns an unique identifer which can be
     used to remove this timer"""
     global __timer_id
-
     try:
         __timer_id += 1
     except OverflowError:
         __timer_id = 0
-
     __timers[ __timer_id ] = \
     [ interval, int( time() * 1000 ) + interval, method ]
-
     return __timer_id
 
 def timer_remove( id ):
@@ -102,17 +95,12 @@ def step( sleep = True, external = True, simulate = False ):
     callback functions from the sockets reported by the select system call are
     invoked. As a final task in a notifier step all registered external
     dispatcher functions are invoked."""
-
-    global __in_step, __step_depth, __step_depth_max
-
-    __in_step = True
+    global __step_depth
     __step_depth += 1
-
     try:
         if __step_depth > __step_depth_max:
             log.exception( 'maximum recursion depth reached' )
             return
-
         # get minInterval for max timeout
         timeout = None
         if not sleep:
@@ -131,11 +119,9 @@ def step( sleep = True, external = True, simulate = False ):
                         timeout = 0
                         break
             if timeout == None:
-                                # No timers, timeout could be infinity.
-                                timeout = 30000
+                # No timers, timeout could be infinity.
+                timeout = 30000
             if __min_timer and __min_timer < timeout: timeout = __min_timer
-
-
         # wait for event
         sockets_ready = None
         if __sockets[ IO_READ ] or __sockets[ IO_WRITE ] or __sockets[ IO_EXCEPT ]:
@@ -147,11 +133,9 @@ def step( sleep = True, external = True, simulate = False ):
                     raise e
         elif timeout:
             time_sleep(timeout / 1000.0)
-
         if simulate:
             # we only simulate
             return
-        
         # handle timers
         for i, timer in __timers.items():
             timestamp = timer[ TIMESTAMP ]
@@ -177,7 +161,6 @@ def step( sleep = True, external = True, simulate = False ):
                         while timestamp <= now:
                             timestamp += timer[ INTERVAL ]
                     timer[ TIMESTAMP ] = timestamp
-
         # handle sockets
         if sockets_ready:
             for condition, sockets in zip((IO_READ, IO_WRITE, IO_EXCEPT), sockets_ready):
@@ -194,14 +177,11 @@ def step( sleep = True, external = True, simulate = False ):
                         # socket is either closed or not supported.
                         socket_remove( sock, condition )
                         continue
-
                     # the timer handling might have removed a socket from the
                     # list and therefore sock is not in __sockets[ condition ]
                     # anymore.
                     callback = __sockets[ condition ].get(sock)
                     if callback is not None and not callback( sock ):
                         socket_remove( sock, condition )
-        
     finally:
         __step_depth -= 1
-        __in_step = False

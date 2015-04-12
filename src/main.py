@@ -30,7 +30,7 @@ This module provides basic functions to control the kaa mainloop.
 """
 from __future__ import absolute_import
 
-__all__ = [ 'run', 'stop', 'step', 'select_notifier', 'is_running', 'wakeup',
+__all__ = [ 'run', 'stop', 'step', 'is_running', 'wakeup',
             'set_as_mainthread', 'is_shutting_down', 'loop', 'signals', 'init',
             'is_initialized' ]
 
@@ -78,28 +78,12 @@ signals = Signals(
     'sigchld'
 )
 
-
-def select_notifier(module, **options):
-    log.warning('select_notifier() is deprecated; use kaa.main.init() instead')
-    init(module, False, **options)
-
-
-def init(module=None, reset=False, **options):
+def init(reset=False):
     """
     Initialize the Kaa main loop facilities.
 
-    :param module: the main loop implementation to use.
-
-                   * ``generic``: Native python-based main loop (default),
-                   * ``gtk``: use pygtk's main loop (automatically selected if
-                     the gtk module is imported);
-                   * ``twisted``: Twisted main loop;
-                   * ``thread``: Native python-based main loop in a separate thread
-                     with custom hooks (needs ``handler`` kwarg)
-    :type module: str
     :param reset: discards any jobs queued by other threads; this is useful
                   following a fork.
-    :param options: module-specific keyword arguments
 
     This function must be called from the Python main thread.
 
@@ -127,20 +111,6 @@ def init(module=None, reset=False, **options):
         # we break pdb.
         signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-
-    if (module and module != notifier.loaded) or not notifier.loaded:
-        if module in ('thread', 'twisted'):
-            from . import nf_thread
-            nf_thread.init(module, **options)
-        else:
-            notifier.init(module, **options)
-
-        # TODO: this isn't the right place for this.  It belongs in the
-        # notifier init code, but it's not immediately obvious how to best move
-        # it there.
-        if module and module.startswith('twisted'):
-            from twisted.internet.process import reapAllProcesses
-            signals['sigchld'].connect(reapAllProcesses)
 
     CoreThreading.init(signals, reset)
     signals['init'].emit()
